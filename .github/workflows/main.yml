@@ -1,0 +1,43 @@
+name: Build project using muddler and upload artifact
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    permissions: write-all
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read package metadata
+        id: pkg
+        run: |
+          VERSION=$(jq -r '.version' mfile)
+          PACKAGE=$(jq -r '.package' mfile)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Muddle
+        uses: demonnic/build-with-muddler@main
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        id: upload
+        with:
+          name: ${{ steps.pkg.outputs.package }}-${{ steps.pkg.outputs.version }}
+          path: build/tmp/
+
+      - name: Post Artifact
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |-
+            ## Build preview
+            You can get it [here](${{ steps.upload.outputs.artifact-url }})
+            ![badge](https://img.shields.io/badge/Build-Success!-3fb950?logo=github&style=for-the-badge)
