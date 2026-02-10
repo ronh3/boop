@@ -1,0 +1,212 @@
+[
+  {
+    "name": "air_elemental_lady",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "air_elemental_lord",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "alchemist",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "apostate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "bard",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "black_dragon",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "blademaster",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "blue_dragon",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "depthswalker",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "druid",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "earth_elemental_lady",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "earth_elemental_lord",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "fire_elemental_lady",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "fire_elemental_lord",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "golden_dragon",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "green_dragon",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "infernal",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "jester",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "magi",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "monk",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "occultist",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "paladin",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "pariah",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "priest",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "psion",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "red_dragon",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "runewarden",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "sentinel",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "serpent",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "shaman",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "silver_dragon",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "sylvan",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "unnamable",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "water_elemental_lady",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
+    "name": "water_elemental_lord",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  }
+]

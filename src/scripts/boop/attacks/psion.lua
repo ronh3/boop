@@ -1,0 +1,52 @@
+boop.attacks.register("psion", {
+  standard = {
+    dam = { cmd = "", skill = "" },
+    shield = { cmd = "", skill = "" },
+  },
+  rage = {
+    ["abilities"] = {
+      ["barbedblade"] = {
+        ["cmd"] = "weave barbedblade &tar",
+        ["desc"] = "Small Damage",
+        ["name"] = "barbedblade",
+        ["rage"] = 14
+      },
+      ["pulverise"] = {
+        ["cmd"] = "weave pulverise &tar",
+        ["desc"] = "Shieldbreak",
+        ["name"] = "pulverise",
+        ["rage"] = 17
+      },
+      ["regrowth"] = {
+        ["aff"] = "inhibit",
+        ["cmd"] = "enact regrowth &tar",
+        ["desc"] = "Gives Affliction",
+        ["name"] = "regrowth",
+        ["rage"] = 24
+      },
+      ["terror"] = {
+        ["aff"] = "fear",
+        ["cmd"] = "psi terror &tar",
+        ["desc"] = "Gives Affliction",
+        ["name"] = "terror",
+        ["rage"] = 32
+      },
+      ["whirlwind"] = {
+        ["cmd"] = "weave whirlwind &tar",
+        ["desc"] = "Big Damage",
+        ["name"] = "whirlwind",
+        ["rage"] = 25
+      }
+    },
+    ["configRage"] = {
+      ["affAttack"] = 100,
+      ["bigDamage"] = 20,
+      ["smallDamage"] = 0
+    },
+    ["nrshieldbreak"] = {
+      ["cmd"] = "",
+      ["desc"] = "Raze",
+      ["rage"] = 0
+    }
+  }
+})

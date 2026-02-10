@@ -1,0 +1,82 @@
+boop = boop or {}
+
+boop.version = boop.version or "0.1.0"
+
+boop.defaults = {
+  enabled = false,
+  targetingMode = "whitelist",
+  whitelistPriorityOrder = true,
+  targetOrder = "order",
+  ignoreOtherPlayers = false,
+  targetCall = false,
+  useQueueing = false,
+  autoGrabGold = true,
+  autoGrabShards = true,
+  attackMode = "dam",
+  fleeAt = "30%",
+  warnAt = "40%",
+  rageFallbackSeconds = 26,
+}
+
+boop.config = boop.config or {}
+boop.lists = boop.lists or { whitelist = {}, blacklist = {}, globalBlacklist = {} }
+boop.lists.separator = boop.lists.separator or "/"
+boop.handlers = boop.handlers or {}
+
+boop.bootstrap = boop.bootstrap or function()
+  if boop.bootstrapped then return end
+  boop.bootstrapped = true
+
+  if sendGMCP then
+    sendGMCP('Core.Supports.Add ["IRE.Target 1"]')
+    sendGMCP('Core.Supports.Add ["IRE.Display 3"]')
+    sendGMCP('Core.Supports.Add ["Char.Skills 1"]')
+  end
+
+  if boop.db and boop.db.init then
+    boop.db.init()
+  end
+
+  if boop.state and boop.state.init then
+    boop.state.init()
+  end
+
+  if boop.afflictions and boop.afflictions.init then
+    boop.afflictions.init()
+  end
+
+  if boop.rage and boop.rage.init then
+    boop.rage.init()
+  end
+
+  if boop.ih and boop.ih.init then
+    boop.ih.init()
+  end
+
+  if boop.skills and boop.skills.init then
+    boop.skills.init()
+    boop.skills.desiredGroups = boop.skills.desiredGroups or {
+      "Artificing",
+      "Elementalism",
+      "Occultism",
+      "Domination",
+      "Attainment",
+    }
+  end
+
+  if boop.stats and boop.stats.init then
+    boop.stats.init()
+  end
+
+  if boop.events and boop.events.register then
+    boop.events.register()
+  end
+
+  if boop.skills and boop.skills.requestAll then
+    boop.skills.requestAll()
+  end
+
+  if boop.ui and boop.ui.status then
+    boop.ui.status("ready")
+  end
+end

@@ -1,0 +1,1 @@
+boop.ui.status("status")

@@ -1,0 +1,18 @@
+[
+  {"name": "boop_init", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_util", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_skills", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_db", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_state", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_afflictions", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_rage", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_ih", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_targets", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_attacks", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "attacks", "isActive": "yes", "isFolder": "yes", "script": ""},
+  {"name": "boop_safety", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_stats", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_ui", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_events", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_bootstrap", "isActive": "yes", "isFolder": "no", "script": ""}
+]

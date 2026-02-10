@@ -1,10 +1,10 @@
 {
-       "package": "agnosticDB",
-       "title": "agnosticDB (Achaea Name Database)",
-       "description": "Standalone name database for Mudlet and Achaea.",
-       "version": "0.1.0",
+       "package": "boop Hunter",
+       "title": "boop Hunter)",
+       "description": "Standalone hunting system for Achaea.",
+       "version": "0.1.1",
        "author": "Nikolais",
        "icon": "",
        "dependencies": "",
-       "outputFile": false
+       "outputFile": true
 }

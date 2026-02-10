@@ -7,6 +7,7 @@ Guidance for Codex when working in this repository.
 - Package metadata lives in `mfile` (package/name/version); keep it current.
 - Packaged source of truth is under `src/` (scripts/aliases/triggers).
 - Target namespace: `boop`.
+- Rage readiness prefers GMCP `IRE.Display` when available.
 
 ## Build System (Muddler)
 - Work only in `src/` JSON + Lua files; never edit built artifacts.
@@ -17,6 +18,7 @@ Guidance for Codex when working in this repository.
 
 ## Current Source Layout
 - `src/scripts/` — core Lua scripts; manifest at `src/scripts/scripts.json`.
+- `src/scripts/boop/attacks/` — class attack tables (one file per class).
 - `src/aliases/` — alias scripts; manifests can be nested (e.g., `src/aliases/aliases.json` and subfolders).
 - `src/triggers/` — trigger scripts; manifest at `src/triggers/triggers.json`.
 
