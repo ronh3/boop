@@ -15,13 +15,13 @@ boop.attacks.register("red dragon", {  standard = {
         ["cmd"] = "glaciate &tar",
         ["desc"] = "Gives Affliction",
         ["name"] = "dragontaunt",
-        ["rage"] = 26
+        ["rage"] = 18
       },
       ["flamebath"] = {
         ["cmd"] = "flamebath &tar",
         ["desc"] = "Conditional",
         ["name"] = "flamebath",
-        ["needs"] = { "recklessness", "amnesia" },
+        ["needs"] = { "sensitivity", "clumsiness" },
         ["rage"] = 25
       },
       ["melt"] = {

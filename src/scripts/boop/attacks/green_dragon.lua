@@ -11,7 +11,7 @@ boop.attacks.register("green dragon", {  standard = {
         ["rage"] = 17
       },
       ["dragonsap"] = {
-        ["aff"] = "inhibit",
+        ["aff"] = "weakness",
         ["cmd"] = "dragonsap &tar",
         ["desc"] = "Gives Affliction",
         ["name"] = "dragonsap",

@@ -22,7 +22,7 @@ boop.attacks.register("black dragon", {  standard = {
         ["cmd"] = "psidaze &tar",
         ["desc"] = "Gives Affliction",
         ["name"] = "dragonfear",
-        ["rage"] = 28
+        ["rage"] = 29
       },
       ["dragonspit"] = {
         ["cmd"] = "dragonspit &tar",
