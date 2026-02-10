@@ -42,3 +42,11 @@ Guidance for Codex when working in this repository.
 - Commit and push changes unless the user asks otherwise.
 - Keep `README.md` in sync when commands or features change.
 - Maintain the config UI look/feel (config theme + sectioned layout) for new menus.
+
+## Session Startup (New Agent Checklist)
+- Read `README.md` and `DESIGN.md` to understand current scope and user-facing behavior.
+- Open `mfile` to confirm current version; bump it on every commit.
+- Work only under `src/` for package content; never edit built artifacts.
+- Use the existing `boop` namespace and follow the current file/manifest layout.
+- For gameplay behavior questions, prefer the existing reference implementations (Basher/Bashing/Foxhunt) and our current code as the source of truth unless instructed otherwise.
+- If implementing new commands or flows, update `README.md` and ensure aliases/triggers are registered in the proper manifest JSON.

@@ -28,7 +28,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop ih` shows items too; only denizens get whitelist/blacklist buttons.
 
 ## Starting A Session
-- See `STARTUP.md`.
+- See `CODEX.md` (Session Startup).
 
 ## Build
 - Use Muddler from repo root (see `CODEX.md` for exact guidance).
