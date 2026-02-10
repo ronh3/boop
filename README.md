@@ -3,9 +3,29 @@
 Standalone Mudlet package for Achaea auto hunting.
 
 ## Status
-- Early scaffold focused on Occultist; details live in `CODEX.md` and `DESIGN.md`.
-- Rage readiness uses GMCP `IRE.Display` when available; falls back to rage amount only.
-- Affliction tracking is stubbed (manual `boop aff` commands) until real lines are added.
+- Functional core: targeting, attacks, rage readiness, safety, DB-backed lists.
+- Class profiles: Occultist and Magi configured; other classes stubbed. Dragon standards share `incant`/`tailsmash`.
+- IH integration: `ih` output is re-rendered with clickable whitelist/blacklist buttons for denizens.
+- Skill gating uses GMCP `Char.Skills.*` info for standard/rage abilities.
+- Targeting uses denizen IDs (IRE.Target.Set by id), not names.
+
+## Commands
+- `boop` (toggle on/off)
+- `boop on` / `boop off`
+- `boop status`
+- `boop targeting <manual|whitelist|blacklist|auto>`
+- `boop ih` (also overrides `ih`)
+- `boop whitelist` / `boop whitelist add <name>` / `boop whitelist remove <name>`
+- `boop blacklist` / `boop blacklist add <name>` / `boop blacklist remove <name>`
+- `boop aff` / `boop aff add <a/b>` / `boop aff remove <a/b>` / `boop aff clear`
+- `boop debug` / `boop debug attacks` / `boop debug skills` / `boop debug skills dump`
+- `boop trip start` / `boop trip stop`
+- `boop flee`
+
+## Notes
+- Standard attacks and rage actions are independent and can fire together.
+- Denizens come from `gmcp.Char.Items.List` with attrib `m` and exclude `x`/`d`.
+- `boop ih` shows items too; only denizens get whitelist/blacklist buttons.
 
 ## Build
 - Use Muddler from repo root (see `CODEX.md` for exact guidance).

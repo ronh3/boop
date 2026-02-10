@@ -10,6 +10,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Configurable targeting and attack strategies.
 - Tracking gains and safety automation (flee, pause, shield handling).
 - Minimal UI and command surface for configuration and status.
+- Info-Here capture with click-to-add/remove for whitelist/blacklist.
 
 ## Non-Goals
 - Depend on external systems (SVO, Wundersys, other frameworks).
@@ -56,15 +57,14 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
   - Queueing abstraction using native Mudlet queue commands.
 - `boop.rage`
   - Rage readiness fallback (timers + text triggers).
-- `boop.battlerage`
-  - Rage readiness and attack selection.
-  - Affliction tracking and shield handling.
 - `boop.safety`
   - Auto-flee thresholds and pause-on-affliction logic.
 - `boop.stats`
   - Session/trip/lifetime gains and timers.
 - `boop.ui`
   - Config display and click UI helpers.
+- `boop.ih`
+  - Info-Here capture and clickable list management.
 
 ## Data Model (Mudlet DB)
 - `config` key/value settings.
@@ -81,11 +81,18 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 ## Attack Flow (High-Level)
 1. Update room/denizen state from GMCP.
 2. Choose target based on mode and priority.
-3. Ensure IRE.Target is set.
+3. Ensure IRE.Target is set (by denizen ID).
 4. Build standard action and rage action from class strategem.
 5. Gate rage by IRE.Display readiness when available (fallback: rage amount only).
-6. Send via native Mudlet queue or direct send.
+6. Send via native Mudlet queue or direct send (standard + rage can fire together).
 7. Apply safety checks and flee if needed.
+
+## Implementation Notes (Current)
+- Targeting uses GMCP `Char.Items.*` data and sends `IRE.Target.Set` with denizen ID.
+- Denizen filtering: attrib includes `m` and excludes `x` and `d`.
+- `boop ih` re-renders Info-Here lines and adds clickable whitelist/blacklist buttons for denizens.
+- Standard attacks and rage actions are independent; standard builds rage and there is no mode toggle.
+- Skill gating issues `Char.Skills.Get` requests per skill (group-aware).
 
 ## Versioning Policy
 - Bump `mfile.version` on every commit/merge.
@@ -108,6 +115,8 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Default auto-flee threshold: 30% HP.
 - Rage readiness: prefer IRE.Display (GMCP); fallback to internal ready flags + timers and text triggers.
 - Affliction tracking: manual only for now; ingestion deferred.
+- Standard and rage actions are separate timers and can be used in tandem.
+- Targeting uses ID (not name).
 
 ## Open Questions
 - None yet (add here as they come up).
