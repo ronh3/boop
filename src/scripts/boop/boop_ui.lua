@@ -116,21 +116,17 @@ function boop.ui.debugAttacks()
 end
 
 function boop.ui.debugSkills()
-  local desired = boop.skills and boop.skills.desiredGroups or {}
-  local desiredText = #desired > 0 and table.concat(desired, ", ") or "none"
-  local lastListGroup = boop.skills and boop.skills.lastList and boop.skills.lastList.group or "nil"
-  local lastListCount = boop.skills and boop.skills.lastList and boop.skills.lastList.list and #boop.skills.lastList.list or 0
   local lastInfoSkill = boop.skills and boop.skills.lastInfo and (boop.skills.lastInfo.skill or boop.skills.lastInfo.name) or "nil"
   local lastInfoGroup = boop.skills and boop.skills.lastInfo and boop.skills.lastInfo.group or "nil"
-  local groupHasListCount = 0
-  if boop.skills and boop.skills.groupHasList then
-    for _, _ in pairs(boop.skills.groupHasList) do
-      groupHasListCount = groupHasListCount + 1
+  local pendingCount = 0
+  if boop.skills and boop.skills.pending then
+    for _, _ in pairs(boop.skills.pending) do
+      pendingCount = pendingCount + 1
     end
   end
   boop.util.echo(string.format(
-    "debug skills | desiredGroups:%s | lists:%s | lastList group:%s count:%s | lastInfo skill:%s group:%s",
-    tostring(desiredText), tostring(groupHasListCount), tostring(lastListGroup), tostring(lastListCount),
+    "debug skills | pending:%s | lastInfo skill:%s group:%s",
+    tostring(pendingCount),
     tostring(lastInfoSkill), tostring(lastInfoGroup)
   ))
 end
