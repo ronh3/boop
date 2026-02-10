@@ -28,7 +28,7 @@ boop.attacks.register("golden dragon", {  standard = {
         ["cmd"] = "psidaze &tar",
         ["desc"] = "Gives Affliction",
         ["name"] = "psidaze",
-        ["rage"] = 31
+        ["rage"] = 28
       },
       ["psishatter"] = {
         ["cmd"] = "psishatter &tar",

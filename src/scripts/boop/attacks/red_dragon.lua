@@ -15,7 +15,7 @@ boop.attacks.register("red dragon", {  standard = {
         ["cmd"] = "glaciate &tar",
         ["desc"] = "Gives Affliction",
         ["name"] = "dragontaunt",
-        ["rage"] = 18
+        ["rage"] = 26
       },
       ["flamebath"] = {
         ["cmd"] = "flamebath &tar",
