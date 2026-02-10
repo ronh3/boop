@@ -1,7 +1,7 @@
 boop.attacks.register("blademaster", {
   standard = {
-    dam = { cmd = "", skill = "" },
-    shield = { cmd = "", skill = "" },
+    dam = { cmd = "", skill = "", group = "" },
+    shield = { cmd = "", skill = "", group = "" },
   },
   rage = {
     ["abilities"] = {
