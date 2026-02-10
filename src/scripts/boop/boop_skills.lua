@@ -7,9 +7,11 @@ end
 function boop.skills.init()
   boop.skills.known = boop.skills.known or {}
   boop.skills.skillToGroup = boop.skills.skillToGroup or {}
+  boop.skills.skillOriginal = boop.skills.skillOriginal or {}
   boop.skills.pending = {}
   boop.skills.pendingTimers = {}
   boop.skills.lastInfo = nil
+  boop.skills.lastList = nil
 end
 
 local function learnedFromInfo(info)
@@ -40,7 +42,8 @@ function boop.skills.requestSkillDirect(name, group)
 
   boop.skills.skillToGroup[key] = groupKey
   boop.skills.pending[key] = true
-  sendGMCP(string.format([[Char.Skills.Get {"group":"%s","name":"%s"}]], groupKey, key))
+  local skillName = boop.skills.skillOriginal[key] or name
+  sendGMCP(string.format([[Char.Skills.Get {"group":"%s","name":"%s"}]], groupKey, skillName))
 
   if boop.skills.pendingTimers[key] then
     killTimer(boop.skills.pendingTimers[key])
@@ -78,7 +81,38 @@ function boop.skills.handleGroups()
 end
 
 function boop.skills.handleList()
-  -- No-op; list does not indicate learned vs unlearned in Achaea.
+  if not gmcp or not gmcp.Char or not gmcp.Char.Skills or not gmcp.Char.Skills.List then return end
+  local raw = gmcp.Char.Skills.List
+  local list = raw.list or raw or {}
+  local group = raw.group or raw.name or raw.groupName
+  local groupKey = norm(group)
+  if groupKey == "" then return end
+
+  boop.skills.lastList = { group = groupKey, list = list }
+
+  local function handleEntry(entry, keyHint)
+    local name = entry
+    if type(entry) == "table" then
+      name = entry.name or entry.skill or entry.id or keyHint
+    elseif type(entry) == "number" then
+      name = tostring(entry)
+    end
+    local key = norm(name)
+    if key ~= "" then
+      boop.skills.skillToGroup[key] = groupKey
+      boop.skills.skillOriginal[key] = name
+    end
+  end
+
+  if #list > 0 then
+    for _, entry in ipairs(list) do
+      handleEntry(entry, nil)
+    end
+  else
+    for key, entry in pairs(list) do
+      handleEntry(entry, key)
+    end
+  end
 end
 
 function boop.skills.handleInfo()

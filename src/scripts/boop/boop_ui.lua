@@ -118,6 +118,8 @@ end
 function boop.ui.debugSkills()
   local lastInfoSkill = boop.skills and boop.skills.lastInfo and (boop.skills.lastInfo.skill or boop.skills.lastInfo.name) or "nil"
   local lastInfoGroup = boop.skills and boop.skills.lastInfo and boop.skills.lastInfo.group or "nil"
+  local lastListGroup = boop.skills and boop.skills.lastList and boop.skills.lastList.group or "nil"
+  local lastListCount = boop.skills and boop.skills.lastList and boop.skills.lastList.list and #boop.skills.lastList.list or 0
   local pendingCount = 0
   if boop.skills and boop.skills.pending then
     for _, _ in pairs(boop.skills.pending) do
@@ -125,8 +127,8 @@ function boop.ui.debugSkills()
     end
   end
   boop.util.echo(string.format(
-    "debug skills | pending:%s | lastInfo skill:%s group:%s",
-    tostring(pendingCount),
+    "debug skills | pending:%s | lastList group:%s count:%s | lastInfo skill:%s group:%s",
+    tostring(pendingCount), tostring(lastListGroup), tostring(lastListCount),
     tostring(lastInfoSkill), tostring(lastInfoGroup)
   ))
 end

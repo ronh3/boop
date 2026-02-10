@@ -1,6 +1,6 @@
 boop.attacks.register("magi", {
   standard = {
-    dam = { cmd = "staffcast scintilla at &tar", skill = "Staffcast", group = "Artificing" },
+    dam = { cmd = "staffcast horripulation at &tar", skill = "Horripulation", group = "Artificing" },
     shield = { cmd = "cast erode at &tar", skill = "Erode", group = "Elementalism" },
   },
   rage = {
