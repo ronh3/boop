@@ -54,6 +54,15 @@ function boop.ui.setAttackMode(mode)
   boop.ui.status("attack")
 end
 
+function boop.ui.setRageMode(mode)
+  mode = boop.util.safeLower(boop.util.trim(mode))
+  if mode == "" then return end
+  if mode == "simple" then
+    mode = "dam"
+  end
+  boop.ui.setAttackMode(mode)
+end
+
 function boop.ui.debug()
   local enabled = boop.config.enabled and "on" or "off"
   local mode = boop.config.targetingMode or "unknown"
