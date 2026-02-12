@@ -23,19 +23,15 @@ function boop.attacks.rageReady(ability, rage)
     return false
   end
 
-  if gmcp and gmcp.IRE and gmcp.IRE.Display and gmcp.IRE.Display.ButtonActions then
-    local key = boop.util.safeLower(ability.name or ability.skill or "")
-    if key == "" then return false end
+  local key = boop.util.safeLower(ability.name or ability.skill or "")
+  if gmcp and gmcp.IRE and gmcp.IRE.Display and gmcp.IRE.Display.ButtonActions and key ~= "" then
     for _, button in pairs(gmcp.IRE.Display.ButtonActions) do
       local text = boop.util.safeLower(button.text or "")
       if text == key then
         return button.highlight == 1 or button.highlight == true or tostring(button.highlight) == "1"
       end
     end
-    return false
   end
-
-  local key = boop.util.safeLower(ability.name or ability.skill or "")
   if key == "" then return true end
   if boop.state and boop.state.rageReady and boop.state.rageReady[key] ~= nil then
     return boop.state.rageReady[key]
