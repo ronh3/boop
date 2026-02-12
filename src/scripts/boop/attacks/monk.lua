@@ -1,7 +1,7 @@
-boop.attacks.register("monk", {
-  standard = {
-    dam = { cmd = "", skill = "", group = "" },
-    shield = { cmd = "", skill = "", group = "" },
+boop.attacks.register("monk", {  standard = {
+    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
+    dam = { cmd = "combo &tar sdk ucp ucp", skill = "", group = "" },
+    shield = { cmd = "combo &tar rhk ucp ucp", skill = "", group = "" },
   },
   rage = {
     ["abilities"] = {

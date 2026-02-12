@@ -1,7 +1,7 @@
-boop.attacks.register("psion", {
-  standard = {
-    dam = { cmd = "", skill = "", group = "" },
-    shield = { cmd = "", skill = "", group = "" },
+boop.attacks.register("psion", {  standard = {
+    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
+    dam = { cmd = "weave charge &tar", skill = "", group = "" },
+    shield = { cmd = "weave cleave &tar", skill = "", group = "" },
   },
   rage = {
     ["abilities"] = {

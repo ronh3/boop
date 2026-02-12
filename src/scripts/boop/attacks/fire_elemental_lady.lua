@@ -1,7 +1,7 @@
-boop.attacks.register("fire elemental lady", {
-  standard = {
-    dam = { cmd = "", skill = "", group = "" },
-    shield = { cmd = "", skill = "", group = "" },
+boop.attacks.register("fire elemental lady", {  standard = {
+    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
+    dam = { cmd = "ignite flamewhip &tar", skill = "", group = "" },
+    shield = { cmd = "manifest superheat &tar", skill = "", group = "" },
   },
   rage = {
     ["abilities"] = {

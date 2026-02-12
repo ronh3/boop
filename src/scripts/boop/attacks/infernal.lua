@@ -1,7 +1,7 @@
-boop.attacks.register("infernal", {
-  standard = {
-    dam = { cmd = "", skill = "", group = "" },
-    shield = { cmd = "", skill = "", group = "" },
+boop.attacks.register("infernal", {  standard = {
+    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
+    dam = { cmd = "hyena maul &tar/decay &tar", skill = "", group = "" },
+    shield = { cmd = "hyena maul &tar/carve &tar", skill = "", group = "" },
   },
   rage = {
     ["abilities"] = {

@@ -1,7 +1,7 @@
-boop.attacks.register("shaman", {
-  standard = {
-    dam = { cmd = "", skill = "", group = "" },
-    shield = { cmd = "", skill = "", group = "" },
+boop.attacks.register("shaman", {  standard = {
+    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
+    dam = { cmd = "jinx bleed bleed &tar/curse &tar bleed", skill = "", group = "" },
+    shield = { cmd = "touch hammer &tar", skill = "", group = "" },
   },
   rage = {
     ["abilities"] = {

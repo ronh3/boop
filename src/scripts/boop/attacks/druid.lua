@@ -1,7 +1,7 @@
-boop.attacks.register("druid", {
-  standard = {
-    dam = { cmd = "", skill = "", group = "" },
-    shield = { cmd = "", skill = "", group = "" },
+boop.attacks.register("druid", {  standard = {
+    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
+    dam = { cmd = "maul &tar", skill = "", group = "" },
+    shield = { cmd = "touch hammer &tar", skill = "", group = "" },
   },
   rage = {
     ["abilities"] = {

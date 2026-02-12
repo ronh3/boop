@@ -1,7 +1,7 @@
-boop.attacks.register("depthswalker", {
-  standard = {
-    dam = { cmd = "", skill = "", group = "" },
-    shield = { cmd = "", skill = "", group = "" },
+boop.attacks.register("depthswalker", {  standard = {
+    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
+    dam = { cmd = "shadow reap &tar", skill = "", group = "" },
+    shield = { cmd = "shadow strike &tar", skill = "", group = "" },
   },
   rage = {
     ["abilities"] = {

@@ -1,7 +1,7 @@
-boop.attacks.register("jester", {
-  standard = {
-    dam = { cmd = "", skill = "", group = "" },
-    shield = { cmd = "", skill = "", group = "" },
+boop.attacks.register("jester", {  standard = {
+    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
+    dam = { cmd = "bop &tar", skill = "", group = "" },
+    shield = { cmd = "badjoke", skill = "", group = "" },
   },
   rage = {
     ["abilities"] = {
