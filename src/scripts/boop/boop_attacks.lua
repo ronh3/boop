@@ -93,9 +93,6 @@ function boop.attacks.selectRage(profile, rage)
   if boop.state.targetShield then
     local ability = findByDesc(profile, "Shieldbreak", rage)
     if ability then return ability end
-    if profile.nrshieldbreak and profile.nrshieldbreak.cmd ~= "" then
-      return profile.nrshieldbreak
-    end
   end
 
   local mode = boop.config.attackMode or "dam"
