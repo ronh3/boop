@@ -49,11 +49,6 @@ boop.attacks.register("magi", {
       ["affAttack"] = 100,
       ["bigDamage"] = 20,
       ["smallDamage"] = 0
-    },
-    ["nrshieldbreak"] = {
-      ["cmd"] = "",
-      ["desc"] = "Raze",
-      ["rage"] = 0
     }
   }
 })

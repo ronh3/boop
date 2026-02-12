@@ -48,11 +48,6 @@ boop.attacks.register("fire elemental lady", {
       ["affAttack"] = 100,
       ["bigDamage"] = 20,
       ["smallDamage"] = 0
-    },
-    ["nrshieldbreak"] = {
-      ["cmd"] = "manifest superheat &tar",
-      ["desc"] = "Raze",
-      ["rage"] = 0
     }
   }
 })

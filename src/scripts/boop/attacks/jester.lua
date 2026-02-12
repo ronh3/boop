@@ -49,11 +49,6 @@ boop.attacks.register("jester", {
       ["affAttack"] = 100,
       ["bigDamage"] = 20,
       ["smallDamage"] = 0
-    },
-    ["nrshieldbreak"] = {
-      ["cmd"] = "",
-      ["desc"] = "Raze",
-      ["rage"] = 0
     }
   }
 })

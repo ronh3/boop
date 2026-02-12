@@ -49,11 +49,6 @@ boop.attacks.register("alchemist", {
       ["affAttack"] = 100,
       ["bigDamage"] = 20,
       ["smallDamage"] = 0
-    },
-    ["nrshieldbreak"] = {
-      ["cmd"] = "educe copper",
-      ["desc"] = "Raze",
-      ["rage"] = 0
     }
   }
 })

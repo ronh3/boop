@@ -48,11 +48,6 @@ boop.attacks.register("water elemental lord", {
       ["affAttack"] = 100,
       ["bigDamage"] = 20,
       ["smallDamage"] = 0
-    },
-    ["nrshieldbreak"] = {
-      ["cmd"] = "",
-      ["desc"] = "Raze",
-      ["rage"] = 0
     }
   }
 })
