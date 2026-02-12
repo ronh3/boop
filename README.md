@@ -14,7 +14,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop on` / `boop off`
 - `boop status`
 - `boop targeting <manual|whitelist|blacklist|auto>`
-- `boop ragemode <simple|dam|big|small|aff|cond|buff>`
+- `boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>`
 - `boop ih` (also overrides `ih`)
 - `boop whitelist` / `boop whitelist add <name>` / `boop whitelist remove <name>`
 - `boop blacklist` / `boop blacklist add <name>` / `boop blacklist remove <name>`

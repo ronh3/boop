@@ -100,6 +100,10 @@ function boop.attacks.selectRage(profile, rage)
 
   local mode = boop.config.attackMode or "dam"
 
+  if mode == "none" or mode == "pool" then
+    return nil
+  end
+
   if mode == "big" then
     return findByDescList(profile, {"Big Damage", "Mid Damage", "Small Damage"}, rage)
   elseif mode == "small" then
