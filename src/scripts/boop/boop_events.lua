@@ -1,5 +1,10 @@
 boop.events = boop.events or {}
 
+local function nowSeconds()
+  if getEpoch then return getEpoch() end
+  return os.clock()
+end
+
 function boop.events.register()
   if boop.handlers then
     for _, id in ipairs(boop.handlers) do
@@ -136,6 +141,77 @@ function boop.onVitals()
   boop.tick()
 end
 
+function boop.onBalanceUsed(kind, seconds)
+  local duration = tonumber(seconds)
+  if not duration then return end
+  local key = boop.util.safeLower(kind or "")
+  local readyAt = nowSeconds() + duration
+  if key == "balance" then
+    boop.state.balanceReadyAt = readyAt
+  elseif key == "equilibrium" then
+    boop.state.equilibriumReadyAt = readyAt
+  else
+    return
+  end
+  boop.state.prequeuedStandard = false
+  boop.schedulePrequeue()
+end
+
+function boop.schedulePrequeue()
+  local lead = tonumber(boop.config.attackLeadSeconds) or 0
+  if lead <= 0 then return end
+  if not boop.config.enabled then return end
+
+  local bal = boop.state.balanceReadyAt or 0
+  local eq = boop.state.equilibriumReadyAt or 0
+  local readyAt = math.max(bal, eq)
+  if readyAt <= 0 then return end
+
+  local delay = readyAt - lead - nowSeconds()
+  if delay < 0 then delay = 0 end
+
+  if boop.state.prequeueTimer then
+    killTimer(boop.state.prequeueTimer)
+  end
+  boop.state.prequeueTimer = tempTimer(delay, function()
+    boop.state.prequeueTimer = nil
+    boop.prequeueStandard()
+  end)
+end
+
+function boop.prequeueStandard()
+  if not boop.config.enabled then return end
+  if boop.state.prequeuedStandard then return end
+  if gmcp and gmcp.Char and gmcp.Char.Vitals then
+    if gmcp.Char.Vitals.bal == "1" and gmcp.Char.Vitals.eq == "1" then
+      return
+    end
+  end
+
+  if boop.config.ignoreOtherPlayers == false and boop.state.newPeopleInRoom and not boop.state.attacking then
+    return
+  end
+
+  if boop.safety and boop.safety.shouldFlee and boop.safety.shouldFlee() then
+    return
+  end
+
+  local targetId = boop.targets.choose()
+  if not targetId or targetId == "" then
+    return
+  end
+
+  if boop.state.currentTargetId ~= targetId then
+    boop.targets.setTarget(targetId)
+  end
+
+  local actions = boop.attacks.choose()
+  if actions.standard and actions.standard ~= "" then
+    boop.executeAction(actions.standard, true)
+    boop.state.prequeuedStandard = true
+  end
+end
+
 function boop.canAct()
   if boop.state.limiters.hunting then return false end
   if gmcp and gmcp.Char and gmcp.Char.Vitals then
@@ -181,7 +257,7 @@ function boop.tick()
   local didAction = false
 
   if actions.standard and actions.standard ~= "" then
-    if boop.canAct() then
+    if not boop.state.prequeuedStandard and boop.canAct() then
       boop.executeAction(actions.standard)
       didAction = true
     end

@@ -13,6 +13,13 @@ end
 
 function boop.ui.setEnabled(value)
   boop.config.enabled = value and true or false
+  if not boop.config.enabled then
+    if boop.state.prequeueTimer then
+      killTimer(boop.state.prequeueTimer)
+      boop.state.prequeueTimer = nil
+    end
+    boop.state.prequeuedStandard = false
+  end
   if boop.db and boop.db.saveConfig then
     boop.db.saveConfig("enabled", boop.config.enabled)
   end

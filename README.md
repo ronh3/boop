@@ -26,6 +26,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Standard attacks and rage actions are independent and can fire together.
 - Denizens come from `gmcp.Char.Items.List` with attrib `m` and exclude `x`/`d`.
 - `boop ih` shows items too; only denizens get whitelist/blacklist buttons.
+- Standard attacks prequeue ~1s before balance/eq recovers using `Balance used:`/`Equilibrium used:` timing lines.
 
 ## Starting A Session
 - See `CODEX.md` (Session Startup).

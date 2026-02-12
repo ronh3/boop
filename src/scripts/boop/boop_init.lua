@@ -16,6 +16,7 @@ boop.defaults = {
   fleeAt = "30%",
   warnAt = "40%",
   rageFallbackSeconds = 26,
+  attackLeadSeconds = 1,
 }
 
 boop.config = boop.config or {}

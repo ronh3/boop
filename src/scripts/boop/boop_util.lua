@@ -50,12 +50,12 @@ function boop.util.formatTarget(cmd, target)
   return formatted
 end
 
-function boop.executeAction(action)
+function boop.executeAction(action, forceQueue)
   if not action or action == "" then return end
 
-  if boop.config.useQueueing then
+  if boop.config.useQueueing or forceQueue then
     send("setalias BOOP_ATTACK " .. action, false)
-    send("queue addclear eqbal BOOP_ATTACK", false)
+    send("queue addclearfull freestand BOOP_ATTACK", false)
   else
     local parts = boop.util.split(action, boop.lists.separator or "/")
     for _, part in ipairs(parts) do
