@@ -104,7 +104,20 @@ function boop.attacks.selectRage(profile, rage)
     return nil
   end
 
-  if mode == "big" then
+  if mode == "simple" or mode == "dam" then
+    local hp = boop.attacks.getTargetHpPerc()
+    local cfg = profile.configRage or { bigDamage = 101, smallDamage = 0 }
+
+    if hp >= (cfg.bigDamage or 101) then
+      return findByDescList(profile, {"Big Damage", "Mid Damage", "Small Damage"}, rage)
+    end
+
+    if hp >= (cfg.smallDamage or 0) then
+      return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage)
+    end
+
+    return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage)
+  elseif mode == "big" then
     return findByDescList(profile, {"Big Damage", "Mid Damage", "Small Damage"}, rage)
   elseif mode == "small" then
     return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage)
