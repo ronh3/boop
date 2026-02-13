@@ -121,7 +121,7 @@
     "highlightBG": "#ffff00",
     "patterns": [
       {
-        "pattern": "^\\s*(\\d+)\\s+(.+)$",
+        "pattern": "^\\s*((?:\\d+|[a-z]+\\d+))\\s+(.+)$",
         "type": "regex"
       }
     ],
