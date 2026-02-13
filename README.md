@@ -28,6 +28,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Denizens come from `gmcp.Char.Items.List` with attrib `m` and exclude `x`/`d`.
 - `boop ih` shows items too; only denizens get whitelist/blacklist buttons.
 - Standard attacks prequeue ~1s before balance/eq recovers using `Balance used:`/`Equilibrium used:` timing lines.
+- Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.
 
 ## Starting A Session
 - See `CODEX.md` (Session Startup).

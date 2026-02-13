@@ -1,7 +1,21 @@
 boop.attacks.register("runewarden", {  standard = {
-    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
-    dam = { cmd = "slaughter &tar", skill = "", group = "" },
-    shield = { cmd = "carve &tar", skill = "", group = "" },
+    -- TODO: Simplified Foxhunt standard (per-spec, no extra state); refine later.
+    dam = {
+      bySpec = {
+        ["Dual Cutting"] = { cmd = "dsl &tar", skill = "", group = "" },
+        ["Two Handed"] = { cmd = "battlefury focus speed/slaughter &tar", skill = "", group = "" },
+        ["Sword and Shield"] = { cmd = "combination &tar slice smash", skill = "", group = "" },
+      },
+      default = { cmd = "battlefury focus speed/slaughter &tar", skill = "", group = "" },
+    },
+    shield = {
+      bySpec = {
+        ["Dual Cutting"] = { cmd = "rsl &tar", skill = "", group = "" },
+        ["Two Handed"] = { cmd = "battlefury focus speed/carve &tar", skill = "", group = "" },
+        ["Sword and Shield"] = { cmd = "combination &tar raze smash", skill = "", group = "" },
+      },
+      default = { cmd = "battlefury focus speed/carve &tar", skill = "", group = "" },
+    },
   },
   rage = {
     ["abilities"] = {

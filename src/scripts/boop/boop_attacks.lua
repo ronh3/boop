@@ -146,6 +146,16 @@ end
 
 local function standardCommand(entry)
   if type(entry) == "table" then
+    if entry.bySpec then
+      local spec = boop.state and boop.state.spec or ""
+      local specEntry = entry.bySpec[spec]
+      if not specEntry then
+        specEntry = entry.default or entry.bySpec.default
+      end
+      if specEntry then
+        return standardCommand(specEntry)
+      end
+    end
     if entry.cmd or entry.skill or entry.name then
       local cmd = entry.cmd or ""
       if cmd == "" then return "" end

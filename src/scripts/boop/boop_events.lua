@@ -138,6 +138,17 @@ function boop.onCharStatus()
 end
 
 function boop.onVitals()
+  if gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.charstats then
+    local spec = ""
+    for _, stat in ipairs(gmcp.Char.Vitals.charstats) do
+      local name, val = stat:match("^([^:]+):%s*(.+)$")
+      if name == "Spec" then
+        spec = val
+        break
+      end
+    end
+    boop.state.spec = spec
+  end
   boop.tick()
 end
 

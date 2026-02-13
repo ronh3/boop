@@ -32,6 +32,7 @@ function boop.state.init()
   boop.state.shardsDropped = boop.state.shardsDropped or false
 
   boop.state.class = boop.state.class or ""
+  boop.state.spec = boop.state.spec or ""
 
   boop.state.balanceReadyAt = boop.state.balanceReadyAt or nil
   boop.state.equilibriumReadyAt = boop.state.equilibriumReadyAt or nil
