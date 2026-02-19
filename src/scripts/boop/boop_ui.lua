@@ -122,6 +122,19 @@ function boop.ui.debugAttacks()
     entrySummary("shield", profile.standard.shield)
   end
 
+  if profile.rage and profile.rage.abilities then
+    local rage = boop.attacks and boop.attacks.getRage and boop.attacks.getRage() or 0
+    for key, ability in pairs(profile.rage.abilities) do
+      local skillName = ability.skill or ability.name or key
+      local status = skillStatus(skillName)
+      local ready = boop.attacks and boop.attacks.rageReady and boop.attacks.rageReady(ability, rage) or false
+      boop.util.echo(string.format(
+        "debug attacks | rage %s desc:%s rage:%s ready:%s skill:%s",
+        tostring(key), tostring(ability.desc or ""), tostring(ability.rage or 0), tostring(ready), status
+      ))
+    end
+  end
+
   local actions = boop.attacks.choose()
   local rageName = actions.rageAbility and (actions.rageAbility.name or actions.rageAbility.skill) or ""
   boop.util.echo(string.format("debug attacks | chosen standard:%s | chosen rage:%s | rage ability:%s",

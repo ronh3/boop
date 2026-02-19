@@ -11,6 +11,11 @@ local function abilityKnown(ability)
   if not ability then return false end
   local name = ability.skill or ability.name
   if not name or name == "" then return true end
+  -- Rage abilities are in Attainment unless explicitly overridden.
+  local group = ability.group or "Attainment"
+  if boop.skills and boop.skills.ensureSkill then
+    return boop.skills.ensureSkill(name, group)
+  end
   if boop.skills and boop.skills.knownSkill then
     return boop.skills.knownSkill(name)
   end

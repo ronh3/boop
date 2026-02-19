@@ -31,6 +31,17 @@ end
 function boop.skills.requestAll()
   if not sendGMCP then return end
   sendGMCP([[Char.Skills.Get]])
+
+  -- Request the groups we actively gate on so skill->group mapping is filled early.
+  local desired = boop.skills.desiredGroups or {}
+  local seen = {}
+  for _, group in ipairs(desired) do
+    local groupKey = norm(group)
+    if groupKey ~= "" and not seen[groupKey] then
+      seen[groupKey] = true
+      sendGMCP(string.format([[Char.Skills.Get {"group":"%s"}]], groupKey))
+    end
+  end
 end
 
 function boop.skills.requestSkillDirect(name, group)
