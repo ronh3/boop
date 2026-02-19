@@ -2,19 +2,20 @@ boop.attacks.register("runewarden", {  standard = {
     -- TODO: Simplified Foxhunt standard (per-spec, no extra state); refine later.
     dam = {
       bySpec = {
-        ["Dual Cutting"] = { cmd = "dsl &tar", skill = "", group = "" },
-        ["Two Handed"] = { cmd = "battlefury focus speed/slaughter &tar", skill = "", group = "" },
-        ["Sword and Shield"] = { cmd = "combination &tar slice smash", skill = "", group = "" },
+        ["Dual Cutting"] = { cmd = "dsl &tar", skill = "Duality", group = "Weaponmastery" },
+        ["Dual Blunt"] = { cmd = "doublewhirl &tar", skill = "Doublewhirl", group = "Weaponmastery" },
+        ["Two Handed"] = { cmd = "battlefury focus speed/slaughter &tar", skill = "Slaughter", group = "Weaponmastery" },
+        ["Sword and Shield"] = { cmd = "combination &tar slice smash", skill = "Combination", group = "Weaponmastery" },
       },
-      default = { cmd = "battlefury focus speed/slaughter &tar", skill = "", group = "" },
+      default = { cmd = "kill &tar", skill = "", group = "" },
     },
     shield = {
       bySpec = {
-        ["Dual Cutting"] = { cmd = "rsl &tar", skill = "", group = "" },
-        ["Two Handed"] = { cmd = "battlefury focus speed/carve &tar", skill = "", group = "" },
-        ["Sword and Shield"] = { cmd = "combination &tar raze smash", skill = "", group = "" },
+        ["Dual Cutting"] = { cmd = "rsl &tar", skill = "Razeslash", group = "Weaponmastery" },
+        ["Dual Blunt"] = { cmd = "fracture &tar", skill = "Fracture", group = "Weaponmastery" },
+        ["Two Handed"] = { cmd = "battlefury focus speed/carve &tar", skill = "Carve", group = "Weaponmastery" },
+        ["Sword and Shield"] = { cmd = "combination &tar raze smash", skill = "Combination", group = "Weaponmastery" },
       },
-      default = { cmd = "battlefury focus speed/carve &tar", skill = "", group = "" },
     },
   },
   rage = {
