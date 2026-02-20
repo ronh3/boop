@@ -120,7 +120,18 @@ function boop.attacks.selectRage(profile, rage)
 
     return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage)
   elseif mode == "big" then
-    return findByDescList(profile, {"Big Damage", "Mid Damage", "Small Damage"}, rage)
+    -- Pool rage until a big hit is affordable; only fall back to small while big is on cooldown.
+    local big = findByDesc(profile, "Big Damage", rage)
+    if big then
+      return big
+    end
+
+    local bigReadyNoCost = findByDesc(profile, "Big Damage", nil)
+    if bigReadyNoCost then
+      return nil
+    end
+
+    return findByDesc(profile, "Small Damage", rage)
   elseif mode == "small" then
     return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage)
   elseif mode == "aff" then

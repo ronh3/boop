@@ -25,6 +25,7 @@ Standalone Mudlet package for Achaea auto hunting.
 
 ## Notes
 - Standard attacks and rage actions are independent and can fire together.
+- `boop ragemode big` pools rage until a `Big Damage` rage attack is usable; it only uses `Small Damage` while big is on cooldown.
 - Denizens come from `gmcp.Char.Items.List` with attrib `m` and exclude `x`/`d`.
 - `boop ih` shows items too; only denizens get whitelist/blacklist buttons.
 - Standard attacks prequeue ~1s before balance/eq recovers using `Balance used:`/`Equilibrium used:` timing lines.
