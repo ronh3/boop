@@ -2,6 +2,7 @@
   {"name": "Boop Toggle", "isActive": "yes", "regex": "^(?i)boop$", "script": "", "isFolder": "no"},
   {"name": "Boop On Off", "isActive": "yes", "regex": "^(?i)boop\\s+(on|off)$", "script": "", "isFolder": "no"},
   {"name": "Boop Status", "isActive": "yes", "regex": "^(?i)boop\\s+status$", "script": "", "isFolder": "no"},
+  {"name": "Boop Config", "isActive": "yes", "regex": "^(?i)boop\\s+config$", "script": "", "isFolder": "no"},
   {"name": "Boop Targeting", "isActive": "yes", "regex": "^(?i)boop\\s+targeting\\s+(manual|whitelist|blacklist|auto)$", "script": "", "isFolder": "no"},
   {"name": "Boop Ragemode", "isActive": "yes", "regex": "^(?i)boop\\s+ragemode\\s+(\\w+)$", "script": "", "isFolder": "no"},
   {"name": "IH", "isActive": "yes", "regex": "^(?i)ih$", "script": "", "isFolder": "no"},

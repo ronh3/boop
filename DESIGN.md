@@ -9,7 +9,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Automatic target selection and attack execution for bashing.
 - Configurable targeting and attack strategies.
 - Tracking gains and safety automation (flee, pause, shield handling).
-- Minimal UI and command surface for configuration and status.
+- Lightweight interactive UI and command surface for configuration and status.
 - Info-Here capture with click-to-add/remove for whitelist/blacklist.
 
 ## Non-Goals
@@ -91,6 +91,8 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Targeting uses GMCP `Char.Items.*` data and sends `IRE.Target.Set` with denizen ID.
 - Denizen filtering: attrib includes `m` and excludes `x` and `d`.
 - `boop ih` re-renders Info-Here lines and adds clickable whitelist/blacklist buttons for denizens.
+- `boop config` renders a clickable configuration dashboard for common toggles/modes.
+- `boop whitelist` and `boop blacklist` render clickable list managers (`up`/`down`/`remove`).
 - Standard attacks and rage actions are independent; standard builds rage and there is no mode toggle.
 - Skill gating issues `Char.Skills.Get` requests per skill (group-aware).
 

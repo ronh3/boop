@@ -85,6 +85,24 @@ local function listContains(list, name)
   return false
 end
 
+local function shiftListEntry(list, index, direction)
+  index = tonumber(index)
+  if not list or not index then return false end
+  if index < 1 or index > #list then return false end
+
+  if direction == "up" then
+    if index <= 1 then return false end
+    list[index], list[index - 1] = list[index - 1], list[index]
+    return true
+  elseif direction == "down" then
+    if index >= #list then return false end
+    list[index], list[index + 1] = list[index + 1], list[index]
+    return true
+  end
+
+  return false
+end
+
 local function sortedDenizens(order)
   local denizens = {}
   for _, v in ipairs(boop.state.denizens) do
@@ -189,6 +207,17 @@ function boop.targets.removeWhitelist(area, name)
   end
 end
 
+function boop.targets.shiftWhitelist(area, index, direction)
+  area = area or boop.targets.getArea()
+  local list = boop.lists.whitelist[area]
+  if not list or #list == 0 then return false end
+  local moved = shiftListEntry(list, index, direction)
+  if moved and boop.db and boop.db.saveList then
+    boop.db.saveList("whitelist", area, list)
+  end
+  return moved
+end
+
 function boop.targets.addBlacklist(area, name)
   area = area or boop.targets.getArea()
   if not name or name == "" then return end
@@ -221,9 +250,60 @@ function boop.targets.removeBlacklist(area, name)
   end
 end
 
+function boop.targets.shiftBlacklist(area, index, direction)
+  area = area or boop.targets.getArea()
+  local list = boop.lists.blacklist[area]
+  if not list or #list == 0 then return false end
+  local moved = shiftListEntry(list, index, direction)
+  if moved and boop.db and boop.db.saveList then
+    boop.db.saveList("blacklist", area, list)
+  end
+  return moved
+end
+
 function boop.targets.displayWhitelist(area)
   area = area or boop.targets.getArea()
   local list = boop.lists.whitelist[area] or {}
+  if cecho and cechoLink then
+    cecho("\n<green>boop<reset>: <white>Whitelist for " .. area .. ":")
+    if #list == 0 then
+      cecho("\n  <grey>(empty)<reset>")
+      return
+    end
+    for i, v in ipairs(list) do
+      local idx = i
+      local name = v
+      cecho("\n  <yellow>" .. idx .. ".<reset> <white>" .. name .. "<reset> ")
+
+      if idx > 1 then
+        cechoLink("<cyan>[up]<reset>", function()
+          boop.targets.shiftWhitelist(area, idx, "up")
+          boop.targets.displayWhitelist(area)
+        end, "Move " .. name .. " up", true)
+      else
+        cecho("<grey>[up]<reset>")
+      end
+
+      cecho(" ")
+
+      if idx < #list then
+        cechoLink("<cyan>[down]<reset>", function()
+          boop.targets.shiftWhitelist(area, idx, "down")
+          boop.targets.displayWhitelist(area)
+        end, "Move " .. name .. " down", true)
+      else
+        cecho("<grey>[down]<reset>")
+      end
+
+      cecho(" ")
+      cechoLink("<red>[remove]<reset>", function()
+        boop.targets.removeWhitelist(area, name)
+        boop.targets.displayWhitelist(area)
+      end, "Remove " .. name .. " from whitelist", true)
+    end
+    return
+  end
+
   boop.util.echo("Whitelist for " .. area .. ":")
   if #list == 0 then
     boop.util.echo("  (empty)")
@@ -237,6 +317,46 @@ end
 function boop.targets.displayBlacklist(area)
   area = area or boop.targets.getArea()
   local list = boop.lists.blacklist[area] or {}
+  if cecho and cechoLink then
+    cecho("\n<green>boop<reset>: <white>Blacklist for " .. area .. ":")
+    if #list == 0 then
+      cecho("\n  <grey>(empty)<reset>")
+      return
+    end
+    for i, v in ipairs(list) do
+      local idx = i
+      local name = v
+      cecho("\n  <yellow>" .. idx .. ".<reset> <white>" .. name .. "<reset> ")
+
+      if idx > 1 then
+        cechoLink("<cyan>[up]<reset>", function()
+          boop.targets.shiftBlacklist(area, idx, "up")
+          boop.targets.displayBlacklist(area)
+        end, "Move " .. name .. " up", true)
+      else
+        cecho("<grey>[up]<reset>")
+      end
+
+      cecho(" ")
+
+      if idx < #list then
+        cechoLink("<cyan>[down]<reset>", function()
+          boop.targets.shiftBlacklist(area, idx, "down")
+          boop.targets.displayBlacklist(area)
+        end, "Move " .. name .. " down", true)
+      else
+        cecho("<grey>[down]<reset>")
+      end
+
+      cecho(" ")
+      cechoLink("<red>[remove]<reset>", function()
+        boop.targets.removeBlacklist(area, name)
+        boop.targets.displayBlacklist(area)
+      end, "Remove " .. name .. " from blacklist", true)
+    end
+    return
+  end
+
   boop.util.echo("Blacklist for " .. area .. ":")
   if #list == 0 then
     boop.util.echo("  (empty)")

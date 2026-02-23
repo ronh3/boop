@@ -1,5 +1,20 @@
 boop.ui = boop.ui or {}
 
+local function saveConfigValue(key, value)
+  boop.config[key] = value
+  if boop.db and boop.db.saveConfig then
+    boop.db.saveConfig(key, boop.config[key])
+  end
+end
+
+local function boolText(value)
+  return value and "ON" or "OFF"
+end
+
+local function boolColor(value)
+  return value and "green" or "red"
+end
+
 function boop.ui.status(context)
   local enabled = boop.config.enabled and "on" or "off"
   local mode = boop.config.targetingMode or "unknown"
@@ -11,7 +26,7 @@ function boop.ui.status(context)
   boop.util.echo(msg)
 end
 
-function boop.ui.setEnabled(value)
+function boop.ui.setEnabled(value, quiet)
   boop.config.enabled = value and true or false
   if not boop.config.enabled then
     if boop.state.prequeueTimer then
@@ -23,14 +38,16 @@ function boop.ui.setEnabled(value)
   if boop.db and boop.db.saveConfig then
     boop.db.saveConfig("enabled", boop.config.enabled)
   end
-  boop.ui.status("boop")
+  if not quiet then
+    boop.ui.status("boop")
+  end
 end
 
 function boop.ui.toggle()
   boop.ui.setEnabled(not boop.config.enabled)
 end
 
-function boop.ui.setTargetingMode(mode)
+function boop.ui.setTargetingMode(mode, quiet)
   mode = boop.util.safeLower(boop.util.trim(mode))
   local valid = { manual = true, whitelist = true, blacklist = true, auto = true }
   if not valid[mode] then
@@ -41,7 +58,9 @@ function boop.ui.setTargetingMode(mode)
   if boop.db and boop.db.saveConfig then
     boop.db.saveConfig("targetingMode", boop.config.targetingMode)
   end
-  boop.ui.status("targeting")
+  if not quiet then
+    boop.ui.status("targeting")
+  end
 end
 
 function boop.ui.setAttackMode(mode)
@@ -58,6 +77,122 @@ function boop.ui.setRageMode(mode)
   mode = boop.util.safeLower(boop.util.trim(mode))
   if mode == "" then return end
   boop.ui.setAttackMode(mode)
+end
+
+function boop.ui.toggleConfigBool(key)
+  local value = boop.config[key]
+  if type(value) ~= "boolean" then
+    boop.util.echo("Config key is not boolean: " .. tostring(key))
+    return
+  end
+  saveConfigValue(key, not value)
+  boop.ui.config()
+end
+
+function boop.ui.cycleTargetOrder(step)
+  local order = { "order", "numeric", "reverse" }
+  local current = boop.util.safeLower(boop.config.targetOrder or "order")
+  local idx = 1
+  for i, value in ipairs(order) do
+    if current == value then
+      idx = i
+      break
+    end
+  end
+  step = tonumber(step) or 1
+  idx = idx + step
+  while idx < 1 do idx = idx + #order end
+  while idx > #order do idx = idx - #order end
+  saveConfigValue("targetOrder", order[idx])
+  boop.ui.config()
+end
+
+function boop.ui.config()
+  local class = boop.state.class or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class) or "unknown"
+
+  if cecho and cechoLink then
+    cecho("\n<green>boop<reset>: <yellow>Configuration")
+    cecho("\n<white>  class: <cyan>" .. tostring(class) .. "<reset>")
+
+    cecho("\n<white>  enabled: ")
+    cechoLink("<" .. boolColor(boop.config.enabled) .. ">[" .. boolText(boop.config.enabled) .. "]<reset>",
+      function() boop.ui.setEnabled(not boop.config.enabled, true); boop.ui.config() end,
+      "Toggle boop on/off", true
+    )
+
+    cecho("\n<white>  targeting: ")
+    local targetingModes = { "manual", "whitelist", "blacklist", "auto" }
+    for _, mode in ipairs(targetingModes) do
+      local modeName = mode
+      local active = boop.config.targetingMode == modeName
+      local modeColor = active and "green" or "grey"
+      cechoLink("<" .. modeColor .. ">[" .. modeName .. "]<reset>",
+        function() boop.ui.setTargetingMode(modeName, true); boop.ui.config() end,
+        "Set targeting mode to " .. modeName, true
+      )
+      cecho(" ")
+    end
+
+    cecho("\n<white>  whitelist priority order: ")
+    cechoLink("<" .. boolColor(boop.config.whitelistPriorityOrder) .. ">[" .. boolText(boop.config.whitelistPriorityOrder) .. "]<reset>",
+      function() boop.ui.toggleConfigBool("whitelistPriorityOrder") end,
+      "Toggle whitelist order priority", true
+    )
+
+    cecho("\n<white>  ignore other players: ")
+    cechoLink("<" .. boolColor(not not boop.config.ignoreOtherPlayers) .. ">[" .. boolText(not not boop.config.ignoreOtherPlayers) .. "]<reset>",
+      function() boop.ui.toggleConfigBool("ignoreOtherPlayers") end,
+      "Toggle ignoring other players in room", true
+    )
+
+    cecho("\n<white>  use queueing: ")
+    cechoLink("<" .. boolColor(not not boop.config.useQueueing) .. ">[" .. boolText(not not boop.config.useQueueing) .. "]<reset>",
+      function() boop.ui.toggleConfigBool("useQueueing") end,
+      "Toggle queueing mode", true
+    )
+
+    cecho("\n<white>  target order: ")
+    local targetOrders = { "order", "numeric", "reverse" }
+    for _, order in ipairs(targetOrders) do
+      local orderName = order
+      local active = boop.config.targetOrder == orderName
+      local orderColor = active and "green" or "grey"
+      cechoLink("<" .. orderColor .. ">[" .. orderName .. "]<reset>",
+        function() saveConfigValue("targetOrder", orderName); boop.ui.config() end,
+        "Set target order to " .. orderName, true
+      )
+      cecho(" ")
+    end
+
+    cecho("\n<white>  rage mode: <cyan>" .. tostring(boop.config.attackMode or "simple") .. "<reset> ")
+    if appendCmdLine then
+      cechoLink("<yellow>[set]<reset>",
+        function()
+          if clearCmdLine then
+            clearCmdLine()
+          end
+          appendCmdLine("boop ragemode ")
+        end,
+        "Fill command line with boop ragemode", true
+      )
+    end
+
+    cecho("\n<white>  quick lists: ")
+    cechoLink("<cyan>[whitelist]<reset>", function() boop.targets.displayWhitelist() end, "Show whitelist manager", true)
+    cecho(" ")
+    cechoLink("<cyan>[blacklist]<reset>", function() boop.targets.displayBlacklist() end, "Show blacklist manager", true)
+    cecho("\n<white>  quick commands: boop status | boop debug | boop trip start/stop")
+    return
+  end
+
+  boop.util.echo("Config for " .. tostring(class) .. ":")
+  boop.util.echo("  enabled: " .. tostring(boop.config.enabled))
+  boop.util.echo("  targeting: " .. tostring(boop.config.targetingMode))
+  boop.util.echo("  whitelistPriorityOrder: " .. tostring(boop.config.whitelistPriorityOrder))
+  boop.util.echo("  ignoreOtherPlayers: " .. tostring(boop.config.ignoreOtherPlayers))
+  boop.util.echo("  useQueueing: " .. tostring(boop.config.useQueueing))
+  boop.util.echo("  targetOrder: " .. tostring(boop.config.targetOrder))
+  boop.util.echo("  ragemode: " .. tostring(boop.config.attackMode))
 end
 
 function boop.ui.debug()
