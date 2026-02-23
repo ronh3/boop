@@ -10,7 +10,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Targeting uses denizen IDs (IRE.Target.Set by id), not names.
 
 ## Commands
-- `boop` (toggle on/off)
+- `bh` (toggle on/off)
 - `boop on` / `boop off`
 - `boop status`
 - `boop config` (interactive clickable config dashboard)

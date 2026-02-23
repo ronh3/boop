@@ -1,5 +1,5 @@
 [
-  {"name": "Boop Toggle", "isActive": "yes", "regex": "^(?i)boop$", "script": "", "isFolder": "no"},
+  {"name": "Boop Toggle", "isActive": "yes", "regex": "^(?i)bh$", "script": "", "isFolder": "no"},
   {"name": "Boop On Off", "isActive": "yes", "regex": "^(?i)boop\\s+(on|off)$", "script": "", "isFolder": "no"},
   {"name": "Boop Status", "isActive": "yes", "regex": "^(?i)boop\\s+status$", "script": "", "isFolder": "no"},
   {"name": "Boop Config", "isActive": "yes", "regex": "^(?i)boop\\s+config$", "script": "", "isFolder": "no"},
