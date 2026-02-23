@@ -228,6 +228,37 @@ local function prependFocusSpeed(cmd)
   return "battlefury focus speed/" .. trimmed
 end
 
+local function unnamableMaulKnown()
+  if boop.skills and boop.skills.ensureSkill then
+    return boop.skills.ensureSkill("Maul", "Dominion")
+  end
+  if boop.skills and boop.skills.knownSkill then
+    return boop.skills.knownSkill("Maul")
+  end
+  return true
+end
+
+local function unnamableMaulReady()
+  if boop.attacks and boop.attacks.rageReady then
+    return boop.attacks.rageReady({ name = "maul" }, nil)
+  end
+  return true
+end
+
+local function prependUnnamableMaul(cmd)
+  local trimmed = boop.util.trim(cmd)
+  if trimmed == "" then return "" end
+  local normalized = boop.util.safeLower(trimmed)
+  if boop.util.starts(normalized, "maul ")
+    or boop.util.starts(normalized, "maul/")
+    or boop.util.starts(normalized, "dominion maul ")
+    or boop.util.starts(normalized, "dominion maul/")
+  then
+    return trimmed
+  end
+  return "maul &tar/" .. trimmed
+end
+
 function boop.attacks.selectStandard(profile)
   if not profile then return "" end
   if boop.state.targetShield and profile.shield then
@@ -259,6 +290,10 @@ function boop.attacks.choose()
   local standard = ""
   if profile.standard then
     standard = boop.attacks.selectStandard(profile.standard)
+  end
+
+  if standard ~= "" and class == "unnamable" and unnamableMaulKnown() and unnamableMaulReady() then
+    standard = prependUnnamableMaul(standard)
   end
 
   local rageAction = ""

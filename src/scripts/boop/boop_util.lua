@@ -50,6 +50,24 @@ function boop.util.formatTarget(cmd, target)
   return formatted
 end
 
+local function markUnnamableMaulUsed(action)
+  if not action or action == "" then return end
+  if not gmcp or not gmcp.Char or not gmcp.Char.Status then return end
+  if boop.util.safeLower(gmcp.Char.Status.class or "") ~= "unnamable" then return end
+
+  local normalized = boop.util.safeLower(action)
+  local parts = boop.util.split(normalized, boop.lists.separator or "/")
+  for _, part in ipairs(parts) do
+    local trimmed = boop.util.trim(part)
+    if boop.util.starts(trimmed, "maul ") or boop.util.starts(trimmed, "dominion maul ") then
+      if boop.rage and boop.rage.setReady then
+        boop.rage.setReady("maul", false)
+      end
+      return
+    end
+  end
+end
+
 function boop.executeAction(action, forceQueue)
   if not action or action == "" then return end
 
@@ -76,6 +94,7 @@ function boop.executeAction(action, forceQueue)
       boop.state.queueAliasDirty = false
     end
     send("queue addclearfull freestand BOOP_ATTACK", false)
+    markUnnamableMaulUsed(queuedAction)
   else
     local parts = boop.util.split(action, boop.lists.separator or "/")
     for _, part in ipairs(parts) do
@@ -84,6 +103,7 @@ function boop.executeAction(action, forceQueue)
         send(trimmed, false)
       end
     end
+    markUnnamableMaulUsed(action)
   end
 end
 
