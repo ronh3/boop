@@ -4,7 +4,7 @@ boop.attacks.register("runewarden", {  standard = {
       bySpec = {
         ["Dual Cutting"] = { cmd = "dsl &tar", skill = "Duality", group = "Weaponmastery" },
         ["Dual Blunt"] = { cmd = "doublewhirl &tar", skill = "Doublewhirl", group = "Weaponmastery" },
-        ["Two Handed"] = { cmd = "battlefury focus speed/slaughter &tar", skill = "Slaughter", group = "Weaponmastery" },
+        ["Two Handed"] = { cmd = "slaughter &tar", skill = "Slaughter", group = "Weaponmastery" },
         ["Sword and Shield"] = { cmd = "combination &tar slice smash", skill = "Combination", group = "Weaponmastery" },
       },
       default = { cmd = "kill &tar", skill = "", group = "" },
@@ -13,7 +13,7 @@ boop.attacks.register("runewarden", {  standard = {
       bySpec = {
         ["Dual Cutting"] = { cmd = "rsl &tar", skill = "Razeslash", group = "Weaponmastery" },
         ["Dual Blunt"] = { cmd = "fracture &tar", skill = "Fracture", group = "Weaponmastery" },
-        ["Two Handed"] = { cmd = "battlefury focus speed/carve &tar", skill = "Carve", group = "Weaponmastery" },
+        ["Two Handed"] = { cmd = "carve &tar", skill = "Carve", group = "Weaponmastery" },
         ["Sword and Shield"] = { cmd = "combination &tar raze smash", skill = "Combination", group = "Weaponmastery" },
       },
     },

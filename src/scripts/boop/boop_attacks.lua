@@ -202,6 +202,32 @@ local function standardCommand(entry)
   return ""
 end
 
+local function isTwoHandedSpec()
+  local spec = boop.util.safeLower(boop.state and boop.state.spec or "")
+  spec = boop.util.trim(spec)
+  return spec == "two handed" or spec == "two-handed" or spec == "2h"
+end
+
+local function focusKnown()
+  if boop.skills and boop.skills.ensureSkill then
+    return boop.skills.ensureSkill("Focus", "Weaponmastery")
+  end
+  if boop.skills and boop.skills.knownSkill then
+    return boop.skills.knownSkill("Focus")
+  end
+  return true
+end
+
+local function prependFocusSpeed(cmd)
+  local trimmed = boop.util.trim(cmd)
+  if trimmed == "" then return "" end
+  local normalized = boop.util.safeLower(trimmed)
+  if boop.util.starts(normalized, "battlefury focus speed/") then
+    return trimmed
+  end
+  return "battlefury focus speed/" .. trimmed
+end
+
 function boop.attacks.selectStandard(profile)
   if not profile then return "" end
   if boop.state.targetShield and profile.shield then
@@ -210,7 +236,12 @@ function boop.attacks.selectStandard(profile)
   end
   if profile.dam then
     local cmd = standardCommand(profile.dam)
-    if cmd ~= "" then return cmd end
+    if cmd ~= "" then
+      if isTwoHandedSpec() and focusKnown() then
+        cmd = prependFocusSpeed(cmd)
+      end
+      return cmd
+    end
   end
   return ""
 end

@@ -95,6 +95,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `boop whitelist` and `boop blacklist` render clickable list managers (`up`/`down`/`remove`).
 - `boop players` manages an ignored-player whitelist used by the ignore-other-players safety check.
 - `boop autogold` toggles automatic pickup of newly dropped gold sovereigns; in queueing mode it prepends `get sovereigns/` to the next standard attack.
+- Two-handed standards prepend `battlefury focus speed/` when `Focus` is known (Weaponmastery), excluding shieldbreaker paths.
 - Standard attacks and rage actions are independent; standard builds rage and there is no mode toggle.
 - Skill gating issues `Char.Skills.Get` requests per skill (group-aware).
 
