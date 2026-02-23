@@ -1,5 +1,20 @@
 boop.targets = boop.targets or {}
 
+local function normalizeName(name)
+  if not name then return "" end
+  local v = boop.util.trim(tostring(name))
+  v = v:gsub("\226\128\152", "'") -- left single quotation mark
+  v = v:gsub("\226\128\153", "'") -- right single quotation mark
+  return boop.util.safeLower(v)
+end
+
+local function sameName(a, b)
+  local na = normalizeName(a)
+  local nb = normalizeName(b)
+  if na == "" or nb == "" then return false end
+  return na == nb
+end
+
 function boop.targets.getArea()
   if gmcp and gmcp.Room and gmcp.Room.Info then
     return gmcp.Room.Info.area
@@ -18,7 +33,7 @@ end
 function boop.targets.isDenizenName(name)
   if not name or name == "" then return false end
   for _, v in ipairs(boop.state.denizens or {}) do
-    if v.name == name then
+    if sameName(v.name, name) then
       return true
     end
   end
@@ -80,7 +95,7 @@ end
 local function listContains(list, name)
   if not list then return false end
   for _, v in ipairs(list) do
-    if v == name then return true end
+    if sameName(v, name) then return true end
   end
   return false
 end
@@ -137,7 +152,7 @@ function boop.targets.choose()
     if boop.config.whitelistPriorityOrder then
       for _, mob in ipairs(whitelist) do
         for _, denizen in ipairs(denizens) do
-          if denizen.name == mob then
+          if sameName(denizen.name, mob) then
             return denizen.id
           end
         end
@@ -177,7 +192,8 @@ end
 
 function boop.targets.addWhitelist(area, name)
   area = area or boop.targets.getArea()
-  if not name or name == "" then return end
+  name = boop.util.trim(name or "")
+  if name == "" then return end
 
   boop.lists.whitelist[area] = boop.lists.whitelist[area] or {}
   if listContains(boop.lists.whitelist[area], name) then
@@ -194,10 +210,12 @@ end
 
 function boop.targets.removeWhitelist(area, name)
   area = area or boop.targets.getArea()
+  name = boop.util.trim(name or "")
+  if name == "" then return end
   local list = boop.lists.whitelist[area]
   if not list then return end
   for i, v in ipairs(list) do
-    if v == name then
+    if sameName(v, name) then
       table.remove(list, i)
       if boop.db and boop.db.saveList then
         boop.db.saveList("whitelist", area, list)
@@ -220,7 +238,8 @@ end
 
 function boop.targets.addBlacklist(area, name)
   area = area or boop.targets.getArea()
-  if not name or name == "" then return end
+  name = boop.util.trim(name or "")
+  if name == "" then return end
 
   boop.lists.blacklist[area] = boop.lists.blacklist[area] or {}
   if listContains(boop.lists.blacklist[area], name) then
@@ -237,10 +256,12 @@ end
 
 function boop.targets.removeBlacklist(area, name)
   area = area or boop.targets.getArea()
+  name = boop.util.trim(name or "")
+  if name == "" then return end
   local list = boop.lists.blacklist[area]
   if not list then return end
   for i, v in ipairs(list) do
-    if v == name then
+    if sameName(v, name) then
       table.remove(list, i)
       if boop.db and boop.db.saveList then
         boop.db.saveList("blacklist", area, list)
