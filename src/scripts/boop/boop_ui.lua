@@ -294,6 +294,7 @@ function boop.ui.help(topic)
     boop.util.echo("  boop autogold on")
     boop.util.echo("  boop autogold off")
     boop.util.echo("When enabled, boop auto-picks up newly dropped gold sovereign items in room.")
+    boop.util.echo("In queueing mode, this is prepended to the next standard attack as: get sovereigns/<attack>.")
     return
   end
 

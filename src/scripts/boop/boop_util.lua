@@ -55,14 +55,24 @@ function boop.executeAction(action, forceQueue)
 
   if boop.config.useQueueing or forceQueue then
     boop.state = boop.state or {}
+    local queuedAction = action
+    if boop.config.useQueueing and boop.state.autoGrabGoldPending then
+      local normalized = boop.util.safeLower(boop.util.trim(queuedAction))
+      if normalized ~= "get sovereigns" and not boop.util.starts(normalized, "get sovereigns/") then
+        queuedAction = "get sovereigns/" .. queuedAction
+      end
+      boop.state.autoGrabGoldPending = false
+      boop.state.goldDropped = false
+    end
+
     if boop.state.queueAliasDirty == nil then
       boop.state.queueAliasDirty = true
     end
 
     local lastAction = boop.state.queueAliasAction or ""
-    if boop.state.queueAliasDirty or lastAction ~= action then
-      send("setalias BOOP_ATTACK " .. action, false)
-      boop.state.queueAliasAction = action
+    if boop.state.queueAliasDirty or lastAction ~= queuedAction then
+      send("setalias BOOP_ATTACK " .. queuedAction, false)
+      boop.state.queueAliasAction = queuedAction
       boop.state.queueAliasDirty = false
     end
     send("queue addclearfull freestand BOOP_ATTACK", false)

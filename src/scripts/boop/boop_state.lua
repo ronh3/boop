@@ -30,6 +30,7 @@ function boop.state.init()
 
   boop.state.goldDropped = boop.state.goldDropped or false
   boop.state.shardsDropped = boop.state.shardsDropped or false
+  boop.state.autoGrabGoldPending = boop.state.autoGrabGoldPending or false
 
   boop.state.class = boop.state.class or ""
   boop.state.spec = boop.state.spec or ""

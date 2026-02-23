@@ -43,7 +43,9 @@ local function autoGrabRoomItem(item)
   if not isGoldItem(item) then return end
 
   if boop.config.useQueueing then
-    send("queue add freestand get sovereigns", false)
+    boop.state = boop.state or {}
+    boop.state.autoGrabGoldPending = true
+    boop.state.goldDropped = true
   else
     send("get sovereigns", false)
   end
