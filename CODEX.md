@@ -30,6 +30,7 @@ Guidance for Codex when working in this repository.
 ## CI & Versioning
 - CI reads `mfile` for `package` and `version`, builds with Muddler, and uploads `build/tmp/` as `<package>-<version>`.
 - Versioning: bump `mfile.version` on every change we commit/merge (even docs/config-only); keep it monotonically increasing.
+- Title policy: update `mfile.title` manually on each version bump to `boop Hunter <version>` (for example `boop Hunter 0.1.35`).
 
 ## Workflow Reminders
 - Keep structure shallow and logical.
@@ -37,7 +38,7 @@ Guidance for Codex when working in this repository.
 - Use `cecho` tags for colored output; avoid mixing `decho`-style tags.
 - Make aliases responsive with confirmation output when they do not already emit results.
 - When adding new scripts, update the right manifest JSON and name files accordingly.
-- Keep `mfile` version and description current; tokens replace on build.
+- Keep `mfile` version, title, and description current; tokens replace on build.
 - Explain the reasoning behind code changes in responses. Do not make non-trivial changes without verifying with the user first.
 - Commit and push changes unless the user asks otherwise.
 - Keep `README.md` in sync when commands or features change.
@@ -45,7 +46,7 @@ Guidance for Codex when working in this repository.
 
 ## Session Startup (New Agent Checklist)
 - Read `README.md` and `DESIGN.md` to understand current scope and user-facing behavior.
-- Open `mfile` to confirm current version; bump it on every commit.
+- Open `mfile` to confirm current version and title; bump `version` and manually sync `title` on every commit.
 - Work only under `src/` for package content; never edit built artifacts.
 - Use the existing `boop` namespace and follow the current file/manifest layout.
 - For gameplay behavior questions, prefer the existing reference implementations (Basher/Bashing/Foxhunt) and our current code as the source of truth unless instructed otherwise.

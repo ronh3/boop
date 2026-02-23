@@ -98,6 +98,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 
 ## Versioning Policy
 - Bump `mfile.version` on every commit/merge.
+- Manually sync `mfile.title` to `boop Hunter <version>` on each version bump.
 
 ## Concrete Plan
 1. Inventory and extract reference behaviors from Bashing and Foxhunt into notes.
