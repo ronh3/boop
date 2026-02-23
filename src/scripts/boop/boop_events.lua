@@ -41,15 +41,11 @@ local function autoGrabRoomItem(item)
   if not boop.config.enabled then return end
   if not boop.config.autoGrabGold then return end
   if not isGoldItem(item) then return end
-  if not item.id then return end
-
-  local id = tostring(item.id)
-  if id == "" then return end
 
   if boop.config.useQueueing then
-    send("queue add freestand get " .. id, false)
+    send("queue add freestand get sovereigns", false)
   else
-    send("get " .. id, false)
+    send("get sovereigns", false)
   end
 end
 
