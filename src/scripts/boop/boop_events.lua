@@ -5,6 +5,35 @@ local function nowSeconds()
   return os.clock()
 end
 
+local function hasBlockingPlayers()
+  if boop.config.ignoreOtherPlayers then
+    return false
+  end
+
+  local ignored = {}
+  for _, part in ipairs(boop.util.split(boop.config.ignoredPlayers or "", "/")) do
+    local key = boop.util.safeLower(boop.util.trim(part))
+    if key ~= "" then
+      ignored[key] = true
+    end
+  end
+
+  for name, present in pairs(boop.state.players or {}) do
+    if present then
+      local key = boop.util.safeLower(boop.util.trim(name))
+      if key ~= "" and not ignored[key] then
+        return true
+      end
+    end
+  end
+
+  return false
+end
+
+function boop.events.refreshPlayerSafety()
+  boop.state.newPeopleInRoom = hasBlockingPlayers()
+end
+
 function boop.events.register()
   if boop.handlers then
     for _, id in ipairs(boop.handlers) do
@@ -64,13 +93,14 @@ function boop.onRoomPlayers()
       boop.state.players[player.name] = true
     end
   end
+  boop.events.refreshPlayerSafety()
 end
 
 function boop.onRoomAddPlayer()
   if not gmcp or not gmcp.Room or not gmcp.Room.AddPlayer then return end
   if gmcp.Char and gmcp.Char.Status and gmcp.Room.AddPlayer.name ~= gmcp.Char.Status.name then
     boop.state.players[gmcp.Room.AddPlayer.name] = true
-    boop.state.newPeopleInRoom = true
+    boop.events.refreshPlayerSafety()
   end
 end
 
@@ -78,6 +108,7 @@ function boop.onRoomRemovePlayer()
   if not gmcp or not gmcp.Room or not gmcp.Room.RemovePlayer then return end
   if gmcp.Char and gmcp.Char.Status and gmcp.Room.RemovePlayer ~= gmcp.Char.Status.name then
     boop.state.players[gmcp.Room.RemovePlayer] = nil
+    boop.events.refreshPlayerSafety()
   end
 end
 
@@ -88,6 +119,7 @@ function boop.onRoomInfo()
   if vars.room ~= gmcp.Room.Info.num then
     vars.movedRooms = true
     vars.newPeopleInRoom = false
+    vars.players = {}
     vars.lastRoom = vars.room
 
     if not vars.fleeing then

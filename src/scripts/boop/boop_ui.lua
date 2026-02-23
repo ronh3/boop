@@ -15,6 +15,104 @@ local function boolColor(value)
   return value and "green" or "red"
 end
 
+local function normName(value)
+  return boop.util.safeLower(boop.util.trim(value or ""))
+end
+
+local function decodeIgnoredPlayers()
+  local raw = boop.config.ignoredPlayers or ""
+  local list = {}
+  local seen = {}
+  for _, part in ipairs(boop.util.split(raw, "/")) do
+    local name = boop.util.trim(part)
+    local key = normName(name)
+    if key ~= "" and not seen[key] then
+      seen[key] = true
+      list[#list + 1] = name
+    end
+  end
+  table.sort(list, function(a, b) return normName(a) < normName(b) end)
+  return list, seen
+end
+
+local function refreshPlayerSafety()
+  if boop.events and boop.events.refreshPlayerSafety then
+    boop.events.refreshPlayerSafety()
+  end
+end
+
+function boop.ui.getIgnoredPlayers()
+  local list = decodeIgnoredPlayers()
+  return list
+end
+
+function boop.ui.isIgnoredPlayer(name)
+  local key = normName(name)
+  if key == "" then return false end
+  local _, seen = decodeIgnoredPlayers()
+  return seen[key] == true
+end
+
+function boop.ui.displayIgnoredPlayers()
+  local list = decodeIgnoredPlayers()
+  boop.util.echo("Ignored player whitelist:")
+  if #list == 0 then
+    boop.util.echo("  (empty)")
+    boop.util.echo("  add: boop players add <name>")
+    return
+  end
+  for i, name in ipairs(list) do
+    boop.util.echo("  " .. i .. ". " .. name)
+  end
+end
+
+function boop.ui.addIgnoredPlayer(name)
+  local raw = boop.util.trim(name or "")
+  local key = normName(raw)
+  if key == "" then
+    boop.util.echo("Usage: boop players add <name>")
+    return
+  end
+
+  local list, seen = decodeIgnoredPlayers()
+  if seen[key] then
+    boop.util.echo("Already in ignored-player whitelist: " .. raw)
+    return
+  end
+
+  list[#list + 1] = raw
+  table.sort(list, function(a, b) return normName(a) < normName(b) end)
+  saveConfigValue("ignoredPlayers", table.concat(list, "/"))
+  refreshPlayerSafety()
+end
+
+function boop.ui.removeIgnoredPlayer(name)
+  local key = normName(name)
+  if key == "" then
+    boop.util.echo("Usage: boop players remove <name>")
+    return
+  end
+
+  local list = decodeIgnoredPlayers()
+  local out = {}
+  local removed = false
+  for _, item in ipairs(list) do
+    if normName(item) == key then
+      removed = true
+    else
+      out[#out + 1] = item
+    end
+  end
+
+  if not removed then
+    boop.util.echo("Not found in ignored-player whitelist: " .. tostring(name))
+    return
+  end
+
+  saveConfigValue("ignoredPlayers", table.concat(out, "/"))
+  refreshPlayerSafety()
+end
+
 function boop.ui.status(context)
   local enabled = boop.config.enabled and "on" or "off"
   local mode = boop.config.targetingMode or "unknown"
@@ -82,7 +180,7 @@ function boop.ui.setRageMode(mode)
 end
 
 local function helpTopicLinks()
-  local topics = { "targeting", "whitelist", "blacklist", "ragemode", "queueing", "ih", "aff", "trip", "debug", "config" }
+  local topics = { "targeting", "players", "whitelist", "blacklist", "ragemode", "queueing", "ih", "aff", "trip", "debug", "config" }
   if cecho and cechoLink then
     cecho("\n<green>boop<reset>: <white>topics: ")
     for _, topic in ipairs(topics) do
@@ -92,7 +190,7 @@ local function helpTopicLinks()
     end
     return
   end
-  boop.util.echo("topics: targeting | whitelist | blacklist | ragemode | queueing | ih | aff | trip | debug | config")
+  boop.util.echo("topics: targeting | players | whitelist | blacklist | ragemode | queueing | ih | aff | trip | debug | config")
 end
 
 function boop.ui.help(topic)
@@ -103,6 +201,7 @@ function boop.ui.help(topic)
     boop.util.echo("  Toggle hunting: bh")
     boop.util.echo("  Main controls: boop on | boop off | boop status | boop config")
     boop.util.echo("  Target controls: boop targeting <manual|whitelist|blacklist|auto>")
+    boop.util.echo("  Player controls: boop players | boop players add/remove <name>")
     boop.util.echo("  List controls: boop whitelist | boop blacklist")
     boop.util.echo("  Combat controls: boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>")
     boop.util.echo("  Other: boop ih | boop aff | boop trip start/stop | boop debug")
@@ -124,6 +223,17 @@ function boop.ui.help(topic)
     boop.util.echo("  boop targeting blacklist   -> attack anything not blacklisted")
     boop.util.echo("  boop targeting auto        -> attack any valid denizen")
     boop.util.echo("  boop config -> quick clickable mode switch")
+    return
+  end
+
+  if t == "players" or t == "player" then
+    boop.util.echo("Help: players")
+    boop.util.echo("  boop players")
+    boop.util.echo("  boop players add <name>")
+    boop.util.echo("  boop players remove <name>")
+    boop.util.echo("Notes:")
+    boop.util.echo("  This is an ignored-player whitelist used when ignoreOtherPlayers is OFF.")
+    boop.util.echo("  Whitelisted players will not pause hunting when present in room.")
     return
   end
 
@@ -282,6 +392,23 @@ function boop.ui.config()
       "Toggle ignoring other players in room", true
     )
 
+    local ignoredPlayers = boop.ui.getIgnoredPlayers()
+    cecho("\n<white>  ignored-player whitelist: <cyan>" .. tostring(#ignoredPlayers) .. "<reset> ")
+    cechoLink("<yellow>[show]<reset>",
+      function() boop.ui.displayIgnoredPlayers() end,
+      "Show ignored-player whitelist", true
+    )
+    if appendCmdLine then
+      cecho(" ")
+      cechoLink("<yellow>[add]<reset>",
+        function()
+          if clearCmdLine then clearCmdLine() end
+          appendCmdLine("boop players add ")
+        end,
+        "Fill command line with boop players add", true
+      )
+    end
+
     cecho("\n<white>  use queueing: ")
     cechoLink("<" .. boolColor(not not boop.config.useQueueing) .. ">[" .. boolText(not not boop.config.useQueueing) .. "]<reset>",
       function() boop.ui.toggleConfigBool("useQueueing") end,
@@ -327,6 +454,7 @@ function boop.ui.config()
   boop.util.echo("  targeting: " .. tostring(boop.config.targetingMode))
   boop.util.echo("  whitelistPriorityOrder: " .. tostring(boop.config.whitelistPriorityOrder))
   boop.util.echo("  ignoreOtherPlayers: " .. tostring(boop.config.ignoreOtherPlayers))
+  boop.util.echo("  ignoredPlayers: " .. tostring(boop.config.ignoredPlayers or ""))
   boop.util.echo("  useQueueing: " .. tostring(boop.config.useQueueing))
   boop.util.echo("  targetOrder: " .. tostring(boop.config.targetOrder))
   boop.util.echo("  ragemode: " .. tostring(boop.config.attackMode))

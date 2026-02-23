@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.35"
+boop.version = boop.version or "0.1.36"
 
 boop.defaults = {
   enabled = false,
@@ -8,6 +8,7 @@ boop.defaults = {
   whitelistPriorityOrder = true,
   targetOrder = "order",
   ignoreOtherPlayers = false,
+  ignoredPlayers = "",
   targetCall = false,
   useQueueing = false,
   autoGrabGold = true,

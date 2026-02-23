@@ -12,9 +12,10 @@ Standalone Mudlet package for Achaea auto hunting.
 ## Commands
 - `bh` (toggle on/off)
 - `boop on` / `boop off`
-- `boop help` / `boop help <topic>` (examples: `boop help whitelist`, `boop help queueing`)
+- `boop help` / `boop help <topic>` (examples: `boop help whitelist`, `boop help players`, `boop help queueing`)
 - `boop status`
 - `boop config` (interactive clickable config dashboard)
+- `boop players` / `boop players add <name>` / `boop players remove <name>` (ignored-player whitelist)
 - `boop targeting <manual|whitelist|blacklist|auto>`
 - `boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>` (default: `simple`)
 - `boop ih` (also overrides `ih`)
@@ -30,6 +31,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop ragemode big` pools rage until a `Big Damage` rage attack is usable; it only uses `Small Damage` while big is on cooldown.
 - Denizens come from `gmcp.Char.Items.List` with attrib `m` and exclude `x`/`d`.
 - `boop ih` shows items too; only denizens get whitelist/blacklist buttons.
+- With `ignoreOtherPlayers` off, non-whitelisted players in room pause hunting; manage the whitelist with `boop players`.
 - Standard attacks prequeue ~1s before balance/eq recovers using `Balance used:`/`Equilibrium used:` timing lines.
 - Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.
 - In queueing mode, boop caches the last `BOOP_ATTACK` alias payload and skips redundant `setalias` sends when unchanged.
