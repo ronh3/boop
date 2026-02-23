@@ -81,6 +81,141 @@ function boop.ui.setRageMode(mode)
   boop.ui.setAttackMode(mode)
 end
 
+local function helpTopicLinks()
+  local topics = { "targeting", "whitelist", "blacklist", "ragemode", "queueing", "ih", "aff", "trip", "debug", "config" }
+  if cecho and cechoLink then
+    cecho("\n<green>boop<reset>: <white>topics: ")
+    for _, topic in ipairs(topics) do
+      local t = topic
+      cechoLink("<cyan>[" .. t .. "]<reset>", function() boop.ui.help(t) end, "Show boop help for " .. t, true)
+      cecho(" ")
+    end
+    return
+  end
+  boop.util.echo("topics: targeting | whitelist | blacklist | ragemode | queueing | ih | aff | trip | debug | config")
+end
+
+function boop.ui.help(topic)
+  local t = boop.util.safeLower(boop.util.trim(topic or ""))
+
+  if t == "" or t == "main" or t == "general" then
+    boop.util.echo("Help: boop command interface")
+    boop.util.echo("  Toggle hunting: bh")
+    boop.util.echo("  Main controls: boop on | boop off | boop status | boop config")
+    boop.util.echo("  Target controls: boop targeting <manual|whitelist|blacklist|auto>")
+    boop.util.echo("  List controls: boop whitelist | boop blacklist")
+    boop.util.echo("  Combat controls: boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>")
+    boop.util.echo("  Other: boop ih | boop aff | boop trip start/stop | boop debug")
+    boop.util.echo("Use: boop help <topic>")
+    helpTopicLinks()
+    return
+  end
+
+  if t == "topics" or t == "topic" then
+    boop.util.echo("Help topics:")
+    helpTopicLinks()
+    return
+  end
+
+  if t == "targeting" then
+    boop.util.echo("Help: targeting")
+    boop.util.echo("  boop targeting manual      -> keep your current manual target")
+    boop.util.echo("  boop targeting whitelist   -> only attack mobs in area whitelist")
+    boop.util.echo("  boop targeting blacklist   -> attack anything not blacklisted")
+    boop.util.echo("  boop targeting auto        -> attack any valid denizen")
+    boop.util.echo("  boop config -> quick clickable mode switch")
+    return
+  end
+
+  if t == "whitelist" then
+    boop.util.echo("Help: whitelist")
+    boop.util.echo("  boop whitelist")
+    boop.util.echo("  boop whitelist add <name>")
+    boop.util.echo("  boop whitelist remove <name>")
+    boop.util.echo("Notes:")
+    boop.util.echo("  In the whitelist display, each entry has clickable [up] [down] [remove].")
+    boop.util.echo("  Priority order is used when whitelistPriorityOrder is ON (see boop config).")
+    return
+  end
+
+  if t == "blacklist" then
+    boop.util.echo("Help: blacklist")
+    boop.util.echo("  boop blacklist")
+    boop.util.echo("  boop blacklist add <name>")
+    boop.util.echo("  boop blacklist remove <name>")
+    boop.util.echo("Notes:")
+    boop.util.echo("  In the blacklist display, each entry has clickable [up] [down] [remove].")
+    boop.util.echo("  Blacklist mode attacks valid denizens except blacklisted entries.")
+    return
+  end
+
+  if t == "ragemode" or t == "rage" or t == "attackmode" then
+    boop.util.echo("Help: ragemode")
+    boop.util.echo("  boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>")
+    boop.util.echo("Examples:")
+    boop.util.echo("  boop ragemode simple")
+    boop.util.echo("  boop ragemode big")
+    boop.util.echo("  boop ragemode none")
+    return
+  end
+
+  if t == "queue" or t == "queueing" then
+    boop.util.echo("Help: queueing")
+    boop.util.echo("  Toggle in: boop config -> use queueing")
+    boop.util.echo("When ON: standard attacks are queued via BOOP_ATTACK alias.")
+    boop.util.echo("Optimization: boop skips redundant setalias when action is unchanged.")
+    boop.util.echo("Rage actions are still sent directly.")
+    return
+  end
+
+  if t == "ih" then
+    boop.util.echo("Help: ih integration")
+    boop.util.echo("  ih (overridden) or boop ih")
+    boop.util.echo("Shows room items and denizens.")
+    boop.util.echo("Denizens get clickable [+whitelist]/[-whitelist]/[+blacklist] actions.")
+    return
+  end
+
+  if t == "aff" or t == "afflictions" then
+    boop.util.echo("Help: aff target list")
+    boop.util.echo("  boop aff")
+    boop.util.echo("  boop aff add <a/b/c>")
+    boop.util.echo("  boop aff remove <a/b/c>")
+    boop.util.echo("  boop aff clear")
+    return
+  end
+
+  if t == "trip" or t == "stats" then
+    boop.util.echo("Help: trip/stats")
+    boop.util.echo("  boop trip start")
+    boop.util.echo("  boop trip stop")
+    boop.util.echo("Tracks trip/session/lifetime gains from GMCP status updates.")
+    return
+  end
+
+  if t == "debug" then
+    boop.util.echo("Help: debug")
+    boop.util.echo("  boop debug")
+    boop.util.echo("  boop debug attacks")
+    boop.util.echo("  boop debug skills")
+    boop.util.echo("  boop debug skills dump")
+    return
+  end
+
+  if t == "config" then
+    boop.util.echo("Help: config dashboard")
+    boop.util.echo("  boop config")
+    boop.util.echo("Clickable controls for enable, targeting mode, queueing,")
+    boop.util.echo("whitelist priority order, ignore other players, and target order.")
+    boop.util.echo("Includes quick links into whitelist/blacklist managers.")
+    return
+  end
+
+  boop.util.echo("Unknown help topic: " .. tostring(topic))
+  boop.util.echo("Use: boop help topics")
+  helpTopicLinks()
+end
+
 function boop.ui.toggleConfigBool(key)
   local value = boop.config[key]
   if type(value) ~= "boolean" then

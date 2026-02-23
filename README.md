@@ -12,6 +12,7 @@ Standalone Mudlet package for Achaea auto hunting.
 ## Commands
 - `bh` (toggle on/off)
 - `boop on` / `boop off`
+- `boop help` / `boop help <topic>` (examples: `boop help whitelist`, `boop help queueing`)
 - `boop status`
 - `boop config` (interactive clickable config dashboard)
 - `boop targeting <manual|whitelist|blacklist|auto>`
