@@ -16,6 +16,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop status`
 - `boop config` (interactive clickable config dashboard)
 - `boop players` / `boop players add <name>` / `boop players remove <name>` (ignored-player whitelist)
+- `boop autogold` / `boop autogold on` / `boop autogold off`
 - `boop targeting <manual|whitelist|blacklist|auto>`
 - `boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>` (default: `simple`)
 - `boop ih` (also overrides `ih`)
@@ -32,6 +33,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Denizens come from `gmcp.Char.Items.List` with attrib `m` and exclude `x`/`d`.
 - Denizen name matching for whitelist/blacklist is case-insensitive and normalizes straight/curly apostrophes.
 - `boop ih` shows items too; only denizens get whitelist/blacklist buttons.
+- Auto gold pickup grabs newly dropped room items whose names contain `gold sovereign`.
 - With `ignoreOtherPlayers` off, non-whitelisted players in room pause hunting; manage the whitelist with `boop players`.
 - Standard attacks prequeue ~1s before balance/eq recovers using `Balance used:`/`Equilibrium used:` timing lines.
 - Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.

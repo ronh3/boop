@@ -179,8 +179,17 @@ function boop.ui.setRageMode(mode)
   boop.ui.setAttackMode(mode)
 end
 
+function boop.ui.setAutoGrabGold(value)
+  saveConfigValue("autoGrabGold", value and true or false)
+  boop.util.echo("auto grab gold: " .. (boop.config.autoGrabGold and "on" or "off"))
+end
+
+function boop.ui.toggleAutoGrabGold()
+  boop.ui.setAutoGrabGold(not boop.config.autoGrabGold)
+end
+
 local function helpTopicLinks()
-  local topics = { "targeting", "players", "whitelist", "blacklist", "ragemode", "queueing", "ih", "aff", "trip", "debug", "config" }
+  local topics = { "targeting", "players", "whitelist", "blacklist", "ragemode", "queueing", "gold", "ih", "aff", "trip", "debug", "config" }
   if cecho and cechoLink then
     cecho("\n<green>boop<reset>: <white>topics: ")
     for _, topic in ipairs(topics) do
@@ -190,7 +199,7 @@ local function helpTopicLinks()
     end
     return
   end
-  boop.util.echo("topics: targeting | players | whitelist | blacklist | ragemode | queueing | ih | aff | trip | debug | config")
+  boop.util.echo("topics: targeting | players | whitelist | blacklist | ragemode | queueing | gold | ih | aff | trip | debug | config")
 end
 
 function boop.ui.help(topic)
@@ -203,6 +212,7 @@ function boop.ui.help(topic)
     boop.util.echo("  Target controls: boop targeting <manual|whitelist|blacklist|auto>")
     boop.util.echo("  Player controls: boop players | boop players add/remove <name>")
     boop.util.echo("  List controls: boop whitelist | boop blacklist")
+    boop.util.echo("  Loot controls: boop autogold [on|off]")
     boop.util.echo("  Combat controls: boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>")
     boop.util.echo("  Other: boop ih | boop aff | boop trip start/stop | boop debug")
     boop.util.echo("Use: boop help <topic>")
@@ -275,6 +285,15 @@ function boop.ui.help(topic)
     boop.util.echo("When ON: standard attacks are queued via BOOP_ATTACK alias.")
     boop.util.echo("Optimization: boop skips redundant setalias when action is unchanged.")
     boop.util.echo("Rage actions are still sent directly.")
+    return
+  end
+
+  if t == "gold" or t == "autogold" or t == "loot" then
+    boop.util.echo("Help: auto gold pickup")
+    boop.util.echo("  boop autogold")
+    boop.util.echo("  boop autogold on")
+    boop.util.echo("  boop autogold off")
+    boop.util.echo("When enabled, boop auto-picks up newly dropped gold sovereign items in room.")
     return
   end
 
@@ -415,6 +434,12 @@ function boop.ui.config()
       "Toggle queueing mode", true
     )
 
+    cecho("\n<white>  auto grab gold: ")
+    cechoLink("<" .. boolColor(not not boop.config.autoGrabGold) .. ">[" .. boolText(not not boop.config.autoGrabGold) .. "]<reset>",
+      function() boop.ui.toggleAutoGrabGold(); boop.ui.config() end,
+      "Toggle auto pickup of dropped gold", true
+    )
+
     cecho("\n<white>  target order: ")
     local targetOrders = { "order", "numeric", "reverse" }
     for _, order in ipairs(targetOrders) do
@@ -456,6 +481,7 @@ function boop.ui.config()
   boop.util.echo("  ignoreOtherPlayers: " .. tostring(boop.config.ignoreOtherPlayers))
   boop.util.echo("  ignoredPlayers: " .. tostring(boop.config.ignoredPlayers or ""))
   boop.util.echo("  useQueueing: " .. tostring(boop.config.useQueueing))
+  boop.util.echo("  autoGrabGold: " .. tostring(boop.config.autoGrabGold))
   boop.util.echo("  targetOrder: " .. tostring(boop.config.targetOrder))
   boop.util.echo("  ragemode: " .. tostring(boop.config.attackMode))
 end

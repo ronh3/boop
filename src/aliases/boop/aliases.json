@@ -6,6 +6,8 @@
   {"name": "Boop Players", "isActive": "yes", "regex": "^(?i)boop\\s+players(?:\\s+list)?$", "script": "", "isFolder": "no"},
   {"name": "Boop Players Add", "isActive": "yes", "regex": "^(?i)boop\\s+players\\s+add\\s+(.+)$", "script": "", "isFolder": "no"},
   {"name": "Boop Players Remove", "isActive": "yes", "regex": "^(?i)boop\\s+players\\s+remove\\s+(.+)$", "script": "", "isFolder": "no"},
+  {"name": "Boop Auto Gold", "isActive": "yes", "regex": "^(?i)boop\\s+autogold$", "script": "", "isFolder": "no"},
+  {"name": "Boop Auto Gold On Off", "isActive": "yes", "regex": "^(?i)boop\\s+autogold\\s+(on|off)$", "script": "", "isFolder": "no"},
   {"name": "Boop Config", "isActive": "yes", "regex": "^(?i)boop\\s+config$", "script": "", "isFolder": "no"},
   {"name": "Boop Targeting", "isActive": "yes", "regex": "^(?i)boop\\s+targeting\\s+(manual|whitelist|blacklist|auto)$", "script": "", "isFolder": "no"},
   {"name": "Boop Ragemode", "isActive": "yes", "regex": "^(?i)boop\\s+ragemode\\s+(\\w+)$", "script": "", "isFolder": "no"},

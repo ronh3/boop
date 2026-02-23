@@ -30,6 +30,29 @@ local function hasBlockingPlayers()
   return false
 end
 
+local function isGoldItem(item)
+  if not item or not item.name then return false end
+  local name = boop.util.safeLower(item.name)
+  if name:find("gold sovereign", 1, true) then return true end
+  return false
+end
+
+local function autoGrabRoomItem(item)
+  if not boop.config.enabled then return end
+  if not boop.config.autoGrabGold then return end
+  if not isGoldItem(item) then return end
+  if not item.id then return end
+
+  local id = tostring(item.id)
+  if id == "" then return end
+
+  if boop.config.useQueueing then
+    send("queue add freestand get " .. id, false)
+  else
+    send("get " .. id, false)
+  end
+end
+
 function boop.events.refreshPlayerSafety()
   boop.state.newPeopleInRoom = hasBlockingPlayers()
 end
@@ -76,7 +99,9 @@ end
 function boop.onRoomItemsAdd()
   if not gmcp or not gmcp.Char or not gmcp.Char.Items or not gmcp.Char.Items.Add then return end
   if gmcp.Char.Items.Add.location ~= "room" then return end
-  boop.targets.addRoomItem(gmcp.Char.Items.Add.item)
+  local item = gmcp.Char.Items.Add.item
+  boop.targets.addRoomItem(item)
+  autoGrabRoomItem(item)
 end
 
 function boop.onRoomItemsRemove()
