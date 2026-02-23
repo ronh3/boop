@@ -38,4 +38,9 @@ function boop.state.init()
   boop.state.equilibriumReadyAt = boop.state.equilibriumReadyAt or nil
   boop.state.prequeueTimer = boop.state.prequeueTimer or nil
   boop.state.prequeuedStandard = boop.state.prequeuedStandard or false
+
+  boop.state.queueAliasAction = boop.state.queueAliasAction or ""
+  if boop.state.queueAliasDirty == nil then
+    boop.state.queueAliasDirty = true
+  end
 end

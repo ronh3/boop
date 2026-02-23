@@ -31,6 +31,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop ih` shows items too; only denizens get whitelist/blacklist buttons.
 - Standard attacks prequeue ~1s before balance/eq recovers using `Balance used:`/`Equilibrium used:` timing lines.
 - Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.
+- In queueing mode, boop caches the last `BOOP_ATTACK` alias payload and skips redundant `setalias` sends when unchanged.
 
 ## Starting A Session
 - See `CODEX.md` (Session Startup).

@@ -54,7 +54,17 @@ function boop.executeAction(action, forceQueue)
   if not action or action == "" then return end
 
   if boop.config.useQueueing or forceQueue then
-    send("setalias BOOP_ATTACK " .. action, false)
+    boop.state = boop.state or {}
+    if boop.state.queueAliasDirty == nil then
+      boop.state.queueAliasDirty = true
+    end
+
+    local lastAction = boop.state.queueAliasAction or ""
+    if boop.state.queueAliasDirty or lastAction ~= action then
+      send("setalias BOOP_ATTACK " .. action, false)
+      boop.state.queueAliasAction = action
+      boop.state.queueAliasDirty = false
+    end
     send("queue addclearfull freestand BOOP_ATTACK", false)
   else
     local parts = boop.util.split(action, boop.lists.separator or "/")

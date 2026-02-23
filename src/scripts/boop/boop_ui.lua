@@ -34,6 +34,8 @@ function boop.ui.setEnabled(value, quiet)
       boop.state.prequeueTimer = nil
     end
     boop.state.prequeuedStandard = false
+  else
+    boop.state.queueAliasDirty = true
   end
   if boop.db and boop.db.saveConfig then
     boop.db.saveConfig("enabled", boop.config.enabled)
