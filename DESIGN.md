@@ -96,6 +96,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `boop players` manages an ignored-player whitelist used by the ignore-other-players safety check.
 - `boop autogold` toggles automatic pickup of newly dropped gold sovereigns; in queueing mode it prepends `get sovereigns/` to the next standard attack, with a short fallback timer to queue `get sovereigns` if no attack follows (and non-queueing mode uses queued `get sovereigns` to avoid balance-lock misses).
 - `boop pack <container>` sets an optional auto-stash container (`put gold in <container>`) used after auto gold pickup.
+- `boop prequeue` and `boop lead` make prequeue behavior explicit and independent from `useQueueing`.
 - `diag` clears queue, queues `diagnose`, and temporarily blocks attacks until a diagnose result line plus prompt.
 - Two-handed standards prepend `battlefury focus speed/` when `Focus` is known (Weaponmastery), excluding shieldbreaker paths.
 - Unnamable standards prepend `maul &tar/` when `Maul` is known (Dominion) and ready, with readiness tracked through the existing ability-ready trigger lines.

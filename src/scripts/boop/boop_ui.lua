@@ -188,6 +188,38 @@ function boop.ui.toggleAutoGrabGold()
   boop.ui.setAutoGrabGold(not boop.config.autoGrabGold)
 end
 
+function boop.ui.setPrequeueEnabled(value)
+  saveConfigValue("prequeueEnabled", value and true or false)
+  if not boop.config.prequeueEnabled then
+    if boop.state.prequeueTimer then
+      killTimer(boop.state.prequeueTimer)
+      boop.state.prequeueTimer = nil
+    end
+    boop.state.prequeuedStandard = false
+  elseif boop.schedulePrequeue then
+    boop.schedulePrequeue()
+  end
+  boop.util.echo("prequeue: " .. (boop.config.prequeueEnabled and "on" or "off"))
+end
+
+function boop.ui.showPrequeue()
+  local lead = tonumber(boop.config.attackLeadSeconds) or 0
+  boop.util.echo(string.format("prequeue: %s | lead: %.2fs", boop.config.prequeueEnabled and "on" or "off", lead))
+end
+
+function boop.ui.setAttackLeadSeconds(raw)
+  local value = tonumber(boop.util.trim(raw or ""))
+  if not value or value < 0 then
+    boop.util.echo("Usage: boop lead <seconds> (0 or higher)")
+    return
+  end
+  saveConfigValue("attackLeadSeconds", value)
+  if boop.config.prequeueEnabled and boop.schedulePrequeue then
+    boop.schedulePrequeue()
+  end
+  boop.util.echo(string.format("attack lead: %.2fs", value))
+end
+
 function boop.ui.setGoldPack(value)
   local pack = boop.util.trim(value or "")
   local key = boop.util.safeLower(pack)
@@ -228,7 +260,7 @@ function boop.ui.diag()
 end
 
 local function helpTopicLinks()
-  local topics = { "targeting", "players", "whitelist", "blacklist", "ragemode", "queueing", "gold", "pack", "diag", "ih", "aff", "trip", "debug", "config" }
+  local topics = { "targeting", "players", "whitelist", "blacklist", "ragemode", "queueing", "prequeue", "gold", "pack", "diag", "ih", "aff", "trip", "debug", "config" }
   if cecho and cechoLink then
     cecho("\n<green>boop<reset>: <white>topics: ")
     for _, topic in ipairs(topics) do
@@ -238,7 +270,7 @@ local function helpTopicLinks()
     end
     return
   end
-  boop.util.echo("topics: targeting | players | whitelist | blacklist | ragemode | queueing | gold | pack | diag | ih | aff | trip | debug | config")
+  boop.util.echo("topics: targeting | players | whitelist | blacklist | ragemode | queueing | prequeue | gold | pack | diag | ih | aff | trip | debug | config")
 end
 
 function boop.ui.help(topic)
@@ -253,6 +285,7 @@ function boop.ui.help(topic)
     boop.util.echo("  List controls: boop whitelist | boop blacklist")
     boop.util.echo("  Loot controls: boop autogold [on|off]")
     boop.util.echo("  Gold pack: boop pack [container|off]")
+    boop.util.echo("  Queue controls: boop prequeue [on|off] | boop lead <seconds>")
     boop.util.echo("  Combat controls: boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>")
     boop.util.echo("  Other: diag | boop ih | boop aff | boop trip start/stop | boop debug")
     boop.util.echo("Use: boop help <topic>")
@@ -322,9 +355,22 @@ function boop.ui.help(topic)
   if t == "queue" or t == "queueing" then
     boop.util.echo("Help: queueing")
     boop.util.echo("  Toggle in: boop config -> use queueing")
-    boop.util.echo("When ON: standard attacks are queued via BOOP_ATTACK alias.")
+    boop.util.echo("When ON: normal standard attacks are queued via BOOP_ATTACK alias.")
+    boop.util.echo("When OFF: normal standard attacks are sent directly.")
+    boop.util.echo("Prequeue is controlled separately (boop prequeue, boop lead).")
     boop.util.echo("Optimization: boop skips redundant setalias when action is unchanged.")
     boop.util.echo("Rage actions are still sent directly.")
+    return
+  end
+
+  if t == "prequeue" or t == "lead" then
+    boop.util.echo("Help: prequeue")
+    boop.util.echo("  boop prequeue")
+    boop.util.echo("  boop prequeue on")
+    boop.util.echo("  boop prequeue off")
+    boop.util.echo("  boop lead <seconds>")
+    boop.util.echo("Prequeue schedules standard attack queueing before recovery using Balance/Equilibrium used lines.")
+    boop.util.echo("Lead controls how early the prequeue fires (default 1.00).")
     return
   end
 
@@ -496,6 +542,25 @@ function boop.ui.config()
       "Toggle queueing mode", true
     )
 
+    cecho("\n<white>  prequeue: ")
+    cechoLink("<" .. boolColor(not not boop.config.prequeueEnabled) .. ">[" .. boolText(not not boop.config.prequeueEnabled) .. "]<reset>",
+      function() boop.ui.setPrequeueEnabled(not boop.config.prequeueEnabled); boop.ui.config() end,
+      "Toggle prequeue mode", true
+    )
+
+    local lead = tonumber(boop.config.attackLeadSeconds) or 0
+    cecho(string.format("\n<white>  attack lead: <cyan>%.2fs<reset>", lead))
+    if appendCmdLine then
+      cecho(" ")
+      cechoLink("<yellow>[set]<reset>",
+        function()
+          if clearCmdLine then clearCmdLine() end
+          appendCmdLine("boop lead ")
+        end,
+        "Fill command line with boop lead", true
+      )
+    end
+
     cecho("\n<white>  auto grab gold: ")
     cechoLink("<" .. boolColor(not not boop.config.autoGrabGold) .. ">[" .. boolText(not not boop.config.autoGrabGold) .. "]<reset>",
       function() boop.ui.toggleAutoGrabGold(); boop.ui.config() end,
@@ -564,6 +629,8 @@ function boop.ui.config()
   boop.util.echo("  ignoreOtherPlayers: " .. tostring(boop.config.ignoreOtherPlayers))
   boop.util.echo("  ignoredPlayers: " .. tostring(boop.config.ignoredPlayers or ""))
   boop.util.echo("  useQueueing: " .. tostring(boop.config.useQueueing))
+  boop.util.echo("  prequeueEnabled: " .. tostring(boop.config.prequeueEnabled))
+  boop.util.echo("  attackLeadSeconds: " .. tostring(boop.config.attackLeadSeconds))
   boop.util.echo("  autoGrabGold: " .. tostring(boop.config.autoGrabGold))
   boop.util.echo("  goldPack: " .. tostring(boop.config.goldPack or ""))
   boop.util.echo("  targetOrder: " .. tostring(boop.config.targetOrder))

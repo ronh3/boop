@@ -251,9 +251,22 @@ function boop.onBalanceUsed(kind, seconds)
 end
 
 function boop.schedulePrequeue()
+  if not boop.config.prequeueEnabled then
+    if boop.state.prequeueTimer then
+      killTimer(boop.state.prequeueTimer)
+      boop.state.prequeueTimer = nil
+    end
+    return
+  end
+
   local lead = tonumber(boop.config.attackLeadSeconds) or 0
-  if lead <= 0 then return end
-  if not boop.config.enabled then return end
+  if lead <= 0 or not boop.config.enabled then
+    if boop.state.prequeueTimer then
+      killTimer(boop.state.prequeueTimer)
+      boop.state.prequeueTimer = nil
+    end
+    return
+  end
 
   local bal = boop.state.balanceReadyAt or 0
   local eq = boop.state.equilibriumReadyAt or 0
@@ -274,6 +287,7 @@ end
 
 function boop.prequeueStandard()
   if not boop.config.enabled then return end
+  if not boop.config.prequeueEnabled then return end
   if boop.state.diagHold then return end
   if boop.state.prequeuedStandard then return end
   if gmcp and gmcp.Char and gmcp.Char.Vitals then

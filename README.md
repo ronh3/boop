@@ -18,6 +18,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop players` / `boop players add <name>` / `boop players remove <name>` (ignored-player whitelist)
 - `boop autogold` / `boop autogold on` / `boop autogold off`
 - `boop pack` / `boop pack <container>` / `boop pack off` (auto-stash container for gold)
+- `boop prequeue` / `boop prequeue on` / `boop prequeue off`
+- `boop lead` / `boop lead <seconds>` (prequeue lead timing)
 - `boop targeting <manual|whitelist|blacklist|auto>`
 - `boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>` (default: `simple`)
 - `diag` (queue-clear + diagnose; temporarily pauses boop attacks until diagnose result + prompt)
@@ -43,7 +45,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - For `Unnamable` with `Maul` known in `Dominion`, boop prepends `maul &tar/` to standard attacks while ready, then waits for the cooldown-ready line before prepending again.
 - `diag` clears queue, queues `diagnose`, and pauses attacks until `You are: ...` or `You are in perfect health.` and the following prompt.
 - With `ignoreOtherPlayers` off, non-whitelisted players in room pause hunting; manage the whitelist with `boop players`.
-- Standard attacks prequeue ~1s before balance/eq recovers using `Balance used:`/`Equilibrium used:` timing lines.
+- Prequeue is separately configurable from queueing (`boop prequeue`); when enabled, it queues standard attacks before recovery using `boop lead` seconds (default `1.00`).
 - Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.
 - In queueing mode, boop caches the last `BOOP_ATTACK` alias payload and skips redundant `setalias` sends when unchanged.
 

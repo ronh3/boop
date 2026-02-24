@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.45"
+boop.version = boop.version or "0.1.46"
 
 boop.defaults = {
   enabled = false,
@@ -11,6 +11,7 @@ boop.defaults = {
   ignoredPlayers = "",
   targetCall = false,
   useQueueing = false,
+  prequeueEnabled = true,
   autoGrabGold = true,
   goldPack = "",
   autoGrabShards = true,
