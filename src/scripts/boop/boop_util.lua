@@ -77,7 +77,12 @@ function boop.executeAction(action, forceQueue)
     if boop.config.useQueueing and boop.state.autoGrabGoldPending then
       local normalized = boop.util.safeLower(boop.util.trim(queuedAction))
       if normalized ~= "get sovereigns" and not boop.util.starts(normalized, "get sovereigns/") then
-        queuedAction = "get sovereigns/" .. queuedAction
+        local prefix = "get sovereigns"
+        local pack = boop.util.trim(boop.config.goldPack or "")
+        if pack ~= "" then
+          prefix = prefix .. "/put gold in " .. pack
+        end
+        queuedAction = prefix .. "/" .. queuedAction
       end
       if boop.state.autoGrabGoldTimer then
         killTimer(boop.state.autoGrabGoldTimer)

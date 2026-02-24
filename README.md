@@ -17,8 +17,10 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop config` (interactive clickable config dashboard)
 - `boop players` / `boop players add <name>` / `boop players remove <name>` (ignored-player whitelist)
 - `boop autogold` / `boop autogold on` / `boop autogold off`
+- `boop pack` / `boop pack <container>` / `boop pack off` (auto-stash container for gold)
 - `boop targeting <manual|whitelist|blacklist|auto>`
 - `boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>` (default: `simple`)
+- `diag` (queue-clear + diagnose; temporarily pauses boop attacks until diagnose result + prompt)
 - `boop ih` (also overrides `ih`)
 - `boop whitelist` / `boop whitelist add <name>` / `boop whitelist remove <name>` (display is clickable: up/down/remove)
 - `boop blacklist` / `boop blacklist add <name>` / `boop blacklist remove <name>` (display is clickable: up/down/remove)
@@ -36,8 +38,10 @@ Standalone Mudlet package for Achaea auto hunting.
 - Auto gold pickup grabs newly dropped room items whose names contain `gold sovereign`.
 - In queueing mode, auto gold pickup is prepended to the next standard attack as `get sovereigns/<attack>`.
 - If no standard attack follows quickly, boop falls back to `queue add freestand get sovereigns` (also used in non-queueing mode to avoid balance-lock misses).
+- If `boop pack <container>` is set, boop follows gold pickup with `put gold in <container>`.
 - For `Two Handed` spec with `Focus` known in `Weaponmastery`, boop prepends `battlefury focus speed/` to standard damage attacks (never shieldbreakers).
 - For `Unnamable` with `Maul` known in `Dominion`, boop prepends `maul &tar/` to standard attacks while ready, then waits for the cooldown-ready line before prepending again.
+- `diag` clears queue, queues `diagnose`, and pauses attacks until `You are: ...` or `You are in perfect health.` and the following prompt.
 - With `ignoreOtherPlayers` off, non-whitelisted players in room pause hunting; manage the whitelist with `boop players`.
 - Standard attacks prequeue ~1s before balance/eq recovers using `Balance used:`/`Equilibrium used:` timing lines.
 - Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.

@@ -37,6 +37,15 @@ local function isGoldItem(item)
   return false
 end
 
+local function queueGoldCommands()
+  send("queue add freestand get sovereigns", false)
+
+  local pack = boop.util.trim(boop.config.goldPack or "")
+  if pack ~= "" then
+    send("queue add freestand put gold in " .. pack, false)
+  end
+end
+
 local function autoGrabRoomItem(item)
   if not boop.config.enabled then return end
   if not boop.config.autoGrabGold then return end
@@ -57,15 +66,16 @@ local function autoGrabRoomItem(item)
       if not boop.state or not boop.state.autoGrabGoldPending then return end
       boop.state.autoGrabGoldPending = false
       boop.state.goldDropped = false
-      if boop.config.useQueueing then
-        send("queue add freestand get sovereigns", false)
-      else
-        send("queue add freestand get sovereigns", false)
-      end
+      queueGoldCommands()
     end)
   else
-    send("queue add freestand get sovereigns", false)
+    queueGoldCommands()
   end
+end
+
+function boop.onDiagReadyLine()
+  if not boop.state or not boop.state.diagHold then return end
+  boop.state.diagAwaitPrompt = true
 end
 
 function boop.events.refreshPlayerSafety()
@@ -264,6 +274,7 @@ end
 
 function boop.prequeueStandard()
   if not boop.config.enabled then return end
+  if boop.state.diagHold then return end
   if boop.state.prequeuedStandard then return end
   if gmcp and gmcp.Char and gmcp.Char.Vitals then
     if gmcp.Char.Vitals.bal == "1" and gmcp.Char.Vitals.eq == "1" then
@@ -316,6 +327,7 @@ end
 
 function boop.tick()
   if not boop.config.enabled then return end
+  if boop.state.diagHold then return end
 
   if boop.config.ignoreOtherPlayers == false and boop.state.newPeopleInRoom and not boop.state.attacking then
     return
@@ -360,5 +372,14 @@ function boop.tick()
 end
 
 function boop.onPrompt()
+  if boop.state and boop.state.diagHold then
+    if boop.state.diagAwaitPrompt then
+      boop.state.diagHold = false
+      boop.state.diagAwaitPrompt = false
+      boop.util.echo("diag complete; attacks resumed")
+    else
+      return
+    end
+  end
   boop.tick()
 end

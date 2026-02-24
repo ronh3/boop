@@ -188,8 +188,47 @@ function boop.ui.toggleAutoGrabGold()
   boop.ui.setAutoGrabGold(not boop.config.autoGrabGold)
 end
 
+function boop.ui.setGoldPack(value)
+  local pack = boop.util.trim(value or "")
+  local key = boop.util.safeLower(pack)
+  if key == "off" or key == "none" or key == "clear" then
+    pack = ""
+  end
+  saveConfigValue("goldPack", pack)
+  if pack == "" then
+    boop.util.echo("gold pack: (off)")
+  else
+    boop.util.echo("gold pack: " .. pack)
+  end
+end
+
+function boop.ui.showGoldPack()
+  local pack = boop.util.trim(boop.config.goldPack or "")
+  if pack == "" then
+    boop.util.echo("gold pack: (off)")
+  else
+    boop.util.echo("gold pack: " .. pack)
+  end
+end
+
+function boop.ui.diag()
+  boop.state = boop.state or {}
+  if boop.state.prequeueTimer then
+    killTimer(boop.state.prequeueTimer)
+    boop.state.prequeueTimer = nil
+  end
+  boop.state.prequeuedStandard = false
+  boop.state.diagHold = true
+  boop.state.diagAwaitPrompt = false
+  boop.state.queueAliasDirty = true
+
+  send("queue clear", false)
+  send("queue addclearfull freestand diagnose", false)
+  boop.util.echo("diag queued; attacks paused until diagnose line + prompt")
+end
+
 local function helpTopicLinks()
-  local topics = { "targeting", "players", "whitelist", "blacklist", "ragemode", "queueing", "gold", "ih", "aff", "trip", "debug", "config" }
+  local topics = { "targeting", "players", "whitelist", "blacklist", "ragemode", "queueing", "gold", "pack", "diag", "ih", "aff", "trip", "debug", "config" }
   if cecho and cechoLink then
     cecho("\n<green>boop<reset>: <white>topics: ")
     for _, topic in ipairs(topics) do
@@ -199,7 +238,7 @@ local function helpTopicLinks()
     end
     return
   end
-  boop.util.echo("topics: targeting | players | whitelist | blacklist | ragemode | queueing | gold | ih | aff | trip | debug | config")
+  boop.util.echo("topics: targeting | players | whitelist | blacklist | ragemode | queueing | gold | pack | diag | ih | aff | trip | debug | config")
 end
 
 function boop.ui.help(topic)
@@ -213,8 +252,9 @@ function boop.ui.help(topic)
     boop.util.echo("  Player controls: boop players | boop players add/remove <name>")
     boop.util.echo("  List controls: boop whitelist | boop blacklist")
     boop.util.echo("  Loot controls: boop autogold [on|off]")
+    boop.util.echo("  Gold pack: boop pack [container|off]")
     boop.util.echo("  Combat controls: boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>")
-    boop.util.echo("  Other: boop ih | boop aff | boop trip start/stop | boop debug")
+    boop.util.echo("  Other: diag | boop ih | boop aff | boop trip start/stop | boop debug")
     boop.util.echo("Use: boop help <topic>")
     helpTopicLinks()
     return
@@ -293,9 +333,29 @@ function boop.ui.help(topic)
     boop.util.echo("  boop autogold")
     boop.util.echo("  boop autogold on")
     boop.util.echo("  boop autogold off")
+    boop.util.echo("  boop pack <container>  (optional auto-stash target)")
+    boop.util.echo("  boop pack off")
     boop.util.echo("When enabled, boop auto-picks up newly dropped gold sovereign items in room.")
     boop.util.echo("In queueing mode, this is prepended to the next standard attack as: get sovereigns/<attack>.")
-    boop.util.echo("If no standard attack is sent quickly, boop falls back to queued: get sovereigns.")
+    boop.util.echo("If gold pack is set, boop adds: put gold in <container>.")
+    boop.util.echo("If no standard attack is sent quickly, boop falls back to queued get/put commands.")
+    return
+  end
+
+  if t == "pack" or t == "goldpack" then
+    boop.util.echo("Help: gold pack")
+    boop.util.echo("  boop pack")
+    boop.util.echo("  boop pack <container>")
+    boop.util.echo("  boop pack off")
+    boop.util.echo("Sets optional container for auto-stashing gold after pickup.")
+    return
+  end
+
+  if t == "diag" or t == "diagnose" then
+    boop.util.echo("Help: diag")
+    boop.util.echo("  diag")
+    boop.util.echo("Clears queue, queues diagnose next, and pauses boop attacks.")
+    boop.util.echo("Attacking resumes after a diagnose result line and the next prompt.")
     return
   end
 
@@ -442,6 +502,27 @@ function boop.ui.config()
       "Toggle auto pickup of dropped gold", true
     )
 
+    local pack = boop.util.trim(boop.config.goldPack or "")
+    local shownPack = pack ~= "" and pack or "(off)"
+    cecho("\n<white>  gold pack: <cyan>" .. shownPack .. "<reset>")
+    if appendCmdLine then
+      cecho(" ")
+      cechoLink("<yellow>[set]<reset>",
+        function()
+          if clearCmdLine then clearCmdLine() end
+          appendCmdLine("boop pack ")
+        end,
+        "Fill command line with boop pack", true
+      )
+    end
+    if pack ~= "" then
+      cecho(" ")
+      cechoLink("<yellow>[off]<reset>",
+        function() boop.ui.setGoldPack(""); boop.ui.config() end,
+        "Disable gold pack auto-stash", true
+      )
+    end
+
     cecho("\n<white>  target order: ")
     local targetOrders = { "order", "numeric", "reverse" }
     for _, order in ipairs(targetOrders) do
@@ -484,6 +565,7 @@ function boop.ui.config()
   boop.util.echo("  ignoredPlayers: " .. tostring(boop.config.ignoredPlayers or ""))
   boop.util.echo("  useQueueing: " .. tostring(boop.config.useQueueing))
   boop.util.echo("  autoGrabGold: " .. tostring(boop.config.autoGrabGold))
+  boop.util.echo("  goldPack: " .. tostring(boop.config.goldPack or ""))
   boop.util.echo("  targetOrder: " .. tostring(boop.config.targetOrder))
   boop.util.echo("  ragemode: " .. tostring(boop.config.attackMode))
 end
