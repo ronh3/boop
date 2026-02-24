@@ -60,11 +60,11 @@ local function autoGrabRoomItem(item)
       if boop.config.useQueueing then
         send("queue add freestand get sovereigns", false)
       else
-        send("get sovereigns", false)
+        send("queue add freestand get sovereigns", false)
       end
     end)
   else
-    send("get sovereigns", false)
+    send("queue add freestand get sovereigns", false)
   end
 end
 
