@@ -42,7 +42,7 @@ local function queueGoldCommands()
 
   local pack = boop.util.trim(boop.config.goldPack or "")
   if pack ~= "" then
-    send("queue add freestand put gold in " .. pack, false)
+    send("queue add freestand put sovereigns in " .. pack, false)
   end
 end
 

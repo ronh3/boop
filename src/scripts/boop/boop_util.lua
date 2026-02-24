@@ -80,7 +80,7 @@ function boop.executeAction(action, forceQueue)
         local prefix = "get sovereigns"
         local pack = boop.util.trim(boop.config.goldPack or "")
         if pack ~= "" then
-          prefix = prefix .. "/put gold in " .. pack
+          prefix = prefix .. "/put sovereigns in " .. pack
         end
         queuedAction = prefix .. "/" .. queuedAction
       end

@@ -40,7 +40,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Auto gold pickup grabs newly dropped room items whose names contain `gold sovereign`.
 - In queueing mode, auto gold pickup is prepended to the next standard attack as `get sovereigns/<attack>`.
 - If no standard attack follows quickly, boop falls back to `queue add freestand get sovereigns` (also used in non-queueing mode to avoid balance-lock misses).
-- If `boop pack <container>` is set, boop follows gold pickup with `put gold in <container>`.
+- If `boop pack <container>` is set, boop follows pickup with `put sovereigns in <container>`.
 - For `Two Handed` spec with `Focus` known in `Weaponmastery`, boop prepends `battlefury focus speed/` to standard damage attacks (never shieldbreakers).
 - For `Unnamable` with `Maul` known in `Dominion`, boop prepends `maul &tar/` to standard attacks while ready, then waits for the cooldown-ready line before prepending again.
 - `diag` clears queue, queues `diagnose`, and pauses attacks until `You are: ...` or `You are in perfect health.` and the following prompt.

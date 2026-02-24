@@ -383,7 +383,7 @@ function boop.ui.help(topic)
     boop.util.echo("  boop pack off")
     boop.util.echo("When enabled, boop auto-picks up newly dropped gold sovereign items in room.")
     boop.util.echo("In queueing mode, this is prepended to the next standard attack as: get sovereigns/<attack>.")
-    boop.util.echo("If gold pack is set, boop adds: put gold in <container>.")
+    boop.util.echo("If gold pack is set, boop adds: put sovereigns in <container>.")
     boop.util.echo("If no standard attack is sent quickly, boop falls back to queued get/put commands.")
     return
   end
@@ -393,7 +393,7 @@ function boop.ui.help(topic)
     boop.util.echo("  boop pack")
     boop.util.echo("  boop pack <container>")
     boop.util.echo("  boop pack off")
-    boop.util.echo("Sets optional container for auto-stashing gold after pickup.")
+    boop.util.echo("Sets optional container for auto-stashing sovereigns after pickup.")
     return
   end
 
