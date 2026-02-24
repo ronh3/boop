@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.47"
+boop.version = boop.version or "0.1.48"
 
 boop.defaults = {
   enabled = false,
@@ -15,11 +15,13 @@ boop.defaults = {
   autoGrabGold = true,
   goldPack = "",
   autoGrabShards = true,
+  traceEnabled = false,
   attackMode = "simple",
   fleeAt = "30%",
   warnAt = "40%",
   rageFallbackSeconds = 26,
   attackLeadSeconds = 1,
+  diagTimeoutSeconds = 8,
 }
 
 boop.config = boop.config or {}

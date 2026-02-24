@@ -220,6 +220,11 @@ function boop.ui.setAttackLeadSeconds(raw)
   boop.util.echo(string.format("attack lead: %.2fs", value))
 end
 
+function boop.ui.setTraceEnabled(value)
+  saveConfigValue("traceEnabled", value and true or false)
+  boop.util.echo("trace: " .. (boop.config.traceEnabled and "on" or "off"))
+end
+
 function boop.ui.setGoldPack(value)
   local pack = boop.util.trim(value or "")
   local key = boop.util.safeLower(pack)
@@ -232,6 +237,16 @@ function boop.ui.setGoldPack(value)
   else
     boop.util.echo("gold pack: " .. pack)
   end
+end
+
+function boop.ui.testGoldPack()
+  local pack = boop.util.trim(boop.config.goldPack or "")
+  if pack == "" then
+    boop.util.echo("gold pack: (off) | set one with boop pack <container>")
+    return
+  end
+  send("queue add freestand look in " .. pack, false)
+  boop.util.echo("gold pack test queued: look in " .. pack)
 end
 
 function boop.ui.showGoldPack()
@@ -254,13 +269,241 @@ function boop.ui.diag()
   boop.state.diagAwaitPrompt = false
   boop.state.queueAliasDirty = true
 
+  if boop.state.diagTimeoutTimer then
+    killTimer(boop.state.diagTimeoutTimer)
+    boop.state.diagTimeoutTimer = nil
+  end
+
+  local timeout = tonumber(boop.config.diagTimeoutSeconds) or 8
+  if timeout > 0 then
+    boop.state.diagTimeoutTimer = tempTimer(timeout, function()
+      boop.state.diagTimeoutTimer = nil
+      if boop.state.diagHold then
+        boop.state.diagHold = false
+        boop.state.diagAwaitPrompt = false
+        boop.util.echo("diag timeout; attacks resumed")
+        boop.trace.log("diag timeout resume")
+      end
+    end)
+  end
+
   send("queue clear", false)
   send("queue addclearfull freestand diagnose", false)
   boop.util.echo("diag queued; attacks paused until diagnose line + prompt")
+  boop.trace.log("diag queued")
+end
+
+local function parseBool(raw)
+  local value = boop.util.safeLower(boop.util.trim(raw or ""))
+  if value == "on" or value == "true" or value == "1" or value == "yes" then return true end
+  if value == "off" or value == "false" or value == "0" or value == "no" then return false end
+  return nil
+end
+
+local function canonConfigKey(raw)
+  local key = boop.util.safeLower(boop.util.trim(raw or ""))
+  local map = {
+    enabled = "enabled",
+    targeting = "targetingMode",
+    targetingmode = "targetingMode",
+    usequeueing = "useQueueing",
+    queueing = "useQueueing",
+    prequeue = "prequeueEnabled",
+    prequeueenabled = "prequeueEnabled",
+    lead = "attackLeadSeconds",
+    attacklead = "attackLeadSeconds",
+    attackleadseconds = "attackLeadSeconds",
+    autogold = "autoGrabGold",
+    autograbgold = "autoGrabGold",
+    pack = "goldPack",
+    goldpack = "goldPack",
+    ignoreotherplayers = "ignoreOtherPlayers",
+    whitelistpriorityorder = "whitelistPriorityOrder",
+    targetorder = "targetOrder",
+    ragemode = "attackMode",
+    attackmode = "attackMode",
+    trace = "traceEnabled",
+    traceenabled = "traceEnabled",
+    diagtimeout = "diagTimeoutSeconds",
+    diagtimeoutseconds = "diagTimeoutSeconds",
+  }
+  return map[key] or ""
+end
+
+function boop.ui.getConfigValue(key)
+  local canonical = canonConfigKey(key)
+  if canonical == "" then
+    boop.util.echo("Unknown key: " .. tostring(key))
+    boop.util.echo("Try: boop get")
+    return
+  end
+  boop.util.echo(canonical .. ": " .. tostring(boop.config[canonical]))
+end
+
+function boop.ui.listConfigValues()
+  local keys = {
+    "enabled",
+    "targetingMode",
+    "useQueueing",
+    "prequeueEnabled",
+    "attackLeadSeconds",
+    "autoGrabGold",
+    "goldPack",
+    "ignoreOtherPlayers",
+    "whitelistPriorityOrder",
+    "targetOrder",
+    "attackMode",
+    "traceEnabled",
+    "diagTimeoutSeconds",
+  }
+  boop.util.echo("config keys:")
+  for _, key in ipairs(keys) do
+    boop.util.echo("  " .. key .. ": " .. tostring(boop.config[key]))
+  end
+end
+
+function boop.ui.setConfigValue(key, value)
+  local canonical = canonConfigKey(key)
+  if canonical == "" then
+    boop.util.echo("Unknown key: " .. tostring(key))
+    boop.util.echo("Try: boop get")
+    return
+  end
+
+  if canonical == "enabled" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.echo("enabled expects on/off")
+      return
+    end
+    boop.ui.setEnabled(parsed)
+    return
+  end
+
+  if canonical == "targetingMode" then
+    boop.ui.setTargetingMode(value)
+    return
+  end
+
+  if canonical == "useQueueing" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.echo("useQueueing expects on/off")
+      return
+    end
+    saveConfigValue("useQueueing", parsed)
+    boop.util.echo("use queueing: " .. (parsed and "on" or "off"))
+    return
+  end
+
+  if canonical == "prequeueEnabled" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.echo("prequeue expects on/off")
+      return
+    end
+    boop.ui.setPrequeueEnabled(parsed)
+    return
+  end
+
+  if canonical == "attackLeadSeconds" then
+    boop.ui.setAttackLeadSeconds(value)
+    return
+  end
+
+  if canonical == "autoGrabGold" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.echo("autogold expects on/off")
+      return
+    end
+    boop.ui.setAutoGrabGold(parsed)
+    return
+  end
+
+  if canonical == "goldPack" then
+    boop.ui.setGoldPack(value)
+    return
+  end
+
+  if canonical == "ignoreOtherPlayers" or canonical == "whitelistPriorityOrder" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.echo(canonical .. " expects on/off")
+      return
+    end
+    saveConfigValue(canonical, parsed)
+    refreshPlayerSafety()
+    boop.util.echo(canonical .. ": " .. (parsed and "on" or "off"))
+    return
+  end
+
+  if canonical == "targetOrder" then
+    local order = boop.util.safeLower(boop.util.trim(value or ""))
+    if order ~= "order" and order ~= "numeric" and order ~= "reverse" then
+      boop.util.echo("targetOrder expects order|numeric|reverse")
+      return
+    end
+    saveConfigValue("targetOrder", order)
+    boop.util.echo("targetOrder: " .. order)
+    return
+  end
+
+  if canonical == "attackMode" then
+    boop.ui.setRageMode(value)
+    return
+  end
+
+  if canonical == "traceEnabled" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.echo("trace expects on/off")
+      return
+    end
+    boop.ui.setTraceEnabled(parsed)
+    return
+  end
+
+  if canonical == "diagTimeoutSeconds" then
+    local timeout = tonumber(boop.util.trim(value or ""))
+    if not timeout or timeout < 0 then
+      boop.util.echo("diagTimeoutSeconds expects number >= 0")
+      return
+    end
+    saveConfigValue("diagTimeoutSeconds", timeout)
+    boop.util.echo(string.format("diag timeout: %.2fs", timeout))
+    return
+  end
+end
+
+function boop.ui.traceCommand(sub, arg)
+  local cmd = boop.util.safeLower(boop.util.trim(sub or ""))
+  if cmd == "" then
+    boop.util.echo("trace: " .. (boop.config.traceEnabled and "on" or "off"))
+    boop.util.echo("  boop trace on|off|show [n]|clear")
+    return
+  end
+  if cmd == "on" then
+    boop.ui.setTraceEnabled(true)
+    return
+  end
+  if cmd == "off" then
+    boop.ui.setTraceEnabled(false)
+    return
+  end
+  if cmd == "clear" then
+    boop.trace.clear()
+    return
+  end
+  if cmd == "show" then
+    boop.trace.show(arg)
+    return
+  end
+  boop.util.echo("trace: unknown option " .. tostring(sub))
 end
 
 local function helpTopicLinks()
-  local topics = { "targeting", "players", "whitelist", "blacklist", "ragemode", "queueing", "prequeue", "gold", "pack", "diag", "ih", "aff", "trip", "debug", "config" }
+  local topics = { "targeting", "players", "whitelist", "blacklist", "ragemode", "queueing", "prequeue", "gold", "pack", "diag", "trace", "setget", "ih", "aff", "trip", "debug", "config" }
   if cecho and cechoLink then
     cecho("\n<green>boop<reset>: <white>topics: ")
     for _, topic in ipairs(topics) do
@@ -270,7 +513,7 @@ local function helpTopicLinks()
     end
     return
   end
-  boop.util.echo("topics: targeting | players | whitelist | blacklist | ragemode | queueing | prequeue | gold | pack | diag | ih | aff | trip | debug | config")
+  boop.util.echo("topics: targeting | players | whitelist | blacklist | ragemode | queueing | prequeue | gold | pack | diag | trace | setget | ih | aff | trip | debug | config")
 end
 
 function boop.ui.help(topic)
@@ -284,10 +527,11 @@ function boop.ui.help(topic)
     boop.util.echo("  Player controls: boop players | boop players add/remove <name>")
     boop.util.echo("  List controls: boop whitelist | boop blacklist")
     boop.util.echo("  Loot controls: boop autogold [on|off]")
-    boop.util.echo("  Gold pack: boop pack [container|off]")
+    boop.util.echo("  Gold pack: boop pack [container|off|test]")
     boop.util.echo("  Queue controls: boop prequeue [on|off] | boop lead <seconds>")
+    boop.util.echo("  Config io: boop get [key] | boop set <key> <value>")
     boop.util.echo("  Combat controls: boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>")
-    boop.util.echo("  Other: diag | boop ih | boop aff | boop trip start/stop | boop debug")
+    boop.util.echo("  Other: diag | boop trace ... | boop ih | boop aff | boop trip start/stop | boop debug")
     boop.util.echo("Use: boop help <topic>")
     helpTopicLinks()
     return
@@ -381,6 +625,7 @@ function boop.ui.help(topic)
     boop.util.echo("  boop autogold off")
     boop.util.echo("  boop pack <container>  (optional auto-stash target)")
     boop.util.echo("  boop pack off")
+    boop.util.echo("  boop pack test")
     boop.util.echo("When enabled, boop auto-picks up newly dropped gold sovereign items in room.")
     boop.util.echo("In queueing mode, this is prepended to the next standard attack as: get sovereigns/<attack>.")
     boop.util.echo("If gold pack is set, boop adds: put sovereigns in <container>.")
@@ -393,6 +638,7 @@ function boop.ui.help(topic)
     boop.util.echo("  boop pack")
     boop.util.echo("  boop pack <container>")
     boop.util.echo("  boop pack off")
+    boop.util.echo("  boop pack test")
     boop.util.echo("Sets optional container for auto-stashing sovereigns after pickup.")
     return
   end
@@ -402,6 +648,31 @@ function boop.ui.help(topic)
     boop.util.echo("  diag")
     boop.util.echo("Clears queue, queues diagnose next, and pauses boop attacks.")
     boop.util.echo("Attacking resumes after a diagnose result line and the next prompt.")
+    boop.util.echo("Timeout fallback uses diagTimeoutSeconds (see boop set/get).")
+    return
+  end
+
+  if t == "trace" then
+    boop.util.echo("Help: trace")
+    boop.util.echo("  boop trace")
+    boop.util.echo("  boop trace on")
+    boop.util.echo("  boop trace off")
+    boop.util.echo("  boop trace show [n]")
+    boop.util.echo("  boop trace clear")
+    boop.util.echo("Tracks recent boop decisions/commands for debugging.")
+    return
+  end
+
+  if t == "setget" or t == "set" or t == "get" then
+    boop.util.echo("Help: config set/get")
+    boop.util.echo("  boop get")
+    boop.util.echo("  boop get <key>")
+    boop.util.echo("  boop set <key> <value>")
+    boop.util.echo("Examples:")
+    boop.util.echo("  boop set prequeue off")
+    boop.util.echo("  boop set lead 0.8")
+    boop.util.echo("  boop set pack satchel")
+    boop.util.echo("  boop get diagtimeout")
     return
   end
 
@@ -561,6 +832,25 @@ function boop.ui.config()
       )
     end
 
+    cecho("\n<white>  trace: ")
+    cechoLink("<" .. boolColor(not not boop.config.traceEnabled) .. ">[" .. boolText(not not boop.config.traceEnabled) .. "]<reset>",
+      function() boop.ui.setTraceEnabled(not boop.config.traceEnabled); boop.ui.config() end,
+      "Toggle trace logging", true
+    )
+
+    local diagTimeout = tonumber(boop.config.diagTimeoutSeconds) or 0
+    cecho(string.format("\n<white>  diag timeout: <cyan>%.2fs<reset>", diagTimeout))
+    if appendCmdLine then
+      cecho(" ")
+      cechoLink("<yellow>[set]<reset>",
+        function()
+          if clearCmdLine then clearCmdLine() end
+          appendCmdLine("boop set diagtimeout ")
+        end,
+        "Fill command line with boop set diagtimeout", true
+      )
+    end
+
     cecho("\n<white>  auto grab gold: ")
     cechoLink("<" .. boolColor(not not boop.config.autoGrabGold) .. ">[" .. boolText(not not boop.config.autoGrabGold) .. "]<reset>",
       function() boop.ui.toggleAutoGrabGold(); boop.ui.config() end,
@@ -618,7 +908,7 @@ function boop.ui.config()
     cechoLink("<cyan>[whitelist]<reset>", function() boop.targets.displayWhitelist() end, "Show whitelist manager", true)
     cecho(" ")
     cechoLink("<cyan>[blacklist]<reset>", function() boop.targets.displayBlacklist() end, "Show blacklist manager", true)
-    cecho("\n<white>  quick commands: boop status | boop debug | boop trip start/stop")
+    cecho("\n<white>  quick commands: boop status | boop debug | boop trace show | boop trip start/stop")
     return
   end
 
@@ -633,6 +923,8 @@ function boop.ui.config()
   boop.util.echo("  attackLeadSeconds: " .. tostring(boop.config.attackLeadSeconds))
   boop.util.echo("  autoGrabGold: " .. tostring(boop.config.autoGrabGold))
   boop.util.echo("  goldPack: " .. tostring(boop.config.goldPack or ""))
+  boop.util.echo("  traceEnabled: " .. tostring(boop.config.traceEnabled))
+  boop.util.echo("  diagTimeoutSeconds: " .. tostring(boop.config.diagTimeoutSeconds))
   boop.util.echo("  targetOrder: " .. tostring(boop.config.targetOrder))
   boop.util.echo("  ragemode: " .. tostring(boop.config.attackMode))
 end

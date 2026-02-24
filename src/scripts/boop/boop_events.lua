@@ -37,12 +37,34 @@ local function isGoldItem(item)
   return false
 end
 
-local function queueGoldCommands()
-  send("queue add freestand get sovereigns", false)
+function boop.clearGoldQueueIntent()
+  boop.state = boop.state or {}
+  boop.state.goldGetPending = false
+  boop.state.goldPutPending = false
+  boop.state.goldGetRetries = 0
+  boop.state.goldPutRetries = 0
+  boop.state.goldPackTarget = ""
+end
 
+function boop.markGoldQueueIntent(pack)
+  boop.state = boop.state or {}
+  local target = boop.util.trim(pack or "")
+  boop.state.goldGetPending = true
+  boop.state.goldPutPending = target ~= ""
+  boop.state.goldGetRetries = 0
+  boop.state.goldPutRetries = 0
+  boop.state.goldPackTarget = target
+end
+
+local function queueGoldCommands()
   local pack = boop.util.trim(boop.config.goldPack or "")
+  boop.markGoldQueueIntent(pack)
+  send("queue add freestand get sovereigns", false)
+  boop.trace.log("gold queue: get sovereigns")
+
   if pack ~= "" then
     send("queue add freestand put sovereigns in " .. pack, false)
+    boop.trace.log("gold queue: put sovereigns in " .. pack)
   end
 end
 
@@ -50,6 +72,7 @@ local function autoGrabRoomItem(item)
   if not boop.config.enabled then return end
   if not boop.config.autoGrabGold then return end
   if not isGoldItem(item) then return end
+  boop.trace.log("gold drop detected")
 
   if boop.config.useQueueing then
     boop.state = boop.state or {}
@@ -66,6 +89,7 @@ local function autoGrabRoomItem(item)
       if not boop.state or not boop.state.autoGrabGoldPending then return end
       boop.state.autoGrabGoldPending = false
       boop.state.goldDropped = false
+      boop.trace.log("gold fallback queue fired")
       queueGoldCommands()
     end)
   else
@@ -73,9 +97,75 @@ local function autoGrabRoomItem(item)
   end
 end
 
+local function retryGoldGet(reason)
+  boop.state = boop.state or {}
+  if not boop.state.goldGetPending then return end
+  local retries = boop.state.goldGetRetries or 0
+  if retries >= 2 then
+    boop.trace.log("gold get failed; giving up: " .. tostring(reason))
+    boop.util.echo("auto gold: unable to get sovereigns; check room loot/line timing")
+    boop.state.goldGetPending = false
+    return
+  end
+  boop.state.goldGetRetries = retries + 1
+  send("queue add freestand get sovereigns", false)
+  boop.trace.log("gold get retry " .. tostring(boop.state.goldGetRetries) .. ": " .. tostring(reason))
+end
+
+local function retryGoldPut(reason)
+  boop.state = boop.state or {}
+  if not boop.state.goldPutPending then return end
+  local pack = boop.state.goldPackTarget or ""
+  if pack == "" then
+    boop.state.goldPutPending = false
+    return
+  end
+
+  local retries = boop.state.goldPutRetries or 0
+  if retries >= 1 then
+    boop.trace.log("gold put failed for pack " .. pack .. "; giving up: " .. tostring(reason))
+    boop.util.echo("auto gold: unable to put sovereigns in " .. pack .. "; use `boop pack test`")
+    boop.state.goldPutPending = false
+    return
+  end
+  boop.state.goldPutRetries = retries + 1
+  send("queue add freestand put sovereigns in " .. pack, false)
+  boop.trace.log("gold put retry " .. tostring(boop.state.goldPutRetries) .. " for " .. pack .. ": " .. tostring(reason))
+end
+
+function boop.onGoldGetSuccess()
+  boop.state = boop.state or {}
+  if not boop.state.goldGetPending then return end
+  boop.state.goldGetPending = false
+  boop.state.goldGetRetries = 0
+  boop.trace.log("gold get success")
+end
+
+function boop.onGoldPutSuccess()
+  boop.state = boop.state or {}
+  if not boop.state.goldPutPending then return end
+  boop.state.goldPutPending = false
+  boop.state.goldPutRetries = 0
+  boop.trace.log("gold put success")
+end
+
+function boop.onGoldCommandFailure(line)
+  boop.state = boop.state or {}
+  local reason = boop.util.trim(line or "")
+  if boop.state.goldGetPending then
+    retryGoldGet(reason)
+    return
+  end
+  if boop.state.goldPutPending then
+    retryGoldPut(reason)
+    return
+  end
+end
+
 function boop.onDiagReadyLine()
   if not boop.state or not boop.state.diagHold then return end
   boop.state.diagAwaitPrompt = true
+  boop.trace.log("diag ready line seen")
 end
 
 function boop.events.refreshPlayerSafety()
@@ -171,6 +261,7 @@ function boop.onRoomInfo()
     vars.newPeopleInRoom = false
     vars.players = {}
     vars.lastRoom = vars.room
+    boop.clearGoldQueueIntent()
 
     if not vars.fleeing then
       if gmcp.Room.Info.exits then
@@ -275,6 +366,7 @@ function boop.schedulePrequeue()
 
   local delay = readyAt - lead - nowSeconds()
   if delay < 0 then delay = 0 end
+  boop.trace.log(string.format("prequeue scheduled in %.2fs (lead %.2fs)", delay, lead))
 
   if boop.state.prequeueTimer then
     killTimer(boop.state.prequeueTimer)
@@ -317,6 +409,7 @@ function boop.prequeueStandard()
   if actions.standard and actions.standard ~= "" then
     boop.executeAction(actions.standard, true)
     boop.state.prequeuedStandard = true
+    boop.trace.log("prequeue sent standard")
   end
 end
 
@@ -355,6 +448,7 @@ function boop.tick()
   local targetId = boop.targets.choose()
   if not targetId or targetId == "" then
     boop.state.attacking = false
+    boop.trace.log("tick: no target")
     return
   end
 
@@ -390,7 +484,12 @@ function boop.onPrompt()
     if boop.state.diagAwaitPrompt then
       boop.state.diagHold = false
       boop.state.diagAwaitPrompt = false
+      if boop.state.diagTimeoutTimer then
+        killTimer(boop.state.diagTimeoutTimer)
+        boop.state.diagTimeoutTimer = nil
+      end
       boop.util.echo("diag complete; attacks resumed")
+      boop.trace.log("diag complete")
     else
       return
     end

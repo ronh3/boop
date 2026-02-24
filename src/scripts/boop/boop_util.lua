@@ -50,6 +50,51 @@ function boop.util.formatTarget(cmd, target)
   return formatted
 end
 
+boop.trace = boop.trace or {}
+
+function boop.trace.log(msg)
+  if not msg or msg == "" then return end
+  if not boop.config or not boop.config.traceEnabled then return end
+
+  boop.state = boop.state or {}
+  boop.state.traceBuffer = boop.state.traceBuffer or {}
+
+  local ts = os.date("%H:%M:%S")
+  local line = string.format("%s | %s", ts, tostring(msg))
+  local buf = boop.state.traceBuffer
+  buf[#buf + 1] = line
+
+  local limit = 100
+  while #buf > limit do
+    table.remove(buf, 1)
+  end
+end
+
+function boop.trace.show(count)
+  boop.state = boop.state or {}
+  boop.state.traceBuffer = boop.state.traceBuffer or {}
+  local buf = boop.state.traceBuffer
+  local total = #buf
+  if total == 0 then
+    boop.util.echo("trace: (empty)")
+    return
+  end
+
+  local n = tonumber(count) or 20
+  if n < 1 then n = 1 end
+  if n > total then n = total end
+  boop.util.echo(string.format("trace: showing %d/%d", n, total))
+  for i = total - n + 1, total do
+    boop.util.echo("  " .. tostring(buf[i]))
+  end
+end
+
+function boop.trace.clear()
+  boop.state = boop.state or {}
+  boop.state.traceBuffer = {}
+  boop.util.echo("trace: cleared")
+end
+
 local function markUnnamableMaulUsed(action)
   if not action or action == "" then return end
   if not gmcp or not gmcp.Char or not gmcp.Char.Status then return end
@@ -79,6 +124,9 @@ function boop.executeAction(action, forceQueue)
       if normalized ~= "get sovereigns" and not boop.util.starts(normalized, "get sovereigns/") then
         local prefix = "get sovereigns"
         local pack = boop.util.trim(boop.config.goldPack or "")
+        if boop.markGoldQueueIntent then
+          boop.markGoldQueueIntent(pack)
+        end
         if pack ~= "" then
           prefix = prefix .. "/put sovereigns in " .. pack
         end
@@ -103,6 +151,7 @@ function boop.executeAction(action, forceQueue)
       boop.state.queueAliasDirty = false
     end
     send("queue addclearfull freestand BOOP_ATTACK", false)
+    boop.trace.log("std queue: " .. queuedAction)
     markUnnamableMaulUsed(queuedAction)
   else
     local parts = boop.util.split(action, boop.lists.separator or "/")
@@ -110,6 +159,7 @@ function boop.executeAction(action, forceQueue)
       local trimmed = boop.util.trim(part)
       if trimmed ~= "" then
         send(trimmed, false)
+        boop.trace.log("std direct: " .. trimmed)
       end
     end
     markUnnamableMaulUsed(action)
@@ -123,6 +173,7 @@ function boop.executeRageAction(action)
     local trimmed = boop.util.trim(part)
     if trimmed ~= "" then
       send(trimmed, false)
+      boop.trace.log("rage direct: " .. trimmed)
     end
   end
 end

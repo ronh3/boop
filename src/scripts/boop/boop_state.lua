@@ -32,8 +32,15 @@ function boop.state.init()
   boop.state.shardsDropped = boop.state.shardsDropped or false
   boop.state.autoGrabGoldPending = boop.state.autoGrabGoldPending or false
   boop.state.autoGrabGoldTimer = boop.state.autoGrabGoldTimer or nil
+  boop.state.goldGetPending = boop.state.goldGetPending or false
+  boop.state.goldPutPending = boop.state.goldPutPending or false
+  boop.state.goldGetRetries = boop.state.goldGetRetries or 0
+  boop.state.goldPutRetries = boop.state.goldPutRetries or 0
+  boop.state.goldPackTarget = boop.state.goldPackTarget or ""
   boop.state.diagHold = boop.state.diagHold or false
   boop.state.diagAwaitPrompt = boop.state.diagAwaitPrompt or false
+  boop.state.diagTimeoutTimer = boop.state.diagTimeoutTimer or nil
+  boop.state.traceBuffer = boop.state.traceBuffer or {}
 
   boop.state.class = boop.state.class or ""
   boop.state.spec = boop.state.spec or ""

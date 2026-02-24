@@ -148,6 +148,86 @@
     "script": ""
   },
   {
+    "name": "Gold Get Success",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You pick up .*[Ss]overeign.*\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Gold Put Success",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You put .*[Ss]overeign.* in .+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Gold Command Failure",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You do not see that here\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You do not see .+ here\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You are not carrying that\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You aren't carrying that\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You cannot put that there\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You can't put that in there\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
     "name": "IH Line",
     "isActive": "yes",
     "isFolder": "no",
