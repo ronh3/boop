@@ -79,6 +79,10 @@ function boop.executeAction(action, forceQueue)
       if normalized ~= "get sovereigns" and not boop.util.starts(normalized, "get sovereigns/") then
         queuedAction = "get sovereigns/" .. queuedAction
       end
+      if boop.state.autoGrabGoldTimer then
+        killTimer(boop.state.autoGrabGoldTimer)
+        boop.state.autoGrabGoldTimer = nil
+      end
       boop.state.autoGrabGoldPending = false
       boop.state.goldDropped = false
     end

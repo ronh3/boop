@@ -46,6 +46,23 @@ local function autoGrabRoomItem(item)
     boop.state = boop.state or {}
     boop.state.autoGrabGoldPending = true
     boop.state.goldDropped = true
+    if boop.state.autoGrabGoldTimer then
+      killTimer(boop.state.autoGrabGoldTimer)
+      boop.state.autoGrabGoldTimer = nil
+    end
+    boop.state.autoGrabGoldTimer = tempTimer(1.2, function()
+      boop.state.autoGrabGoldTimer = nil
+      if not boop.config or not boop.config.enabled then return end
+      if not boop.config.autoGrabGold then return end
+      if not boop.state or not boop.state.autoGrabGoldPending then return end
+      boop.state.autoGrabGoldPending = false
+      boop.state.goldDropped = false
+      if boop.config.useQueueing then
+        send("queue add freestand get sovereigns", false)
+      else
+        send("get sovereigns", false)
+      end
+    end)
   else
     send("get sovereigns", false)
   end

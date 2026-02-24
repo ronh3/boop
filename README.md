@@ -35,6 +35,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop ih` shows items too; only denizens get whitelist/blacklist buttons.
 - Auto gold pickup grabs newly dropped room items whose names contain `gold sovereign`.
 - In queueing mode, auto gold pickup is prepended to the next standard attack as `get sovereigns/<attack>`.
+- If no standard attack follows quickly, boop falls back to `queue add freestand get sovereigns`.
 - For `Two Handed` spec with `Focus` known in `Weaponmastery`, boop prepends `battlefury focus speed/` to standard damage attacks (never shieldbreakers).
 - For `Unnamable` with `Maul` known in `Dominion`, boop prepends `maul &tar/` to standard attacks while ready, then waits for the cooldown-ready line before prepending again.
 - With `ignoreOtherPlayers` off, non-whitelisted players in room pause hunting; manage the whitelist with `boop players`.
