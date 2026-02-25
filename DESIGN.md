@@ -31,7 +31,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - From Foxhunt
   - DB-backed whitelist/blacklist with priority order per area.
   - Info-Here capture with click-to-add/remove.
-  - Structured GMCP event handlers for room/target/player state.
+  - Structured GMCP event handlers for room/target/status state.
   - Class attack definitions as data tables.
 
 ## What We’ll Discard
@@ -92,10 +92,12 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Denizen filtering: attrib includes `m` and excludes `x` and `d`.
 - `boop ih` re-renders Info-Here lines and adds clickable whitelist/blacklist buttons for denizens.
 - `boop config` renders a clickable configuration dashboard for common toggles/modes.
+- `boop` shows status plus the main help dashboard for quick command discovery.
+- `boop config` and `boop help` use a shared sectioned row layout (`HEADER > section`, divider, aligned `[ value ]` action buttons).
 - `boop whitelist` and `boop blacklist` render clickable list managers (`up`/`down`/`remove`).
-- `boop players` manages an ignored-player whitelist used by the ignore-other-players safety check.
 - `boop autogold` toggles automatic pickup of newly dropped gold sovereigns; in queueing mode it prepends `get sovereigns/` to the next standard attack, with a short fallback timer to queue `get sovereigns` if no attack follows (and non-queueing mode uses queued `get sovereigns` to avoid balance-lock misses).
 - `boop pack <container>` sets an optional auto-stash container (`put sovereigns in <container>`) used after auto gold pickup.
+- `boop import foxhunt [merge|overwrite|dryrun]` imports area list data from Foxhunt's `hunting` DB into boop lists.
 - Gold get/put tracking now listens for success/failure lines and performs bounded retries before warning.
 - `boop prequeue` and `boop lead` make prequeue behavior explicit and independent from `useQueueing`.
 - `diag` clears queue, queues `diagnose`, and temporarily blocks attacks until a diagnose result line plus prompt.

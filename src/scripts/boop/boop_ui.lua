@@ -15,113 +15,115 @@ local function boolColor(value)
   return value and "green" or "red"
 end
 
-local function normName(value)
-  return boop.util.safeLower(boop.util.trim(value or ""))
+local function currentClass()
+  return boop.state.class or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class) or "unknown"
 end
 
-local function decodeIgnoredPlayers()
-  local raw = boop.config.ignoredPlayers or ""
-  local list = {}
-  local seen = {}
-  for _, part in ipairs(boop.util.split(raw, "/")) do
-    local name = boop.util.trim(part)
-    local key = normName(name)
-    if key ~= "" and not seen[key] then
-      seen[key] = true
-      list[#list + 1] = name
-    end
+local UI_RULE_WIDTH = 56
+local UI_LABEL_COL_WIDTH = 40
+local UI_BUTTON_INNER_WIDTH = 10
+
+local function uiPadRight(text, width)
+  text = tostring(text or "")
+  if #text >= width then
+    return text:sub(1, width)
   end
-  table.sort(list, function(a, b) return normName(a) < normName(b) end)
-  return list, seen
+  return text .. string.rep(" ", width - #text)
 end
 
-local function refreshPlayerSafety()
-  if boop.events and boop.events.refreshPlayerSafety then
-    boop.events.refreshPlayerSafety()
-  end
+local function uiRule()
+  return string.rep("-", UI_RULE_WIDTH)
 end
 
-function boop.ui.getIgnoredPlayers()
-  local list = decodeIgnoredPlayers()
-  return list
+local function uiButtonLabel(value)
+  return "[ " .. uiPadRight(value or "", UI_BUTTON_INNER_WIDTH) .. " ]"
 end
 
-function boop.ui.isIgnoredPlayer(name)
-  local key = normName(name)
-  if key == "" then return false end
-  local _, seen = decodeIgnoredPlayers()
-  return seen[key] == true
+local function uiSetCommandLine(prefix)
+  if not appendCmdLine then return end
+  if clearCmdLine then clearCmdLine() end
+  appendCmdLine(prefix or "")
 end
 
-function boop.ui.displayIgnoredPlayers()
-  local list = decodeIgnoredPlayers()
-  boop.util.echo("Ignored player whitelist:")
-  if #list == 0 then
-    boop.util.echo("  (empty)")
-    boop.util.echo("  add: boop players add <name>")
-    return
-  end
-  for i, name in ipairs(list) do
-    boop.util.echo("  " .. i .. ". " .. name)
-  end
-end
-
-function boop.ui.addIgnoredPlayer(name)
-  local raw = boop.util.trim(name or "")
-  local key = normName(raw)
-  if key == "" then
-    boop.util.echo("Usage: boop players add <name>")
-    return
-  end
-
-  local list, seen = decodeIgnoredPlayers()
-  if seen[key] then
-    boop.util.echo("Already in ignored-player whitelist: " .. raw)
-    return
-  end
-
-  list[#list + 1] = raw
-  table.sort(list, function(a, b) return normName(a) < normName(b) end)
-  saveConfigValue("ignoredPlayers", table.concat(list, "/"))
-  refreshPlayerSafety()
-end
-
-function boop.ui.removeIgnoredPlayer(name)
-  local key = normName(name)
-  if key == "" then
-    boop.util.echo("Usage: boop players remove <name>")
-    return
-  end
-
-  local list = decodeIgnoredPlayers()
-  local out = {}
-  local removed = false
-  for _, item in ipairs(list) do
-    if normName(item) == key then
-      removed = true
-    else
-      out[#out + 1] = item
-    end
-  end
-
-  if not removed then
-    boop.util.echo("Not found in ignored-player whitelist: " .. tostring(name))
-    return
-  end
-
-  saveConfigValue("ignoredPlayers", table.concat(out, "/"))
-  refreshPlayerSafety()
-end
-
-function boop.ui.status(context)
+function boop.ui.statusLine(context)
   local enabled = boop.config.enabled and "on" or "off"
   local mode = boop.config.targetingMode or "unknown"
-  local class = boop.state.class or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class) or "unknown"
+  local class = currentClass()
   local msg = string.format("%s | class: %s | targeting: %s | flee: %s", enabled, class, mode, tostring(boop.config.fleeAt))
   if context then
     msg = context .. " | " .. msg
   end
+  return msg
+end
+
+function boop.ui.status(context)
+  local msg = boop.ui.statusLine(context)
   boop.util.echo(msg)
+end
+
+local function uiPrintHeader(title)
+  if cecho then
+    cecho("\n<white>" .. string.upper(tostring(title or "")) .. "<reset>")
+    cecho("\n<grey>" .. uiRule() .. "<reset>")
+  else
+    boop.util.echo(tostring(title) .. " | class: " .. tostring(currentClass()))
+  end
+end
+
+local function uiPrintSection(title)
+  if cecho then
+    cecho("\n\n<cyan>" .. string.upper(tostring(title or "")) .. "<reset>")
+  else
+    boop.util.echo(tostring(title) .. ":")
+  end
+end
+
+local function uiPrintRow(index, label, buttonText, buttonColor, onClick, hint)
+  if cecho then
+    local prefix = ""
+    if index then
+      prefix = string.format("[%d] ", tonumber(index) or 0)
+    end
+    local left = uiPadRight(prefix .. tostring(label or ""), UI_LABEL_COL_WIDTH)
+    cecho("\n<white>" .. left .. "<reset>")
+    local coloredButton = "<" .. tostring(buttonColor or "white") .. ">" .. uiButtonLabel(buttonText or "") .. "<reset>"
+    if cechoLink and onClick then
+      cechoLink(coloredButton, onClick, hint or "", true)
+    else
+      cecho(coloredButton)
+    end
+    return
+  end
+
+  local prefix = index and ("[" .. tostring(index) .. "] ") or ""
+  local row = prefix .. tostring(label or "") .. " " .. uiButtonLabel(buttonText or "")
+  boop.util.echo(row)
+end
+
+local function uiPrintFooter(text)
+  if cecho then
+    cecho("\n<grey>" .. uiRule() .. "<reset>")
+    cecho("\n<white>" .. tostring(text or "") .. "<reset>")
+  else
+    boop.util.echo(text or "")
+  end
+end
+
+local function cycleTargetingMode(step)
+  local order = { "manual", "whitelist", "blacklist", "auto" }
+  local current = boop.util.safeLower(boop.config.targetingMode or "whitelist")
+  local idx = 1
+  for i, mode in ipairs(order) do
+    if mode == current then
+      idx = i
+      break
+    end
+  end
+  idx = idx + (tonumber(step) or 1)
+  while idx < 1 do idx = idx + #order end
+  while idx > #order do idx = idx - #order end
+  boop.ui.setTargetingMode(order[idx], true)
+  boop.ui.config()
 end
 
 function boop.ui.setEnabled(value, quiet)
@@ -317,7 +319,6 @@ local function canonConfigKey(raw)
     autograbgold = "autoGrabGold",
     pack = "goldPack",
     goldpack = "goldPack",
-    ignoreotherplayers = "ignoreOtherPlayers",
     whitelistpriorityorder = "whitelistPriorityOrder",
     targetorder = "targetOrder",
     ragemode = "attackMode",
@@ -349,7 +350,6 @@ function boop.ui.listConfigValues()
     "attackLeadSeconds",
     "autoGrabGold",
     "goldPack",
-    "ignoreOtherPlayers",
     "whitelistPriorityOrder",
     "targetOrder",
     "attackMode",
@@ -426,14 +426,13 @@ function boop.ui.setConfigValue(key, value)
     return
   end
 
-  if canonical == "ignoreOtherPlayers" or canonical == "whitelistPriorityOrder" then
+  if canonical == "whitelistPriorityOrder" then
     local parsed = parseBool(value)
     if parsed == nil then
       boop.util.echo(canonical .. " expects on/off")
       return
     end
     saveConfigValue(canonical, parsed)
-    refreshPlayerSafety()
     boop.util.echo(canonical .. ": " .. (parsed and "on" or "off"))
     return
   end
@@ -502,10 +501,178 @@ function boop.ui.traceCommand(sub, arg)
   boop.util.echo("trace: unknown option " .. tostring(sub))
 end
 
+local function copyList(list)
+  local out = {}
+  for i, name in ipairs(list or {}) do
+    out[i] = name
+  end
+  return out
+end
+
+local function countListMap(map)
+  local areas, entries = 0, 0
+  for _, list in pairs(map or {}) do
+    areas = areas + 1
+    entries = entries + #list
+  end
+  return areas, entries
+end
+
+local function safeFetchRows(dbtable, orderBy)
+  local ok, rows = pcall(function()
+    return db:fetch(dbtable, nil, orderBy)
+  end)
+  if not ok then
+    return nil, tostring(rows)
+  end
+  return rows or {}, nil
+end
+
+local function loadFoxhuntListMap(dbtable, tableName)
+  local out = {}
+  if not dbtable then
+    return nil, "missing table handle: " .. tostring(tableName or "unknown")
+  end
+  local rows, err = safeFetchRows(dbtable, { dbtable.area, dbtable.pos })
+  if err then
+    return nil, string.format("fetch failed for %s: %s", tostring(tableName or "unknown"), tostring(err))
+  end
+  for _, row in ipairs(rows or {}) do
+    local area = boop.util.trim(row.area or "")
+    local name = boop.util.trim(row.name or "")
+    if area ~= "" and name ~= "" then
+      out[area] = out[area] or {}
+      out[area][#out[area] + 1] = name
+    end
+  end
+  return out, nil
+end
+
+local function dbLocationHint(dbName)
+  local name = boop.util.trim(dbName or "")
+  if name == "" then name = "hunting" end
+  local filename = "Database_" .. name .. ".db"
+  if type(getMudletHomeDir) == "function" then
+    local home = boop.util.trim(getMudletHomeDir() or "")
+    if home ~= "" then
+      return string.format("Expected `%s` under your profile folder in `%s`.", filename, home)
+    end
+  end
+  return string.format("Expected `%s` under your Mudlet profile folder.", filename)
+end
+
+local function clearBoopStoredLists()
+  if not boop.db or not boop.db.handle then return end
+  local wlTable = boop.db.handle.whitelist
+  local blTable = boop.db.handle.blacklist
+
+  for _, row in ipairs(db:fetch(wlTable, nil) or {}) do
+    db:delete(wlTable, row._row_id)
+  end
+  for _, row in ipairs(db:fetch(blTable, nil) or {}) do
+    db:delete(blTable, row._row_id)
+  end
+end
+
+function boop.ui.importFoxhunt(mode)
+  local importMode = boop.util.safeLower(boop.util.trim(mode or ""))
+  if importMode == "" then
+    importMode = "merge"
+  end
+  if importMode ~= "merge" and importMode ~= "overwrite" and importMode ~= "dryrun" then
+    boop.util.echo("Usage: boop import foxhunt [merge|overwrite|dryrun]")
+    return
+  end
+
+  boop.util.echo("foxhunt import: starting (" .. importMode .. ")")
+
+  if not db or not db.get_database then
+    boop.util.echo("foxhunt import failed: Mudlet DB unavailable.")
+    return
+  end
+
+  local foxDb = db:get_database("hunting")
+  if not foxDb then
+    boop.util.echo("foxhunt import failed: DB `hunting` not found. " .. dbLocationHint("hunting"))
+    return
+  end
+  if not foxDb.whitelist or not foxDb.blacklist then
+    boop.util.echo("foxhunt import failed: DB `hunting` missing whitelist/blacklist tables.")
+    return
+  end
+
+  local fhWhitelist, wlErr = loadFoxhuntListMap(foxDb.whitelist, "whitelist")
+  if wlErr then
+    boop.util.echo("foxhunt import failed: " .. wlErr)
+    return
+  end
+  local fhBlacklist, blErr = loadFoxhuntListMap(foxDb.blacklist, "blacklist")
+  if blErr then
+    boop.util.echo("foxhunt import failed: " .. blErr)
+    return
+  end
+  local wlAreas, wlEntries = countListMap(fhWhitelist)
+  local blAreas, blEntries = countListMap(fhBlacklist)
+
+  boop.util.echo(string.format("foxhunt import %s | whitelist %d areas/%d entries | blacklist %d areas/%d entries",
+    importMode, wlAreas, wlEntries, blAreas, blEntries))
+  if wlEntries == 0 and blEntries == 0 then
+    boop.util.echo("foxhunt import: source lists are empty; nothing to import")
+  end
+
+  if importMode == "dryrun" then
+    boop.util.echo("dryrun only; no changes applied")
+    return
+  end
+
+  if not boop.db or not boop.db.saveList then
+    boop.util.echo("foxhunt import failed: boop DB unavailable; cannot persist imported lists.")
+    return
+  end
+
+  local ok, applyErr = pcall(function()
+    if importMode == "overwrite" then
+      clearBoopStoredLists()
+      boop.lists.whitelist = {}
+      boop.lists.blacklist = {}
+      boop.lists.globalBlacklist = {}
+    end
+
+    local importedWlAreas = 0
+    for area, list in pairs(fhWhitelist) do
+      local copied = copyList(list)
+      boop.lists.whitelist[area] = copied
+      boop.db.saveList("whitelist", area, copied)
+      importedWlAreas = importedWlAreas + 1
+    end
+
+    local importedBlAreas = 0
+    for area, list in pairs(fhBlacklist) do
+      local copied = copyList(list)
+      if area == "GLOBAL" then
+        boop.lists.globalBlacklist = copied
+      else
+        boop.lists.blacklist[area] = copied
+      end
+      boop.db.saveList("blacklist", area, copied)
+      importedBlAreas = importedBlAreas + 1
+    end
+
+    boop.util.echo(string.format("import applied | whitelist areas: %d | blacklist areas: %d",
+      importedWlAreas, importedBlAreas))
+    boop.trace.log("import foxhunt " .. importMode .. " applied")
+  end)
+  if not ok then
+    boop.util.echo("foxhunt import failed: " .. tostring(applyErr))
+    boop.trace.log("import foxhunt failed: " .. tostring(applyErr))
+    return
+  end
+end
+
 local function helpTopicLinks()
-  local topics = { "targeting", "players", "whitelist", "blacklist", "ragemode", "queueing", "prequeue", "gold", "pack", "diag", "trace", "setget", "ih", "aff", "trip", "debug", "config" }
+  local topics = { "targeting", "whitelist", "blacklist", "ragemode", "queueing", "prequeue", "gold", "pack", "import", "diag", "trace", "setget", "ih", "aff", "trip", "debug", "config" }
   if cecho and cechoLink then
-    cecho("\n<green>boop<reset>: <white>topics: ")
+    cecho("\n<white>  topics: ")
     for _, topic in ipairs(topics) do
       local t = topic
       cechoLink("<cyan>[" .. t .. "]<reset>", function() boop.ui.help(t) end, "Show boop help for " .. t, true)
@@ -513,21 +680,71 @@ local function helpTopicLinks()
     end
     return
   end
-  boop.util.echo("topics: targeting | players | whitelist | blacklist | ragemode | queueing | prequeue | gold | pack | diag | trace | setget | ih | aff | trip | debug | config")
+  boop.util.echo("topics: targeting | whitelist | blacklist | ragemode | queueing | prequeue | gold | pack | import | diag | trace | setget | ih | aff | trip | debug | config")
 end
 
 function boop.ui.help(topic)
   local t = boop.util.safeLower(boop.util.trim(topic or ""))
 
   if t == "" or t == "main" or t == "general" then
+    if cecho then
+      local row = 1
+      uiPrintHeader("boop > help")
+
+      uiPrintSection("core")
+      uiPrintRow(row, "Hunting status", boop.config.enabled and "ON" or "OFF", boolColor(boop.config.enabled), function() boop.ui.toggle(); boop.ui.help("main") end, "Toggle boop hunting")
+      row = row + 1
+      uiPrintRow(row, "Show status line", "SHOW", "cyan", function() boop.ui.status("status") end, "Show boop status")
+      row = row + 1
+      uiPrintRow(row, "Open config dashboard", "OPEN", "green", function() boop.ui.config() end, "Open boop config")
+      row = row + 1
+      uiPrintRow(row, "List config keys", "SHOW", "cyan", function() boop.ui.listConfigValues() end, "Show boop get output")
+      row = row + 1
+      uiPrintRow(row, "Set config key", "SET", "yellow", function() uiSetCommandLine("boop set ") end, "Fill command line with boop set")
+      row = row + 1
+
+      uiPrintSection("targeting")
+      uiPrintRow(row, "Targeting mode", tostring(boop.config.targetingMode or "auto"), "cyan", function() uiSetCommandLine("boop targeting ") end, "Set targeting mode")
+      row = row + 1
+      uiPrintRow(row, "Whitelist manager", "OPEN", "green", function() boop.targets.displayWhitelist() end, "Open whitelist manager")
+      row = row + 1
+      uiPrintRow(row, "Blacklist manager", "OPEN", "green", function() boop.targets.displayBlacklist() end, "Open blacklist manager")
+      row = row + 1
+
+      uiPrintSection("combat / loot")
+      uiPrintRow(row, "Auto gold pickup", boop.config.autoGrabGold and "ON" or "OFF", boolColor(not not boop.config.autoGrabGold), function() boop.ui.toggleAutoGrabGold(); boop.ui.help("main") end, "Toggle automatic gold pickup")
+      row = row + 1
+      uiPrintRow(row, "Gold pack container", "SET", "yellow", function() uiSetCommandLine("boop pack ") end, "Set boop pack container")
+      row = row + 1
+      uiPrintRow(row, "Foxhunt import", "RUN", "yellow", function() uiSetCommandLine("boop import foxhunt ") end, "Run foxhunt import")
+      row = row + 1
+      uiPrintRow(row, "Rage mode", "SET", "yellow", function() uiSetCommandLine("boop ragemode ") end, "Set rage mode")
+      row = row + 1
+      uiPrintRow(row, "Run diag", "RUN", "yellow", function() boop.ui.diag() end, "Queue diagnose and pause attacks")
+      row = row + 1
+
+      uiPrintSection("timing / debug")
+      uiPrintRow(row, "Prequeue", boop.config.prequeueEnabled and "ON" or "OFF", boolColor(not not boop.config.prequeueEnabled), function() boop.ui.setPrequeueEnabled(not boop.config.prequeueEnabled); boop.ui.help("main") end, "Toggle prequeue")
+      row = row + 1
+      uiPrintRow(row, "Attack lead", "SET", "yellow", function() uiSetCommandLine("boop lead ") end, "Set prequeue lead seconds")
+      row = row + 1
+      uiPrintRow(row, "Trace logging", boop.config.traceEnabled and "ON" or "OFF", boolColor(not not boop.config.traceEnabled), function() boop.ui.setTraceEnabled(not boop.config.traceEnabled); boop.ui.help("main") end, "Toggle trace logging")
+      row = row + 1
+      uiPrintRow(row, "Debug snapshot", "SHOW", "cyan", function() boop.ui.debug() end, "Show boop debug snapshot")
+
+      uiPrintFooter("Type: boop help (topic) | boop config | boop status")
+      helpTopicLinks()
+      return
+    end
+
     boop.util.echo("Help: boop command interface")
     boop.util.echo("  Toggle hunting: bh")
-    boop.util.echo("  Main controls: boop on | boop off | boop status | boop config")
+    boop.util.echo("  Main controls: boop | boop on | boop off | boop status | boop config")
     boop.util.echo("  Target controls: boop targeting <manual|whitelist|blacklist|auto>")
-    boop.util.echo("  Player controls: boop players | boop players add/remove <name>")
     boop.util.echo("  List controls: boop whitelist | boop blacklist")
     boop.util.echo("  Loot controls: boop autogold [on|off]")
     boop.util.echo("  Gold pack: boop pack [container|off|test]")
+    boop.util.echo("  Import: boop import foxhunt [merge|overwrite|dryrun]")
     boop.util.echo("  Queue controls: boop prequeue [on|off] | boop lead <seconds>")
     boop.util.echo("  Config io: boop get [key] | boop set <key> <value>")
     boop.util.echo("  Combat controls: boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>")
@@ -550,17 +767,6 @@ function boop.ui.help(topic)
     boop.util.echo("  boop targeting blacklist   -> attack anything not blacklisted")
     boop.util.echo("  boop targeting auto        -> attack any valid denizen")
     boop.util.echo("  boop config -> quick clickable mode switch")
-    return
-  end
-
-  if t == "players" or t == "player" then
-    boop.util.echo("Help: players")
-    boop.util.echo("  boop players")
-    boop.util.echo("  boop players add <name>")
-    boop.util.echo("  boop players remove <name>")
-    boop.util.echo("Notes:")
-    boop.util.echo("  This is an ignored-player whitelist used when ignoreOtherPlayers is OFF.")
-    boop.util.echo("  Whitelisted players will not pause hunting when present in room.")
     return
   end
 
@@ -643,6 +849,18 @@ function boop.ui.help(topic)
     return
   end
 
+  if t == "import" or t == "foxhunt" then
+    boop.util.echo("Help: foxhunt import")
+    boop.util.echo("  boop import foxhunt")
+    boop.util.echo("  boop import foxhunt merge")
+    boop.util.echo("  boop import foxhunt overwrite")
+    boop.util.echo("  boop import foxhunt dryrun")
+    boop.util.echo("merge: replace boop list data for imported Foxhunt areas, keep other boop areas.")
+    boop.util.echo("overwrite: clear boop lists first, then import all Foxhunt areas.")
+    boop.util.echo("dryrun: report counts only; no changes.")
+    return
+  end
+
   if t == "diag" or t == "diagnose" then
     boop.util.echo("Help: diag")
     boop.util.echo("  diag")
@@ -714,7 +932,7 @@ function boop.ui.help(topic)
     boop.util.echo("Help: config dashboard")
     boop.util.echo("  boop config")
     boop.util.echo("Clickable controls for enable, targeting mode, queueing,")
-    boop.util.echo("whitelist priority order, ignore other players, and target order.")
+    boop.util.echo("whitelist priority order and target order.")
     boop.util.echo("Includes quick links into whitelist/blacklist managers.")
     return
   end
@@ -722,6 +940,11 @@ function boop.ui.help(topic)
   boop.util.echo("Unknown help topic: " .. tostring(topic))
   boop.util.echo("Use: boop help topics")
   helpTopicLinks()
+end
+
+function boop.ui.home()
+  boop.ui.status("status")
+  boop.ui.help("main")
 end
 
 function boop.ui.toggleConfigBool(key)
@@ -753,162 +976,92 @@ function boop.ui.cycleTargetOrder(step)
 end
 
 function boop.ui.config()
-  local class = boop.state.class or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class) or "unknown"
+  local class = currentClass()
 
-  if cecho and cechoLink then
-    cecho("\n<green>boop<reset>: <yellow>Configuration")
-    cecho("\n<white>  class: <cyan>" .. tostring(class) .. "<reset>")
-
-    cecho("\n<white>  enabled: ")
-    cechoLink("<" .. boolColor(boop.config.enabled) .. ">[" .. boolText(boop.config.enabled) .. "]<reset>",
-      function() boop.ui.setEnabled(not boop.config.enabled, true); boop.ui.config() end,
-      "Toggle boop on/off", true
-    )
-
-    cecho("\n<white>  targeting: ")
-    local targetingModes = { "manual", "whitelist", "blacklist", "auto" }
-    for _, mode in ipairs(targetingModes) do
-      local modeName = mode
-      local active = boop.config.targetingMode == modeName
-      local modeColor = active and "green" or "grey"
-      cechoLink("<" .. modeColor .. ">[" .. modeName .. "]<reset>",
-        function() boop.ui.setTargetingMode(modeName, true); boop.ui.config() end,
-        "Set targeting mode to " .. modeName, true
-      )
-      cecho(" ")
-    end
-
-    cecho("\n<white>  whitelist priority order: ")
-    cechoLink("<" .. boolColor(boop.config.whitelistPriorityOrder) .. ">[" .. boolText(boop.config.whitelistPriorityOrder) .. "]<reset>",
-      function() boop.ui.toggleConfigBool("whitelistPriorityOrder") end,
-      "Toggle whitelist order priority", true
-    )
-
-    cecho("\n<white>  ignore other players: ")
-    cechoLink("<" .. boolColor(not not boop.config.ignoreOtherPlayers) .. ">[" .. boolText(not not boop.config.ignoreOtherPlayers) .. "]<reset>",
-      function() boop.ui.toggleConfigBool("ignoreOtherPlayers") end,
-      "Toggle ignoring other players in room", true
-    )
-
-    local ignoredPlayers = boop.ui.getIgnoredPlayers()
-    cecho("\n<white>  ignored-player whitelist: <cyan>" .. tostring(#ignoredPlayers) .. "<reset> ")
-    cechoLink("<yellow>[show]<reset>",
-      function() boop.ui.displayIgnoredPlayers() end,
-      "Show ignored-player whitelist", true
-    )
-    if appendCmdLine then
-      cecho(" ")
-      cechoLink("<yellow>[add]<reset>",
-        function()
-          if clearCmdLine then clearCmdLine() end
-          appendCmdLine("boop players add ")
-        end,
-        "Fill command line with boop players add", true
-      )
-    end
-
-    cecho("\n<white>  use queueing: ")
-    cechoLink("<" .. boolColor(not not boop.config.useQueueing) .. ">[" .. boolText(not not boop.config.useQueueing) .. "]<reset>",
-      function() boop.ui.toggleConfigBool("useQueueing") end,
-      "Toggle queueing mode", true
-    )
-
-    cecho("\n<white>  prequeue: ")
-    cechoLink("<" .. boolColor(not not boop.config.prequeueEnabled) .. ">[" .. boolText(not not boop.config.prequeueEnabled) .. "]<reset>",
-      function() boop.ui.setPrequeueEnabled(not boop.config.prequeueEnabled); boop.ui.config() end,
-      "Toggle prequeue mode", true
-    )
-
+  if cecho then
+    local row = 1
     local lead = tonumber(boop.config.attackLeadSeconds) or 0
-    cecho(string.format("\n<white>  attack lead: <cyan>%.2fs<reset>", lead))
-    if appendCmdLine then
-      cecho(" ")
-      cechoLink("<yellow>[set]<reset>",
-        function()
-          if clearCmdLine then clearCmdLine() end
-          appendCmdLine("boop lead ")
-        end,
-        "Fill command line with boop lead", true
-      )
-    end
-
-    cecho("\n<white>  trace: ")
-    cechoLink("<" .. boolColor(not not boop.config.traceEnabled) .. ">[" .. boolText(not not boop.config.traceEnabled) .. "]<reset>",
-      function() boop.ui.setTraceEnabled(not boop.config.traceEnabled); boop.ui.config() end,
-      "Toggle trace logging", true
-    )
-
     local diagTimeout = tonumber(boop.config.diagTimeoutSeconds) or 0
-    cecho(string.format("\n<white>  diag timeout: <cyan>%.2fs<reset>", diagTimeout))
-    if appendCmdLine then
-      cecho(" ")
-      cechoLink("<yellow>[set]<reset>",
-        function()
-          if clearCmdLine then clearCmdLine() end
-          appendCmdLine("boop set diagtimeout ")
-        end,
-        "Fill command line with boop set diagtimeout", true
-      )
-    end
-
-    cecho("\n<white>  auto grab gold: ")
-    cechoLink("<" .. boolColor(not not boop.config.autoGrabGold) .. ">[" .. boolText(not not boop.config.autoGrabGold) .. "]<reset>",
-      function() boop.ui.toggleAutoGrabGold(); boop.ui.config() end,
-      "Toggle auto pickup of dropped gold", true
-    )
-
     local pack = boop.util.trim(boop.config.goldPack or "")
     local shownPack = pack ~= "" and pack or "(off)"
-    cecho("\n<white>  gold pack: <cyan>" .. shownPack .. "<reset>")
-    if appendCmdLine then
-      cecho(" ")
-      cechoLink("<yellow>[set]<reset>",
-        function()
-          if clearCmdLine then clearCmdLine() end
-          appendCmdLine("boop pack ")
-        end,
-        "Fill command line with boop pack", true
-      )
-    end
+
+    uiPrintHeader("configuration > boop")
+
+    uiPrintSection("targeting")
+    uiPrintRow(row, "Hunting enabled", boolText(boop.config.enabled), boolColor(boop.config.enabled), function()
+      boop.ui.setEnabled(not boop.config.enabled, true)
+      boop.ui.config()
+    end, "Toggle boop on/off")
+    row = row + 1
+    uiPrintRow(row, "Targeting mode", boop.config.targetingMode or "whitelist", "cyan", function()
+      cycleTargetingMode(1)
+    end, "Cycle targeting mode")
+    row = row + 1
+    uiPrintRow(row, "Whitelist priority order", boolText(boop.config.whitelistPriorityOrder), boolColor(boop.config.whitelistPriorityOrder), function()
+      boop.ui.toggleConfigBool("whitelistPriorityOrder")
+    end, "Toggle whitelist priority order")
+    row = row + 1
+    uiPrintRow(row, "Target order", boop.config.targetOrder or "order", "cyan", function()
+      boop.ui.cycleTargetOrder(1)
+    end, "Cycle target order")
+    row = row + 1
+
+    uiPrintSection("queueing")
+    uiPrintRow(row, "Use queueing", boolText(not not boop.config.useQueueing), boolColor(not not boop.config.useQueueing), function()
+      boop.ui.toggleConfigBool("useQueueing")
+    end, "Toggle queueing mode")
+    row = row + 1
+    uiPrintRow(row, "Prequeue", boolText(not not boop.config.prequeueEnabled), boolColor(not not boop.config.prequeueEnabled), function()
+      boop.ui.setPrequeueEnabled(not boop.config.prequeueEnabled)
+      boop.ui.config()
+    end, "Toggle prequeue mode")
+    row = row + 1
+    uiPrintRow(row, string.format("Attack lead (%.2fs)", lead), "SET", "yellow", function()
+      uiSetCommandLine("boop lead ")
+    end, "Fill command line with boop lead")
+    row = row + 1
+    uiPrintRow(row, string.format("Diag timeout (%.2fs)", diagTimeout), "SET", "yellow", function()
+      uiSetCommandLine("boop set diagtimeout ")
+    end, "Fill command line with boop set diagtimeout")
+    row = row + 1
+
+    uiPrintSection("loot")
+    uiPrintRow(row, "Auto grab gold", boolText(not not boop.config.autoGrabGold), boolColor(not not boop.config.autoGrabGold), function()
+      boop.ui.toggleAutoGrabGold()
+      boop.ui.config()
+    end, "Toggle auto pickup of dropped gold")
+    row = row + 1
+    uiPrintRow(row, "Gold pack: " .. shownPack, "SET", "yellow", function()
+      uiSetCommandLine("boop pack ")
+    end, "Fill command line with boop pack")
+    row = row + 1
     if pack ~= "" then
-      cecho(" ")
-      cechoLink("<yellow>[off]<reset>",
-        function() boop.ui.setGoldPack(""); boop.ui.config() end,
-        "Disable gold pack auto-stash", true
-      )
+      uiPrintRow(row, "Clear gold pack", "OFF", "red", function()
+        boop.ui.setGoldPack("")
+        boop.ui.config()
+      end, "Disable gold pack auto-stash")
+      row = row + 1
     end
 
-    cecho("\n<white>  target order: ")
-    local targetOrders = { "order", "numeric", "reverse" }
-    for _, order in ipairs(targetOrders) do
-      local orderName = order
-      local active = boop.config.targetOrder == orderName
-      local orderColor = active and "green" or "grey"
-      cechoLink("<" .. orderColor .. ">[" .. orderName .. "]<reset>",
-        function() saveConfigValue("targetOrder", orderName); boop.ui.config() end,
-        "Set target order to " .. orderName, true
-      )
-      cecho(" ")
-    end
+    uiPrintSection("combat / debug")
+    uiPrintRow(row, "Rage mode: " .. tostring(boop.config.attackMode or "simple"), "SET", "yellow", function()
+      uiSetCommandLine("boop ragemode ")
+    end, "Fill command line with boop ragemode")
+    row = row + 1
+    uiPrintRow(row, "Trace logging", boolText(not not boop.config.traceEnabled), boolColor(not not boop.config.traceEnabled), function()
+      boop.ui.setTraceEnabled(not boop.config.traceEnabled)
+      boop.ui.config()
+    end, "Toggle trace logging")
+    row = row + 1
+    uiPrintRow(row, "Whitelist manager", "OPEN", "green", function()
+      boop.targets.displayWhitelist()
+    end, "Show whitelist manager")
+    row = row + 1
+    uiPrintRow(row, "Blacklist manager", "OPEN", "green", function()
+      boop.targets.displayBlacklist()
+    end, "Show blacklist manager")
 
-    cecho("\n<white>  rage mode: <cyan>" .. tostring(boop.config.attackMode or "simple") .. "<reset> ")
-    if appendCmdLine then
-      cechoLink("<yellow>[set]<reset>",
-        function()
-          if clearCmdLine then
-            clearCmdLine()
-          end
-          appendCmdLine("boop ragemode ")
-        end,
-        "Fill command line with boop ragemode", true
-      )
-    end
-
-    cecho("\n<white>  quick lists: ")
-    cechoLink("<cyan>[whitelist]<reset>", function() boop.targets.displayWhitelist() end, "Show whitelist manager", true)
-    cecho(" ")
-    cechoLink("<cyan>[blacklist]<reset>", function() boop.targets.displayBlacklist() end, "Show blacklist manager", true)
-    cecho("\n<white>  quick commands: boop status | boop debug | boop trace show | boop trip start/stop")
+    uiPrintFooter("Type: boop set <key> <value> | boop get [key] | boop help config")
     return
   end
 
@@ -916,8 +1069,6 @@ function boop.ui.config()
   boop.util.echo("  enabled: " .. tostring(boop.config.enabled))
   boop.util.echo("  targeting: " .. tostring(boop.config.targetingMode))
   boop.util.echo("  whitelistPriorityOrder: " .. tostring(boop.config.whitelistPriorityOrder))
-  boop.util.echo("  ignoreOtherPlayers: " .. tostring(boop.config.ignoreOtherPlayers))
-  boop.util.echo("  ignoredPlayers: " .. tostring(boop.config.ignoredPlayers or ""))
   boop.util.echo("  useQueueing: " .. tostring(boop.config.useQueueing))
   boop.util.echo("  prequeueEnabled: " .. tostring(boop.config.prequeueEnabled))
   boop.util.echo("  attackLeadSeconds: " .. tostring(boop.config.attackLeadSeconds))
@@ -935,17 +1086,14 @@ function boop.ui.debug()
   local denizenCount = boop.state.denizens and #boop.state.denizens or 0
   local currentTargetId = boop.state.currentTargetId or ""
   local currentTargetName = boop.state.targetName or ""
-  local ignoreOthers = boop.config.ignoreOtherPlayers and "yes" or "no"
-  local newPeople = boop.state.newPeopleInRoom and "yes" or "no"
   local class = boop.state.class or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class) or "unknown"
   local eq = gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.eq or "?"
   local bal = gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.bal or "?"
   local rage = boop.attacks and boop.attacks.getRage and boop.attacks.getRage() or 0
   local msg = string.format(
-    "enabled:%s | mode:%s | class:%s | eq:%s bal:%s | denizens:%s | target:%s (%s) | rage:%s | ignoreOthers:%s newPeople:%s",
+    "enabled:%s | mode:%s | class:%s | eq:%s bal:%s | denizens:%s | target:%s (%s) | rage:%s",
     enabled, mode, class, tostring(eq), tostring(bal),
-    tostring(denizenCount), tostring(currentTargetId), tostring(currentTargetName), tostring(rage),
-    ignoreOthers, newPeople
+    tostring(denizenCount), tostring(currentTargetId), tostring(currentTargetName), tostring(rage)
   )
   boop.util.echo("debug | " .. msg)
 end

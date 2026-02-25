@@ -1,1 +1,0 @@
-boop.ui.displayIgnoredPlayers()

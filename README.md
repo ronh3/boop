@@ -10,14 +10,15 @@ Standalone Mudlet package for Achaea auto hunting.
 - Targeting uses denizen IDs (IRE.Target.Set by id), not names.
 
 ## Commands
+- `boop` (status + main help dashboard)
 - `bh` (toggle on/off)
 - `boop on` / `boop off`
-- `boop help` / `boop help <topic>` (examples: `boop help whitelist`, `boop help players`, `boop help queueing`)
+- `boop help` / `boop help <topic>` (examples: `boop help whitelist`, `boop help queueing`, `boop help gold`)
 - `boop status`
 - `boop config` (interactive clickable config dashboard)
-- `boop players` / `boop players add <name>` / `boop players remove <name>` (ignored-player whitelist)
 - `boop autogold` / `boop autogold on` / `boop autogold off`
 - `boop pack` / `boop pack <container>` / `boop pack off` / `boop pack test` (auto-stash container for sovereigns)
+- `boop import foxhunt [merge|overwrite|dryrun]` (imports Foxhunt DB whitelist/blacklist into boop)
 - `boop prequeue` / `boop prequeue on` / `boop prequeue off`
 - `boop lead` / `boop lead <seconds>` (prequeue lead timing)
 - `boop get [key]` / `boop set <key> <value>`
@@ -47,11 +48,11 @@ Standalone Mudlet package for Achaea auto hunting.
 - For `Two Handed` spec with `Focus` known in `Weaponmastery`, boop prepends `battlefury focus speed/` to standard damage attacks (never shieldbreakers).
 - For `Unnamable` with `Maul` known in `Dominion`, boop prepends `maul &tar/` to standard attacks while ready, then waits for the cooldown-ready line before prepending again.
 - `diag` clears queue, queues `diagnose`, and pauses attacks until `You are: ...` or `You are in perfect health.` and the following prompt (with timeout fallback via `diagTimeoutSeconds`).
-- With `ignoreOtherPlayers` off, non-whitelisted players in room pause hunting; manage the whitelist with `boop players`.
 - Prequeue is separately configurable from queueing (`boop prequeue`); when enabled, it queues standard attacks before recovery using `boop lead` seconds (default `1.00`).
 - Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.
 - In queueing mode, boop caches the last `BOOP_ATTACK` alias payload and skips redundant `setalias` sends when unchanged.
 - Trace buffer records recent boop decisions/commands for post-mortem debugging (`boop trace show`).
+- Foxhunt import reads Mudlet DB `hunting` lists directly; `merge` is default, `overwrite` clears boop lists first, `dryrun` reports counts only.
 
 ## Starting A Session
 - See `CODEX.md` (Session Startup).

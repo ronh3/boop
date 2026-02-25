@@ -5,31 +5,6 @@ local function nowSeconds()
   return os.clock()
 end
 
-local function hasBlockingPlayers()
-  if boop.config.ignoreOtherPlayers then
-    return false
-  end
-
-  local ignored = {}
-  for _, part in ipairs(boop.util.split(boop.config.ignoredPlayers or "", "/")) do
-    local key = boop.util.safeLower(boop.util.trim(part))
-    if key ~= "" then
-      ignored[key] = true
-    end
-  end
-
-  for name, present in pairs(boop.state.players or {}) do
-    if present then
-      local key = boop.util.safeLower(boop.util.trim(name))
-      if key ~= "" and not ignored[key] then
-        return true
-      end
-    end
-  end
-
-  return false
-end
-
 local function isGoldItem(item)
   if not item or not item.name then return false end
   local name = boop.util.safeLower(item.name)
@@ -168,10 +143,6 @@ function boop.onDiagReadyLine()
   boop.trace.log("diag ready line seen")
 end
 
-function boop.events.refreshPlayerSafety()
-  boop.state.newPeopleInRoom = hasBlockingPlayers()
-end
-
 function boop.events.register()
   if boop.handlers then
     for _, id in ipairs(boop.handlers) do
@@ -193,9 +164,6 @@ function boop.events.register()
   add("gmcp.Char.Items.Add", "boop.onRoomItemsAdd")
   add("gmcp.Char.Items.Remove", "boop.onRoomItemsRemove")
   add("gmcp.Room.Info", "boop.onRoomInfo")
-  add("gmcp.Room.Players", "boop.onRoomPlayers")
-  add("gmcp.Room.AddPlayer", "boop.onRoomAddPlayer")
-  add("gmcp.Room.RemovePlayer", "boop.onRoomRemovePlayer")
   add("gmcp.IRE.Target.Set", "boop.onTargetSet")
   add("gmcp.IRE.Target.Info", "boop.onTargetInfo")
   add("gmcp.Char.Status", "boop.onCharStatus")
@@ -225,41 +193,12 @@ function boop.onRoomItemsRemove()
   boop.targets.removeRoomItem(gmcp.Char.Items.Remove.item)
 end
 
-function boop.onRoomPlayers()
-  if not gmcp or not gmcp.Room or not gmcp.Room.Players then return end
-  boop.state.players = {}
-  for _, player in ipairs(gmcp.Room.Players or {}) do
-    if gmcp.Char and gmcp.Char.Status and player.name ~= gmcp.Char.Status.name then
-      boop.state.players[player.name] = true
-    end
-  end
-  boop.events.refreshPlayerSafety()
-end
-
-function boop.onRoomAddPlayer()
-  if not gmcp or not gmcp.Room or not gmcp.Room.AddPlayer then return end
-  if gmcp.Char and gmcp.Char.Status and gmcp.Room.AddPlayer.name ~= gmcp.Char.Status.name then
-    boop.state.players[gmcp.Room.AddPlayer.name] = true
-    boop.events.refreshPlayerSafety()
-  end
-end
-
-function boop.onRoomRemovePlayer()
-  if not gmcp or not gmcp.Room or not gmcp.Room.RemovePlayer then return end
-  if gmcp.Char and gmcp.Char.Status and gmcp.Room.RemovePlayer ~= gmcp.Char.Status.name then
-    boop.state.players[gmcp.Room.RemovePlayer] = nil
-    boop.events.refreshPlayerSafety()
-  end
-end
-
 function boop.onRoomInfo()
   if not gmcp or not gmcp.Room or not gmcp.Room.Info then return end
   local vars = boop.state
 
   if vars.room ~= gmcp.Room.Info.num then
     vars.movedRooms = true
-    vars.newPeopleInRoom = false
-    vars.players = {}
     vars.lastRoom = vars.room
     boop.clearGoldQueueIntent()
 
@@ -388,10 +327,6 @@ function boop.prequeueStandard()
     end
   end
 
-  if boop.config.ignoreOtherPlayers == false and boop.state.newPeopleInRoom and not boop.state.attacking then
-    return
-  end
-
   if boop.safety and boop.safety.shouldFlee and boop.safety.shouldFlee() then
     return
   end
@@ -435,10 +370,6 @@ end
 function boop.tick()
   if not boop.config.enabled then return end
   if boop.state.diagHold then return end
-
-  if boop.config.ignoreOtherPlayers == false and boop.state.newPeopleInRoom and not boop.state.attacking then
-    return
-  end
 
   if boop.safety and boop.safety.shouldFlee and boop.safety.shouldFlee() then
     boop.safety.flee()

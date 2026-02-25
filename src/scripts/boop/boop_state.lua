@@ -8,13 +8,11 @@ function boop.state.init()
   boop.state.targetShield = boop.state.targetShield or false
 
   boop.state.denizens = boop.state.denizens or {}
-  boop.state.players = boop.state.players or {}
 
   boop.state.room = boop.state.room or ""
   boop.state.lastRoom = boop.state.lastRoom or ""
   boop.state.lastRoomDir = boop.state.lastRoomDir or ""
   boop.state.movedRooms = boop.state.movedRooms or false
-  boop.state.newPeopleInRoom = boop.state.newPeopleInRoom or false
 
   boop.state.fleeing = boop.state.fleeing or false
 
