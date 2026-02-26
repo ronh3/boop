@@ -95,7 +95,7 @@ end
 function boop.attacks.selectRage(profile, rage)
   if not profile then return nil end
 
-  if boop.state.targetShield then
+  if boop.state.targetShield and (type(boop.state.targetShield) ~= "table" or not boop.state.targetShield.attempted) then
     local ability = findByDesc(profile, "Shieldbreak", rage)
     if ability then return ability end
   end
@@ -260,10 +260,13 @@ local function prependUnnamableMaul(cmd)
 end
 
 function boop.attacks.selectStandard(profile)
-  if not profile then return "" end
-  if boop.state.targetShield and profile.shield then
+  if not profile then return "", false end
+  if boop.state.targetShield
+    and (type(boop.state.targetShield) ~= "table" or not boop.state.targetShield.attempted)
+    and profile.shield
+  then
     local cmd = standardCommand(profile.shield)
-    if cmd ~= "" then return cmd end
+    if cmd ~= "" then return cmd, true end
   end
   if profile.dam then
     local cmd = standardCommand(profile.dam)
@@ -271,10 +274,10 @@ function boop.attacks.selectStandard(profile)
       if isTwoHandedSpec() and focusKnown() then
         cmd = prependFocusSpeed(cmd)
       end
-      return cmd
+      return cmd, false
     end
   end
-  return ""
+  return "", false
 end
 
 function boop.attacks.choose()
@@ -288,8 +291,9 @@ function boop.attacks.choose()
   if not profile then return { standard = "", rage = "" } end
 
   local standard = ""
+  local standardShieldbreak = false
   if profile.standard then
-    standard = boop.attacks.selectStandard(profile.standard)
+    standard, standardShieldbreak = boop.attacks.selectStandard(profile.standard)
   end
 
   if standard ~= "" and class == "unnamable" and unnamableMaulKnown() and unnamableMaulReady() then
@@ -315,5 +319,5 @@ function boop.attacks.choose()
     rageAction = boop.util.formatTarget(rageAction, targetId)
   end
 
-  return { standard = standard, rage = rageAction, rageAbility = rageAbility }
+  return { standard = standard, standardShieldbreak = standardShieldbreak, rage = rageAction, rageAbility = rageAbility }
 end

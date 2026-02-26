@@ -79,7 +79,13 @@ end
 
 function boop.targets.setTarget(id)
   if not id or id == "" then return end
-  boop.state.currentTargetId = tostring(id)
+  local nextId = tostring(id)
+  local prevId = tostring(boop.state.currentTargetId or "")
+  local changed = (prevId ~= "" and prevId ~= nextId) or (prevId == "" and nextId ~= "")
+  if changed and boop.targets.clearTargetShield then
+    boop.targets.clearTargetShield("target changed")
+  end
+  boop.state.currentTargetId = nextId
   for _, v in ipairs(boop.state.denizens) do
     if v.id == boop.state.currentTargetId then
       boop.state.targetName = v.name
@@ -688,11 +694,30 @@ end
 
 function boop.targets.onShielded(name)
   if not name then return end
-  if boop.state.targetName ~= "" and boop.state.targetName == name then
+  if boop.state.targetName ~= "" and sameName(boop.state.targetName, name) then
     if boop.state.targetShield and boop.state.targetShield.timer then
       killTimer(boop.state.targetShield.timer)
     end
-    boop.state.targetShield = { gained = os.clock() }
+    boop.state.targetShield = { gained = os.clock(), attempted = false }
     boop.state.targetShield.timer = tempTimer(3, function() boop.state.targetShield = false end)
+  end
+end
+
+function boop.targets.onShieldbreakAttempt()
+  if not boop.state.targetShield then return end
+  if type(boop.state.targetShield) ~= "table" then
+    boop.state.targetShield = { gained = os.clock() }
+  end
+  boop.state.targetShield.attempted = true
+  boop.state.targetShield.lastAttempt = os.clock()
+end
+
+function boop.targets.clearTargetShield(reason)
+  if boop.state and type(boop.state.targetShield) == "table" and boop.state.targetShield.timer then
+    killTimer(boop.state.targetShield.timer)
+  end
+  boop.state.targetShield = false
+  if reason and boop.trace and boop.trace.log then
+    boop.trace.log("shield cleared: " .. tostring(reason))
   end
 end

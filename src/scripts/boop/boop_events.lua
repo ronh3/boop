@@ -43,6 +43,24 @@ local function queueGoldCommands()
   end
 end
 
+local function cancelAutoGrabGoldTimer()
+  if boop.state and boop.state.autoGrabGoldTimer then
+    killTimer(boop.state.autoGrabGoldTimer)
+    boop.state.autoGrabGoldTimer = nil
+  end
+end
+
+local function flushPendingGold(reason)
+  boop.state = boop.state or {}
+  if not boop.state.autoGrabGoldPending then return false end
+  cancelAutoGrabGoldTimer()
+  boop.state.autoGrabGoldPending = false
+  boop.state.goldDropped = false
+  boop.trace.log("gold pending flush: " .. tostring(reason or "unspecified"))
+  queueGoldCommands()
+  return true
+end
+
 local function autoGrabRoomItem(item)
   if not boop.config.enabled then return end
   if not boop.config.autoGrabGold then return end
@@ -53,19 +71,20 @@ local function autoGrabRoomItem(item)
     boop.state = boop.state or {}
     boop.state.autoGrabGoldPending = true
     boop.state.goldDropped = true
-    if boop.state.autoGrabGoldTimer then
-      killTimer(boop.state.autoGrabGoldTimer)
-      boop.state.autoGrabGoldTimer = nil
+
+    local denizenCount = boop.state.denizens and #boop.state.denizens or 0
+    if denizenCount <= 0 then
+      flushPendingGold("room clear on drop")
+      return
     end
-    boop.state.autoGrabGoldTimer = tempTimer(1.2, function()
-      boop.state.autoGrabGoldTimer = nil
-      if not boop.config or not boop.config.enabled then return end
-      if not boop.config.autoGrabGold then return end
-      if not boop.state or not boop.state.autoGrabGoldPending then return end
-      boop.state.autoGrabGoldPending = false
-      boop.state.goldDropped = false
-      boop.trace.log("gold fallback queue fired")
-      queueGoldCommands()
+
+    cancelAutoGrabGoldTimer()
+    boop.state.autoGrabGoldTimer = tempTimer(0.35, function()
+      if not boop.config or not boop.config.enabled or not boop.config.autoGrabGold then
+        cancelAutoGrabGoldTimer()
+        return
+      end
+      flushPendingGold("fallback timer")
     end)
   else
     queueGoldCommands()
@@ -201,6 +220,9 @@ function boop.onRoomInfo()
     vars.movedRooms = true
     vars.lastRoom = vars.room
     boop.clearGoldQueueIntent()
+    if boop.targets and boop.targets.clearTargetShield then
+      boop.targets.clearTargetShield("room changed")
+    end
 
     if not vars.fleeing then
       if gmcp.Room.Info.exits then
@@ -223,13 +245,23 @@ end
 
 function boop.onTargetSet()
   if not gmcp or not gmcp.IRE or not gmcp.IRE.Target or not gmcp.IRE.Target.Set then return end
-  boop.state.currentTargetId = gmcp.IRE.Target.Set
+  local newId = tostring(gmcp.IRE.Target.Set or "")
+  local oldId = tostring(boop.state.currentTargetId or "")
+  if oldId ~= "" and newId ~= "" and oldId ~= newId and boop.targets and boop.targets.clearTargetShield then
+    boop.targets.clearTargetShield("target gmcp set changed")
+  end
+  boop.state.currentTargetId = newId
 end
 
 function boop.onTargetInfo()
   if not gmcp or not gmcp.IRE or not gmcp.IRE.Target or not gmcp.IRE.Target.Info then return end
   if gmcp.IRE.Target.Info.id then
-    boop.state.currentTargetId = gmcp.IRE.Target.Info.id
+    local newId = tostring(gmcp.IRE.Target.Info.id or "")
+    local oldId = tostring(boop.state.currentTargetId or "")
+    if oldId ~= "" and newId ~= "" and oldId ~= newId and boop.targets and boop.targets.clearTargetShield then
+      boop.targets.clearTargetShield("target gmcp info changed")
+    end
+    boop.state.currentTargetId = newId
   end
 end
 
@@ -333,6 +365,9 @@ function boop.prequeueStandard()
 
   local targetId = boop.targets.choose()
   if not targetId or targetId == "" then
+    if boop.config.useQueueing and boop.state.autoGrabGoldPending then
+      flushPendingGold("prequeue no target")
+    end
     return
   end
 
@@ -343,6 +378,9 @@ function boop.prequeueStandard()
   local actions = boop.attacks.choose()
   if actions.standard and actions.standard ~= "" then
     boop.executeAction(actions.standard, true)
+    if actions.standardShieldbreak and boop.targets and boop.targets.onShieldbreakAttempt then
+      boop.targets.onShieldbreakAttempt()
+    end
     boop.state.prequeuedStandard = true
     boop.trace.log("prequeue sent standard")
   end
@@ -378,6 +416,9 @@ function boop.tick()
 
   local targetId = boop.targets.choose()
   if not targetId or targetId == "" then
+    if boop.config.useQueueing and boop.state.autoGrabGoldPending then
+      flushPendingGold("tick no target")
+    end
     boop.state.attacking = false
     boop.trace.log("tick: no target")
     return
@@ -393,6 +434,9 @@ function boop.tick()
   if actions.standard and actions.standard ~= "" then
     if not boop.state.prequeuedStandard and boop.canAct() then
       boop.executeAction(actions.standard)
+      if actions.standardShieldbreak and boop.targets and boop.targets.onShieldbreakAttempt then
+        boop.targets.onShieldbreakAttempt()
+      end
       didAction = true
     end
   end
@@ -400,6 +444,9 @@ function boop.tick()
   if actions.rage and actions.rage ~= "" then
     if boop.canUseRage() then
       boop.executeRageAction(actions.rage)
+      if actions.rageAbility and actions.rageAbility.desc == "Shieldbreak" and boop.targets and boop.targets.onShieldbreakAttempt then
+        boop.targets.onShieldbreakAttempt()
+      end
       if boop.rage and boop.rage.onRageUsed then
         boop.rage.onRageUsed(actions.rageAbility)
       end
