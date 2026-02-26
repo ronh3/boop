@@ -1,5 +1,75 @@
 boop.db = boop.db or {}
 
+local function whitelistTagsSchema()
+  return {
+    area = "",
+    pos = 0,
+    tag = "",
+    _index = { "area" },
+  }
+end
+
+local function warnDb(message)
+  if boop and boop.util and boop.util.echo then
+    boop.util.echo(message)
+  end
+end
+
+function boop.db.ensureWhitelistTagsTable()
+  if not db then
+    return false, "Mudlet DB unavailable"
+  end
+
+  if not boop.db.handle then
+    local ok, handleOrErr = pcall(function() return db:get_database("boop") end)
+    if not ok then
+      return false, tostring(handleOrErr)
+    end
+    boop.db.handle = handleOrErr
+  end
+
+  if not boop.db.handle then
+    return false, "boop DB handle unavailable"
+  end
+
+  local function verifySheet()
+    if not boop.db.handle.whitelist_tags then
+      return false, "whitelist_tags handle missing"
+    end
+    local ok, err = pcall(function()
+      db:fetch(boop.db.handle.whitelist_tags, nil, { boop.db.handle.whitelist_tags.area, boop.db.handle.whitelist_tags.pos })
+    end)
+    if not ok then
+      return false, tostring(err)
+    end
+    return true, nil
+  end
+
+  local ok, err = verifySheet()
+  if ok then
+    return true, nil
+  end
+
+  local created, createErr = pcall(function()
+    db:create("boop", { whitelist_tags = whitelistTagsSchema() })
+  end)
+  if not created then
+    return false, tostring(createErr)
+  end
+
+  local handleOk, handleOrErr = pcall(function() return db:get_database("boop") end)
+  if not handleOk then
+    return false, tostring(handleOrErr)
+  end
+  boop.db.handle = handleOrErr
+
+  local verifyOk, verifyErr = verifySheet()
+  if not verifyOk then
+    return false, tostring(verifyErr or err)
+  end
+  return true, nil
+end
+
 local function castValue(raw, default)
   if raw == nil then return default end
   local t = type(default)
@@ -39,6 +109,7 @@ function boop.db.init()
       ignore = 0,
       _index = { "area" },
     },
+    whitelist_tags = whitelistTagsSchema(),
     stats = {
       name = "",
       value = "",
@@ -48,6 +119,11 @@ function boop.db.init()
   })
 
   boop.db.handle = db:get_database("boop")
+
+  local tagOk, tagErr = boop.db.ensureWhitelistTagsTable()
+  if not tagOk then
+    warnDb("boop: warning: whitelist tag storage unavailable (" .. tostring(tagErr) .. ")")
+  end
 
   boop.db.loadConfig()
   boop.db.loadLists()
@@ -97,6 +173,7 @@ function boop.db.loadLists()
   boop.lists.whitelist = {}
   boop.lists.blacklist = {}
   boop.lists.globalBlacklist = {}
+  boop.lists.whitelistTags = {}
 
   if not boop.db.handle then return end
 
@@ -117,6 +194,25 @@ function boop.db.loadLists()
       boop.lists.blacklist[area][#boop.lists.blacklist[area] + 1] = row.name
     end
   end
+
+  local tagOk = boop.db.ensureWhitelistTagsTable()
+  if tagOk and boop.db.handle.whitelist_tags then
+    local fetched, tagsOrErr = pcall(function()
+      return db:fetch(boop.db.handle.whitelist_tags, nil, { boop.db.handle.whitelist_tags.area, boop.db.handle.whitelist_tags.pos })
+    end)
+    if fetched then
+      for _, row in ipairs(tagsOrErr) do
+        local area = row.area
+        local tag = row.tag
+        if area and area ~= "" and tag and tag ~= "" then
+          boop.lists.whitelistTags[area] = boop.lists.whitelistTags[area] or {}
+          boop.lists.whitelistTags[area][#boop.lists.whitelistTags[area] + 1] = tag
+        end
+      end
+    else
+      warnDb("boop: warning: failed loading whitelist tags (" .. tostring(tagsOrErr) .. ")")
+    end
+  end
 end
 
 function boop.db.saveList(kind, area, list)
@@ -135,6 +231,38 @@ function boop.db.saveList(kind, area, list)
 
   for i, name in ipairs(list) do
     db:add(dbtable, { area = area, pos = i, name = name })
+  end
+end
+
+function boop.db.saveWhitelistTags(area, tags)
+  local ok, err = boop.db.ensureWhitelistTagsTable()
+  if not ok then
+    warnDb("boop: warning: cannot save whitelist tags (" .. tostring(err) .. ")")
+    return
+  end
+  if not boop.db.handle or not boop.db.handle.whitelist_tags then return end
+  local dbtable = boop.db.handle.whitelist_tags
+  local fetched, rowsOrErr = pcall(function()
+    return db:fetch(dbtable, db:eq(dbtable.area, area))
+  end)
+  if not fetched then
+    warnDb("boop: warning: cannot fetch existing whitelist tags (" .. tostring(rowsOrErr) .. ")")
+    return
+  end
+  local rows = rowsOrErr
+  for _, row in ipairs(rows) do
+    local deleted = pcall(function() db:delete(dbtable, row._row_id) end)
+    if not deleted then
+      warnDb("boop: warning: failed deleting old whitelist tag row")
+    end
+  end
+  for i, tag in ipairs(tags or {}) do
+    local added, addErr = pcall(function()
+      db:add(dbtable, { area = area, pos = i, tag = tag })
+    end)
+    if not added then
+      warnDb("boop: warning: failed saving whitelist tag `" .. tostring(tag) .. "` (" .. tostring(addErr) .. ")")
+    end
   end
 end
 

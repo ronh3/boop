@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.54"
+boop.version = boop.version or "0.1.56"
 
 boop.defaults = {
   enabled = false,
@@ -23,7 +23,11 @@ boop.defaults = {
 }
 
 boop.config = boop.config or {}
-boop.lists = boop.lists or { whitelist = {}, blacklist = {}, globalBlacklist = {} }
+boop.lists = boop.lists or {}
+boop.lists.whitelist = boop.lists.whitelist or {}
+boop.lists.blacklist = boop.lists.blacklist or {}
+boop.lists.globalBlacklist = boop.lists.globalBlacklist or {}
+boop.lists.whitelistTags = boop.lists.whitelistTags or {}
 boop.lists.separator = boop.lists.separator or "/"
 boop.handlers = boop.handlers or {}
 

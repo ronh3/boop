@@ -13,9 +13,9 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop` (status + main help dashboard)
 - `bh` (toggle on/off)
 - `boop on` / `boop off`
-- `boop help` / `boop help <topic>` (examples: `boop help whitelist`, `boop help queueing`, `boop help gold`)
+- `boop help` / `boop help <number|topic|home>` (examples: `boop help 2`, `boop help whitelist`)
 - `boop status`
-- `boop config` (interactive clickable config dashboard)
+- `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow)
 - `boop autogold` / `boop autogold on` / `boop autogold off`
 - `boop pack` / `boop pack <container>` / `boop pack off` / `boop pack test` (auto-stash container for sovereigns)
 - `boop import foxhunt [merge|overwrite|dryrun]` (imports Foxhunt DB whitelist/blacklist into boop)
@@ -28,6 +28,10 @@ Standalone Mudlet package for Achaea auto hunting.
 - `diag` (queue-clear + diagnose; temporarily pauses boop attacks until diagnose result + prompt)
 - `boop ih` (also overrides `ih`)
 - `boop whitelist` / `boop whitelist add <name>` / `boop whitelist remove <name>` (display is clickable: up/down/remove)
+- `boop whitelist browse [tag]` (browse whitelist areas; optional tag filter)
+- `boop whitelist tags <area>` / `boop whitelist tag list`
+- `boop whitelist tag add <area> | <tag[,tag2,...]>`
+- `boop whitelist tag remove <area> | <tag[,tag2,...]>`
 - `boop blacklist` / `boop blacklist add <name>` / `boop blacklist remove <name>` (display is clickable: up/down/remove)
 - `boop aff` / `boop aff add <a/b>` / `boop aff remove <a/b>` / `boop aff clear`
 - `boop debug` / `boop debug attacks` / `boop debug skills` / `boop debug skills dump`
@@ -39,6 +43,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop ragemode big` pools rage until a `Big Damage` rage attack is usable; it only uses `Small Damage` while big is on cooldown.
 - Denizens come from `gmcp.Char.Items.List` with attrib `m` and exclude `x`/`d`.
 - Denizen name matching for whitelist/blacklist is case-insensitive and normalizes straight/curly apostrophes.
+- Whitelist areas can have multiple tags (for example `continent-a`, `newbie`, `high-end`) for browse/filter workflows.
+- Whitelist tags are normalized to lowercase and `-` separators, so `Mid Level` becomes `mid-level`.
 - `boop ih` shows items too; only denizens get whitelist/blacklist buttons.
 - Auto gold pickup grabs newly dropped room items whose names contain `gold sovereign`.
 - In queueing mode, auto gold pickup is prepended to the next standard attack as `get sovereigns/<attack>`.

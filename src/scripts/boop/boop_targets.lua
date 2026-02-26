@@ -100,6 +100,103 @@ local function listContains(list, name)
   return false
 end
 
+local function ensureLists()
+  boop.lists = boop.lists or {}
+  boop.lists.whitelist = boop.lists.whitelist or {}
+  boop.lists.blacklist = boop.lists.blacklist or {}
+  boop.lists.globalBlacklist = boop.lists.globalBlacklist or {}
+  boop.lists.whitelistTags = boop.lists.whitelistTags or {}
+  return boop.lists
+end
+
+local function normalizeTag(tag)
+  local t = boop.util.safeLower(boop.util.trim(tag or ""))
+  t = t:gsub("%s+", "-")
+  t = t:gsub("[^%w%-%_]", "")
+  return t
+end
+
+local function findWhitelistArea(area)
+  local lists = ensureLists()
+  local raw = boop.util.trim(area or "")
+  if raw == "" then
+    return boop.targets.getArea()
+  end
+  if lists.whitelist[raw] then
+    return raw
+  end
+
+  local key = boop.util.safeLower(raw)
+  local exact = {}
+  for areaName, _ in pairs(lists.whitelist or {}) do
+    if boop.util.safeLower(areaName) == key then
+      exact[#exact + 1] = areaName
+    end
+  end
+  if #exact == 1 then
+    return exact[1]
+  end
+  if #exact > 1 then
+    return ""
+  end
+
+  local partial = {}
+  for areaName, _ in pairs(lists.whitelist or {}) do
+    if boop.util.safeLower(areaName):find(key, 1, true) then
+      partial[#partial + 1] = areaName
+    end
+  end
+  if #partial == 1 then
+    return partial[1]
+  end
+  return ""
+end
+
+local function getAreaTags(area)
+  return ensureLists().whitelistTags[area] or {}
+end
+
+local function saveAreaTags(area, tags)
+  ensureLists().whitelistTags[area] = tags
+  if boop.db and boop.db.saveWhitelistTags then
+    boop.db.saveWhitelistTags(area, tags)
+  end
+end
+
+local function sortedWhitelistAreas()
+  local lists = ensureLists()
+  local areas = {}
+  for area, list in pairs(lists.whitelist or {}) do
+    if list and #list > 0 then
+      areas[#areas + 1] = area
+    end
+  end
+  table.sort(areas, function(a, b)
+    return boop.util.safeLower(a) < boop.util.safeLower(b)
+  end)
+  return areas
+end
+
+local function splitTags(raw)
+  local out = {}
+  local seen = {}
+  for part in tostring(raw or ""):gmatch("[^,]+") do
+    local tag = normalizeTag(part)
+    if tag ~= "" and not seen[tag] then
+      seen[tag] = true
+      out[#out + 1] = tag
+    end
+  end
+  return out
+end
+
+local function listHasTag(tags, needle)
+  for _, tag in ipairs(tags or {}) do
+    if tag == needle then return true end
+  end
+  return false
+end
+
 local function shiftListEntry(list, index, direction)
   index = tonumber(index)
   if not list or not index then return false end
@@ -332,6 +429,207 @@ function boop.targets.displayWhitelist(area)
   end
   for i, v in ipairs(list) do
     boop.util.echo("  " .. i .. ". " .. v)
+  end
+end
+
+function boop.targets.displayWhitelistBrowse(filterTag)
+  local filter = normalizeTag(filterTag or "")
+  local areas = sortedWhitelistAreas()
+  local shown = 0
+
+  if cecho and cechoLink then
+    local title = "Whitelist browse"
+    if filter ~= "" then
+      title = title .. " [tag: " .. filter .. "]"
+    end
+    cecho("\n<green>boop<reset>: <white>" .. title)
+
+    for _, areaName in ipairs(areas) do
+      local list = boop.lists.whitelist[areaName] or {}
+      local tags = getAreaTags(areaName)
+      if filter == "" or listHasTag(tags, filter) then
+        shown = shown + 1
+        cecho(string.format("\n  <yellow>%d.<reset> <white>%s<reset> <grey>(%d mobs)<reset> ",
+          shown, areaName, #list))
+        cechoLink("<cyan>[open]<reset>", function() boop.targets.displayWhitelist(areaName) end, "Show whitelist for " .. areaName, true)
+        cecho(" ")
+        cechoLink("<cyan>[tags]<reset>", function() boop.targets.displayWhitelistTags(areaName) end, "Show tags for " .. areaName, true)
+        if appendCmdLine then
+          cecho(" ")
+          cechoLink("<yellow>[tag+]<reset>", function()
+            if clearCmdLine then clearCmdLine() end
+            appendCmdLine("boop whitelist tag add " .. areaName .. " | ")
+          end, "Add tag to " .. areaName, true)
+        end
+        if #tags > 0 then
+          cecho("\n     <grey>tags:<reset> ")
+          for _, tag in ipairs(tags) do
+            cechoLink("<magenta>[" .. tag .. "]<reset>", function() boop.targets.displayWhitelistBrowse(tag) end, "Filter browse by " .. tag, true)
+            cecho(" ")
+          end
+        end
+      end
+    end
+
+    if shown == 0 then
+      if filter == "" then
+        cecho("\n  <grey>(no whitelist areas yet)<reset>")
+      else
+        cecho("\n  <grey>(no areas with that tag)<reset>")
+      end
+    end
+    return
+  end
+
+  boop.util.echo("Whitelist browse" .. (filter ~= "" and (" [tag: " .. filter .. "]") or ""))
+  for _, areaName in ipairs(areas) do
+    local list = boop.lists.whitelist[areaName] or {}
+    local tags = getAreaTags(areaName)
+    if filter == "" or listHasTag(tags, filter) then
+      shown = shown + 1
+      local tagText = (#tags > 0) and (" | tags: " .. table.concat(tags, ", ")) or ""
+      boop.util.echo(string.format("  %d. %s (%d mobs)%s", shown, areaName, #list, tagText))
+    end
+  end
+  if shown == 0 then
+    boop.util.echo(filter == "" and "  (no whitelist areas yet)" or "  (no areas with that tag)")
+  end
+end
+
+function boop.targets.displayWhitelistTags(area)
+  local resolved = findWhitelistArea(area)
+  if resolved == "" then
+    boop.util.echo("Unknown whitelist area: " .. tostring(area))
+    return
+  end
+  local tags = getAreaTags(resolved)
+  if #tags == 0 then
+    boop.util.echo("Whitelist tags for " .. resolved .. ": (none)")
+    boop.util.echo("Add with: boop whitelist tag add " .. resolved .. " | <tag[,tag2,...]>")
+    return
+  end
+  boop.util.echo("Whitelist tags for " .. resolved .. ": " .. table.concat(tags, ", "))
+end
+
+function boop.targets.addWhitelistTags(area, rawTags)
+  local resolved = findWhitelistArea(area)
+  if resolved == "" then
+    boop.util.echo("Unknown whitelist area: " .. tostring(area))
+    boop.util.echo("Use: boop whitelist browse")
+    return
+  end
+  local list = boop.lists.whitelist[resolved] or {}
+  if #list == 0 then
+    boop.util.echo("Area has no whitelist entries: " .. resolved)
+    return
+  end
+
+  local incoming = splitTags(rawTags)
+  if #incoming == 0 then
+    boop.util.echo("Usage: boop whitelist tag add <area> | <tag[,tag2,...]>")
+    return
+  end
+
+  local tags = getAreaTags(resolved)
+  local added = 0
+  for _, tag in ipairs(incoming) do
+    if not listHasTag(tags, tag) then
+      tags[#tags + 1] = tag
+      added = added + 1
+    end
+  end
+  table.sort(tags)
+  saveAreaTags(resolved, tags)
+  boop.util.echo(string.format("Whitelist tags updated for %s: %s (added %d)", resolved, table.concat(tags, ", "), added))
+end
+
+function boop.targets.removeWhitelistTags(area, rawTags)
+  local resolved = findWhitelistArea(area)
+  if resolved == "" then
+    boop.util.echo("Unknown whitelist area: " .. tostring(area))
+    boop.util.echo("Use: boop whitelist browse")
+    return
+  end
+
+  local incoming = splitTags(rawTags)
+  if #incoming == 0 then
+    boop.util.echo("Usage: boop whitelist tag remove <area> | <tag[,tag2,...]>")
+    return
+  end
+
+  local tags = getAreaTags(resolved)
+  if #tags == 0 then
+    boop.util.echo("No tags set for " .. resolved)
+    return
+  end
+
+  local out = {}
+  local removed = 0
+  for _, existing in ipairs(tags) do
+    local keep = true
+    for _, kill in ipairs(incoming) do
+      if existing == kill then
+        keep = false
+        removed = removed + 1
+        break
+      end
+    end
+    if keep then
+      out[#out + 1] = existing
+    end
+  end
+  saveAreaTags(resolved, out)
+  if #out == 0 then
+    boop.util.echo(string.format("Whitelist tags cleared for %s (removed %d)", resolved, removed))
+  else
+    boop.util.echo(string.format("Whitelist tags updated for %s: %s (removed %d)", resolved, table.concat(out, ", "), removed))
+  end
+end
+
+function boop.targets.displayWhitelistTagSummary()
+  local lists = ensureLists()
+  local counts = {}
+  local areasByTag = {}
+  for area, tags in pairs(lists.whitelistTags or {}) do
+    local wl = lists.whitelist[area] or {}
+    if #wl > 0 then
+      for _, tag in ipairs(tags) do
+        counts[tag] = (counts[tag] or 0) + 1
+        areasByTag[tag] = areasByTag[tag] or {}
+        areasByTag[tag][#areasByTag[tag] + 1] = area
+      end
+    end
+  end
+
+  local tags = {}
+  for tag, _ in pairs(counts) do
+    tags[#tags + 1] = tag
+  end
+  table.sort(tags)
+
+  if cecho and cechoLink then
+    cecho("\n<green>boop<reset>: <white>Whitelist tag summary:")
+    if #tags == 0 then
+      cecho("\n  <grey>(no tags yet)<reset>")
+      return
+    end
+    for i, tag in ipairs(tags) do
+      cecho(string.format("\n  <yellow>%d.<reset> <magenta>%s<reset> <grey>(%d areas)<reset> ",
+        i, tag, counts[tag] or 0))
+      cechoLink("<cyan>[browse]<reset>", function() boop.targets.displayWhitelistBrowse(tag) end, "Browse whitelist areas tagged " .. tag, true)
+    end
+    return
+  end
+
+  boop.util.echo("Whitelist tag summary:")
+  if #tags == 0 then
+    boop.util.echo("  (no tags yet)")
+    return
+  end
+  for i, tag in ipairs(tags) do
+    local areas = areasByTag[tag] or {}
+    table.sort(areas, function(a, b) return boop.util.safeLower(a) < boop.util.safeLower(b) end)
+    boop.util.echo(string.format("  %d. %s (%d areas) -> %s", i, tag, counts[tag] or 0, table.concat(areas, " | ")))
   end
 end
 
