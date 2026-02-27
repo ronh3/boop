@@ -68,6 +68,11 @@ local function uiSetCommandLine(prefix)
   appendCmdLine(prefix or "")
 end
 
+local uiPrintHeader
+local uiPrintSection
+local uiPrintRow
+local uiPrintFooter
+
 function boop.ui.statusLine(context)
   local enabled = boop.config.enabled and "on" or "off"
   local mode = boop.config.targetingMode or "unknown"
@@ -164,7 +169,7 @@ function boop.ui.status(context)
   boop.util.echo(msg)
 end
 
-local function uiPrintHeader(title)
+uiPrintHeader = function(title)
   if cecho then
     cecho("\n<white>" .. string.upper(tostring(title or "")) .. "<reset>")
     cecho("\n<grey>" .. uiRule() .. "<reset>")
@@ -173,7 +178,7 @@ local function uiPrintHeader(title)
   end
 end
 
-local function uiPrintSection(title)
+uiPrintSection = function(title)
   if cecho then
     cecho("\n\n<cyan>" .. string.upper(tostring(title or "")) .. "<reset>")
   else
@@ -181,7 +186,7 @@ local function uiPrintSection(title)
   end
 end
 
-local function uiPrintRow(index, label, buttonText, buttonColor, onClick, hint, labelWidth)
+uiPrintRow = function(index, label, buttonText, buttonColor, onClick, hint, labelWidth)
   if cecho then
     local width = tonumber(labelWidth) or UI_LABEL_COL_WIDTH
     local prefix = uiIndexPrefix(index)
@@ -202,7 +207,7 @@ local function uiPrintRow(index, label, buttonText, buttonColor, onClick, hint, 
   boop.util.echo(row)
 end
 
-local function uiPrintFooter(text)
+uiPrintFooter = function(text)
   if cecho then
     cecho("\n<grey>" .. uiRule() .. "<reset>")
     cecho("\n<white>" .. tostring(text or "") .. "<reset>")
