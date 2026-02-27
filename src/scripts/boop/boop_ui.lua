@@ -22,6 +22,13 @@ end
 local UI_RULE_WIDTH = 56
 local UI_LABEL_COL_WIDTH = 40
 
+local function uiIndexPrefix(index)
+  if index == nil then
+    return ""
+  end
+  return string.format("[%d] ", tonumber(index) or 0)
+end
+
 local function uiPadRight(text, width)
   text = tostring(text or "")
   if #text >= width then
@@ -36,6 +43,23 @@ end
 
 local function uiButtonLabel(value)
   return "[ " .. boop.util.trim(tostring(value or "")) .. " ]"
+end
+
+local function uiComputeLabelWidth(rows, minWidth, maxWidth)
+  local width = tonumber(minWidth) or UI_LABEL_COL_WIDTH
+  local hardMax = tonumber(maxWidth) or 140
+  for _, row in ipairs(rows or {}) do
+    local label = tostring((row and row.label) or "")
+    local index = row and row.index or nil
+    local total = #(uiIndexPrefix(index) .. label)
+    if total > width then
+      width = total
+    end
+  end
+  if width > hardMax then
+    width = hardMax
+  end
+  return width
 end
 
 local function uiSetCommandLine(prefix)
@@ -157,15 +181,13 @@ local function uiPrintSection(title)
   end
 end
 
-local function uiPrintRow(index, label, buttonText, buttonColor, onClick, hint)
+local function uiPrintRow(index, label, buttonText, buttonColor, onClick, hint, labelWidth)
   if cecho then
-    local prefix = ""
-    if index then
-      prefix = string.format("[%d] ", tonumber(index) or 0)
-    end
+    local width = tonumber(labelWidth) or UI_LABEL_COL_WIDTH
+    local prefix = uiIndexPrefix(index)
     local leftRaw = prefix .. tostring(label or "")
-    local left = uiPadRight(leftRaw, UI_LABEL_COL_WIDTH)
-    if #leftRaw >= UI_LABEL_COL_WIDTH then
+    local left = uiPadRight(leftRaw, width)
+    if #leftRaw >= width then
       left = left .. " "
     end
     cecho("\n<white>" .. left .. "<reset>")
@@ -1141,11 +1163,16 @@ local function helpRenderHome()
   if cecho then
     uiPrintHeader("help")
     uiPrintSection("topics")
+    local rows = {}
+    for i, topic in ipairs(HELP_TOPICS) do
+      rows[#rows + 1] = { index = i, label = topic.title }
+    end
+    local labelWidth = uiComputeLabelWidth(rows, UI_LABEL_COL_WIDTH, 100)
     for i, topic in ipairs(HELP_TOPICS) do
       local key = topic.key
       uiPrintRow(i, topic.title, "OPEN", "cyan", function()
         boop.ui.help(key)
-      end, "Open help for " .. topic.title)
+      end, "Open help for " .. topic.title, labelWidth)
     end
     uiPrintFooter("Type: boop help <number|topic|home>")
     return
@@ -1169,17 +1196,26 @@ local function helpRenderTopic(topic)
 
   if cecho then
     uiPrintHeader("help > " .. topic.title)
+    local rows = {}
+    for i, cmd in ipairs(topic.commands or {}) do
+      rows[#rows + 1] = { index = i, label = cmd }
+    end
+    for i, note in ipairs(topic.notes or {}) do
+      rows[#rows + 1] = { index = i, label = note }
+    end
+    local labelWidth = uiComputeLabelWidth(rows, UI_LABEL_COL_WIDTH, 140)
+
     uiPrintSection("commands")
     for i, cmd in ipairs(topic.commands or {}) do
       local value = cmd
       uiPrintRow(i, value, "COPY", "yellow", function()
         uiSetCommandLine(value)
-      end, "Copy command: " .. value)
+      end, "Copy command: " .. value, labelWidth)
     end
     if topic.notes and #topic.notes > 0 then
       uiPrintSection("notes")
       for i, note in ipairs(topic.notes) do
-        uiPrintRow(i, note, "INFO", "cyan", nil, note)
+        uiPrintRow(i, note, "INFO", "cyan", nil, note, labelWidth)
       end
     end
     uiPrintFooter("Type: boop help back | boop help home | boop help <number|topic>")
