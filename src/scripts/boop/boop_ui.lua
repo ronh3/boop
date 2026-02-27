@@ -21,12 +21,11 @@ end
 
 local UI_RULE_WIDTH = 56
 local UI_LABEL_COL_WIDTH = 40
-local UI_BUTTON_INNER_WIDTH = 10
 
 local function uiPadRight(text, width)
   text = tostring(text or "")
   if #text >= width then
-    return text:sub(1, width)
+    return text
   end
   return text .. string.rep(" ", width - #text)
 end
@@ -36,7 +35,7 @@ local function uiRule()
 end
 
 local function uiButtonLabel(value)
-  return "[ " .. uiPadRight(value or "", UI_BUTTON_INNER_WIDTH) .. " ]"
+  return "[ " .. boop.util.trim(tostring(value or "")) .. " ]"
 end
 
 local function uiSetCommandLine(prefix)
