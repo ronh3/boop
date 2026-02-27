@@ -98,13 +98,15 @@ end
 local function markUnnamableMaulUsed(action)
   if not action or action == "" then return end
   if not gmcp or not gmcp.Char or not gmcp.Char.Status then return end
-  if boop.util.safeLower(gmcp.Char.Status.class or "") ~= "unnamable" then return end
+  local class = boop.util.safeLower(gmcp.Char.Status.class or "")
+  if class ~= "unnamable" and class ~= "infernal" then return end
 
   local normalized = boop.util.safeLower(action)
   local parts = boop.util.split(normalized, boop.lists.separator or "/")
   for _, part in ipairs(parts) do
     local trimmed = boop.util.trim(part)
-    if boop.util.starts(trimmed, "hound maul ")
+    if boop.util.starts(trimmed, "hyena maul ")
+      or boop.util.starts(trimmed, "hound maul ")
       or boop.util.starts(trimmed, "maul ")
       or boop.util.starts(trimmed, "dominion maul ")
     then

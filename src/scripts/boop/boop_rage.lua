@@ -68,3 +68,24 @@ function boop.rage.onHoundMaulNotReady()
     boop.trace.log("hound maul not ready")
   end
 end
+
+function boop.rage.onHyenaMaulUsed()
+  boop.rage.setReady("maul", false)
+  if boop.trace and boop.trace.log then
+    boop.trace.log("hyena maul used")
+  end
+end
+
+function boop.rage.onHyenaMaulReady()
+  boop.rage.setReady("maul", true)
+  if boop.trace and boop.trace.log then
+    boop.trace.log("hyena maul ready")
+  end
+end
+
+function boop.rage.onHyenaMaulNotReady()
+  boop.rage.setReady("maul", false)
+  if boop.trace and boop.trace.log then
+    boop.trace.log("hyena maul not ready")
+  end
+end

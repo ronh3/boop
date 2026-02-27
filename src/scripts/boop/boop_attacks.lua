@@ -238,7 +238,24 @@ local function unnamableMaulKnown()
   return true
 end
 
+local function infernalMaulKnown()
+  if boop.skills and boop.skills.ensureSkill then
+    return boop.skills.ensureSkill("Maul", "Oppression")
+  end
+  if boop.skills and boop.skills.knownSkill then
+    return boop.skills.knownSkill("Maul")
+  end
+  return true
+end
+
 local function unnamableMaulReady()
+  if boop.attacks and boop.attacks.rageReady then
+    return boop.attacks.rageReady({ name = "maul" }, nil)
+  end
+  return true
+end
+
+local function infernalMaulReady()
   if boop.attacks and boop.attacks.rageReady then
     return boop.attacks.rageReady({ name = "maul" }, nil)
   end
@@ -259,6 +276,18 @@ local function prependUnnamableMaul(cmd)
     return trimmed
   end
   return "hound maul &tar/" .. trimmed
+end
+
+local function prependInfernalHyenaMaul(cmd)
+  local trimmed = boop.util.trim(cmd)
+  if trimmed == "" then return "" end
+  local normalized = boop.util.safeLower(trimmed)
+  if boop.util.starts(normalized, "hyena maul ")
+    or boop.util.starts(normalized, "hyena maul/")
+  then
+    return trimmed
+  end
+  return "hyena maul &tar/" .. trimmed
 end
 
 function boop.attacks.selectStandard(profile)
@@ -300,6 +329,9 @@ function boop.attacks.choose()
 
   if standard ~= "" and class == "unnamable" and unnamableMaulKnown() and unnamableMaulReady() then
     standard = prependUnnamableMaul(standard)
+  end
+  if standard ~= "" and class == "infernal" and infernalMaulKnown() and infernalMaulReady() then
+    standard = prependInfernalHyenaMaul(standard)
   end
 
   local rageAction = ""

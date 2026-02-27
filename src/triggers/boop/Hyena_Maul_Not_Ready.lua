@@ -1,0 +1,1 @@
+boop.rage.onHyenaMaulNotReady()

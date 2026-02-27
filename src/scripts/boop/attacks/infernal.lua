@@ -2,19 +2,19 @@ boop.attacks.register("infernal", {  standard = {
     -- TODO: Simplified Foxhunt standard (per-spec, no extra state); refine later.
     dam = {
       bySpec = {
-        ["Dual Cutting"] = { cmd = "hyena maul &tar/dsl &tar", skill = "Duality", group = "Weaponmastery" },
-        ["Dual Blunt"] = { cmd = "hyena maul &tar/doublewhirl &tar", skill = "Doublewhirl", group = "Weaponmastery" },
-        ["Two Handed"] = { cmd = "hyena maul &tar/slaughter &tar", skill = "Slaughter", group = "Weaponmastery" },
-        ["Sword and Shield"] = { cmd = "hyena maul &tar/combination &tar slice smash", skill = "Combination", group = "Weaponmastery" },
+        ["Dual Cutting"] = { cmd = "dsl &tar", skill = "Duality", group = "Weaponmastery" },
+        ["Dual Blunt"] = { cmd = "doublewhirl &tar", skill = "Doublewhirl", group = "Weaponmastery" },
+        ["Two Handed"] = { cmd = "slaughter &tar", skill = "Slaughter", group = "Weaponmastery" },
+        ["Sword and Shield"] = { cmd = "combination &tar slice smash", skill = "Combination", group = "Weaponmastery" },
       },
-      default = { cmd = "hyena maul &tar/kill &tar", skill = "", group = "" },
+      default = { cmd = "kill &tar", skill = "", group = "" },
     },
     shield = {
       bySpec = {
-        ["Dual Cutting"] = { cmd = "hyena maul &tar/rsl &tar", skill = "Razeslash", group = "Weaponmastery" },
-        ["Dual Blunt"] = { cmd = "hyena maul &tar/fracture &tar", skill = "Fracture", group = "Weaponmastery" },
-        ["Two Handed"] = { cmd = "hyena maul &tar/carve &tar", skill = "Carve", group = "Weaponmastery" },
-        ["Sword and Shield"] = { cmd = "hyena maul &tar/combination &tar raze smash", skill = "Combination", group = "Weaponmastery" },
+        ["Dual Cutting"] = { cmd = "rsl &tar", skill = "Razeslash", group = "Weaponmastery" },
+        ["Dual Blunt"] = { cmd = "fracture &tar", skill = "Fracture", group = "Weaponmastery" },
+        ["Two Handed"] = { cmd = "carve &tar", skill = "Carve", group = "Weaponmastery" },
+        ["Sword and Shield"] = { cmd = "combination &tar raze smash", skill = "Combination", group = "Weaponmastery" },
       }
     },
   },
