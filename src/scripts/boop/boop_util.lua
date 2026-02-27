@@ -124,12 +124,14 @@ function boop.executeAction(action, forceQueue)
   if boop.config.useQueueing or forceQueue then
     boop.state = boop.state or {}
     local queuedAction = action
-    if boop.config.useQueueing and boop.state.autoGrabGoldPending then
+    if boop.config.useQueueing then
+      local pendingGold = boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending
+      if pendingGold then
       local normalized = boop.util.safeLower(boop.util.trim(queuedAction))
       if normalized ~= "get sovereigns" and not boop.util.starts(normalized, "get sovereigns/") then
         local prefix = "get sovereigns"
-        local pack = boop.util.trim(boop.config.goldPack or "")
-        if boop.markGoldQueueIntent then
+        local pack = boop.util.trim(boop.state.goldPackTarget or boop.config.goldPack or "")
+        if boop.state.autoGrabGoldPending and boop.markGoldQueueIntent then
           boop.markGoldQueueIntent(pack)
         end
         if pack ~= "" then
@@ -143,6 +145,7 @@ function boop.executeAction(action, forceQueue)
       end
       boop.state.autoGrabGoldPending = false
       boop.state.goldDropped = false
+      end
     end
 
     if boop.state.queueAliasDirty == nil then
