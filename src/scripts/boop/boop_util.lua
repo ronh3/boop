@@ -104,7 +104,10 @@ local function markUnnamableMaulUsed(action)
   local parts = boop.util.split(normalized, boop.lists.separator or "/")
   for _, part in ipairs(parts) do
     local trimmed = boop.util.trim(part)
-    if boop.util.starts(trimmed, "maul ") or boop.util.starts(trimmed, "dominion maul ") then
+    if boop.util.starts(trimmed, "hound maul ")
+      or boop.util.starts(trimmed, "maul ")
+      or boop.util.starts(trimmed, "dominion maul ")
+    then
       if boop.rage and boop.rage.setReady then
         boop.rage.setReady("maul", false)
       end

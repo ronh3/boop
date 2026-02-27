@@ -249,14 +249,16 @@ local function prependUnnamableMaul(cmd)
   local trimmed = boop.util.trim(cmd)
   if trimmed == "" then return "" end
   local normalized = boop.util.safeLower(trimmed)
-  if boop.util.starts(normalized, "maul ")
+  if boop.util.starts(normalized, "hound maul ")
+    or boop.util.starts(normalized, "hound maul/")
+    or boop.util.starts(normalized, "maul ")
     or boop.util.starts(normalized, "maul/")
     or boop.util.starts(normalized, "dominion maul ")
     or boop.util.starts(normalized, "dominion maul/")
   then
     return trimmed
   end
-  return "maul &tar/" .. trimmed
+  return "hound maul &tar/" .. trimmed
 end
 
 function boop.attacks.selectStandard(profile)
