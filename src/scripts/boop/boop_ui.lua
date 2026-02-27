@@ -98,7 +98,7 @@ local function renderStatusDashboard()
 
   if cecho then
     local row = 1
-    uiPrintHeader("status > boop")
+    uiPrintHeader("boop > status")
 
     uiPrintSection("core")
     uiPrintRow(row, "Enabled", boolText(boop.config.enabled), boolColor(boop.config.enabled))
@@ -1259,7 +1259,6 @@ end
 
 function boop.ui.home()
   boop.ui.status("status")
-  boop.ui.help("main")
 end
 
 local CONFIG_SECTIONS = {
