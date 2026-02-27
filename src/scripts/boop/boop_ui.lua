@@ -119,9 +119,9 @@ local function renderStatusDashboard()
     row = row + 1
     uiPrintRow(row, "Prequeue", boolText(not not boop.config.prequeueEnabled), boolColor(not not boop.config.prequeueEnabled))
     row = row + 1
-    uiPrintRow(row, string.format("Attack lead (%.2fs)", lead), "VALUE", "yellow")
+    uiPrintRow(row, "Attack lead", string.format("%.2fs", lead), "yellow")
     row = row + 1
-    uiPrintRow(row, string.format("Diag timeout (%.2fs)", diagTimeout), "VALUE", "yellow")
+    uiPrintRow(row, "Diag timeout", string.format("%.2fs", diagTimeout), "yellow")
     row = row + 1
 
     uiPrintSection("combat / loot")
