@@ -914,6 +914,41 @@ local function comboPrettyClass(classKey)
   end))
 end
 
+local function comboPrettyTerm(value)
+  local text = boop.util.trim(tostring(value or ""))
+  if text == "" then
+    return "(none)"
+  end
+  text = text:gsub("[_%-]+", " ")
+  return (text:gsub("(%a)([%w']*)", function(first, rest)
+    return string.upper(first) .. string.lower(rest)
+  end))
+end
+
+local function comboAffSummary(data)
+  local affs = (data and data.affs) or {}
+  local affKeys = {}
+  for aff, _ in pairs(affs) do
+    affKeys[#affKeys + 1] = aff
+  end
+  table.sort(affKeys)
+  if #affKeys == 0 then
+    return "(none)"
+  end
+
+  local parts = {}
+  for _, aff in ipairs(affKeys) do
+    local abilities = affs[aff] or {}
+    local shownAbilities = {}
+    for _, ability in ipairs(abilities) do
+      shownAbilities[#shownAbilities + 1] = comboPrettyTerm(ability)
+    end
+    local attackText = #shownAbilities > 0 and table.concat(shownAbilities, "/") or "unknown"
+    parts[#parts + 1] = string.format("%s (%s)", comboPrettyTerm(aff), attackText)
+  end
+  return table.concat(parts, ", ")
+end
+
 local function comboTokenizeArgs(raw)
   local args = boop.util.trim(raw or "")
   local out = {}
@@ -1276,13 +1311,15 @@ function boop.ui.combos(rawArgs)
   if cecho then
     uiPrintHeader("boop > combos")
     uiPrintSection("party")
-    uiPrintRow(1, table.concat((function()
-      local names = {}
-      for _, classKey in ipairs(selected) do
-        names[#names + 1] = comboPrettyClass(classKey)
-      end
-      return names
-    end)(), ", "), tostring(#selected) .. " CLS", "cyan")
+    local partyRows = {}
+    for i, classKey in ipairs(selected) do
+      local line = string.format("%s Affs - %s", comboPrettyClass(classKey), comboAffSummary(classData[classKey]))
+      partyRows[#partyRows + 1] = { index = i, label = line }
+    end
+    local partyWidth = uiComputeLabelWidth(partyRows, UI_LABEL_COL_WIDTH, 180)
+    for i, row in ipairs(partyRows) do
+      uiPrintRow(i, row.label, "AFFS", "cyan", nil, nil, partyWidth)
+    end
 
     uiPrintSection("conditional synergy")
     if #comboRows == 0 then
@@ -1303,19 +1340,18 @@ function boop.ui.combos(rawArgs)
 
   boop.util.echo("BOOP > COMBOS")
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Party: " .. table.concat((function()
-    local names = {}
-    for _, classKey in ipairs(selected) do
-      names[#names + 1] = comboPrettyClass(classKey)
-    end
-    return names
-  end)(), ", "))
+  boop.util.echo("PARTY")
+  for i, classKey in ipairs(selected) do
+    boop.util.echo(string.format("[%d] %s Affs - %s", i, comboPrettyClass(classKey), comboAffSummary(classData[classKey])))
+  end
+  boop.util.echo("")
+  boop.util.echo("CONDITIONAL SYNERGY")
   if #comboRows == 0 then
     boop.util.echo("No conditional rage combos found for selected classes.")
   else
-    for _, row in ipairs(comboRows) do
-      boop.util.echo(string.format("[%s] %s", row.status, row.label))
-      boop.util.echo("  " .. row.detail)
+    for i, row in ipairs(comboRows) do
+      boop.util.echo(string.format("[%d] %s [%s]", i, row.label, row.status))
+      boop.util.echo("    " .. row.detail)
     end
   end
   boop.util.echo("----------------------------------------")
