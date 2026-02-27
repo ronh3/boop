@@ -1,213 +1,5 @@
 [
   {
-    "name": "Prompt",
-    "isActive": "yes",
-    "isFolder": "no",
-    "multiline": "no",
-    "multilineDelta": "0",
-    "matchall": "no",
-    "filter": "no",
-    "fireLength": "0",
-    "highlight": "no",
-    "highlightFG": "#ff0000",
-    "highlightBG": "#ffff00",
-    "patterns": [
-      {
-        "pattern": "return isPrompt()",
-        "type": "lua"
-      }
-    ],
-    "script": ""
-  },
-  {
-    "name": "Target Shielded",
-    "isActive": "yes",
-    "isFolder": "no",
-    "multiline": "no",
-    "multilineDelta": "0",
-    "matchall": "no",
-    "filter": "no",
-    "fireLength": "0",
-    "highlight": "no",
-    "highlightFG": "#ff0000",
-    "highlightBG": "#ffff00",
-    "patterns": [
-      {
-        "pattern": "^A nearly invisible magical shield forms around (.+)\\.$",
-        "type": "regex"
-      },
-      {
-        "pattern": "^A dizzying beam of energy strikes you as your attack rebounds off of (.+)'s shield\\.$",
-        "type": "regex"
-      }
-    ],
-    "script": ""
-  },
-  {
-    "name": "Rage Ready List",
-    "isActive": "yes",
-    "isFolder": "no",
-    "multiline": "no",
-    "multilineDelta": "0",
-    "matchall": "no",
-    "filter": "no",
-    "fireLength": "0",
-    "highlight": "no",
-    "highlightFG": "#ff0000",
-    "highlightBG": "#ffff00",
-    "patterns": [
-      {
-        "pattern": "^.+ Now Available: (.+)$",
-        "type": "regex"
-      }
-    ],
-    "script": ""
-  },
-  {
-    "name": "Rage Ready Single",
-    "isActive": "yes",
-    "isFolder": "no",
-    "multiline": "no",
-    "multilineDelta": "0",
-    "matchall": "no",
-    "filter": "no",
-    "fireLength": "0",
-    "highlight": "no",
-    "highlightFG": "#ff0000",
-    "highlightBG": "#ffff00",
-    "patterns": [
-      {
-        "pattern": "^You can use (\\w+) again\\.$",
-        "type": "regex"
-      },
-      {
-        "pattern": "^Your (\\w+) ability could be used again but you lack the necessary Rage\\.$",
-        "type": "regex"
-      }
-    ],
-    "script": ""
-  },
-  {
-    "name": "Hound Maul Used",
-    "isActive": "yes",
-    "isFolder": "no",
-    "multiline": "no",
-    "multilineDelta": "0",
-    "matchall": "no",
-    "filter": "no",
-    "fireLength": "0",
-    "highlight": "no",
-    "highlightFG": "#ff0000",
-    "highlightBG": "#ffff00",
-    "patterns": [
-      {
-        "pattern": "^You command your hound to maul .+\\.$",
-        "type": "regex"
-      }
-    ],
-    "script": ""
-  },
-  {
-    "name": "Hound Maul Ready",
-    "isActive": "yes",
-    "isFolder": "no",
-    "multiline": "no",
-    "multilineDelta": "0",
-    "matchall": "no",
-    "filter": "no",
-    "fireLength": "0",
-    "highlight": "no",
-    "highlightFG": "#ff0000",
-    "highlightBG": "#ffff00",
-    "patterns": [
-      {
-        "pattern": "^You may command your hound to maul your foes once more\\.$",
-        "type": "regex"
-      }
-    ],
-    "script": ""
-  },
-  {
-    "name": "Hound Maul Not Ready",
-    "isActive": "yes",
-    "isFolder": "no",
-    "multiline": "no",
-    "multilineDelta": "0",
-    "matchall": "no",
-    "filter": "no",
-    "fireLength": "0",
-    "highlight": "no",
-    "highlightFG": "#ff0000",
-    "highlightBG": "#ffff00",
-    "patterns": [
-      {
-        "pattern": "^You cannot yet order your hound to maul another foe\\.$",
-        "type": "regex"
-      }
-    ],
-    "script": ""
-  },
-  {
-    "name": "Hyena Maul Used",
-    "isActive": "yes",
-    "isFolder": "no",
-    "multiline": "no",
-    "multilineDelta": "0",
-    "matchall": "no",
-    "filter": "no",
-    "fireLength": "0",
-    "highlight": "no",
-    "highlightFG": "#ff0000",
-    "highlightBG": "#ffff00",
-    "patterns": [
-      {
-        "pattern": "^You command your hyena to maul .+\\.$",
-        "type": "regex"
-      }
-    ],
-    "script": ""
-  },
-  {
-    "name": "Hyena Maul Ready",
-    "isActive": "yes",
-    "isFolder": "no",
-    "multiline": "no",
-    "multilineDelta": "0",
-    "matchall": "no",
-    "filter": "no",
-    "fireLength": "0",
-    "highlight": "no",
-    "highlightFG": "#ff0000",
-    "highlightBG": "#ffff00",
-    "patterns": [
-      {
-        "pattern": "^You may command your hyena to maul your foes once more\\.$",
-        "type": "regex"
-      }
-    ],
-    "script": ""
-  },
-  {
-    "name": "Hyena Maul Not Ready",
-    "isActive": "yes",
-    "isFolder": "no",
-    "multiline": "no",
-    "multilineDelta": "0",
-    "matchall": "no",
-    "filter": "no",
-    "fireLength": "0",
-    "highlight": "no",
-    "highlightFG": "#ff0000",
-    "highlightBG": "#ffff00",
-    "patterns": [
-      {
-        "pattern": "^You cannot yet order your hyena to maul another foe\\.$",
-        "type": "regex"
-      }
-    ],
-    "script": ""
-  },
-  {
     "name": "Balance Used",
     "isActive": "yes",
     "isFolder": "no",
@@ -262,6 +54,54 @@
     "patterns": [
       {
         "pattern": "^You are in perfect health\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Gold Command Failure",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You do not see that here\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You do not see .+ here\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You see no sovereigns here\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You do not see any sovereigns here\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You are not carrying that\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You aren't carrying that\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You cannot put that there\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You can't put that in there\\.$",
         "type": "regex"
       }
     ],
@@ -340,7 +180,7 @@
     "script": ""
   },
   {
-    "name": "Gold Command Failure",
+    "name": "Hound Maul Not Ready",
     "isActive": "yes",
     "isFolder": "no",
     "multiline": "no",
@@ -353,35 +193,127 @@
     "highlightBG": "#ffff00",
     "patterns": [
       {
-        "pattern": "^You do not see that here\\.$",
+        "pattern": "^You cannot yet order your hound to maul another foe\\.$",
         "type": "regex"
-      },
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Hound Maul Ready",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
       {
-        "pattern": "^You do not see .+ here\\.$",
+        "pattern": "^You may command your hound to maul your foes once more\\.$",
         "type": "regex"
-      },
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Hound Maul Used",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
       {
-        "pattern": "^You see no sovereigns here\\.$",
+        "pattern": "^You command your hound to maul .+\\.$",
         "type": "regex"
-      },
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Hyena Maul Not Ready",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
       {
-        "pattern": "^You do not see any sovereigns here\\.$",
+        "pattern": "^You cannot yet order your hyena to maul another foe\\.$",
         "type": "regex"
-      },
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Hyena Maul Ready",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
       {
-        "pattern": "^You are not carrying that\\.$",
+        "pattern": "^You may command your hyena to maul your foes once more\\.$",
         "type": "regex"
-      },
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Hyena Maul Used",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
       {
-        "pattern": "^You aren't carrying that\\.$",
+        "pattern": "^You command your hyena to maul .+\\.$",
         "type": "regex"
-      },
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "IH End",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "yes",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
       {
-        "pattern": "^You cannot put that there\\.$",
-        "type": "regex"
-      },
-      {
-        "pattern": "^You can't put that in there\\.$",
+        "pattern": "^Number of objects: (\\d+)$",
         "type": "regex"
       }
     ],
@@ -408,20 +340,88 @@
     "script": ""
   },
   {
-    "name": "IH End",
+    "name": "Prompt",
     "isActive": "yes",
     "isFolder": "no",
     "multiline": "no",
     "multilineDelta": "0",
     "matchall": "no",
-    "filter": "yes",
+    "filter": "no",
     "fireLength": "0",
     "highlight": "no",
     "highlightFG": "#ff0000",
     "highlightBG": "#ffff00",
     "patterns": [
       {
-        "pattern": "^Number of objects: (\\d+)$",
+        "pattern": "return isPrompt()",
+        "type": "lua"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Rage Ready List",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^.+ Now Available: (.+)$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Rage Ready Single",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You can use (\\w+) again\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Your (\\w+) ability could be used again but you lack the necessary Rage\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Target Shielded",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A nearly invisible magical shield forms around (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^A dizzying beam of energy strikes you as your attack rebounds off of (.+)'s shield\\.$",
         "type": "regex"
       }
     ],
