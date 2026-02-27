@@ -268,6 +268,38 @@
     "script": ""
   },
   {
+    "name": "Gold Drop Line",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^.+ drops? .*[Ss]overeign.*\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^.+ spills? .*[Ss]overeign.*\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^.+ scatters? .*[Ss]overeign.*\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^.+ falls? .*[Ss]overeign.*\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
     "name": "Gold Get Success",
     "isActive": "yes",
     "isFolder": "no",

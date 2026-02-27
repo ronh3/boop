@@ -54,6 +54,39 @@ local function queueGoldCommands()
   end
 end
 
+local function onGoldDetected(source)
+  if not boop.config.enabled then return end
+  if not boop.config.autoGrabGold then return end
+
+  boop.state = boop.state or {}
+  boop.trace.log("gold drop detected" .. (source and (": " .. source) or ""))
+
+  if boop.config.useQueueing then
+    boop.state.autoGrabGoldPending = true
+    boop.state.goldDropped = true
+
+    local denizenCount = boop.state.denizens and #boop.state.denizens or 0
+    if denizenCount <= 0 then
+      flushPendingGold("room clear on drop")
+      return
+    end
+
+    cancelAutoGrabGoldTimer()
+    boop.state.autoGrabGoldTimer = tempTimer(0.35, function()
+      if not boop.config or not boop.config.enabled or not boop.config.autoGrabGold then
+        cancelAutoGrabGoldTimer()
+        return
+      end
+      flushPendingGold("fallback timer")
+    end)
+  else
+    if boop.state.goldGetPending or boop.state.goldPutPending then
+      return
+    end
+    queueGoldCommands()
+  end
+end
+
 local function cancelAutoGrabGoldTimer()
   if boop.state and boop.state.autoGrabGoldTimer then
     killTimer(boop.state.autoGrabGoldTimer)
@@ -73,33 +106,15 @@ local function flushPendingGold(reason)
 end
 
 local function autoGrabRoomItem(item)
-  if not boop.config.enabled then return end
-  if not boop.config.autoGrabGold then return end
   if not isGoldItem(item) then return end
-  boop.trace.log("gold drop detected")
+  onGoldDetected("gmcp room item")
+end
 
-  if boop.config.useQueueing then
-    boop.state = boop.state or {}
-    boop.state.autoGrabGoldPending = true
-    boop.state.goldDropped = true
-
-    local denizenCount = boop.state.denizens and #boop.state.denizens or 0
-    if denizenCount <= 0 then
-      flushPendingGold("room clear on drop")
-      return
-    end
-
-    cancelAutoGrabGoldTimer()
-    boop.state.autoGrabGoldTimer = tempTimer(0.35, function()
-      if not boop.config or not boop.config.enabled or not boop.config.autoGrabGold then
-        cancelAutoGrabGoldTimer()
-        return
-      end
-      flushPendingGold("fallback timer")
-    end)
-  else
-    queueGoldCommands()
-  end
+function boop.onGoldDropLine(rawLine)
+  local line = boop.util.safeLower(boop.util.trim(rawLine or ""))
+  if line == "" then return end
+  if not line:find("sovereign", 1, true) then return end
+  onGoldDetected("text line")
 end
 
 local function retryGoldGet(reason)
