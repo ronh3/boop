@@ -184,6 +184,7 @@ local function uiPrintFooter(text)
   if cecho then
     cecho("\n<grey>" .. uiRule() .. "<reset>")
     cecho("\n<white>" .. tostring(text or "") .. "<reset>")
+    cecho("\n")
   else
     boop.util.echo(text or "")
   end
@@ -1143,7 +1144,7 @@ local function helpRenderHome()
         boop.ui.help(key)
       end, "Open help for " .. topic.title)
     end
-    uiPrintFooter("Type: boop help <number|topic> | boop config | boop status")
+    uiPrintFooter("Type: boop help <number|topic|home>")
     return
   end
 
