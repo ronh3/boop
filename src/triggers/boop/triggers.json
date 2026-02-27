@@ -209,6 +209,14 @@
         "type": "regex"
       },
       {
+        "pattern": "^You see no sovereigns here\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You do not see any sovereigns here\\.$",
+        "type": "regex"
+      },
+      {
         "pattern": "^You are not carrying that\\.$",
         "type": "regex"
       },

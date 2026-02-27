@@ -9,7 +9,18 @@ local function isGoldItem(item)
   if not item or not item.name then return false end
   local name = boop.util.safeLower(item.name)
   if name:find("gold sovereign", 1, true) then return true end
+  if name:find("sovereigns", 1, true) then return true end
   return false
+end
+
+local function findRoomGoldItem(items)
+  if type(items) ~= "table" then return nil end
+  for _, item in ipairs(items) do
+    if isGoldItem(item) then
+      return item
+    end
+  end
+  return nil
 end
 
 function boop.clearGoldQueueIntent()
@@ -195,7 +206,19 @@ end
 function boop.onRoomItemsList()
   if not gmcp or not gmcp.Char or not gmcp.Char.Items or not gmcp.Char.Items.List then return end
   if gmcp.Char.Items.List.location ~= "room" then return end
-  boop.targets.updateRoomItems(gmcp.Char.Items.List.items)
+  local items = gmcp.Char.Items.List.items
+  boop.targets.updateRoomItems(items)
+
+  -- Fallback for cases where item-add events are delayed/coalesced: if gold
+  -- exists in the room list and we're not already processing a pickup, queue it.
+  local goldItem = findRoomGoldItem(items)
+  if not goldItem then return end
+
+  boop.state = boop.state or {}
+  if boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending then
+    return
+  end
+  autoGrabRoomItem(goldItem)
 end
 
 function boop.onRoomItemsAdd()
