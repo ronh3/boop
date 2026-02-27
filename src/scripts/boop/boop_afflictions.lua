@@ -5,7 +5,11 @@ function boop.afflictions.init()
 end
 
 local function affKey(aff)
-  return boop.util.safeLower(aff or "")
+  local key = boop.util.safeLower(aff or "")
+  if key == "stunned" then
+    return "stun"
+  end
+  return key
 end
 
 function boop.afflictions.clearTarget()
@@ -44,14 +48,23 @@ function boop.afflictions.hasTarget(aff)
   return target[key] == true
 end
 
-function boop.afflictions.meetsNeeds(needs)
+function boop.afflictions.meetsNeeds(needs, mode)
   if not needs or #needs == 0 then return true end
+  if mode == "all" then
+    for _, aff in ipairs(needs) do
+      if not boop.afflictions.hasTarget(aff) then
+        return false
+      end
+    end
+    return true
+  end
+
   for _, aff in ipairs(needs) do
-    if not boop.afflictions.hasTarget(aff) then
-      return false
+    if boop.afflictions.hasTarget(aff) then
+      return true
     end
   end
-  return true
+  return false
 end
 
 function boop.afflictions.listTarget()

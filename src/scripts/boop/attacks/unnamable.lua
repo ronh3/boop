@@ -44,7 +44,7 @@ boop.attacks.register("unnamable", {  standard = {
         ["cmd"] = "unnamable onslaught &tar",
         ["desc"] = "Conditional",
         ["name"] = "onslaught",
-        ["needs"] = { "stun", "sensitivity" },
+        ["needs"] = { "charm", "sensitivity" },
         ["rage"] = 25
       },
       ["shriek"] = {

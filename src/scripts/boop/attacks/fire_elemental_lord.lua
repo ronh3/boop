@@ -15,7 +15,7 @@ boop.attacks.register("fire elemental lord", {  standard = {
         ["cmd"] = "manifest cataclysm &tar",
         ["desc"] = "Conditional",
         ["name"] = "cataclysm",
-        ["needs"] = { "stunned", "recklessness" },
+        ["needs"] = { "stun", "recklessness" },
         ["rage"] = 25
       },
       ["devastation"] = {

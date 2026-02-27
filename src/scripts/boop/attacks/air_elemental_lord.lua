@@ -15,7 +15,7 @@ boop.attacks.register("air elemental lord", {  standard = {
         ["cmd"] = "aero compress &tar",
         ["desc"] = "Conditional",
         ["name"] = "compress",
-        ["needs"] = { "stunned", "sensitivity" },
+        ["needs"] = { "stun", "sensitivity" },
         ["rage"] = 25
       },
       ["drill"] = {

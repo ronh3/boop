@@ -27,7 +27,7 @@ boop.attacks.register("sentinel", {  standard = {
         ["cmd"] = "swarm &tar",
         ["desc"] = "Conditional",
         ["name"] = "swarm",
-        ["needs"] = { "aeon", "clumsiness" },
+        ["needs"] = { "inhibit", "aeon" },
         ["rage"] = 25
       },
       ["tame"] = {

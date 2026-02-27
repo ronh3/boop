@@ -87,7 +87,7 @@ end
 function boop.attacks.canUseConditional(ability)
   if not ability or not ability.needs then return true end
   if boop.afflictions and boop.afflictions.meetsNeeds then
-    return boop.afflictions.meetsNeeds(ability.needs)
+    return boop.afflictions.meetsNeeds(ability.needs, ability.needsMode)
   end
   return false
 end

@@ -12,7 +12,7 @@ boop.attacks.register("serpent", {  standard = {
         ["rage"] = 17
       },
       ["flagellate"] = {
-        ["aff"] = "aeon",
+        ["aff"] = "sensitivity",
         ["cmd"] = "flagellate &tar",
         ["desc"] = "Gives Affliction",
         ["name"] = "flagellate",
@@ -29,7 +29,7 @@ boop.attacks.register("serpent", {  standard = {
         ["cmd"] = "snare &tar",
         ["desc"] = "Conditional",
         ["name"] = "snare",
-        ["needs"] = { "inhibit", "weakness" },
+        ["needs"] = { "recklessness", "inhibit" },
         ["rage"] = 25
       },
       ["thrash"] = {

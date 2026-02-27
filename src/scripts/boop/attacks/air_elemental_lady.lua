@@ -15,7 +15,7 @@ boop.attacks.register("air elemental lady", {  standard = {
         ["cmd"] = "aero compress &tar",
         ["desc"] = "Conditional",
         ["name"] = "compress",
-        ["needs"] = { "stunned", "sensitivity" },
+        ["needs"] = { "stun", "sensitivity" },
         ["rage"] = 25
       },
       ["drill"] = {

@@ -27,8 +27,9 @@ boop.attacks.register("depthswalker", {  standard = {
       },
       ["erasure"] = {
         ["cmd"] = "chrono erasure &tar",
-        ["desc"] = "Mid Damage",
+        ["desc"] = "Conditional",
         ["name"] = "erasure",
+        ["needs"] = { "weakness", "amnesia" },
         ["rage"] = 25
       },
       ["lash"] = {

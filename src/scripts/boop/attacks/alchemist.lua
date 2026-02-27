@@ -41,7 +41,7 @@ boop.attacks.register("alchemist", {  standard = {
         ["cmd"] = "throw pathogen",
         ["desc"] = "Conditional",
         ["name"] = "pathogen",
-        ["needs"] = { "recklessness", "fear" },
+        ["needs"] = { "inhibit", "fear" },
         ["rage"] = 25
       }
     },

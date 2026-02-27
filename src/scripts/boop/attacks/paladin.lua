@@ -36,7 +36,7 @@ boop.attacks.register("paladin", {  standard = {
         ["cmd"] = "perform rite of punishment at &tar",
         ["desc"] = "Conditional",
         ["name"] = "punishment",
-        ["needs"] = { "weakness", "clumsiness" },
+        ["needs"] = { "recklessness", "clumsiness" },
         ["rage"] = 25
       },
       ["recovery"] = {
