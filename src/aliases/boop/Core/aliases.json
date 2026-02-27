@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Boop",
+    "isActive": "yes",
+    "regex": "^(?i)boop$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Combos",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+combos(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Config",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+config(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Get",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+get(?:\\s+(\\w+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Help",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+help(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop On Off",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+(on|off)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Set",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+set\\s+(\\w+)\\s+(.+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Status",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+status$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Toggle",
+    "isActive": "yes",
+    "regex": "^(?i)bh$",
+    "script": "",
+    "isFolder": "no"
+  }
+]

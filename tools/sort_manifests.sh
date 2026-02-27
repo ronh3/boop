@@ -12,8 +12,16 @@ sort_manifest() {
 }
 
 # Safe to sort for display order.
-sort_manifest "$ROOT/src/aliases/boop/aliases.json"
-sort_manifest "$ROOT/src/triggers/boop/triggers.json"
+sort_manifest "$ROOT/src/aliases/aliases.json"
+find "$ROOT/src/aliases/boop" -name aliases.json -type f | sort | while IFS= read -r file; do
+  sort_manifest "$file"
+done
+
+sort_manifest "$ROOT/src/triggers/triggers.json"
+find "$ROOT/src/triggers/boop" -name triggers.json -type f | sort | while IFS= read -r file; do
+  sort_manifest "$file"
+done
+
 sort_manifest "$ROOT/src/scripts/boop/attacks/scripts.json"
 
 # Intentionally not sorted:

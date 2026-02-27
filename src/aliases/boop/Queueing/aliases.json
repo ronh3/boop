@@ -1,0 +1,30 @@
+[
+  {
+    "name": "Boop Lead",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+lead$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Lead Set",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+lead\\s+([0-9]*\\.?[0-9]+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Prequeue",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+prequeue$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Prequeue On Off",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+prequeue\\s+(on|off)$",
+    "script": "",
+    "isFolder": "no"
+  }
+]

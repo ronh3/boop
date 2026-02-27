@@ -1,0 +1,51 @@
+[
+  {
+    "name": "Boop Aff Add",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+aff\\s+add\\s+(.+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Aff Clear",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+aff\\s+clear$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Aff List",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+aff(\\s+list)?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Aff Remove",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+aff\\s+remove\\s+(.+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Flee",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+flee$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Ragemode",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+ragemode\\s+(\\w+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Diag",
+    "isActive": "yes",
+    "regex": "^(?i)diag$",
+    "script": "",
+    "isFolder": "no"
+  }
+]

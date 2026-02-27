@@ -4,7 +4,7 @@ Standalone Mudlet package for Achaea auto hunting.
 
 ## Status
 - Functional core: targeting, attacks, rage readiness, safety, DB-backed lists.
-- Class profiles: Occultist and Magi configured; other classes stubbed. Dragon standards share `incant`/`tailsmash`.
+- Class profiles: broad Foxhunt-derived profile coverage is included; some standards are intentionally simplified and marked for later refinement.
 - IH integration: `ih` output is re-rendered with clickable whitelist/blacklist buttons for denizens.
 - Skill gating uses GMCP `Char.Skills.*` info for standard/rage abilities.
 - Targeting uses denizen IDs (IRE.Target.Set by id), not names.
@@ -16,6 +16,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop help` / `boop help <number|topic|home>` (examples: `boop help 2`, `boop help whitelist`)
 - `boop status` (current settings/status dashboard)
 - `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow)
+- `boop combos <class...>` / `boop combos list` (party combo inference from rage afflictions + conditional needs)
 - `boop autogold` / `boop autogold on` / `boop autogold off`
 - `boop pack` / `boop pack <container>` / `boop pack off` / `boop pack test` (auto-stash container for sovereigns)
 - `boop import foxhunt [merge|overwrite|dryrun]` (imports Foxhunt DB whitelist/blacklist into boop)
@@ -59,6 +60,12 @@ Standalone Mudlet package for Achaea auto hunting.
 - In queueing mode, boop caches the last `BOOP_ATTACK` alias payload and skips redundant `setalias` sends when unchanged.
 - Trace buffer records recent boop decisions/commands for post-mortem debugging (`boop trace show`).
 - Foxhunt import reads Mudlet DB `hunting` lists directly; `merge` is default, `overwrite` clears boop lists first, `dryrun` reports counts only.
+- `boop combos` infers synergy from class rage profiles, including per-class affliction providers and conditional readiness.
+- Conditional needs default to `any` (one affliction present) unless a profile explicitly sets `needsMode = "all"`.
+
+## Maintenance
+- `tools/sort_manifests.sh` sorts display-order manifests for aliases, triggers, and attack scripts.
+- `src/scripts/boop/scripts.json` is intentionally not auto-sorted because script load order is runtime-sensitive.
 
 ## Starting A Session
 - See `CODEX.md` (Session Startup).

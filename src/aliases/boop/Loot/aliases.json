@@ -1,0 +1,44 @@
+[
+  {
+    "name": "Boop Auto Gold",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+autogold$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Auto Gold On Off",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+autogold\\s+(on|off)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Import Foxhunt",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+import\\s+foxhunt(?:\\s+(\\S+))?\\s*$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Pack",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+pack$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Pack Set",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+pack\\s+(.+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Pack Test",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+pack\\s+test$",
+    "script": "",
+    "isFolder": "no"
+  }
+]

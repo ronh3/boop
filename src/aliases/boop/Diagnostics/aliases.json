@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Boop Debug",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+debug$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Debug Attacks",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+debug\\s+attacks$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Debug Skills",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+debug\\s+skills$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Debug Skills Dump",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+debug\\s+skills\\s+dump$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Trace",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+trace$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Trace Clear",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+trace\\s+clear$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Trace On Off",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+trace\\s+(on|off)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Trace Show",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+trace\\s+show$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Trace Show Number",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+trace\\s+show\\s+(\\d+)$",
+    "script": "",
+    "isFolder": "no"
+  }
+]

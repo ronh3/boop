@@ -1,0 +1,100 @@
+[
+  {
+    "name": "Boop Blacklist",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+blacklist$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Blacklist Add",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+blacklist\\s+add\\s+(.+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Blacklist Remove",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+blacklist\\s+remove\\s+(.+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop IH",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+ih$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Targeting",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+targeting\\s+(manual|whitelist|blacklist|auto)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Whitelist",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+whitelist$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Whitelist Add",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+whitelist\\s+add\\s+(.+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Whitelist Browse",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+whitelist\\s+browse(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Whitelist Remove",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+whitelist\\s+remove\\s+(.+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Whitelist Tag Add",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+whitelist\\s+tag\\s+add\\s+(.+)\\s*\\|\\s*(.+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Whitelist Tag List",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+whitelist\\s+tag\\s+list$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Whitelist Tag Remove",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+whitelist\\s+tag\\s+remove\\s+(.+)\\s*\\|\\s*(.+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Whitelist Tags",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+whitelist\\s+tags(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "IH",
+    "isActive": "yes",
+    "regex": "^(?i)ih$",
+    "script": "",
+    "isFolder": "no"
+  }
+]
