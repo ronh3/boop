@@ -14,7 +14,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `bh` (toggle on/off)
 - `boop on` / `boop off`
 - `boop help` / `boop help <number|topic|home>` (examples: `boop help 2`, `boop help whitelist`)
-- `boop status`
+- `boop status` (current settings/status dashboard)
 - `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow)
 - `boop autogold` / `boop autogold on` / `boop autogold off`
 - `boop pack` / `boop pack <container>` / `boop pack off` / `boop pack test` (auto-stash container for sovereigns)

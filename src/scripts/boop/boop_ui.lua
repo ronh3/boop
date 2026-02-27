@@ -56,7 +56,87 @@ function boop.ui.statusLine(context)
   return msg
 end
 
+local function renderStatusDashboard()
+  local class = currentClass()
+  local lead = tonumber(boop.config.attackLeadSeconds) or 0
+  local diagTimeout = tonumber(boop.config.diagTimeoutSeconds) or 0
+  local pack = boop.util.trim(boop.config.goldPack or "")
+  local shownPack = pack ~= "" and pack or "(off)"
+  local denizenCount = boop.state and boop.state.denizens and #boop.state.denizens or 0
+  local targetId = boop.state and boop.state.currentTargetId or ""
+  local targetName = boop.state and boop.state.targetName or ""
+  local targetShown = targetId ~= "" and targetId or "(none)"
+  local targetNameShown = targetName ~= "" and targetName or "(none)"
+
+  if cecho then
+    local row = 1
+    uiPrintHeader("status > boop")
+
+    uiPrintSection("core")
+    uiPrintRow(row, "Enabled", boolText(boop.config.enabled), boolColor(boop.config.enabled))
+    row = row + 1
+    uiPrintRow(row, "Class", tostring(class), "cyan")
+    row = row + 1
+    uiPrintRow(row, "Targeting mode", tostring(boop.config.targetingMode or "whitelist"), "cyan")
+    row = row + 1
+    uiPrintRow(row, "Current target id", tostring(targetShown), "cyan")
+    row = row + 1
+    uiPrintRow(row, "Current target name", tostring(targetNameShown), "cyan")
+    row = row + 1
+    uiPrintRow(row, "Room denizens", tostring(denizenCount), "cyan")
+    row = row + 1
+
+    uiPrintSection("queueing")
+    uiPrintRow(row, "Use queueing", boolText(not not boop.config.useQueueing), boolColor(not not boop.config.useQueueing))
+    row = row + 1
+    uiPrintRow(row, "Prequeue", boolText(not not boop.config.prequeueEnabled), boolColor(not not boop.config.prequeueEnabled))
+    row = row + 1
+    uiPrintRow(row, string.format("Attack lead (%.2fs)", lead), "VALUE", "yellow")
+    row = row + 1
+    uiPrintRow(row, string.format("Diag timeout (%.2fs)", diagTimeout), "VALUE", "yellow")
+    row = row + 1
+
+    uiPrintSection("combat / loot")
+    uiPrintRow(row, "Ragemode", tostring(boop.config.attackMode or "simple"), "cyan")
+    row = row + 1
+    uiPrintRow(row, "Auto gold", boolText(not not boop.config.autoGrabGold), boolColor(not not boop.config.autoGrabGold))
+    row = row + 1
+    uiPrintRow(row, "Gold pack", tostring(shownPack), "cyan")
+    row = row + 1
+    uiPrintRow(row, "Whitelist priority", boolText(not not boop.config.whitelistPriorityOrder), boolColor(not not boop.config.whitelistPriorityOrder))
+    row = row + 1
+    uiPrintRow(row, "Target order", tostring(boop.config.targetOrder or "order"), "cyan")
+    row = row + 1
+    uiPrintRow(row, "Trace logging", boolText(not not boop.config.traceEnabled), boolColor(not not boop.config.traceEnabled))
+
+    uiPrintFooter("Type: boop config | boop help | boop get")
+    return
+  end
+
+  boop.util.echo("Status > boop")
+  boop.util.echo("  enabled: " .. tostring(boop.config.enabled))
+  boop.util.echo("  class: " .. tostring(class))
+  boop.util.echo("  targetingMode: " .. tostring(boop.config.targetingMode))
+  boop.util.echo("  currentTargetId: " .. tostring(targetShown))
+  boop.util.echo("  currentTargetName: " .. tostring(targetNameShown))
+  boop.util.echo("  roomDenizens: " .. tostring(denizenCount))
+  boop.util.echo("  useQueueing: " .. tostring(boop.config.useQueueing))
+  boop.util.echo("  prequeueEnabled: " .. tostring(boop.config.prequeueEnabled))
+  boop.util.echo(string.format("  attackLeadSeconds: %.2f", lead))
+  boop.util.echo(string.format("  diagTimeoutSeconds: %.2f", diagTimeout))
+  boop.util.echo("  attackMode: " .. tostring(boop.config.attackMode))
+  boop.util.echo("  autoGrabGold: " .. tostring(boop.config.autoGrabGold))
+  boop.util.echo("  goldPack: " .. tostring(shownPack))
+  boop.util.echo("  whitelistPriorityOrder: " .. tostring(boop.config.whitelistPriorityOrder))
+  boop.util.echo("  targetOrder: " .. tostring(boop.config.targetOrder))
+  boop.util.echo("  traceEnabled: " .. tostring(boop.config.traceEnabled))
+end
+
 function boop.ui.status(context)
+  if boop.util.safeLower(boop.util.trim(context or "")) == "status" then
+    renderStatusDashboard()
+    return
+  end
   local msg = boop.ui.statusLine(context)
   boop.util.echo(msg)
 end
