@@ -1,7 +1,7 @@
 boop.attacks.register("water elemental lord", {  standard = {
     -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
-    dam = { cmd = "manifest blade &tar", skill = "", group = "" },
-    shield = { cmd = "manifest blade &tar", skill = "", group = "" },
+    dam = { cmd = "manifest blade &tar", skill = "Blade", group = "Pervasion" },
+    shield = { cmd = "manifest blade &tar", skill = "Blade", group = "Pervasion" },
   },
   rage = {
     ["abilities"] = {

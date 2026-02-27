@@ -1,7 +1,7 @@
 boop.attacks.register("sylvan", {  standard = {
     -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
-    dam = { cmd = "thornrend &tar", skill = "", group = "" },
-    shield = { cmd = "cast shear at &tar", skill = "", group = "" },
+    dam = { cmd = "thornrend &tar", skill = "Thornrend", group = "Propagation" },
+    shield = { cmd = "cast shear at &tar", skill = "Shear", group = "Weatherweaving" },
   },
   rage = {
     ["abilities"] = {

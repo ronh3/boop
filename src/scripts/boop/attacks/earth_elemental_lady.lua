@@ -1,7 +1,7 @@
 boop.attacks.register("earth elemental lady", {  standard = {
     -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
-    dam = { cmd = "terran pulverise &tar", skill = "", group = "" },
-    shield = { cmd = "terran crunch &tar", skill = "", group = "" },
+    dam = { cmd = "terran pulverise &tar", skill = "Pulverise", group = "Sculpting" },
+    shield = { cmd = "terran crunch &tar", skill = "Crunch", group = "Sculpting" },
   },
   rage = {
     ["abilities"] = {

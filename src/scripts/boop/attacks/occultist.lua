@@ -6,7 +6,7 @@ boop.attacks.register("occultist", {
     },
     shield = {
       { cmd = "command hound at &tar", skill = "Lycantha", group = "Domination" },
-      { cmd = "touch hammer &tar" },
+      { cmd = "touch hammer &tar", skill = "Hammer", group = "Tattoos" },
     },
   },
   rage = {

@@ -1,5 +1,5 @@
 boop.attacks.register("green dragon", {  standard = {
-    dam = { cmd = "incantation &tar", skill = "incantation ", group = "Dragoncraft" },
+    dam = { cmd = "incantation &tar", skill = "Incantation", group = "Dragoncraft" },
     shield = { cmd = "tailsmash &tar", skill = "Tailsmash", group = "Dragoncraft" },
   },
   rage = {

@@ -1,7 +1,7 @@
 boop.attacks.register("alchemist", {  standard = {
     -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
-    dam = { cmd = "educe iron &tar", skill = "", group = "" },
-    shield = { cmd = "educe copper &tar", skill = "", group = "" },
+    dam = { cmd = "educe iron &tar", skill = "Iron", group = "Alchemy" },
+    shield = { cmd = "educe copper &tar", skill = "Copper", group = "Alchemy" },
   },
   rage = {
     ["abilities"] = {
