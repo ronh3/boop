@@ -47,3 +47,24 @@ function boop.rage.onReadyList(list)
     boop.rage.setReady(name, true)
   end
 end
+
+function boop.rage.onHoundMaulUsed()
+  boop.rage.setReady("maul", false)
+  if boop.trace and boop.trace.log then
+    boop.trace.log("hound maul used")
+  end
+end
+
+function boop.rage.onHoundMaulReady()
+  boop.rage.setReady("maul", true)
+  if boop.trace and boop.trace.log then
+    boop.trace.log("hound maul ready")
+  end
+end
+
+function boop.rage.onHoundMaulNotReady()
+  boop.rage.setReady("maul", false)
+  if boop.trace and boop.trace.log then
+    boop.trace.log("hound maul not ready")
+  end
+end
