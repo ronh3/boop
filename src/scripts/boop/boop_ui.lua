@@ -1078,6 +1078,7 @@ local function comboCollectClassData(classKey)
         data.conditionals[#data.conditionals + 1] = {
           name = abilityName,
           needs = needs,
+          needsMode = boop.util.safeLower(boop.util.trim(ability.needsMode or "any")),
         }
       end
     end
@@ -1203,18 +1204,30 @@ function boop.ui.combos(rawArgs)
   for _, classKey in ipairs(selected) do
     local data = classData[classKey]
     for _, conditional in ipairs(data.conditionals or {}) do
+      local needsMode = boop.util.safeLower(boop.util.trim(conditional.needsMode or "any"))
+      local requireAll = (needsMode == "all")
       local needsShown = {}
       local missing = {}
+      local presentCount = 0
       for _, need in ipairs(conditional.needs or {}) do
         needsShown[#needsShown + 1] = need
-        if not providersByAff[need] then
+        if providersByAff[need] then
+          presentCount = presentCount + 1
+        else
           missing[#missing + 1] = need
         end
       end
 
       local status
       local color
-      if #missing == 0 then
+      local ready = false
+      if requireAll then
+        ready = (#missing == 0)
+      else
+        ready = (presentCount > 0)
+      end
+
+      if ready then
         status = "READY"
         color = "green"
       else
@@ -1239,7 +1252,13 @@ function boop.ui.combos(rawArgs)
       end
 
       comboRows[#comboRows + 1] = {
-        label = string.format("%s / %s needs %s", comboPrettyClass(classKey), conditional.name, table.concat(needsShown, " + ")),
+        label = string.format(
+          "%s / %s needs %s: %s",
+          comboPrettyClass(classKey),
+          conditional.name,
+          requireAll and "all" or "any",
+          table.concat(needsShown, requireAll and " + " or " or ")
+        ),
         status = status,
         color = color,
         detail = table.concat(providerParts, " | "),
