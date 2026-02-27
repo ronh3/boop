@@ -898,6 +898,411 @@ function boop.ui.importFoxhunt(mode)
   end
 end
 
+local function comboNormToken(s)
+  local token = boop.util.safeLower(boop.util.trim(s or ""))
+  token = token:gsub("[^%w]+", "")
+  return token
+end
+
+local function comboPrettyClass(classKey)
+  local key = boop.util.safeLower(boop.util.trim(classKey or ""))
+  if key == "" then
+    return "(unknown)"
+  end
+  return (key:gsub("(%a)([%w']*)", function(first, rest)
+    return string.upper(first) .. string.lower(rest)
+  end))
+end
+
+local function comboTokenizeArgs(raw)
+  local args = boop.util.trim(raw or "")
+  local out = {}
+  if args == "" then
+    return out
+  end
+
+  local i = 1
+  local n = #args
+  while i <= n do
+    while i <= n and args:sub(i, i):match("%s") do
+      i = i + 1
+    end
+    if i > n then break end
+
+    local ch = args:sub(i, i)
+    if ch == "'" or ch == "\"" then
+      local quote = ch
+      local j = i + 1
+      while j <= n and args:sub(j, j) ~= quote do
+        j = j + 1
+      end
+      local token = boop.util.trim(args:sub(i + 1, (j <= n) and (j - 1) or n))
+      if token ~= "" then
+        out[#out + 1] = token
+      end
+      i = (j <= n) and (j + 1) or (n + 1)
+    else
+      local j = i
+      while j <= n and not args:sub(j, j):match("[%s,]") do
+        j = j + 1
+      end
+      local token = boop.util.trim(args:sub(i, j - 1))
+      if token ~= "" then
+        out[#out + 1] = token
+      end
+      i = j + 1
+    end
+  end
+
+  return out
+end
+
+local function comboBuildAliasMap()
+  local aliases = {}
+  local classKeys = {}
+  local registry = (boop.attacks and boop.attacks.registry) or {}
+
+  for classKey, _ in pairs(registry) do
+    local key = boop.util.safeLower(boop.util.trim(classKey or ""))
+    if key ~= "" then
+      classKeys[#classKeys + 1] = key
+      aliases[comboNormToken(key)] = key
+      aliases[comboNormToken(key:gsub("%s+", "-"))] = key
+      aliases[comboNormToken(key:gsub("%s+", "_"))] = key
+
+      local dragonColor = key:match("^(%a+)%s+dragon$")
+      if dragonColor then
+        aliases[comboNormToken(dragonColor)] = key
+        aliases[comboNormToken(dragonColor .. " dragon")] = key
+        aliases[comboNormToken(dragonColor .. "dragon")] = key
+        if dragonColor == "golden" then
+          aliases["gold"] = key
+          aliases["golddragon"] = key
+        end
+      end
+    end
+  end
+
+  local shorthand = {
+    bm = "blademaster",
+    dw = "depthswalker",
+    occ = "occultist",
+    rw = "runewarden",
+    inf = "infernal",
+    pal = "paladin",
+    un = "unnamable",
+    unna = "unnamable",
+    psi = "psion",
+    pri = "priest",
+    sent = "sentinel",
+    sham = "shaman",
+    serp = "serpent",
+    alc = "alchemist",
+    apo = "apostate",
+    jest = "jester",
+    syl = "sylvan",
+    bluedragon = "blue dragon",
+    reddragon = "red dragon",
+    blackdragon = "black dragon",
+    greendragon = "green dragon",
+    silverdragon = "silver dragon",
+    golddragon = "golden dragon",
+    goldendragon = "golden dragon",
+  }
+  for alias, classKey in pairs(shorthand) do
+    if registry[classKey] then
+      aliases[comboNormToken(alias)] = classKey
+    end
+  end
+
+  table.sort(classKeys)
+  return aliases, classKeys
+end
+
+local function comboResolveToken(token, aliases, classKeys)
+  local normalized = comboNormToken(token)
+  if normalized == "" then
+    return nil, {}
+  end
+
+  local direct = aliases[normalized]
+  if direct then
+    return direct, {}
+  end
+
+  local candidates = {}
+  for _, classKey in ipairs(classKeys or {}) do
+    local classNorm = comboNormToken(classKey)
+    if boop.util.starts(classNorm, normalized) or classNorm:find(normalized, 1, true) then
+      candidates[#candidates + 1] = classKey
+    end
+  end
+
+  if #candidates == 1 then
+    return candidates[1], candidates
+  end
+  return nil, candidates
+end
+
+local function comboCollectClassData(classKey)
+  local registry = (boop.attacks and boop.attacks.registry) or {}
+  local profile = registry[classKey]
+  local data = {
+    affs = {},
+    conditionals = {},
+  }
+
+  if not profile or not profile.rage or not profile.rage.abilities then
+    return data
+  end
+
+  for abilityKey, ability in pairs(profile.rage.abilities) do
+    local abilityName = boop.util.safeLower(boop.util.trim(ability.name or abilityKey or ""))
+    local aff = boop.util.safeLower(boop.util.trim(ability.aff or ""))
+    if aff ~= "" and abilityName ~= "" then
+      data.affs[aff] = data.affs[aff] or {}
+      data.affs[aff][#data.affs[aff] + 1] = abilityName
+    end
+
+    local desc = boop.util.safeLower(boop.util.trim(ability.desc or ""))
+    if desc == "conditional" and type(ability.needs) == "table" then
+      local needs = {}
+      for _, need in ipairs(ability.needs) do
+        local needKey = boop.util.safeLower(boop.util.trim(need or ""))
+        if needKey ~= "" then
+          needs[#needs + 1] = needKey
+        end
+      end
+      if #needs > 0 and abilityName ~= "" then
+        table.sort(needs)
+        data.conditionals[#data.conditionals + 1] = {
+          name = abilityName,
+          needs = needs,
+        }
+      end
+    end
+  end
+
+  for _, abilities in pairs(data.affs) do
+    table.sort(abilities)
+  end
+  table.sort(data.conditionals, function(a, b)
+    return tostring(a.name) < tostring(b.name)
+  end)
+
+  return data
+end
+
+local function comboRenderClassList(classKeys)
+  if cecho then
+    uiPrintHeader("boop > combos")
+    uiPrintSection("available classes")
+    local rows = {}
+    for i, classKey in ipairs(classKeys) do
+      rows[#rows + 1] = { index = i, label = comboPrettyClass(classKey) }
+    end
+    local labelWidth = uiComputeLabelWidth(rows, UI_LABEL_COL_WIDTH, 120)
+    for i, classKey in ipairs(classKeys) do
+      local shown = comboPrettyClass(classKey)
+      uiPrintRow(i, shown, "COPY", "cyan", function()
+        uiSetCommandLine("boop combos " .. shown)
+      end, "Copy class name into command line", labelWidth)
+    end
+    uiPrintFooter("Type: boop combos <class...>  |  Example: boop combos unnamable occultist bluedragon")
+    return
+  end
+
+  boop.util.echo("BOOP > COMBOS")
+  boop.util.echo("----------------------------------------")
+  boop.util.echo("Available classes:")
+  for _, classKey in ipairs(classKeys) do
+    boop.util.echo("  - " .. comboPrettyClass(classKey))
+  end
+  boop.util.echo("----------------------------------------")
+  boop.util.echo("Use: boop combos <class...>")
+end
+
+function boop.ui.combos(rawArgs)
+  local aliases, classKeys = comboBuildAliasMap()
+  local raw = boop.util.trim(rawArgs or "")
+  local lowered = boop.util.safeLower(raw)
+
+  if raw == "" or lowered == "help" then
+    boop.util.echo("Usage: boop combos <class...>")
+    boop.util.echo("Example: boop combos unnamable occultist bluedragon")
+    boop.util.echo("Tip: use commas or quotes for multi-word classes.")
+    boop.util.echo("Example: boop combos \"air elemental lady\", runewarden, serpent")
+    boop.util.echo("Use: boop combos list")
+    return
+  end
+
+  if lowered == "list" then
+    comboRenderClassList(classKeys)
+    return
+  end
+
+  local tokens = comboTokenizeArgs(raw)
+  if #tokens == 0 then
+    boop.util.echo("No classes provided. Use: boop combos <class...>")
+    return
+  end
+
+  local selected = {}
+  local selectedSeen = {}
+  local unresolved = {}
+  for _, token in ipairs(tokens) do
+    local classKey, candidates = comboResolveToken(token, aliases, classKeys)
+    if classKey then
+      if not selectedSeen[classKey] then
+        selectedSeen[classKey] = true
+        selected[#selected + 1] = classKey
+      end
+    else
+      unresolved[#unresolved + 1] = {
+        token = token,
+        candidates = candidates or {},
+      }
+    end
+  end
+
+  table.sort(selected)
+
+  if #unresolved > 0 then
+    for _, entry in ipairs(unresolved) do
+      if #entry.candidates == 0 then
+        boop.util.echo("Unknown class token: " .. tostring(entry.token))
+      else
+        local shown = {}
+        for i = 1, math.min(5, #entry.candidates) do
+          shown[#shown + 1] = comboPrettyClass(entry.candidates[i])
+        end
+        boop.util.echo("Ambiguous class token '" .. tostring(entry.token) .. "': " .. table.concat(shown, ", "))
+      end
+    end
+    boop.util.echo("Use: boop combos list")
+    return
+  end
+
+  if #selected == 0 then
+    boop.util.echo("No valid classes found. Use: boop combos list")
+    return
+  end
+
+  local classData = {}
+  local providersByAff = {}
+  for _, classKey in ipairs(selected) do
+    local data = comboCollectClassData(classKey)
+    classData[classKey] = data
+    for aff, _ in pairs(data.affs) do
+      providersByAff[aff] = providersByAff[aff] or {}
+      providersByAff[aff][classKey] = true
+    end
+  end
+
+  local comboRows = {}
+  for _, classKey in ipairs(selected) do
+    local data = classData[classKey]
+    for _, conditional in ipairs(data.conditionals or {}) do
+      local needsShown = {}
+      local missing = {}
+      for _, need in ipairs(conditional.needs or {}) do
+        needsShown[#needsShown + 1] = need
+        if not providersByAff[need] then
+          missing[#missing + 1] = need
+        end
+      end
+
+      local status
+      local color
+      if #missing == 0 then
+        status = "READY"
+        color = "green"
+      else
+        status = "MISSING"
+        color = "red"
+      end
+
+      local providerParts = {}
+      for _, need in ipairs(conditional.needs or {}) do
+        local providers = {}
+        if providersByAff[need] then
+          for providerClass, _ in pairs(providersByAff[need]) do
+            providers[#providers + 1] = comboPrettyClass(providerClass)
+          end
+          table.sort(providers)
+        end
+        if #providers > 0 then
+          providerParts[#providerParts + 1] = need .. ": " .. table.concat(providers, "/")
+        else
+          providerParts[#providerParts + 1] = need .. ": (none)"
+        end
+      end
+
+      comboRows[#comboRows + 1] = {
+        label = string.format("%s / %s needs %s", comboPrettyClass(classKey), conditional.name, table.concat(needsShown, " + ")),
+        status = status,
+        color = color,
+        detail = table.concat(providerParts, " | "),
+      }
+    end
+  end
+
+  table.sort(comboRows, function(a, b)
+    if a.status ~= b.status then
+      return a.status < b.status
+    end
+    return tostring(a.label) < tostring(b.label)
+  end)
+
+  if cecho then
+    uiPrintHeader("boop > combos")
+    uiPrintSection("party")
+    uiPrintRow(1, table.concat((function()
+      local names = {}
+      for _, classKey in ipairs(selected) do
+        names[#names + 1] = comboPrettyClass(classKey)
+      end
+      return names
+    end)(), ", "), tostring(#selected) .. " CLS", "cyan")
+
+    uiPrintSection("conditional synergy")
+    if #comboRows == 0 then
+      uiPrintRow(1, "No conditional rage combos found for selected classes.", "INFO", "yellow")
+    else
+      local widthRows = {}
+      for i, row in ipairs(comboRows) do
+        widthRows[#widthRows + 1] = { index = i, label = row.label }
+      end
+      local labelWidth = uiComputeLabelWidth(widthRows, UI_LABEL_COL_WIDTH, 150)
+      for i, row in ipairs(comboRows) do
+        uiPrintRow(i, row.label, row.status, row.color, nil, row.detail, labelWidth)
+      end
+    end
+    uiPrintFooter("Inferred from boop rage aff/needs data. Use: boop combos list")
+    return
+  end
+
+  boop.util.echo("BOOP > COMBOS")
+  boop.util.echo("----------------------------------------")
+  boop.util.echo("Party: " .. table.concat((function()
+    local names = {}
+    for _, classKey in ipairs(selected) do
+      names[#names + 1] = comboPrettyClass(classKey)
+    end
+    return names
+  end)(), ", "))
+  if #comboRows == 0 then
+    boop.util.echo("No conditional rage combos found for selected classes.")
+  else
+    for _, row in ipairs(comboRows) do
+      boop.util.echo(string.format("[%s] %s", row.status, row.label))
+      boop.util.echo("  " .. row.detail)
+    end
+  end
+  boop.util.echo("----------------------------------------")
+  boop.util.echo("Inferred from boop rage aff/needs data.")
+end
+
 local HELP_TOPICS = {
   {
     key = "targeting",
@@ -1033,6 +1438,22 @@ local HELP_TOPICS = {
       "merge: replace boop list data for imported areas, keep other boop areas.",
       "overwrite: clear boop lists first, then import all areas.",
       "dryrun: report counts only.",
+    },
+  },
+  {
+    key = "combos",
+    title = "Combos",
+    aliases = { "combos", "combo" },
+    commands = {
+      "boop combos <class...>",
+      "boop combos <class1>, <class2>, <class3>",
+      "boop combos list",
+      "boop combos unnamable occultist bluedragon",
+    },
+    notes = {
+      "Shows conditional rage synergies inferred from boop attack profiles.",
+      "Dragon aliases like bluedragon/reddragon/golddragon are supported.",
+      "Use quotes for multi-word classes: \"air elemental lady\".",
     },
   },
   {
