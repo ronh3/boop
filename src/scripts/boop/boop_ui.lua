@@ -187,10 +187,7 @@ local function uiPrintRow(index, label, buttonText, buttonColor, onClick, hint, 
     local prefix = uiIndexPrefix(index)
     local leftRaw = prefix .. tostring(label or "")
     local left = uiPadRight(leftRaw, width)
-    if #leftRaw >= width then
-      left = left .. " "
-    end
-    cecho("\n<white>" .. left .. "<reset>")
+    cecho("\n<white>" .. left .. "  <reset>")
     local coloredButton = "<" .. tostring(buttonColor or "white") .. ">" .. uiButtonLabel(buttonText or "") .. "<reset>"
     if cechoLink and onClick then
       cechoLink(coloredButton, onClick, hint or "", true)
