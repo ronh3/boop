@@ -54,6 +54,9 @@ local function queueGoldCommands()
   end
 end
 
+local cancelAutoGrabGoldTimer
+local flushPendingGold
+
 local function onGoldDetected(source)
   if not boop.config.enabled then return end
   if not boop.config.autoGrabGold then return end
@@ -87,14 +90,14 @@ local function onGoldDetected(source)
   end
 end
 
-local function cancelAutoGrabGoldTimer()
+cancelAutoGrabGoldTimer = function()
   if boop.state and boop.state.autoGrabGoldTimer then
     killTimer(boop.state.autoGrabGoldTimer)
     boop.state.autoGrabGoldTimer = nil
   end
 end
 
-local function flushPendingGold(reason)
+flushPendingGold = function(reason)
   boop.state = boop.state or {}
   if not boop.state.autoGrabGoldPending then return false end
   cancelAutoGrabGoldTimer()
