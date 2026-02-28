@@ -16,7 +16,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop help` / `boop help <number|topic|home>` (examples: `boop help 2`, `boop help whitelist`)
 - `boop status` (current settings/status dashboard)
 - `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow)
-- `boop combos <class...>` / `boop combos list` (party combo inference from rage afflictions + conditional needs)
+- `boop party` / `boop party <class...>` / `boop party clear` (save party class roster; your own class is auto-included)
+- `boop combos` / `boop combos <class...>` / `boop combos list` (party combo inference from rage afflictions + conditional needs)
 - `boop autogold` / `boop autogold on` / `boop autogold off`
 - `boop pack` / `boop pack <container>` / `boop pack off` / `boop pack test` (auto-stash container for sovereigns)
 - `boop import foxhunt [merge|overwrite|dryrun]` (imports Foxhunt DB whitelist/blacklist into boop)
@@ -75,6 +76,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - With `boop trace on`, opener decisions are logged with deduped reasons (for example selected, hp unknown, hp not full, already used).
 - Foxhunt import reads Mudlet DB `hunting` lists directly; `merge` is default, `overwrite` clears boop lists first, `dryrun` reports counts only.
 - `boop combos` infers synergy from class rage profiles, including per-class affliction providers and conditional readiness.
+- `boop combos` with no args automatically uses `boop party` roster plus your current class.
+- `boop party` also highlights which party conditionals your class can help enable from your rage afflictions.
 - Conditional needs default to `any` (one affliction present) unless a profile explicitly sets `needsMode = "all"`.
 - Battlerage afflictions are auto-tracked from class/general combat lines (gain + wear-off), and updates are scoped to your current target context for conditional rage checks.
 - Shield state is now cleared from a broad set of class/general break and "no shield" combat lines, reducing repeated/wasted shieldbreak attempts when the shield is already down.

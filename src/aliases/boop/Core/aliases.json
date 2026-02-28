@@ -49,6 +49,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Party",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+party(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Set",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+set\\s+(\\w+)\\s+(.+)$",

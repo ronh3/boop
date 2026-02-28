@@ -89,6 +89,11 @@ local function renderStatusDashboard()
   local lead = tonumber(boop.config.attackLeadSeconds) or 0
   local diagTimeout = tonumber(boop.config.diagTimeoutSeconds) or 0
   local pack = boop.util.trim(boop.config.goldPack or "")
+  local partyRaw = boop.util.trim(boop.config.partyRoster or "")
+  local partyCount = 0
+  for _ in partyRaw:gmatch("([^,]+)") do
+    partyCount = partyCount + 1
+  end
   local shownPack = pack ~= "" and pack or "(off)"
   local denizenCount = boop.state and boop.state.denizens and #boop.state.denizens or 0
   local targetId = boop.state and boop.state.currentTargetId or ""
@@ -104,6 +109,8 @@ local function renderStatusDashboard()
     uiPrintRow(row, "Enabled", boolText(boop.config.enabled), boolColor(boop.config.enabled))
     row = row + 1
     uiPrintRow(row, "Class", tostring(class), "cyan")
+    row = row + 1
+    uiPrintRow(row, "Party members", tostring(partyCount), "cyan")
     row = row + 1
     uiPrintRow(row, "Targeting mode", tostring(boop.config.targetingMode or "whitelist"), "cyan")
     row = row + 1
@@ -148,6 +155,7 @@ local function renderStatusDashboard()
   boop.util.echo("Status > boop")
   boop.util.echo("  enabled: " .. tostring(boop.config.enabled))
   boop.util.echo("  class: " .. tostring(class))
+  boop.util.echo("  partyMembers: " .. tostring(partyCount))
   boop.util.echo("  targetingMode: " .. tostring(boop.config.targetingMode))
   boop.util.echo("  currentTargetId: " .. tostring(targetShown))
   boop.util.echo("  currentTargetName: " .. tostring(targetNameShown))
@@ -496,6 +504,8 @@ local function canonConfigKey(raw)
     gagothersattacks = "gagOthersAttacks",
     diagtimeout = "diagTimeoutSeconds",
     diagtimeoutseconds = "diagTimeoutSeconds",
+    party = "partyRoster",
+    partyroster = "partyRoster",
   }
   return map[key] or ""
 end
@@ -526,6 +536,7 @@ function boop.ui.listConfigValues()
     "gagOwnAttacks",
     "gagOthersAttacks",
     "diagTimeoutSeconds",
+    "partyRoster",
   }
   boop.util.echo("config keys:")
   for _, key in ipairs(keys) do
@@ -662,6 +673,11 @@ function boop.ui.setConfigValue(key, value)
     end
     saveConfigValue("diagTimeoutSeconds", timeout)
     boop.util.echo(string.format("diag timeout: %.2fs", timeout))
+    return
+  end
+
+  if canonical == "partyRoster" then
+    boop.ui.party(value or "")
     return
   end
 end
@@ -1160,6 +1176,113 @@ local function comboResolveToken(token, aliases, classKeys)
   return nil, candidates
 end
 
+local function comboResolveClassTokens(tokens, aliases, classKeys)
+  local selected = {}
+  local selectedSeen = {}
+  local unresolved = {}
+
+  for _, token in ipairs(tokens or {}) do
+    local classKey, candidates = comboResolveToken(token, aliases, classKeys)
+    if classKey then
+      if not selectedSeen[classKey] then
+        selectedSeen[classKey] = true
+        selected[#selected + 1] = classKey
+      end
+    else
+      unresolved[#unresolved + 1] = {
+        token = token,
+        candidates = candidates or {},
+      }
+    end
+  end
+
+  table.sort(selected)
+  return selected, unresolved
+end
+
+local function comboCurrentClassRaw()
+  return boop.util.trim((boop.state and boop.state.class)
+    or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class)
+    or "")
+end
+
+local function comboResolveCurrentClass(aliases, classKeys)
+  local currentClass = comboCurrentClassRaw()
+  if currentClass == "" then
+    return "", ""
+  end
+
+  local token = comboNormToken(currentClass)
+  local direct = aliases[token]
+  if direct then
+    return direct, currentClass
+  end
+
+  local resolved = comboResolveToken(currentClass, aliases, classKeys)
+  if resolved then
+    return resolved, currentClass
+  end
+
+  return "", currentClass
+end
+
+local function comboConfiguredPartyTokens()
+  local raw = boop.util.trim(boop.config.partyRoster or "")
+  local tokens = {}
+  if raw == "" then
+    return tokens
+  end
+  for token in raw:gmatch("([^,]+)") do
+    local trimmed = boop.util.trim(token)
+    if trimmed ~= "" then
+      tokens[#tokens + 1] = trimmed
+    end
+  end
+  return tokens
+end
+
+local function comboSerializeParty(classKeys)
+  local out = {}
+  for _, classKey in ipairs(classKeys or {}) do
+    local key = boop.util.safeLower(boop.util.trim(classKey or ""))
+    if key ~= "" then
+      out[#out + 1] = key
+    end
+  end
+  table.sort(out)
+  return table.concat(out, ",")
+end
+
+local function comboConfiguredPartyMembers(aliases, classKeys)
+  local tokens = comboConfiguredPartyTokens()
+  if #tokens == 0 then
+    return {}, {}, tokens
+  end
+  local selected, unresolved = comboResolveClassTokens(tokens, aliases, classKeys)
+  return selected, unresolved, tokens
+end
+
+local function comboBuildEffectiveParty(aliases, classKeys)
+  local members, unresolved = comboConfiguredPartyMembers(aliases, classKeys)
+  local effective = {}
+  local seen = {}
+  local selfClass = comboResolveCurrentClass(aliases, classKeys)
+
+  if selfClass ~= "" and not seen[selfClass] then
+    seen[selfClass] = true
+    effective[#effective + 1] = selfClass
+  end
+  for _, classKey in ipairs(members) do
+    if not seen[classKey] then
+      seen[classKey] = true
+      effective[#effective + 1] = classKey
+    end
+  end
+
+  table.sort(effective)
+  return effective, selfClass, members, unresolved
+end
+
 local function comboCollectClassData(classKey)
   local registry = (boop.attacks and boop.attacks.registry) or {}
   local profile = registry[classKey]
@@ -1210,101 +1333,7 @@ local function comboCollectClassData(classKey)
   return data
 end
 
-local function comboRenderClassList(classKeys)
-  if cecho then
-    uiPrintHeader("boop > combos")
-    uiPrintSection("available classes")
-    local rows = {}
-    for i, classKey in ipairs(classKeys) do
-      rows[#rows + 1] = { index = i, label = comboPrettyClass(classKey) }
-    end
-    local labelWidth = uiComputeLabelWidth(rows, UI_LABEL_COL_WIDTH, 120)
-    for i, classKey in ipairs(classKeys) do
-      local shown = comboPrettyClass(classKey)
-      uiPrintRow(i, shown, "COPY", "cyan", function()
-        uiSetCommandLine("boop combos " .. shown)
-      end, "Copy class name into command line", labelWidth)
-    end
-    uiPrintFooter("Type: boop combos <class...>  |  Example: boop combos unnamable occultist bluedragon")
-    return
-  end
-
-  boop.util.echo("BOOP > COMBOS")
-  boop.util.echo("----------------------------------------")
-  boop.util.echo("Available classes:")
-  for _, classKey in ipairs(classKeys) do
-    boop.util.echo("  - " .. comboPrettyClass(classKey))
-  end
-  boop.util.echo("----------------------------------------")
-  boop.util.echo("Use: boop combos <class...>")
-end
-
-function boop.ui.combos(rawArgs)
-  local aliases, classKeys = comboBuildAliasMap()
-  local raw = boop.util.trim(rawArgs or "")
-  local lowered = boop.util.safeLower(raw)
-
-  if raw == "" or lowered == "help" then
-    boop.util.echo("Usage: boop combos <class...>")
-    boop.util.echo("Example: boop combos unnamable occultist bluedragon")
-    boop.util.echo("Tip: use commas or quotes for multi-word classes.")
-    boop.util.echo("Example: boop combos \"air elemental lady\", runewarden, serpent")
-    boop.util.echo("Use: boop combos list")
-    return
-  end
-
-  if lowered == "list" then
-    comboRenderClassList(classKeys)
-    return
-  end
-
-  local tokens = comboTokenizeArgs(raw)
-  if #tokens == 0 then
-    boop.util.echo("No classes provided. Use: boop combos <class...>")
-    return
-  end
-
-  local selected = {}
-  local selectedSeen = {}
-  local unresolved = {}
-  for _, token in ipairs(tokens) do
-    local classKey, candidates = comboResolveToken(token, aliases, classKeys)
-    if classKey then
-      if not selectedSeen[classKey] then
-        selectedSeen[classKey] = true
-        selected[#selected + 1] = classKey
-      end
-    else
-      unresolved[#unresolved + 1] = {
-        token = token,
-        candidates = candidates or {},
-      }
-    end
-  end
-
-  table.sort(selected)
-
-  if #unresolved > 0 then
-    for _, entry in ipairs(unresolved) do
-      if #entry.candidates == 0 then
-        boop.util.echo("Unknown class token: " .. tostring(entry.token))
-      else
-        local shown = {}
-        for i = 1, math.min(5, #entry.candidates) do
-          shown[#shown + 1] = comboPrettyClass(entry.candidates[i])
-        end
-        boop.util.echo("Ambiguous class token '" .. tostring(entry.token) .. "': " .. table.concat(shown, ", "))
-      end
-    end
-    boop.util.echo("Use: boop combos list")
-    return
-  end
-
-  if #selected == 0 then
-    boop.util.echo("No valid classes found. Use: boop combos list")
-    return
-  end
-
+local function comboAnalyze(selected)
   local classData = {}
   local providersByAff = {}
   for _, classKey in ipairs(selected) do
@@ -1334,21 +1363,11 @@ function boop.ui.combos(rawArgs)
         end
       end
 
-      local status
-      local color
       local ready = false
       if requireAll then
         ready = (#missing == 0)
       else
         ready = (presentCount > 0)
-      end
-
-      if ready then
-        status = "READY"
-        color = "green"
-      else
-        status = "MISSING"
-        color = "red"
       end
 
       local providerParts = {}
@@ -1361,13 +1380,17 @@ function boop.ui.combos(rawArgs)
           table.sort(providers)
         end
         if #providers > 0 then
-          providerParts[#providerParts + 1] = need .. ": " .. table.concat(providers, "/")
+          providerParts[#providerParts + 1] = comboPrettyTerm(need) .. ": " .. table.concat(providers, "/")
         else
-          providerParts[#providerParts + 1] = need .. ": (none)"
+          providerParts[#providerParts + 1] = comboPrettyTerm(need) .. ": (none)"
         end
       end
 
       comboRows[#comboRows + 1] = {
+        classKey = classKey,
+        ability = conditional.name,
+        needs = conditional.needs or {},
+        requireAll = requireAll,
         label = string.format(
           "%s / %s needs %s: %s",
           comboPrettyClass(classKey),
@@ -1375,8 +1398,8 @@ function boop.ui.combos(rawArgs)
           requireAll and "all" or "any",
           table.concat(needsShown, requireAll and " + " or " or ")
         ),
-        status = status,
-        color = color,
+        status = ready and "READY" or "MISSING",
+        color = ready and "green" or "red",
         detail = table.concat(providerParts, " | "),
       }
     end
@@ -1389,6 +1412,114 @@ function boop.ui.combos(rawArgs)
     return tostring(a.label) < tostring(b.label)
   end)
 
+  return classData, comboRows
+end
+
+local function comboBuildSelfEnableRows(selfClassKey, selected, classData)
+  if selfClassKey == "" or not classData[selfClassKey] then
+    return {}
+  end
+
+  local selfAffs = (classData[selfClassKey] and classData[selfClassKey].affs) or {}
+  local rows = {}
+  for _, classKey in ipairs(selected or {}) do
+    if classKey ~= selfClassKey then
+      local data = classData[classKey] or {}
+      for _, conditional in ipairs(data.conditionals or {}) do
+        local needsMode = boop.util.safeLower(boop.util.trim(conditional.needsMode or "any"))
+        local requireAll = (needsMode == "all")
+        local provided = {}
+        for _, need in ipairs(conditional.needs or {}) do
+          if selfAffs[need] then
+            provided[#provided + 1] = need
+          end
+        end
+        if #provided > 0 then
+          local enabled = requireAll and (#provided == #(conditional.needs or {})) or (#provided > 0)
+          local providedDetails = {}
+          for _, aff in ipairs(provided) do
+            local abilities = selfAffs[aff] or {}
+            local abilityNames = {}
+            for _, ability in ipairs(abilities) do
+              abilityNames[#abilityNames + 1] = comboPrettyTerm(ability)
+            end
+            local shownAbility = (#abilityNames > 0) and table.concat(abilityNames, "/") or "unknown"
+            providedDetails[#providedDetails + 1] = string.format("%s (%s)", comboPrettyTerm(aff), shownAbility)
+          end
+          rows[#rows + 1] = {
+            label = string.format(
+              "%s / %s needs %s: %s",
+              comboPrettyClass(classKey),
+              conditional.name,
+              requireAll and "all" or "any",
+              table.concat(conditional.needs or {}, requireAll and " + " or " or ")
+            ),
+            status = enabled and "ENABLED" or "PARTIAL",
+            color = enabled and "green" or "yellow",
+            detail = "you provide: " .. table.concat(providedDetails, ", "),
+          }
+        end
+      end
+    end
+  end
+
+  local rank = { ENABLED = 1, PARTIAL = 2 }
+  table.sort(rows, function(a, b)
+    local aRank = rank[a.status] or 99
+    local bRank = rank[b.status] or 99
+    if aRank ~= bRank then
+      return aRank < bRank
+    end
+    return tostring(a.label) < tostring(b.label)
+  end)
+  return rows
+end
+
+local function comboRenderClassList(classKeys)
+  if cecho then
+    uiPrintHeader("boop > combos")
+    uiPrintSection("available classes")
+    local rows = {}
+    for i, classKey in ipairs(classKeys) do
+      rows[#rows + 1] = { index = i, label = comboPrettyClass(classKey) }
+    end
+    local labelWidth = uiComputeLabelWidth(rows, UI_LABEL_COL_WIDTH, 120)
+    for i, classKey in ipairs(classKeys) do
+      local shown = comboPrettyClass(classKey)
+      uiPrintRow(i, shown, "COPY", "cyan", function()
+        uiSetCommandLine("boop combos " .. shown)
+      end, "Copy class name into command line", labelWidth)
+    end
+    uiPrintFooter("Type: boop combos <class...>  |  Example: boop combos unnamable occultist bluedragon")
+    return
+  end
+
+  boop.util.echo("BOOP > COMBOS")
+  boop.util.echo("----------------------------------------")
+  boop.util.echo("Available classes:")
+  for _, classKey in ipairs(classKeys) do
+    boop.util.echo("  - " .. comboPrettyClass(classKey))
+  end
+  boop.util.echo("----------------------------------------")
+  boop.util.echo("Use: boop combos <class...>")
+end
+
+local function comboEchoUnresolved(unresolved, sourceLabel)
+  for _, entry in ipairs(unresolved or {}) do
+    if #entry.candidates == 0 then
+      boop.util.echo(string.format("%s token not found: %s", sourceLabel, tostring(entry.token)))
+    else
+      local shown = {}
+      for i = 1, math.min(5, #entry.candidates) do
+        shown[#shown + 1] = comboPrettyClass(entry.candidates[i])
+      end
+      boop.util.echo(string.format("%s token '%s' is ambiguous: %s",
+        sourceLabel, tostring(entry.token), table.concat(shown, ", ")))
+    end
+  end
+end
+
+local function comboRenderDashboard(selected, classData, comboRows, selfRows, footerText)
   if cecho then
     uiPrintHeader("boop > combos")
     uiPrintSection("party")
@@ -1400,6 +1531,18 @@ function boop.ui.combos(rawArgs)
     local partyWidth = uiComputeLabelWidth(partyRows, UI_LABEL_COL_WIDTH, 180)
     for i, row in ipairs(partyRows) do
       uiPrintRow(i, row.label, "AFFS", "cyan", nil, nil, partyWidth)
+    end
+
+    if #selfRows > 0 then
+      uiPrintSection("enabled by you")
+      local widthRows = {}
+      for i, row in ipairs(selfRows) do
+        widthRows[#widthRows + 1] = { index = i, label = row.label }
+      end
+      local selfWidth = uiComputeLabelWidth(widthRows, UI_LABEL_COL_WIDTH, 150)
+      for i, row in ipairs(selfRows) do
+        uiPrintRow(i, row.label, row.status, row.color, nil, row.detail, selfWidth)
+      end
     end
 
     uiPrintSection("conditional synergy")
@@ -1415,7 +1558,7 @@ function boop.ui.combos(rawArgs)
         uiPrintRow(i, row.label, row.status, row.color, nil, row.detail, labelWidth)
       end
     end
-    uiPrintFooter("Inferred from boop rage aff/needs data. Use: boop combos list")
+    uiPrintFooter(footerText)
     return
   end
 
@@ -1426,6 +1569,14 @@ function boop.ui.combos(rawArgs)
     boop.util.echo(string.format("[%d] %s Affs - %s", i, comboPrettyClass(classKey), comboAffSummary(classData[classKey])))
   end
   boop.util.echo("")
+  if #selfRows > 0 then
+    boop.util.echo("ENABLED BY YOU")
+    for i, row in ipairs(selfRows) do
+      boop.util.echo(string.format("[%d] %s [%s]", i, row.label, row.status))
+      boop.util.echo("    " .. row.detail)
+    end
+    boop.util.echo("")
+  end
   boop.util.echo("CONDITIONAL SYNERGY")
   if #comboRows == 0 then
     boop.util.echo("No conditional rage combos found for selected classes.")
@@ -1437,6 +1588,208 @@ function boop.ui.combos(rawArgs)
   end
   boop.util.echo("----------------------------------------")
   boop.util.echo("Inferred from boop rage aff/needs data.")
+end
+
+function boop.ui.combos(rawArgs)
+  local aliases, classKeys = comboBuildAliasMap()
+  local raw = boop.util.trim(rawArgs or "")
+  local lowered = boop.util.safeLower(raw)
+
+  if lowered == "help" then
+    boop.util.echo("Usage: boop combos [class...]")
+    boop.util.echo("Example: boop combos unnamable occultist bluedragon")
+    boop.util.echo("Tip: no args uses boop party roster + your class.")
+    boop.util.echo("Tip: use commas or quotes for multi-word classes.")
+    boop.util.echo("Example: boop combos \"air elemental lady\", runewarden, serpent")
+    boop.util.echo("Use: boop combos list")
+    return
+  end
+
+  if lowered == "list" then
+    comboRenderClassList(classKeys)
+    return
+  end
+
+  local selected = {}
+  local unresolved = {}
+  local selfClass = ""
+  local usingPartyRoster = false
+
+  if raw == "" or lowered == "party" then
+    usingPartyRoster = true
+    selected, selfClass, _, unresolved = comboBuildEffectiveParty(aliases, classKeys)
+  else
+    local tokens = comboTokenizeArgs(raw)
+    if #tokens == 0 then
+      boop.util.echo("No classes provided. Use: boop combos <class...>")
+      return
+    end
+    selected, unresolved = comboResolveClassTokens(tokens, aliases, classKeys)
+    selfClass = comboResolveCurrentClass(aliases, classKeys)
+  end
+
+  if #unresolved > 0 then
+    comboEchoUnresolved(unresolved, usingPartyRoster and "party roster" or "class")
+    boop.util.echo("Use: boop combos list")
+    if usingPartyRoster then
+      boop.util.echo("Tip: reset roster with: boop party clear")
+    end
+    return
+  end
+
+  if #selected == 0 then
+    if usingPartyRoster then
+      boop.util.echo("No party classes configured. Set with: boop party <class...>")
+      return
+    end
+    boop.util.echo("No valid classes found. Use: boop combos list")
+    return
+  end
+
+  local classData, comboRows = comboAnalyze(selected)
+  local selfRows = comboBuildSelfEnableRows(selfClass, selected, classData)
+  local footer = "Inferred from boop rage aff/needs data. Use: boop combos list"
+  if usingPartyRoster then
+    footer = "Using boop party roster + your class. Set with: boop party <class...>"
+  end
+  comboRenderDashboard(selected, classData, comboRows, selfRows, footer)
+end
+
+function boop.ui.party(rawArgs)
+  local aliases, classKeys = comboBuildAliasMap()
+  local raw = boop.util.trim(rawArgs or "")
+  local lowered = boop.util.safeLower(raw)
+
+  if lowered == "help" then
+    boop.util.echo("Usage: boop party <class...> | boop party | boop party clear")
+    boop.util.echo("Example: boop party depthswalker occultist silverdragon")
+    boop.util.echo("Note: your own class is auto-included and does not need to be listed.")
+    return
+  end
+
+  if lowered == "clear" or lowered == "off" or lowered == "none" then
+    saveConfigValue("partyRoster", "")
+    boop.util.echo("party roster cleared")
+    boop.ui.party("")
+    return
+  end
+
+  local selfClass = comboResolveCurrentClass(aliases, classKeys)
+  if raw ~= "" and lowered ~= "show" and lowered ~= "status" then
+    local tokens = comboTokenizeArgs(raw)
+    if #tokens == 0 then
+      boop.util.echo("No classes provided. Use: boop party <class...>")
+      return
+    end
+
+    local selected, unresolved = comboResolveClassTokens(tokens, aliases, classKeys)
+    if #unresolved > 0 then
+      comboEchoUnresolved(unresolved, "party")
+      boop.util.echo("Use: boop combos list")
+      return
+    end
+
+    local filtered = {}
+    for _, classKey in ipairs(selected) do
+      if classKey ~= selfClass then
+        filtered[#filtered + 1] = classKey
+      end
+    end
+
+    saveConfigValue("partyRoster", comboSerializeParty(filtered))
+    if #filtered == 0 then
+      boop.util.echo("party roster saved: (none)")
+    else
+      local shown = {}
+      for _, classKey in ipairs(filtered) do
+        shown[#shown + 1] = comboPrettyClass(classKey)
+      end
+      boop.util.echo("party roster saved: " .. table.concat(shown, ", "))
+    end
+  end
+
+  local effective, resolvedSelfClass, members, unresolvedMembers = comboBuildEffectiveParty(aliases, classKeys)
+  if #unresolvedMembers > 0 then
+    comboEchoUnresolved(unresolvedMembers, "stored party")
+    boop.util.echo("Tip: set a clean roster with boop party <class...> or boop party clear")
+  end
+
+  local classData = {}
+  for _, classKey in ipairs(effective) do
+    classData[classKey] = comboCollectClassData(classKey)
+  end
+  local selfRows = comboBuildSelfEnableRows(resolvedSelfClass, effective, classData)
+
+  if cecho then
+    uiPrintHeader("boop > party")
+    uiPrintSection("roster")
+    local rosterRows = {}
+    rosterRows[#rosterRows + 1] = {
+      index = 1,
+      label = "You: " .. ((resolvedSelfClass ~= "" and comboPrettyClass(resolvedSelfClass)) or "(unknown)")
+    }
+    for i, classKey in ipairs(members) do
+      rosterRows[#rosterRows + 1] = { index = i + 1, label = "Member: " .. comboPrettyClass(classKey) }
+    end
+    local rosterWidth = uiComputeLabelWidth(rosterRows, UI_LABEL_COL_WIDTH, 120)
+    for _, row in ipairs(rosterRows) do
+      uiPrintRow(row.index, row.label, "OK", "cyan", nil, nil, rosterWidth)
+    end
+
+    uiPrintSection("effective party")
+    local effRows = {}
+    for i, classKey in ipairs(effective) do
+      effRows[#effRows + 1] = { index = i, label = comboPrettyClass(classKey) }
+    end
+    local effWidth = uiComputeLabelWidth(effRows, UI_LABEL_COL_WIDTH, 120)
+    if #effRows == 0 then
+      uiPrintRow(1, "(none)", "INFO", "yellow")
+    else
+      for i, row in ipairs(effRows) do
+        uiPrintRow(i, row.label, "CLS", "cyan", nil, nil, effWidth)
+      end
+    end
+
+    uiPrintSection("enabled by you")
+    if #selfRows == 0 then
+      uiPrintRow(1, "No party conditionals currently enabled by your rage affs.", "INFO", "yellow")
+    else
+      local widthRows = {}
+      for i, row in ipairs(selfRows) do
+        widthRows[#widthRows + 1] = { index = i, label = row.label }
+      end
+      local selfWidth = uiComputeLabelWidth(widthRows, UI_LABEL_COL_WIDTH, 150)
+      for i, row in ipairs(selfRows) do
+        uiPrintRow(i, row.label, row.status, row.color, nil, row.detail, selfWidth)
+      end
+    end
+    uiPrintFooter("Type: boop party <class...> | boop party clear | boop combos")
+    return
+  end
+
+  boop.util.echo("BOOP > PARTY")
+  boop.util.echo("----------------------------------------")
+  boop.util.echo("ROSTER")
+  boop.util.echo("You: " .. ((resolvedSelfClass ~= "" and comboPrettyClass(resolvedSelfClass)) or "(unknown)"))
+  if #members == 0 then
+    boop.util.echo("Members: (none)")
+  else
+    for i, classKey in ipairs(members) do
+      boop.util.echo(string.format("[%d] %s", i, comboPrettyClass(classKey)))
+    end
+  end
+  boop.util.echo("")
+  boop.util.echo("ENABLED BY YOU")
+  if #selfRows == 0 then
+    boop.util.echo("No party conditionals currently enabled by your rage affs.")
+  else
+    for i, row in ipairs(selfRows) do
+      boop.util.echo(string.format("[%d] %s [%s]", i, row.label, row.status))
+      boop.util.echo("    " .. row.detail)
+    end
+  end
+  boop.util.echo("----------------------------------------")
+  boop.util.echo("Use: boop party <class...> | boop party clear | boop combos")
 end
 
 local HELP_TOPICS = {
@@ -1577,16 +1930,33 @@ local HELP_TOPICS = {
     },
   },
   {
+    key = "party",
+    title = "Party",
+    aliases = { "party" },
+    commands = {
+      "boop party",
+      "boop party <class...>",
+      "boop party clear",
+      "boop party depthswalker occultist silverdragon",
+    },
+    notes = {
+      "Your current class is auto-included and does not need to be listed.",
+      "boop combos with no args uses this roster + your current class.",
+    },
+  },
+  {
     key = "combos",
     title = "Combos",
     aliases = { "combos", "combo" },
     commands = {
+      "boop combos",
       "boop combos <class...>",
       "boop combos <class1>, <class2>, <class3>",
       "boop combos list",
       "boop combos unnamable occultist bluedragon",
     },
     notes = {
+      "No-arg mode uses boop party roster + your own class.",
       "Shows conditional rage synergies inferred from boop attack profiles.",
       "Dragon aliases like bluedragon/reddragon/golddragon are supported.",
       "Use quotes for multi-word classes: \"air elemental lady\".",
