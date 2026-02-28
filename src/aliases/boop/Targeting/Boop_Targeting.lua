@@ -1,1 +1,1 @@
-boop.ui.setTargetingMode(matches[2])
+boop.ui.setTargetingMode((matches and matches[2]) or "")

@@ -1,1 +1,1 @@
-boop.ui.setRageMode(matches[2])
+boop.ui.setRageMode((matches and matches[2]) or "")

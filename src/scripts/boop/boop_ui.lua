@@ -275,9 +275,20 @@ end
 
 function boop.ui.setTargetingMode(mode, quiet)
   mode = boop.util.safeLower(boop.util.trim(mode))
+  if mode == "" then
+    boop.util.echo("targeting mode: " .. tostring(boop.config.targetingMode or "whitelist"))
+    boop.util.echo("Usage: boop targeting <manual|whitelist|blacklist|auto>")
+    return
+  end
+  local aliases = {
+    wl = "whitelist",
+    bl = "blacklist",
+  }
+  mode = aliases[mode] or mode
   local valid = { manual = true, whitelist = true, blacklist = true, auto = true }
   if not valid[mode] then
     boop.util.echo("Invalid targeting mode: " .. tostring(mode))
+    boop.util.echo("Usage: boop targeting <manual|whitelist|blacklist|auto>")
     return
   end
   boop.config.targetingMode = mode
@@ -291,7 +302,35 @@ end
 
 function boop.ui.setAttackMode(mode)
   mode = boop.util.safeLower(boop.util.trim(mode))
-  if mode == "" then return end
+  local aliases = {
+    damage = "dam",
+    condition = "cond",
+    conditional = "cond",
+  }
+  mode = aliases[mode] or mode
+  local valid = {
+    simple = true,
+    dam = true,
+    big = true,
+    small = true,
+    aff = true,
+    cond = true,
+    combo = true,
+    hybrid = true,
+    buff = true,
+    pool = true,
+    none = true,
+  }
+  if mode == "" then
+    boop.util.echo("ragemode: " .. tostring(boop.config.attackMode or "simple"))
+    boop.util.echo("Usage: boop ragemode <simple|dam|big|small|aff|cond|combo|hybrid|buff|pool|none>")
+    return
+  end
+  if not valid[mode] then
+    boop.util.echo("Invalid ragemode: " .. tostring(mode))
+    boop.util.echo("Usage: boop ragemode <simple|dam|big|small|aff|cond|combo|hybrid|buff|pool|none>")
+    return
+  end
   boop.config.attackMode = mode
   if boop.db and boop.db.saveConfig then
     boop.db.saveConfig("attackMode", boop.config.attackMode)
@@ -301,7 +340,6 @@ end
 
 function boop.ui.setRageMode(mode)
   mode = boop.util.safeLower(boop.util.trim(mode))
-  if mode == "" then return end
   boop.ui.setAttackMode(mode)
 end
 

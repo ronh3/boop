@@ -30,7 +30,7 @@
   {
     "name": "Boop Targeting",
     "isActive": "yes",
-    "regex": "^(?i)boop\\s+targeting\\s+(manual|whitelist|blacklist|auto)$",
+    "regex": "^(?i)boop\\s+targeting(?:\\s+(.+))?$",
     "script": "",
     "isFolder": "no"
   },

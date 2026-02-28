@@ -9,7 +9,7 @@
   {
     "name": "Boop Lead Set",
     "isActive": "yes",
-    "regex": "^(?i)boop\\s+lead\\s+([0-9]*\\.?[0-9]+)$",
+    "regex": "^(?i)boop\\s+lead\\s+(.+)$",
     "script": "",
     "isFolder": "no"
   },

@@ -302,12 +302,15 @@ end
 function boop.targets.addWhitelist(area, name)
   area = area or boop.targets.getArea()
   name = boop.util.trim(name or "")
-  if name == "" then return end
+  if name == "" then
+    boop.util.echo("Usage: boop whitelist add <name>")
+    return false
+  end
 
   boop.lists.whitelist[area] = boop.lists.whitelist[area] or {}
   if listContains(boop.lists.whitelist[area], name) then
-    boop.util.echo("Already whitelisted: " .. name)
-    return
+    boop.util.echo("Already whitelisted in " .. area .. ": " .. name)
+    return false
   end
 
   boop.lists.whitelist[area][#boop.lists.whitelist[area] + 1] = name
@@ -315,23 +318,35 @@ function boop.targets.addWhitelist(area, name)
   if boop.db and boop.db.saveList then
     boop.db.saveList("whitelist", area, boop.lists.whitelist[area])
   end
+  boop.util.echo("Whitelisted in " .. area .. ": " .. name)
+  return true
 end
 
 function boop.targets.removeWhitelist(area, name)
   area = area or boop.targets.getArea()
   name = boop.util.trim(name or "")
-  if name == "" then return end
+  if name == "" then
+    boop.util.echo("Usage: boop whitelist remove <name>")
+    return false
+  end
   local list = boop.lists.whitelist[area]
-  if not list then return end
+  if not list or #list == 0 then
+    boop.util.echo("Whitelist is empty for " .. area)
+    return false
+  end
   for i, v in ipairs(list) do
     if sameName(v, name) then
+      local removedName = v
       table.remove(list, i)
       if boop.db and boop.db.saveList then
         boop.db.saveList("whitelist", area, list)
       end
-      break
+      boop.util.echo("Removed from whitelist in " .. area .. ": " .. removedName)
+      return true
     end
   end
+  boop.util.echo("Not found in whitelist for " .. area .. ": " .. name)
+  return false
 end
 
 function boop.targets.shiftWhitelist(area, index, direction)
@@ -348,12 +363,15 @@ end
 function boop.targets.addBlacklist(area, name)
   area = area or boop.targets.getArea()
   name = boop.util.trim(name or "")
-  if name == "" then return end
+  if name == "" then
+    boop.util.echo("Usage: boop blacklist add <name>")
+    return false
+  end
 
   boop.lists.blacklist[area] = boop.lists.blacklist[area] or {}
   if listContains(boop.lists.blacklist[area], name) then
-    boop.util.echo("Already blacklisted: " .. name)
-    return
+    boop.util.echo("Already blacklisted in " .. area .. ": " .. name)
+    return false
   end
 
   boop.lists.blacklist[area][#boop.lists.blacklist[area] + 1] = name
@@ -361,23 +379,35 @@ function boop.targets.addBlacklist(area, name)
   if boop.db and boop.db.saveList then
     boop.db.saveList("blacklist", area, boop.lists.blacklist[area])
   end
+  boop.util.echo("Blacklisted in " .. area .. ": " .. name)
+  return true
 end
 
 function boop.targets.removeBlacklist(area, name)
   area = area or boop.targets.getArea()
   name = boop.util.trim(name or "")
-  if name == "" then return end
+  if name == "" then
+    boop.util.echo("Usage: boop blacklist remove <name>")
+    return false
+  end
   local list = boop.lists.blacklist[area]
-  if not list then return end
+  if not list or #list == 0 then
+    boop.util.echo("Blacklist is empty for " .. area)
+    return false
+  end
   for i, v in ipairs(list) do
     if sameName(v, name) then
+      local removedName = v
       table.remove(list, i)
       if boop.db and boop.db.saveList then
         boop.db.saveList("blacklist", area, list)
       end
-      break
+      boop.util.echo("Removed from blacklist in " .. area .. ": " .. removedName)
+      return true
     end
   end
+  boop.util.echo("Not found in blacklist for " .. area .. ": " .. name)
+  return false
 end
 
 function boop.targets.shiftBlacklist(area, index, direction)

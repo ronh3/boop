@@ -35,6 +35,7 @@ function boop.safety.flee()
 
   local action = "wake/wake/apply mending to legs/stand/" .. dir
   boop.executeAction(action)
+  boop.util.echo("fleeing " .. dir .. " (boop disabled)")
   boop.state.fleeing = true
   tempTimer(2, function() boop.state.fleeing = false end)
 end

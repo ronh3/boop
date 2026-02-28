@@ -37,7 +37,7 @@
   {
     "name": "Boop Ragemode",
     "isActive": "yes",
-    "regex": "^(?i)boop\\s+ragemode\\s+(\\w+)$",
+    "regex": "^(?i)boop\\s+ragemode(?:\\s+(.+))?$",
     "script": "",
     "isFolder": "no"
   },
