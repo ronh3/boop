@@ -250,7 +250,51 @@ end
 function boop.onRoomItemsRemove()
   if not gmcp or not gmcp.Char or not gmcp.Char.Items or not gmcp.Char.Items.Remove then return end
   if gmcp.Char.Items.Remove.location ~= "room" then return end
-  boop.targets.removeRoomItem(gmcp.Char.Items.Remove.item)
+  local removed = gmcp.Char.Items.Remove.item
+  local removedId = tostring((removed and removed.id) or "")
+  boop.targets.removeRoomItem(removed)
+
+  if removedId == "" then
+    return
+  end
+
+  boop.state = boop.state or {}
+  local current = tostring(boop.state.currentTargetId or "")
+  if current == "" or current ~= removedId then
+    return
+  end
+
+  boop.state.currentTargetId = ""
+  boop.state.targetName = ""
+  boop.state.prequeuedStandard = false
+  boop.state.queueAliasDirty = true
+
+  if boop.targets and boop.targets.clearTargetShield then
+    boop.targets.clearTargetShield("target removed")
+  end
+  if boop.afflictions and boop.afflictions.clearTarget then
+    boop.afflictions.clearTarget()
+  end
+
+  if boop.config and boop.config.enabled and boop.config.useQueueing then
+    send("queue clear", false)
+    boop.trace.log("queue cleared: current target removed")
+  end
+
+  if not boop.config or not boop.config.enabled or boop.state.diagHold then
+    return
+  end
+
+  local nextTarget = boop.targets and boop.targets.choose and boop.targets.choose() or ""
+  if nextTarget ~= "" then
+    boop.targets.setTarget(nextTarget)
+  end
+
+  tempTimer(0, function()
+    if boop and boop.tick then
+      boop.tick()
+    end
+  end)
 end
 
 function boop.onRoomInfo()
