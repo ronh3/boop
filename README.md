@@ -72,6 +72,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Common chaos hound follow-through flavor lines are also suppressed when a matching maul summary is pending.
 - If your current target disappears from room items (for example a party kill), boop now clears queued stale attack state in queueing mode and immediately retargets/ticks.
 - Standard profiles can define `openerAt100`; it fires once per target id when target HP is explicitly known as 100% (currently used by Occultist: `attend &tar`).
+- With `boop trace on`, opener decisions are logged with deduped reasons (for example selected, hp unknown, hp not full, already used).
 - Foxhunt import reads Mudlet DB `hunting` lists directly; `merge` is default, `overwrite` clears boop lists first, `dryrun` reports counts only.
 - `boop combos` infers synergy from class rage profiles, including per-class affliction providers and conditional readiness.
 - Conditional needs default to `any` (one affliction present) unless a profile explicitly sets `needsMode = "all"`.

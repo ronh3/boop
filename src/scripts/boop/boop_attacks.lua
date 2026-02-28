@@ -243,6 +243,30 @@ function boop.attacks.markOpenerUsed(classKey, targetId)
   boop.state.openerUsedByClass[cls] = tid
 end
 
+local function traceOpenerDecision(classKey, targetId, reason)
+  if not boop.config or not boop.config.traceEnabled then
+    return
+  end
+  if not boop.trace or not boop.trace.log then
+    return
+  end
+
+  local cls = boop.util.safeLower(boop.util.trim(classKey or ""))
+  local tid = boop.util.trim(tostring(targetId or ""))
+  local why = boop.util.trim(reason or "")
+  if cls == "" then cls = "unknown" end
+  if tid == "" then tid = "none" end
+  if why == "" then why = "unknown" end
+
+  boop.state = boop.state or {}
+  local key = string.format("%s|%s|%s", cls, tid, why)
+  if boop.state.lastOpenerTraceKey == key then
+    return
+  end
+  boop.state.lastOpenerTraceKey = key
+  boop.trace.log(string.format("opener %s (%s:%s)", why, cls, tid))
+end
+
 local function isTwoHandedSpec()
   local spec = boop.util.safeLower(boop.state and boop.state.spec or "")
   spec = boop.util.trim(spec)
@@ -336,14 +360,25 @@ function boop.attacks.selectStandard(profile, classKey)
 
   local opener = profile.openerAt100 or profile.opener
   local targetId = boop.util.trim(tostring(boop.state and boop.state.currentTargetId or ""))
-  if opener
-    and targetId ~= ""
-    and boop.attacks.isTargetAtFullHpKnown()
-    and not boop.attacks.openerUsedForTarget(classKey, targetId)
-  then
-    local cmd = standardCommand(opener)
-    if cmd ~= "" then
-      return cmd, false, true
+  if opener then
+    if targetId == "" then
+      traceOpenerDecision(classKey, targetId, "skip:no-target")
+    else
+      local hp = boop.attacks.getTargetHpPercKnown()
+      if hp == nil then
+        traceOpenerDecision(classKey, targetId, "skip:hp-unknown")
+      elseif hp < 100 then
+        traceOpenerDecision(classKey, targetId, "skip:hp-not-full")
+      elseif boop.attacks.openerUsedForTarget(classKey, targetId) then
+        traceOpenerDecision(classKey, targetId, "skip:already-used")
+      else
+        local cmd = standardCommand(opener)
+        if cmd ~= "" then
+          traceOpenerDecision(classKey, targetId, "selected")
+          return cmd, false, true
+        end
+        traceOpenerDecision(classKey, targetId, "skip:unavailable")
+      end
     end
   end
 
