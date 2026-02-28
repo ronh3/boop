@@ -27,7 +27,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop trace` / `boop trace on|off|show [n]|clear`
 - `boop gag` / `boop gag on|off|own|others|all|<scope> on|off`
 - `boop targeting <manual|whitelist|blacklist|auto>`
-- `boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>` (default: `simple`)
+- `boop ragemode <simple|dam|big|small|aff|cond|combo|buff|pool|none>` (default: `simple`)
 - `diag` (queue-clear + diagnose; temporarily pauses boop attacks until diagnose result + prompt)
 - `boop ih` (also overrides `ih`)
 - `boop whitelist` / `boop whitelist add <name>` / `boop whitelist remove <name>` (display is clickable: up/down/remove)
@@ -78,6 +78,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop combos` infers synergy from class rage profiles, including per-class affliction providers and conditional readiness.
 - `boop combos` with no args automatically uses `boop party` roster plus your current class.
 - `boop party` also highlights which party conditionals your class can help enable from your rage afflictions.
+- `boop ragemode combo` fires your conditional rage attack when needs are up and otherwise holds required rage, only spending overflow on damage.
 - Conditional needs default to `any` (one affliction present) unless a profile explicitly sets `needsMode = "all"`.
 - Battlerage afflictions are auto-tracked from class/general combat lines (gain + wear-off), and updates are scoped to your current target context for conditional rage checks.
 - Shield state is now cleared from a broad set of class/general break and "no shield" combat lines, reducing repeated/wasted shieldbreak attempts when the shield is already down.

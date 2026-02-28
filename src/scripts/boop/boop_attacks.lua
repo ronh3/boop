@@ -111,7 +111,141 @@ function boop.attacks.canUseConditional(ability)
   return false
 end
 
-function boop.attacks.selectRage(profile, rage)
+local function selectDamageForHp(profile, rageBudget)
+  local hp = boop.attacks.getTargetHpPerc()
+  local cfg = profile.configRage or { bigDamage = 101, smallDamage = 0 }
+
+  if hp >= (cfg.bigDamage or 101) then
+    return findByDescList(profile, {"Big Damage", "Mid Damage", "Small Damage"}, rageBudget)
+  end
+
+  if hp >= (cfg.smallDamage or 0) then
+    return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rageBudget)
+  end
+
+  return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rageBudget)
+end
+
+local function rosterClassKeys(selfClassKey)
+  local classes = {}
+  local seen = {}
+
+  local function addClass(raw)
+    local key = boop.util.safeLower(boop.util.trim(raw or ""))
+    if key == "" then return end
+    if not boop.attacks.registry[key] then return end
+    if seen[key] then return end
+    seen[key] = true
+    classes[#classes + 1] = key
+  end
+
+  addClass(selfClassKey)
+  local partyRaw = boop.util.trim((boop.config and boop.config.partyRoster) or "")
+  for token in partyRaw:gmatch("([^,]+)") do
+    addClass(token)
+  end
+  return classes
+end
+
+local function rosterProvidersByAff(selfClassKey)
+  local providers = {}
+  local classes = rosterClassKeys(selfClassKey)
+  for _, classKey in ipairs(classes) do
+    local classProfile = boop.attacks.registry[classKey]
+    local rageProfile = classProfile and classProfile.rage
+    local abilities = rageProfile and rageProfile.abilities or {}
+    for _, ability in pairs(abilities) do
+      local aff = boop.util.safeLower(boop.util.trim(ability.aff or ""))
+      if aff ~= "" and abilityKnown(ability) then
+        providers[aff] = providers[aff] or {}
+        providers[aff][classKey] = true
+      end
+    end
+  end
+  return providers
+end
+
+local function conditionalNeedsProviderSupport(selfClassKey, ability)
+  if not ability or type(ability.needs) ~= "table" or #ability.needs == 0 then
+    return false
+  end
+
+  local providersByAff = rosterProvidersByAff(selfClassKey)
+  local mode = boop.util.safeLower(boop.util.trim(ability.needsMode or "any"))
+  local supported = 0
+  for _, need in ipairs(ability.needs) do
+    local key = boop.util.safeLower(boop.util.trim(need or ""))
+    if key ~= "" and providersByAff[key] then
+      supported = supported + 1
+    end
+  end
+
+  if mode == "all" then
+    return supported == #ability.needs
+  end
+  return supported > 0
+end
+
+local function traceComboDecision(classKey, reason)
+  if not boop.config or not boop.config.traceEnabled then
+    return
+  end
+  if not boop.trace or not boop.trace.log then
+    return
+  end
+
+  local cls = boop.util.safeLower(boop.util.trim(classKey or ""))
+  if cls == "" then cls = "unknown" end
+  local targetId = boop.util.trim(tostring(boop.state and boop.state.currentTargetId or ""))
+  if targetId == "" then targetId = "none" end
+  local why = boop.util.trim(reason or "")
+  if why == "" then why = "unknown" end
+
+  boop.state = boop.state or {}
+  local key = string.format("%s|%s|%s", cls, targetId, why)
+  if boop.state.lastComboTraceKey == key then
+    return
+  end
+  boop.state.lastComboTraceKey = key
+  boop.trace.log("combo mode: " .. why)
+end
+
+local function selectRageCombo(profile, rage, classKey)
+  local conditionalNow = findByDesc(profile, "Conditional", rage)
+  if conditionalNow and boop.attacks.canUseConditional(conditionalNow) then
+    traceComboDecision(classKey, "fire conditional")
+    return conditionalNow
+  end
+
+  local conditionalReady = findByDesc(profile, "Conditional", nil)
+  if not conditionalReady then
+    traceComboDecision(classKey, "fallback simple (conditional unavailable)")
+    return selectDamageForHp(profile, rage)
+  end
+
+  if not conditionalNeedsProviderSupport(classKey, conditionalReady) then
+    traceComboDecision(classKey, "fallback simple (no provider support)")
+    return selectDamageForHp(profile, rage)
+  end
+
+  local reserve = tonumber(conditionalReady.rage) or 0
+  local budget = (tonumber(rage) or 0) - reserve
+  if budget <= 0 then
+    traceComboDecision(classKey, "hold rage for conditional")
+    return nil
+  end
+
+  local spender = selectDamageForHp(profile, budget)
+  if spender then
+    traceComboDecision(classKey, "spend overflow rage")
+    return spender
+  end
+
+  traceComboDecision(classKey, "hold rage (no overflow spender)")
+  return nil
+end
+
+function boop.attacks.selectRage(profile, rage, classKey)
   if not profile then return nil end
 
   if boop.state.targetShield and (type(boop.state.targetShield) ~= "table" or not boop.state.targetShield.attempted) then
@@ -161,22 +295,13 @@ function boop.attacks.selectRage(profile, rage)
       return ability
     end
     return nil
+  elseif mode == "combo" then
+    return selectRageCombo(profile, rage, classKey)
   elseif mode == "buff" then
     return findByDesc(profile, "Buff", rage)
   end
 
-  local hp = boop.attacks.getTargetHpPerc()
-  local cfg = profile.configRage or { bigDamage = 101, smallDamage = 0 }
-
-  if hp >= (cfg.bigDamage or 101) then
-    return findByDescList(profile, {"Big Damage", "Mid Damage", "Small Damage"}, rage)
-  end
-
-  if hp >= (cfg.smallDamage or 0) then
-    return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage)
-  end
-
-  return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage)
+  return selectDamageForHp(profile, rage)
 end
 
 local function standardCommand(entry)
@@ -429,7 +554,7 @@ function boop.attacks.choose()
   local rageAbility = nil
   if profile.rage then
     local rage = boop.attacks.getRage()
-    local ability = boop.attacks.selectRage(profile.rage, rage)
+    local ability = boop.attacks.selectRage(profile.rage, rage, class)
     if ability and ability.cmd and ability.cmd ~= "" then
       rageAction = ability.cmd
       rageAbility = ability

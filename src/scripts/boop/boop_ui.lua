@@ -1846,12 +1846,15 @@ local HELP_TOPICS = {
     title = "Ragemode",
     aliases = { "ragemode", "rage", "attackmode" },
     commands = {
-      "boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>",
+      "boop ragemode <simple|dam|big|small|aff|cond|combo|buff|pool|none>",
       "boop ragemode simple",
+      "boop ragemode combo",
       "boop ragemode big",
       "boop ragemode none",
     },
-    notes = {},
+    notes = {
+      "combo: fire conditional when enabled; otherwise hold reserve rage and spend overflow.",
+    },
   },
   {
     key = "queueing",
