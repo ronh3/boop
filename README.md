@@ -64,6 +64,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Weaponmastery standard attack lines (Two Handed + Sword and Shield) are included in gag replacement coverage.
 - Self-attack gag mode now compacts Weaponmastery speed/damage/balance lines into one attack summary and condenses slain + experience into a single kill summary.
 - When both summaries are pending, boop now emits the attack summary before the kill summary.
+- Critical hit tiers are folded into the self attack summary as `- 2xCRIT/4xCRIT/8xCRIT/16xCRIT/32xCRIT`.
 - Unnamable battlerage `Shriek` line is included in gag replacement coverage.
 - Unnamable battlerage `Sunder` line is included in gag replacement coverage and shield-down tracking.
 - Unnamable battlerage `Destroy` line is included in gag replacement coverage.

@@ -153,11 +153,16 @@ local function emitAttackSummary(entry)
   local what = boop.util.trim(entry.ability or "Attack")
   local target = boop.util.trim(entry.target or "(none)")
   local damage = boop.util.trim(entry.damageText or "")
+  local crit = boop.util.trim(entry.critText or "")
   local bal = boop.util.trim(entry.balanceText or "")
 
   local suffix = ""
-  if damage ~= "" then
+  if damage ~= "" and crit ~= "" then
+    suffix = suffix .. " (" .. damage .. " - " .. crit .. ")"
+  elseif damage ~= "" then
     suffix = suffix .. " (" .. damage .. ")"
+  elseif crit ~= "" then
+    suffix = suffix .. " (" .. crit .. ")"
   end
   if bal ~= "" then
     suffix = suffix .. " (Bal: " .. bal .. ")"
@@ -233,6 +238,7 @@ local function setPendingAttack(who, ability, target)
     ability = boop.util.trim(ability or "Attack"),
     target = boop.util.trim(target or "(none)"),
     damageText = "",
+    critText = "",
     balanceText = "",
   }
 
@@ -286,6 +292,24 @@ local function setPendingKill(target)
     boop.state.gagPendingKillTimer = nil
     flushPendingKill()
   end)
+end
+
+local function resolveCritText(rawCrit)
+  local key = boop.util.safeLower(boop.util.trim(rawCrit or ""))
+  if key == "" then return "" end
+  key = key:gsub("%-", " ")
+  key = key:gsub("%s+", " ")
+  key = key:upper()
+
+  local map = {
+    ["CRITICAL"] = "2xCRIT",
+    ["CRUSHING CRITICAL"] = "4xCRIT",
+    ["OBLITERATING CRITICAL"] = "8xCRIT",
+    ["ANNIHILATINGLY POWERFUL CRITICAL"] = "16xCRIT",
+    ["WORLD SHATTERING CRITICAL"] = "32xCRIT",
+  }
+
+  return map[key] or ""
 end
 
 function boop.gag.showStatus()
@@ -390,6 +414,26 @@ function boop.gag.onDamageLine(amount, dtype, _rawLine)
   elseif kind ~= "" then
     pending.damageText = kind
   end
+end
+
+function boop.gag.onCriticalLine(critLabel, _rawLine)
+  if not boop.config or not boop.config.gagOwnAttacks then
+    return
+  end
+
+  boop.state = boop.state or {}
+  local pending = boop.state.gagPendingAttack
+  if not pending then
+    return
+  end
+
+  local critText = resolveCritText(critLabel or "")
+  if critText == "" then
+    return
+  end
+
+  deleteCurrent()
+  pending.critText = critText
 end
 
 function boop.gag.onBalanceUsed(seconds, _rawLine)

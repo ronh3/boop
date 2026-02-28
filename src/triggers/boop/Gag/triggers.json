@@ -6040,6 +6040,26 @@
     "script": ""
   },
   {
+    "name": "Combat Critical Hit",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You have scored an? (.+) hit!$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
     "name": "Unnamable Battlerage Shriek",
     "isActive": "yes",
     "isFolder": "no",
