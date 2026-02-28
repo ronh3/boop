@@ -84,6 +84,25 @@ function boop.attacks.getTargetHpPerc()
   return 100
 end
 
+function boop.attacks.getTargetHpPercKnown()
+  if gmcp and gmcp.IRE and gmcp.IRE.Target and gmcp.IRE.Target.Info and gmcp.IRE.Target.Info.hpperc then
+    local num = tostring(gmcp.IRE.Target.Info.hpperc or ""):gsub("%%", "")
+    local val = tonumber(num)
+    if val then
+      return val
+    end
+  end
+  return nil
+end
+
+function boop.attacks.isTargetAtFullHpKnown()
+  local hp = boop.attacks.getTargetHpPercKnown()
+  if hp == nil then
+    return false
+  end
+  return hp >= 100
+end
+
 function boop.attacks.canUseConditional(ability)
   if not ability or not ability.needs then return true end
   if boop.afflictions and boop.afflictions.meetsNeeds then
@@ -202,6 +221,28 @@ local function standardCommand(entry)
   return ""
 end
 
+function boop.attacks.openerUsedForTarget(classKey, targetId)
+  local cls = boop.util.safeLower(boop.util.trim(classKey or ""))
+  local tid = boop.util.trim(tostring(targetId or ""))
+  if cls == "" or tid == "" then
+    return false
+  end
+  boop.state = boop.state or {}
+  boop.state.openerUsedByClass = boop.state.openerUsedByClass or {}
+  return tostring(boop.state.openerUsedByClass[cls] or "") == tid
+end
+
+function boop.attacks.markOpenerUsed(classKey, targetId)
+  local cls = boop.util.safeLower(boop.util.trim(classKey or ""))
+  local tid = boop.util.trim(tostring(targetId or ""))
+  if cls == "" or tid == "" then
+    return
+  end
+  boop.state = boop.state or {}
+  boop.state.openerUsedByClass = boop.state.openerUsedByClass or {}
+  boop.state.openerUsedByClass[cls] = tid
+end
+
 local function isTwoHandedSpec()
   local spec = boop.util.safeLower(boop.state and boop.state.spec or "")
   spec = boop.util.trim(spec)
@@ -290,14 +331,28 @@ local function prependInfernalHyenaMaul(cmd)
   return "hyena maul &tar/" .. trimmed
 end
 
-function boop.attacks.selectStandard(profile)
-  if not profile then return "", false end
+function boop.attacks.selectStandard(profile, classKey)
+  if not profile then return "", false, false end
+
+  local opener = profile.openerAt100 or profile.opener
+  local targetId = boop.util.trim(tostring(boop.state and boop.state.currentTargetId or ""))
+  if opener
+    and targetId ~= ""
+    and boop.attacks.isTargetAtFullHpKnown()
+    and not boop.attacks.openerUsedForTarget(classKey, targetId)
+  then
+    local cmd = standardCommand(opener)
+    if cmd ~= "" then
+      return cmd, false, true
+    end
+  end
+
   if boop.state.targetShield
     and (type(boop.state.targetShield) ~= "table" or not boop.state.targetShield.attempted)
     and profile.shield
   then
     local cmd = standardCommand(profile.shield)
-    if cmd ~= "" then return cmd, true end
+    if cmd ~= "" then return cmd, true, false end
   end
   if profile.dam then
     local cmd = standardCommand(profile.dam)
@@ -305,10 +360,10 @@ function boop.attacks.selectStandard(profile)
       if isTwoHandedSpec() and focusKnown() then
         cmd = prependFocusSpeed(cmd)
       end
-      return cmd, false
+      return cmd, false, false
     end
   end
-  return "", false
+  return "", false, false
 end
 
 function boop.attacks.choose()
@@ -323,8 +378,9 @@ function boop.attacks.choose()
 
   local standard = ""
   local standardShieldbreak = false
+  local standardIsOpener = false
   if profile.standard then
-    standard, standardShieldbreak = boop.attacks.selectStandard(profile.standard)
+    standard, standardShieldbreak, standardIsOpener = boop.attacks.selectStandard(profile.standard, class)
   end
 
   if standard ~= "" and class == "unnamable" and unnamableMaulKnown() and unnamableMaulReady() then
@@ -353,5 +409,11 @@ function boop.attacks.choose()
     rageAction = boop.util.formatTarget(rageAction, targetId)
   end
 
-  return { standard = standard, standardShieldbreak = standardShieldbreak, rage = rageAction, rageAbility = rageAbility }
+  return {
+    standard = standard,
+    standardShieldbreak = standardShieldbreak,
+    standardIsOpener = standardIsOpener,
+    rage = rageAction,
+    rageAbility = rageAbility
+  }
 end

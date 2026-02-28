@@ -1,5 +1,6 @@
 boop.attacks.register("occultist", {
   standard = {
+    openerAt100 = { cmd = "attend &tar", skill = "Attend", group = "Occultism" },
     dam = {
       { cmd = "command hound at &tar", skill = "Lycantha", group = "Domination" },
       { cmd = "warp &tar", skill = "Warp", group = "Occultism" },

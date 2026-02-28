@@ -52,4 +52,6 @@ function boop.state.init()
   if boop.state.queueAliasDirty == nil then
     boop.state.queueAliasDirty = true
   end
+
+  boop.state.openerUsedByClass = boop.state.openerUsedByClass or {}
 end

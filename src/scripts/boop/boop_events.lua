@@ -5,6 +5,13 @@ local function nowSeconds()
   return os.clock()
 end
 
+local function classKeyForOpener()
+  if gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class then
+    return gmcp.Char.Status.class
+  end
+  return boop.state and boop.state.class or ""
+end
+
 local function isGoldItem(item)
   if not item or not item.name then return false end
   local name = boop.util.safeLower(item.name)
@@ -463,6 +470,9 @@ function boop.prequeueStandard()
   local actions = boop.attacks.choose()
   if actions.standard and actions.standard ~= "" then
     boop.executeAction(actions.standard, true)
+    if actions.standardIsOpener and boop.attacks and boop.attacks.markOpenerUsed then
+      boop.attacks.markOpenerUsed(classKeyForOpener(), targetId)
+    end
     if actions.standardShieldbreak and boop.targets and boop.targets.onShieldbreakAttempt then
       boop.targets.onShieldbreakAttempt()
     end
@@ -519,6 +529,9 @@ function boop.tick()
   if actions.standard and actions.standard ~= "" then
     if not boop.state.prequeuedStandard and boop.canAct() then
       boop.executeAction(actions.standard)
+      if actions.standardIsOpener and boop.attacks and boop.attacks.markOpenerUsed then
+        boop.attacks.markOpenerUsed(classKeyForOpener(), targetId)
+      end
       if actions.standardShieldbreak and boop.targets and boop.targets.onShieldbreakAttempt then
         boop.targets.onShieldbreakAttempt()
       end
