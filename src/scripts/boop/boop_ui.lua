@@ -250,6 +250,63 @@ local function cycleTargetingMode(step, noRefresh)
   end
 end
 
+local RAGE_MODE_OPTIONS = {
+  { id = 1, key = "simple", label = "Simple", desc = "HP-aware damage selection." },
+  { id = 2, key = "dam", label = "Damage", desc = "Alias of simple HP-aware damage." },
+  { id = 3, key = "big", label = "Big", desc = "Pool for big hits; fallback small on cooldown." },
+  { id = 4, key = "small", label = "Small", desc = "Prefer small/mid damage spenders." },
+  { id = 5, key = "aff", label = "Aff", desc = "Spend rage on affliction attacks." },
+  { id = 6, key = "cond", label = "Cond", desc = "Only fire conditionals when ready." },
+  { id = 7, key = "combo", label = "Combo", desc = "Conditional-first with priming + reserve hold." },
+  { id = 8, key = "hybrid", label = "Hybrid", desc = "Combo logic; fallback to damage when blocked." },
+  { id = 9, key = "buff", label = "Buff", desc = "Use buff rage ability only." },
+  { id = 10, key = "pool", label = "Pool", desc = "Do not spend rage (bank it)." },
+  { id = 11, key = "none", label = "None", desc = "Disable rage attacks." },
+}
+
+local function rageModeById(id)
+  local n = tonumber(id)
+  if not n then return nil end
+  for _, option in ipairs(RAGE_MODE_OPTIONS) do
+    if option.id == n then
+      return option
+    end
+  end
+  return nil
+end
+
+function boop.ui.showRageModeMenu()
+  local current = boop.util.safeLower(boop.config.attackMode or "simple")
+
+  if cecho then
+    local rows = {}
+    for _, option in ipairs(RAGE_MODE_OPTIONS) do
+      rows[#rows + 1] = { index = option.id, label = option.label .. " - " .. option.desc }
+    end
+    local labelWidth = uiComputeLabelWidth(rows, 54, 120)
+
+    uiPrintHeader("configuration > ragemode")
+    uiPrintSection("modes")
+    for _, option in ipairs(RAGE_MODE_OPTIONS) do
+      local active = (current == option.key)
+      uiPrintRow(option.id, option.label .. " - " .. option.desc, active and "ACTIVE" or "SET", active and "green" or "cyan", function()
+        boop.ui.setAttackMode(tostring(option.id))
+      end, "Set ragemode to " .. option.key, labelWidth)
+    end
+    uiPrintFooter("Type: boop ragemode <number|mode> | boop config combat | boop help ragemode")
+    return
+  end
+
+  boop.util.echo("CONFIGURATION > RAGEMODE")
+  boop.util.echo("----------------------------------------")
+  for _, option in ipairs(RAGE_MODE_OPTIONS) do
+    local state = (current == option.key) and "ACTIVE" or "SET"
+    boop.util.echo(string.format("[%d] %s - %s [%s]", option.id, option.label, option.desc, state))
+  end
+  boop.util.echo("----------------------------------------")
+  boop.util.echo("Type: boop ragemode <number|mode> | boop config combat | boop help ragemode")
+end
+
 function boop.ui.setEnabled(value, quiet)
   boop.config.enabled = value and true or false
   if not boop.config.enabled then
@@ -302,6 +359,13 @@ end
 
 function boop.ui.setAttackMode(mode)
   mode = boop.util.safeLower(boop.util.trim(mode))
+  local chosenByNumber = false
+  local optionById = rageModeById(mode)
+  if optionById then
+    mode = optionById.key
+    chosenByNumber = true
+  end
+
   local aliases = {
     damage = "dam",
     condition = "cond",
@@ -322,13 +386,12 @@ function boop.ui.setAttackMode(mode)
     none = true,
   }
   if mode == "" then
-    boop.util.info("ragemode: " .. tostring(boop.config.attackMode or "simple"))
-    boop.util.info("Usage: boop ragemode <simple|dam|big|small|aff|cond|combo|hybrid|buff|pool|none>")
+    boop.ui.showRageModeMenu()
     return
   end
   if not valid[mode] then
     boop.util.warn("Invalid ragemode: " .. tostring(mode))
-    boop.util.info("Usage: boop ragemode <simple|dam|big|small|aff|cond|combo|hybrid|buff|pool|none>")
+    boop.ui.showRageModeMenu()
     return
   end
   boop.config.attackMode = mode
@@ -336,6 +399,9 @@ function boop.ui.setAttackMode(mode)
     boop.db.saveConfig("attackMode", boop.config.attackMode)
   end
   boop.util.ok("ragemode: " .. tostring(mode))
+  if chosenByNumber then
+    boop.ui.showRageModeMenu()
+  end
 end
 
 function boop.ui.setRageMode(mode)
@@ -1887,6 +1953,8 @@ local HELP_TOPICS = {
     title = "Ragemode",
     aliases = { "ragemode", "rage", "attackmode" },
     commands = {
+      "boop ragemode",
+      "boop ragemode <number>",
       "boop ragemode <simple|dam|big|small|aff|cond|combo|hybrid|buff|pool|none>",
       "boop ragemode simple",
       "boop ragemode combo",
