@@ -108,8 +108,10 @@ end
 
 local function emitReplacement(actor, ability, victim, selfActor)
   local who = boop.util.trim(actor or "")
-  if who == "" then
-    who = selfActor and "You" or "Unknown"
+  if selfActor then
+    who = "You"
+  elseif who == "" then
+    who = "Unknown"
   end
 
   local what = boop.util.trim(ability or "")
@@ -124,7 +126,7 @@ local function emitReplacement(actor, ability, victim, selfActor)
 
   local msg = string.format("%s: %s -> %s", who, what, target)
   if cecho then
-    local color = selfActor and "#6ecb5a" or "#d4d4d4"
+    local color = selfActor and "green" or "white"
     cecho("\n<" .. color .. ">" .. msg .. "<reset>")
   else
     echo("\n" .. msg)
