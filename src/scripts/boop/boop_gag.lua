@@ -208,6 +208,8 @@ local function cancelAttackSummaryTimer()
   end
 end
 
+local flushPendingKill
+
 local function flushPendingAttack()
   boop.state = boop.state or {}
   local pending = boop.state.gagPendingAttack
@@ -215,6 +217,9 @@ local function flushPendingAttack()
   boop.state.gagPendingAttack = nil
   cancelAttackSummaryTimer()
   emitAttackSummary(pending)
+  if flushPendingKill then
+    flushPendingKill()
+  end
 end
 
 local function setPendingAttack(who, ability, target)
@@ -246,10 +251,25 @@ local function cancelKillSummaryTimer()
   end
 end
 
-local function flushPendingKill()
+local function scheduleKillSummaryRetry()
+  boop.state = boop.state or {}
+  cancelKillSummaryTimer()
+  boop.state.gagPendingKillTimer = tempTimer(0.25, function()
+    boop.state.gagPendingKillTimer = nil
+    if flushPendingKill then
+      flushPendingKill()
+    end
+  end)
+end
+
+flushPendingKill = function()
   boop.state = boop.state or {}
   local pending = boop.state.gagPendingKill
   if not pending then return end
+  if boop.state.gagPendingAttack then
+    scheduleKillSummaryRetry()
+    return
+  end
   boop.state.gagPendingKill = nil
   cancelKillSummaryTimer()
   emitKillSummary(pending.target or "", pending.xp or "")
