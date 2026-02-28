@@ -276,8 +276,8 @@ end
 function boop.ui.setTargetingMode(mode, quiet)
   mode = boop.util.safeLower(boop.util.trim(mode))
   if mode == "" then
-    boop.util.echo("targeting mode: " .. tostring(boop.config.targetingMode or "whitelist"))
-    boop.util.echo("Usage: boop targeting <manual|whitelist|blacklist|auto>")
+    boop.util.info("targeting mode: " .. tostring(boop.config.targetingMode or "whitelist"))
+    boop.util.info("Usage: boop targeting <manual|whitelist|blacklist|auto>")
     return
   end
   local aliases = {
@@ -287,8 +287,8 @@ function boop.ui.setTargetingMode(mode, quiet)
   mode = aliases[mode] or mode
   local valid = { manual = true, whitelist = true, blacklist = true, auto = true }
   if not valid[mode] then
-    boop.util.echo("Invalid targeting mode: " .. tostring(mode))
-    boop.util.echo("Usage: boop targeting <manual|whitelist|blacklist|auto>")
+    boop.util.warn("Invalid targeting mode: " .. tostring(mode))
+    boop.util.info("Usage: boop targeting <manual|whitelist|blacklist|auto>")
     return
   end
   boop.config.targetingMode = mode
@@ -296,7 +296,7 @@ function boop.ui.setTargetingMode(mode, quiet)
     boop.db.saveConfig("targetingMode", boop.config.targetingMode)
   end
   if not quiet then
-    boop.ui.status("targeting")
+    boop.util.ok("targeting mode: " .. tostring(mode))
   end
 end
 
@@ -322,20 +322,20 @@ function boop.ui.setAttackMode(mode)
     none = true,
   }
   if mode == "" then
-    boop.util.echo("ragemode: " .. tostring(boop.config.attackMode or "simple"))
-    boop.util.echo("Usage: boop ragemode <simple|dam|big|small|aff|cond|combo|hybrid|buff|pool|none>")
+    boop.util.info("ragemode: " .. tostring(boop.config.attackMode or "simple"))
+    boop.util.info("Usage: boop ragemode <simple|dam|big|small|aff|cond|combo|hybrid|buff|pool|none>")
     return
   end
   if not valid[mode] then
-    boop.util.echo("Invalid ragemode: " .. tostring(mode))
-    boop.util.echo("Usage: boop ragemode <simple|dam|big|small|aff|cond|combo|hybrid|buff|pool|none>")
+    boop.util.warn("Invalid ragemode: " .. tostring(mode))
+    boop.util.info("Usage: boop ragemode <simple|dam|big|small|aff|cond|combo|hybrid|buff|pool|none>")
     return
   end
   boop.config.attackMode = mode
   if boop.db and boop.db.saveConfig then
     boop.db.saveConfig("attackMode", boop.config.attackMode)
   end
-  boop.ui.status("attack")
+  boop.util.ok("ragemode: " .. tostring(mode))
 end
 
 function boop.ui.setRageMode(mode)
@@ -345,7 +345,7 @@ end
 
 function boop.ui.setAutoGrabGold(value)
   saveConfigValue("autoGrabGold", value and true or false)
-  boop.util.echo("auto grab gold: " .. (boop.config.autoGrabGold and "on" or "off"))
+  boop.util.ok("auto grab sovereigns: " .. (boop.config.autoGrabGold and "on" or "off"))
 end
 
 function boop.ui.toggleAutoGrabGold()
@@ -363,30 +363,31 @@ function boop.ui.setPrequeueEnabled(value)
   elseif boop.schedulePrequeue then
     boop.schedulePrequeue()
   end
-  boop.util.echo("prequeue: " .. (boop.config.prequeueEnabled and "on" or "off"))
+  boop.util.ok("prequeue: " .. (boop.config.prequeueEnabled and "on" or "off"))
 end
 
 function boop.ui.showPrequeue()
   local lead = tonumber(boop.config.attackLeadSeconds) or 0
-  boop.util.echo(string.format("prequeue: %s | lead: %.2fs", boop.config.prequeueEnabled and "on" or "off", lead))
+  boop.util.info(string.format("prequeue: %s | lead: %.2fs", boop.config.prequeueEnabled and "on" or "off", lead))
 end
 
 function boop.ui.setAttackLeadSeconds(raw)
   local value = tonumber(boop.util.trim(raw or ""))
   if not value or value < 0 then
-    boop.util.echo("Usage: boop lead <seconds> (0 or higher)")
+    boop.util.warn("Invalid lead value: " .. tostring(raw))
+    boop.util.info("Usage: boop lead <seconds> (0 or higher)")
     return
   end
   saveConfigValue("attackLeadSeconds", value)
   if boop.config.prequeueEnabled and boop.schedulePrequeue then
     boop.schedulePrequeue()
   end
-  boop.util.echo(string.format("attack lead: %.2fs", value))
+  boop.util.ok(string.format("attack lead: %.2fs", value))
 end
 
 function boop.ui.setTraceEnabled(value)
   saveConfigValue("traceEnabled", value and true or false)
-  boop.util.echo("trace: " .. (boop.config.traceEnabled and "on" or "off"))
+  boop.util.ok("trace: " .. (boop.config.traceEnabled and "on" or "off"))
 end
 
 function boop.ui.setGoldPack(value)
@@ -397,28 +398,29 @@ function boop.ui.setGoldPack(value)
   end
   saveConfigValue("goldPack", pack)
   if pack == "" then
-    boop.util.echo("gold pack: (off)")
+    boop.util.ok("gold pack: (off)")
   else
-    boop.util.echo("gold pack: " .. pack)
+    boop.util.ok("gold pack: " .. pack)
   end
 end
 
 function boop.ui.testGoldPack()
   local pack = boop.util.trim(boop.config.goldPack or "")
   if pack == "" then
-    boop.util.echo("gold pack: (off) | set one with boop pack <container>")
+    boop.util.warn("gold pack: (off)")
+    boop.util.info("Set one with: boop pack <container>")
     return
   end
   send("queue add freestand look in " .. pack, false)
-  boop.util.echo("gold pack test queued: look in " .. pack)
+  boop.util.info("gold pack test queued: look in " .. pack)
 end
 
 function boop.ui.showGoldPack()
   local pack = boop.util.trim(boop.config.goldPack or "")
   if pack == "" then
-    boop.util.echo("gold pack: (off)")
+    boop.util.info("gold pack: (off)")
   else
-    boop.util.echo("gold pack: " .. pack)
+    boop.util.info("gold pack: " .. pack)
   end
 end
 
@@ -445,7 +447,7 @@ function boop.ui.diag()
       if boop.state.diagHold then
         boop.state.diagHold = false
         boop.state.diagAwaitPrompt = false
-        boop.util.echo("diag timeout; attacks resumed")
+        boop.util.warn("diag timeout; attacks resumed")
         boop.trace.log("diag timeout resume")
       end
     end)
@@ -453,7 +455,7 @@ function boop.ui.diag()
 
   send("queue clear", false)
   send("queue addclearfull freestand diagnose", false)
-  boop.util.echo("diag queued; attacks paused until diagnose line + prompt")
+  boop.util.info("diag queued; attacks paused until diagnose line + prompt")
   boop.trace.log("diag queued")
 end
 
@@ -509,7 +511,7 @@ function boop.ui.gagCommand(raw)
     return
   end
 
-  boop.util.echo("Usage: boop gag [status|on|off|own|others|all|<scope> on|off]")
+  boop.util.info("Usage: boop gag [status|on|off|own|others|all|<scope> on|off]")
 end
 
 local function canonConfigKey(raw)
@@ -551,11 +553,11 @@ end
 function boop.ui.getConfigValue(key)
   local canonical = canonConfigKey(key)
   if canonical == "" then
-    boop.util.echo("Unknown key: " .. tostring(key))
-    boop.util.echo("Try: boop get")
+    boop.util.warn("Unknown key: " .. tostring(key))
+    boop.util.info("Try: boop get")
     return
   end
-  boop.util.echo(canonical .. ": " .. tostring(boop.config[canonical]))
+  boop.util.info(canonical .. ": " .. tostring(boop.config[canonical]))
 end
 
 function boop.ui.listConfigValues()
@@ -576,7 +578,7 @@ function boop.ui.listConfigValues()
     "diagTimeoutSeconds",
     "partyRoster",
   }
-  boop.util.echo("config keys:")
+  boop.util.info("config keys:")
   for _, key in ipairs(keys) do
     boop.util.echo("  " .. key .. ": " .. tostring(boop.config[key]))
   end
@@ -585,15 +587,15 @@ end
 function boop.ui.setConfigValue(key, value)
   local canonical = canonConfigKey(key)
   if canonical == "" then
-    boop.util.echo("Unknown key: " .. tostring(key))
-    boop.util.echo("Try: boop get")
+    boop.util.warn("Unknown key: " .. tostring(key))
+    boop.util.info("Try: boop get")
     return
   end
 
   if canonical == "enabled" then
     local parsed = parseBool(value)
     if parsed == nil then
-      boop.util.echo("enabled expects on/off")
+      boop.util.warn("enabled expects on/off")
       return
     end
     boop.ui.setEnabled(parsed)
@@ -608,18 +610,18 @@ function boop.ui.setConfigValue(key, value)
   if canonical == "useQueueing" then
     local parsed = parseBool(value)
     if parsed == nil then
-      boop.util.echo("useQueueing expects on/off")
+      boop.util.warn("useQueueing expects on/off")
       return
     end
     saveConfigValue("useQueueing", parsed)
-    boop.util.echo("use queueing: " .. (parsed and "on" or "off"))
+    boop.util.ok("use queueing: " .. (parsed and "on" or "off"))
     return
   end
 
   if canonical == "prequeueEnabled" then
     local parsed = parseBool(value)
     if parsed == nil then
-      boop.util.echo("prequeue expects on/off")
+      boop.util.warn("prequeue expects on/off")
       return
     end
     boop.ui.setPrequeueEnabled(parsed)
@@ -634,7 +636,7 @@ function boop.ui.setConfigValue(key, value)
   if canonical == "autoGrabGold" then
     local parsed = parseBool(value)
     if parsed == nil then
-      boop.util.echo("autogold expects on/off")
+      boop.util.warn("autogold expects on/off")
       return
     end
     boop.ui.setAutoGrabGold(parsed)
@@ -649,22 +651,22 @@ function boop.ui.setConfigValue(key, value)
   if canonical == "whitelistPriorityOrder" then
     local parsed = parseBool(value)
     if parsed == nil then
-      boop.util.echo(canonical .. " expects on/off")
+      boop.util.warn(canonical .. " expects on/off")
       return
     end
     saveConfigValue(canonical, parsed)
-    boop.util.echo(canonical .. ": " .. (parsed and "on" or "off"))
+    boop.util.ok(canonical .. ": " .. (parsed and "on" or "off"))
     return
   end
 
   if canonical == "targetOrder" then
     local order = boop.util.safeLower(boop.util.trim(value or ""))
     if order ~= "order" and order ~= "numeric" and order ~= "reverse" then
-      boop.util.echo("targetOrder expects order|numeric|reverse")
+      boop.util.warn("targetOrder expects order|numeric|reverse")
       return
     end
     saveConfigValue("targetOrder", order)
-    boop.util.echo("targetOrder: " .. order)
+    boop.util.ok("targetOrder: " .. order)
     return
   end
 
@@ -676,7 +678,7 @@ function boop.ui.setConfigValue(key, value)
   if canonical == "traceEnabled" then
     local parsed = parseBool(value)
     if parsed == nil then
-      boop.util.echo("trace expects on/off")
+      boop.util.warn("trace expects on/off")
       return
     end
     boop.ui.setTraceEnabled(parsed)
@@ -686,7 +688,7 @@ function boop.ui.setConfigValue(key, value)
   if canonical == "gagOwnAttacks" then
     local parsed = parseBool(value)
     if parsed == nil then
-      boop.util.echo("gagOwnAttacks expects on/off")
+      boop.util.warn("gagOwnAttacks expects on/off")
       return
     end
     boop.gag.setOwn(parsed)
@@ -696,7 +698,7 @@ function boop.ui.setConfigValue(key, value)
   if canonical == "gagOthersAttacks" then
     local parsed = parseBool(value)
     if parsed == nil then
-      boop.util.echo("gagOthersAttacks expects on/off")
+      boop.util.warn("gagOthersAttacks expects on/off")
       return
     end
     boop.gag.setOthers(parsed)
@@ -706,11 +708,11 @@ function boop.ui.setConfigValue(key, value)
   if canonical == "diagTimeoutSeconds" then
     local timeout = tonumber(boop.util.trim(value or ""))
     if not timeout or timeout < 0 then
-      boop.util.echo("diagTimeoutSeconds expects number >= 0")
+      boop.util.warn("diagTimeoutSeconds expects number >= 0")
       return
     end
     saveConfigValue("diagTimeoutSeconds", timeout)
-    boop.util.echo(string.format("diag timeout: %.2fs", timeout))
+    boop.util.ok(string.format("diag timeout: %.2fs", timeout))
     return
   end
 
@@ -723,8 +725,8 @@ end
 function boop.ui.traceCommand(sub, arg)
   local cmd = boop.util.safeLower(boop.util.trim(sub or ""))
   if cmd == "" then
-    boop.util.echo("trace: " .. (boop.config.traceEnabled and "on" or "off"))
-    boop.util.echo("  boop trace on|off|show [n]|clear")
+    boop.util.info("trace: " .. (boop.config.traceEnabled and "on" or "off"))
+    boop.util.info("boop trace on|off|show [n]|clear")
     return
   end
   if cmd == "on" then
@@ -743,7 +745,7 @@ function boop.ui.traceCommand(sub, arg)
     boop.trace.show(arg)
     return
   end
-  boop.util.echo("trace: unknown option " .. tostring(sub))
+  boop.util.warn("trace: unknown option " .. tostring(sub))
 end
 
 local function copyList(list)
@@ -937,60 +939,61 @@ function boop.ui.importFoxhunt(mode)
     importMode = "merge"
   end
   if importMode ~= "merge" and importMode ~= "overwrite" and importMode ~= "dryrun" then
-    boop.util.echo("Usage: boop import foxhunt [merge|overwrite|dryrun]")
+    boop.util.info("Usage: boop import foxhunt [merge|overwrite|dryrun]")
     return
   end
 
-  boop.util.echo("foxhunt import: starting (" .. importMode .. ")")
+  boop.util.info("foxhunt import: starting (" .. importMode .. ")")
 
   local foxDb, dbErr = safeGetDatabase("hunting")
   if dbErr then
-    boop.util.echo("foxhunt import failed: " .. dbErr)
-    boop.util.echo(dbLocationHint("hunting"))
+    boop.util.err("foxhunt import failed: " .. dbErr)
+    boop.util.info(dbLocationHint("hunting"))
     return
   end
   if not foxDb then
-    boop.util.echo("foxhunt import failed: DB `hunting` not found. " .. dbLocationHint("hunting"))
+    boop.util.err("foxhunt import failed: DB `hunting` not found.")
+    boop.util.info(dbLocationHint("hunting"))
     return
   end
 
   local whitelistTable, wlTableErr = safeGetDbTable(foxDb, "whitelist")
   if wlTableErr then
-    boop.util.echo("foxhunt import failed: cannot access `hunting.whitelist` (" .. wlTableErr .. ")")
+    boop.util.err("foxhunt import failed: cannot access `hunting.whitelist` (" .. wlTableErr .. ")")
     return
   end
   local blacklistTable, blTableErr = safeGetDbTable(foxDb, "blacklist")
   if blTableErr then
-    boop.util.echo("foxhunt import failed: cannot access `hunting.blacklist` (" .. blTableErr .. ")")
+    boop.util.err("foxhunt import failed: cannot access `hunting.blacklist` (" .. blTableErr .. ")")
     return
   end
 
   local fhWhitelist, wlErr = loadFoxhuntListMap(whitelistTable, "whitelist")
   if wlErr then
-    boop.util.echo("foxhunt import failed: " .. wlErr)
+    boop.util.err("foxhunt import failed: " .. wlErr)
     return
   end
   local fhBlacklist, blErr = loadFoxhuntListMap(blacklistTable, "blacklist")
   if blErr then
-    boop.util.echo("foxhunt import failed: " .. blErr)
+    boop.util.err("foxhunt import failed: " .. blErr)
     return
   end
   local wlAreas, wlEntries = countListMap(fhWhitelist)
   local blAreas, blEntries = countListMap(fhBlacklist)
 
-  boop.util.echo(string.format("foxhunt import %s | whitelist %d areas/%d entries | blacklist %d areas/%d entries",
+  boop.util.info(string.format("foxhunt import %s | whitelist %d areas/%d entries | blacklist %d areas/%d entries",
     importMode, wlAreas, wlEntries, blAreas, blEntries))
   if wlEntries == 0 and blEntries == 0 then
-    boop.util.echo("foxhunt import: source lists are empty; nothing to import")
+    boop.util.warn("foxhunt import: source lists are empty; nothing to import")
   end
 
   if importMode == "dryrun" then
-    boop.util.echo("dryrun only; no changes applied")
+    boop.util.info("dryrun only; no changes applied")
     return
   end
 
   if not boop.db or not boop.db.saveList then
-    boop.util.echo("foxhunt import failed: boop DB unavailable; cannot persist imported lists.")
+    boop.util.err("foxhunt import failed: boop DB unavailable; cannot persist imported lists.")
     return
   end
 
@@ -1022,12 +1025,12 @@ function boop.ui.importFoxhunt(mode)
       importedBlAreas = importedBlAreas + 1
     end
 
-    boop.util.echo(string.format("import applied | whitelist areas: %d | blacklist areas: %d",
+    boop.util.ok(string.format("import applied | whitelist areas: %d | blacklist areas: %d",
       importedWlAreas, importedBlAreas))
     boop.trace.log("import foxhunt " .. importMode .. " applied")
   end)
   if not ok then
-    boop.util.echo("foxhunt import failed: " .. tostring(applyErr))
+    boop.util.err("foxhunt import failed: " .. tostring(applyErr))
     boop.trace.log("import foxhunt failed: " .. tostring(applyErr))
     return
   end

@@ -303,13 +303,13 @@ function boop.targets.addWhitelist(area, name)
   area = area or boop.targets.getArea()
   name = boop.util.trim(name or "")
   if name == "" then
-    boop.util.echo("Usage: boop whitelist add <name>")
+    boop.util.info("Usage: boop whitelist add <name>")
     return false
   end
 
   boop.lists.whitelist[area] = boop.lists.whitelist[area] or {}
   if listContains(boop.lists.whitelist[area], name) then
-    boop.util.echo("Already whitelisted in " .. area .. ": " .. name)
+    boop.util.warn("Already whitelisted in " .. area .. ": " .. name)
     return false
   end
 
@@ -318,7 +318,7 @@ function boop.targets.addWhitelist(area, name)
   if boop.db and boop.db.saveList then
     boop.db.saveList("whitelist", area, boop.lists.whitelist[area])
   end
-  boop.util.echo("Whitelisted in " .. area .. ": " .. name)
+  boop.util.ok("Whitelisted in " .. area .. ": " .. name)
   return true
 end
 
@@ -326,12 +326,12 @@ function boop.targets.removeWhitelist(area, name)
   area = area or boop.targets.getArea()
   name = boop.util.trim(name or "")
   if name == "" then
-    boop.util.echo("Usage: boop whitelist remove <name>")
+    boop.util.info("Usage: boop whitelist remove <name>")
     return false
   end
   local list = boop.lists.whitelist[area]
   if not list or #list == 0 then
-    boop.util.echo("Whitelist is empty for " .. area)
+    boop.util.warn("Whitelist is empty for " .. area)
     return false
   end
   for i, v in ipairs(list) do
@@ -341,11 +341,11 @@ function boop.targets.removeWhitelist(area, name)
       if boop.db and boop.db.saveList then
         boop.db.saveList("whitelist", area, list)
       end
-      boop.util.echo("Removed from whitelist in " .. area .. ": " .. removedName)
+      boop.util.ok("Removed from whitelist in " .. area .. ": " .. removedName)
       return true
     end
   end
-  boop.util.echo("Not found in whitelist for " .. area .. ": " .. name)
+  boop.util.warn("Not found in whitelist for " .. area .. ": " .. name)
   return false
 end
 
@@ -364,13 +364,13 @@ function boop.targets.addBlacklist(area, name)
   area = area or boop.targets.getArea()
   name = boop.util.trim(name or "")
   if name == "" then
-    boop.util.echo("Usage: boop blacklist add <name>")
+    boop.util.info("Usage: boop blacklist add <name>")
     return false
   end
 
   boop.lists.blacklist[area] = boop.lists.blacklist[area] or {}
   if listContains(boop.lists.blacklist[area], name) then
-    boop.util.echo("Already blacklisted in " .. area .. ": " .. name)
+    boop.util.warn("Already blacklisted in " .. area .. ": " .. name)
     return false
   end
 
@@ -379,7 +379,7 @@ function boop.targets.addBlacklist(area, name)
   if boop.db and boop.db.saveList then
     boop.db.saveList("blacklist", area, boop.lists.blacklist[area])
   end
-  boop.util.echo("Blacklisted in " .. area .. ": " .. name)
+  boop.util.ok("Blacklisted in " .. area .. ": " .. name)
   return true
 end
 
@@ -387,12 +387,12 @@ function boop.targets.removeBlacklist(area, name)
   area = area or boop.targets.getArea()
   name = boop.util.trim(name or "")
   if name == "" then
-    boop.util.echo("Usage: boop blacklist remove <name>")
+    boop.util.info("Usage: boop blacklist remove <name>")
     return false
   end
   local list = boop.lists.blacklist[area]
   if not list or #list == 0 then
-    boop.util.echo("Blacklist is empty for " .. area)
+    boop.util.warn("Blacklist is empty for " .. area)
     return false
   end
   for i, v in ipairs(list) do
@@ -402,11 +402,11 @@ function boop.targets.removeBlacklist(area, name)
       if boop.db and boop.db.saveList then
         boop.db.saveList("blacklist", area, list)
       end
-      boop.util.echo("Removed from blacklist in " .. area .. ": " .. removedName)
+      boop.util.ok("Removed from blacklist in " .. area .. ": " .. removedName)
       return true
     end
   end
-  boop.util.echo("Not found in blacklist for " .. area .. ": " .. name)
+  boop.util.warn("Not found in blacklist for " .. area .. ": " .. name)
   return false
 end
 
@@ -541,34 +541,34 @@ end
 function boop.targets.displayWhitelistTags(area)
   local resolved = findWhitelistArea(area)
   if resolved == "" then
-    boop.util.echo("Unknown whitelist area: " .. tostring(area))
+    boop.util.warn("Unknown whitelist area: " .. tostring(area))
     return
   end
   local tags = getAreaTags(resolved)
   if #tags == 0 then
-    boop.util.echo("Whitelist tags for " .. resolved .. ": (none)")
-    boop.util.echo("Add with: boop whitelist tag add " .. resolved .. " | <tag[,tag2,...]>")
+    boop.util.info("Whitelist tags for " .. resolved .. ": (none)")
+    boop.util.info("Add with: boop whitelist tag add " .. resolved .. " | <tag[,tag2,...]>")
     return
   end
-  boop.util.echo("Whitelist tags for " .. resolved .. ": " .. table.concat(tags, ", "))
+  boop.util.info("Whitelist tags for " .. resolved .. ": " .. table.concat(tags, ", "))
 end
 
 function boop.targets.addWhitelistTags(area, rawTags)
   local resolved = findWhitelistArea(area)
   if resolved == "" then
-    boop.util.echo("Unknown whitelist area: " .. tostring(area))
-    boop.util.echo("Use: boop whitelist browse")
+    boop.util.warn("Unknown whitelist area: " .. tostring(area))
+    boop.util.info("Use: boop whitelist browse")
     return
   end
   local list = boop.lists.whitelist[resolved] or {}
   if #list == 0 then
-    boop.util.echo("Area has no whitelist entries: " .. resolved)
+    boop.util.warn("Area has no whitelist entries: " .. resolved)
     return
   end
 
   local incoming = splitTags(rawTags)
   if #incoming == 0 then
-    boop.util.echo("Usage: boop whitelist tag add <area> | <tag[,tag2,...]>")
+    boop.util.info("Usage: boop whitelist tag add <area> | <tag[,tag2,...]>")
     return
   end
 
@@ -582,26 +582,26 @@ function boop.targets.addWhitelistTags(area, rawTags)
   end
   table.sort(tags)
   saveAreaTags(resolved, tags)
-  boop.util.echo(string.format("Whitelist tags updated for %s: %s (added %d)", resolved, table.concat(tags, ", "), added))
+  boop.util.ok(string.format("Whitelist tags updated for %s: %s (added %d)", resolved, table.concat(tags, ", "), added))
 end
 
 function boop.targets.removeWhitelistTags(area, rawTags)
   local resolved = findWhitelistArea(area)
   if resolved == "" then
-    boop.util.echo("Unknown whitelist area: " .. tostring(area))
-    boop.util.echo("Use: boop whitelist browse")
+    boop.util.warn("Unknown whitelist area: " .. tostring(area))
+    boop.util.info("Use: boop whitelist browse")
     return
   end
 
   local incoming = splitTags(rawTags)
   if #incoming == 0 then
-    boop.util.echo("Usage: boop whitelist tag remove <area> | <tag[,tag2,...]>")
+    boop.util.info("Usage: boop whitelist tag remove <area> | <tag[,tag2,...]>")
     return
   end
 
   local tags = getAreaTags(resolved)
   if #tags == 0 then
-    boop.util.echo("No tags set for " .. resolved)
+    boop.util.warn("No tags set for " .. resolved)
     return
   end
 
@@ -622,9 +622,9 @@ function boop.targets.removeWhitelistTags(area, rawTags)
   end
   saveAreaTags(resolved, out)
   if #out == 0 then
-    boop.util.echo(string.format("Whitelist tags cleared for %s (removed %d)", resolved, removed))
+    boop.util.ok(string.format("Whitelist tags cleared for %s (removed %d)", resolved, removed))
   else
-    boop.util.echo(string.format("Whitelist tags updated for %s: %s (removed %d)", resolved, table.concat(out, ", "), removed))
+    boop.util.ok(string.format("Whitelist tags updated for %s: %s (removed %d)", resolved, table.concat(out, ", "), removed))
   end
 end
 

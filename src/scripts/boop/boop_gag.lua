@@ -313,8 +313,8 @@ local function resolveCritText(rawCrit)
 end
 
 function boop.gag.showStatus()
-  boop.util.echo("gag own attacks: " .. (boop.config.gagOwnAttacks and "on" or "off"))
-  boop.util.echo("gag others attacks: " .. (boop.config.gagOthersAttacks and "on" or "off"))
+  boop.util.info("gag own attacks: " .. (boop.config.gagOwnAttacks and "on" or "off"))
+  boop.util.info("gag others attacks: " .. (boop.config.gagOthersAttacks and "on" or "off"))
 end
 
 function boop.gag.setOwn(value)
@@ -323,7 +323,7 @@ function boop.gag.setOwn(value)
   if boop.db and boop.db.saveConfig then
     boop.db.saveConfig("gagOwnAttacks", enabled)
   end
-  boop.util.echo("gag own attacks: " .. (enabled and "on" or "off"))
+  boop.util.ok("gag own attacks: " .. (enabled and "on" or "off"))
 end
 
 function boop.gag.setOthers(value)
@@ -332,7 +332,7 @@ function boop.gag.setOthers(value)
   if boop.db and boop.db.saveConfig then
     boop.db.saveConfig("gagOthersAttacks", enabled)
   end
-  boop.util.echo("gag others attacks: " .. (enabled and "on" or "off"))
+  boop.util.ok("gag others attacks: " .. (enabled and "on" or "off"))
 end
 
 function boop.gag.setBoth(value)

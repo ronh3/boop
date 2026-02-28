@@ -42,21 +42,21 @@ end
 
 function boop.stats.startTrip()
   if boop.stats.trip.stopwatch then
-    boop.util.echo("Trip already running.")
+    boop.util.warn("Trip already running.")
     return
   end
   boop.stats.trip = { gold = 0, experience = 0, stopwatch = createStopWatch() }
   startStopWatch(boop.stats.trip.stopwatch)
-  boop.util.echo("Started a new hunting trip.")
+  boop.util.ok("Started a new hunting trip.")
 end
 
 function boop.stats.stopTrip()
   if not boop.stats.trip.stopwatch then
-    boop.util.echo("No trip running.")
+    boop.util.warn("No trip running.")
     return
   end
   stopStopWatch(boop.stats.trip.stopwatch)
-  boop.util.echo("Stopped hunting trip.")
-  boop.util.echo("Trip gains: " .. boop.stats.trip.gold .. " gold, " .. string.format("%.1f", boop.stats.trip.experience) .. "% xp")
+  boop.util.ok("Stopped hunting trip.")
+  boop.util.info("Trip gains: " .. boop.stats.trip.gold .. " gold, " .. string.format("%.1f", boop.stats.trip.experience) .. "% xp")
   boop.stats.trip.stopwatch = nil
 end

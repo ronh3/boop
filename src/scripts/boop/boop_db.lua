@@ -10,7 +10,9 @@ local function whitelistTagsSchema()
 end
 
 local function warnDb(message)
-  if boop and boop.util and boop.util.echo then
+  if boop and boop.util and boop.util.warn then
+    boop.util.warn(message)
+  elseif boop and boop.util and boop.util.echo then
     boop.util.echo(message)
   end
 end
@@ -84,7 +86,7 @@ end
 
 function boop.db.init()
   if not db then
-    boop.util.echo("Mudlet DB not available; config will not persist.")
+    boop.util.warn("Mudlet DB not available; config will not persist.")
     return
   end
 

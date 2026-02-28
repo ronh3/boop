@@ -37,9 +37,49 @@ function boop.util.echo(msg)
   end
 end
 
+local FEEDBACK_STYLE = {
+  INFO = { tagColor = "cyan", textColor = "white" },
+  OK = { tagColor = "green", textColor = "white" },
+  WARN = { tagColor = "yellow", textColor = "white" },
+  ERR = { tagColor = "red", textColor = "white" },
+}
+
+function boop.util.feedback(kind, msg)
+  local k = boop.util.safeUpper and boop.util.safeUpper(kind) or tostring(kind or "INFO"):upper()
+  local style = FEEDBACK_STYLE[k] or FEEDBACK_STYLE.INFO
+  msg = tostring(msg or "")
+  if cecho then
+    cecho(string.format("\n<green>boop<reset> <%s>[%s]<reset> <%s>%s<reset>",
+      style.tagColor, k, style.textColor, msg))
+  else
+    echo(string.format("\nboop [%s]: %s", k, msg))
+  end
+end
+
+function boop.util.info(msg)
+  boop.util.feedback("INFO", msg)
+end
+
+function boop.util.ok(msg)
+  boop.util.feedback("OK", msg)
+end
+
+function boop.util.warn(msg)
+  boop.util.feedback("WARN", msg)
+end
+
+function boop.util.err(msg)
+  boop.util.feedback("ERR", msg)
+end
+
 function boop.util.safeLower(s)
   if not s then return "" end
   return string.lower(s)
+end
+
+function boop.util.safeUpper(s)
+  if not s then return "" end
+  return string.upper(s)
 end
 
 function boop.util.formatTarget(cmd, target)
@@ -76,23 +116,23 @@ function boop.trace.show(count)
   local buf = boop.state.traceBuffer
   local total = #buf
   if total == 0 then
-    boop.util.echo("trace: (empty)")
+    boop.util.info("trace: (empty)")
     return
   end
 
   local n = tonumber(count) or 20
   if n < 1 then n = 1 end
   if n > total then n = total end
-  boop.util.echo(string.format("trace: showing %d/%d", n, total))
+  boop.util.info(string.format("trace: showing %d/%d", n, total))
   for i = total - n + 1, total do
-    boop.util.echo("  " .. tostring(buf[i]))
+    boop.util.info("  " .. tostring(buf[i]))
   end
 end
 
 function boop.trace.clear()
   boop.state = boop.state or {}
   boop.state.traceBuffer = {}
-  boop.util.echo("trace: cleared")
+  boop.util.ok("trace: cleared")
 end
 
 local function markUnnamableMaulUsed(action)

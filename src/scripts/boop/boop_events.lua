@@ -133,7 +133,7 @@ local function retryGoldGet(reason)
   local retries = boop.state.goldGetRetries or 0
   if retries >= 2 then
     boop.trace.log("gold get failed; giving up: " .. tostring(reason))
-    boop.util.echo("auto gold: unable to get sovereigns; check room loot/line timing")
+    boop.util.err("auto gold: unable to get sovereigns; check room loot/line timing")
     boop.state.goldGetPending = false
     return
   end
@@ -154,7 +154,7 @@ local function retryGoldPut(reason)
   local retries = boop.state.goldPutRetries or 0
   if retries >= 1 then
     boop.trace.log("gold put failed for pack " .. pack .. "; giving up: " .. tostring(reason))
-    boop.util.echo("auto gold: unable to put sovereigns in " .. pack .. "; use `boop pack test`")
+    boop.util.err("auto gold: unable to put sovereigns in " .. pack .. "; use `boop pack test`")
     boop.state.goldPutPending = false
     return
   end
@@ -564,7 +564,7 @@ function boop.onPrompt()
         killTimer(boop.state.diagTimeoutTimer)
         boop.state.diagTimeoutTimer = nil
       end
-      boop.util.echo("diag complete; attacks resumed")
+      boop.util.ok("diag complete; attacks resumed")
       boop.trace.log("diag complete")
     else
       return

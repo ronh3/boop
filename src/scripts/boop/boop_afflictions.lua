@@ -80,8 +80,8 @@ end
 function boop.afflictions.displayTarget()
   local names = boop.afflictions.listTarget()
   if #names == 0 then
-    boop.util.echo("target afflictions: none")
+    boop.util.info("target afflictions: none")
     return
   end
-  boop.util.echo("target afflictions: " .. table.concat(names, ", "))
+  boop.util.info("target afflictions: " .. table.concat(names, ", "))
 end

@@ -29,13 +29,13 @@ function boop.safety.flee()
 
   local dir = boop.state.lastRoomDir
   if not dir or dir == "" then
-    boop.util.echo("No flee direction set.")
+    boop.util.warn("No flee direction set.")
     return
   end
 
   local action = "wake/wake/apply mending to legs/stand/" .. dir
   boop.executeAction(action)
-  boop.util.echo("fleeing " .. dir .. " (boop disabled)")
+  boop.util.ok("fleeing " .. dir .. " (boop disabled)")
   boop.state.fleeing = true
   tempTimer(2, function() boop.state.fleeing = false end)
 end
