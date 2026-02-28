@@ -5802,5 +5802,137 @@
       }
     ],
     "script": ""
+  },
+  {
+    "name": "Weaponmastery Sword and Shield Guardbreak",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) flash .+ in front of the eyes of (.+) in a blur, then move forward to slash through \\w+ weakened defences\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Weaponmastery Sword and Shield Rend",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) carve into (.+)'s flesh with a vicious strike, opening a bleeding wound\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Weaponmastery Sword and Shield Slice",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) slice into (.+) with .+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Weaponmastery Sword and Shield Smash",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) brutally smash your shield into (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Weaponmastery Two Handed Carve",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) delivers a terrible stroke with .+, scything straight through the magical shield surrounding (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Lunging forward, (you) bring .+ down in a savage diagonal blow, carving through (.+)'s magical shield\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) lunges toward (.+), but stumbles off balance as if expecting some barrier\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) lunge toward (.+) with .+, but finding no resistance, you stumble hopelessly off balance\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Weaponmastery Two Handed Slaughter",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Drawing back .+, (\\w+) unleashe?s? a flesh\\-mincing blow at (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
   }
 ]

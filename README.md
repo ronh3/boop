@@ -61,6 +61,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - In queueing mode, boop caches the last `BOOP_ATTACK` alias payload and skips redundant `setalias` sends when unchanged.
 - Trace buffer records recent boop decisions/commands for post-mortem debugging (`boop trace show`).
 - Attack-line gagging can be toggled separately for your own attacks and other players' attacks, replacing matched lines with `Who: What -> Victim`.
+- Weaponmastery standard attack lines (Two Handed + Sword and Shield) are included in gag replacement coverage.
 - Foxhunt import reads Mudlet DB `hunting` lists directly; `merge` is default, `overwrite` clears boop lists first, `dryrun` reports counts only.
 - `boop combos` infers synergy from class rage profiles, including per-class affliction providers and conditional readiness.
 - Conditional needs default to `any` (one affliction present) unless a profile explicitly sets `needsMode = "all"`.
