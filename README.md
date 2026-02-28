@@ -64,6 +64,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Weaponmastery standard attack lines (Two Handed + Sword and Shield) are included in gag replacement coverage.
 - Self-attack gag mode now compacts Weaponmastery speed/damage/balance lines into one attack summary and condenses slain + experience into a single kill summary.
 - Unnamable battlerage `Shriek` line is included in gag replacement coverage.
+- Unnamable battlerage `Sunder` line is included in gag replacement coverage and shield-down tracking.
 - Foxhunt import reads Mudlet DB `hunting` lists directly; `merge` is default, `overwrite` clears boop lists first, `dryrun` reports counts only.
 - `boop combos` infers synergy from class rage profiles, including per-class affliction providers and conditional readiness.
 - Conditional needs default to `any` (one affliction present) unless a profile explicitly sets `needsMode = "all"`.
