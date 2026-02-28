@@ -436,6 +436,31 @@ function boop.gag.onCriticalLine(critLabel, _rawLine)
   pending.critText = critText
 end
 
+function boop.gag.onCompanionMaulFlavor(target, _rawLine)
+  if not boop.config or not boop.config.gagOwnAttacks then
+    return
+  end
+
+  boop.state = boop.state or {}
+  local pending = boop.state.gagPendingAttack
+  if not pending then
+    return
+  end
+
+  local ability = boop.util.safeLower(boop.util.trim(pending.ability or ""))
+  if ability ~= "hound maul" and ability ~= "hyena maul" then
+    return
+  end
+
+  local pendingTarget = normName(pending.target or "")
+  local seenTarget = normName(target or "")
+  if pendingTarget ~= "" and seenTarget ~= "" and pendingTarget ~= seenTarget then
+    return
+  end
+
+  deleteCurrent()
+end
+
 function boop.gag.onBalanceUsed(seconds, _rawLine)
   if not boop.config or not boop.config.gagOwnAttacks then
     return
