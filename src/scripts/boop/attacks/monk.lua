@@ -13,7 +13,7 @@ boop.attacks.register("monk", {  standard = {
         ["rage"] = 25
       },
       ["ripplestrike"] = {
-        ["aff"] = "sensitivity",
+        ["aff"] = "inhibit",
         ["cmd"] = "rpst",
         ["desc"] = "Gives Affliction",
         ["name"] = "ripplestrike",

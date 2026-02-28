@@ -136,6 +136,10 @@ local function renderStatusDashboard()
     uiPrintRow(row, "Target order", tostring(boop.config.targetOrder or "order"), "cyan")
     row = row + 1
     uiPrintRow(row, "Trace logging", boolText(not not boop.config.traceEnabled), boolColor(not not boop.config.traceEnabled))
+    row = row + 1
+    uiPrintRow(row, "Gag own attacks", boolText(not not boop.config.gagOwnAttacks), boolColor(not not boop.config.gagOwnAttacks))
+    row = row + 1
+    uiPrintRow(row, "Gag others attacks", boolText(not not boop.config.gagOthersAttacks), boolColor(not not boop.config.gagOthersAttacks))
 
     uiPrintFooter("Type: boop config | boop help | boop get")
     return
@@ -158,6 +162,8 @@ local function renderStatusDashboard()
   boop.util.echo("  whitelistPriorityOrder: " .. tostring(boop.config.whitelistPriorityOrder))
   boop.util.echo("  targetOrder: " .. tostring(boop.config.targetOrder))
   boop.util.echo("  traceEnabled: " .. tostring(boop.config.traceEnabled))
+  boop.util.echo("  gagOwnAttacks: " .. tostring(boop.config.gagOwnAttacks))
+  boop.util.echo("  gagOthersAttacks: " .. tostring(boop.config.gagOthersAttacks))
 end
 
 function boop.ui.status(context)
@@ -412,6 +418,54 @@ local function parseBool(raw)
   return nil
 end
 
+function boop.ui.gagCommand(raw)
+  local text = boop.util.trim(raw or "")
+  local token = boop.util.safeLower(text)
+  if token == "" or token == "status" then
+    boop.gag.showStatus()
+    return
+  end
+
+  local scope, state = token:match("^(own|others|all)%s+(on|off)$")
+  if scope and state then
+    local enabled = (state == "on")
+    if scope == "own" then
+      boop.gag.setOwn(enabled)
+      return
+    end
+    if scope == "others" then
+      boop.gag.setOthers(enabled)
+      return
+    end
+    boop.gag.setBoth(enabled)
+    return
+  end
+
+  if token == "own" then
+    boop.gag.setOwn(not boop.config.gagOwnAttacks)
+    return
+  end
+  if token == "others" then
+    boop.gag.setOthers(not boop.config.gagOthersAttacks)
+    return
+  end
+  if token == "all" then
+    local nextValue = not (boop.config.gagOwnAttacks and boop.config.gagOthersAttacks)
+    boop.gag.setBoth(nextValue)
+    return
+  end
+  if token == "on" then
+    boop.gag.setBoth(true)
+    return
+  end
+  if token == "off" then
+    boop.gag.setBoth(false)
+    return
+  end
+
+  boop.util.echo("Usage: boop gag [status|on|off|own|others|all|<scope> on|off]")
+end
+
 local function canonConfigKey(raw)
   local key = boop.util.safeLower(boop.util.trim(raw or ""))
   local map = {
@@ -435,6 +489,11 @@ local function canonConfigKey(raw)
     attackmode = "attackMode",
     trace = "traceEnabled",
     traceenabled = "traceEnabled",
+    gag = "gagOwnAttacks",
+    gagown = "gagOwnAttacks",
+    gagownattacks = "gagOwnAttacks",
+    gagothers = "gagOthersAttacks",
+    gagothersattacks = "gagOthersAttacks",
     diagtimeout = "diagTimeoutSeconds",
     diagtimeoutseconds = "diagTimeoutSeconds",
   }
@@ -464,6 +523,8 @@ function boop.ui.listConfigValues()
     "targetOrder",
     "attackMode",
     "traceEnabled",
+    "gagOwnAttacks",
+    "gagOthersAttacks",
     "diagTimeoutSeconds",
   }
   boop.util.echo("config keys:")
@@ -570,6 +631,26 @@ function boop.ui.setConfigValue(key, value)
       return
     end
     boop.ui.setTraceEnabled(parsed)
+    return
+  end
+
+  if canonical == "gagOwnAttacks" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.echo("gagOwnAttacks expects on/off")
+      return
+    end
+    boop.gag.setOwn(parsed)
+    return
+  end
+
+  if canonical == "gagOthersAttacks" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.echo("gagOthersAttacks expects on/off")
+      return
+    end
+    boop.gag.setOthers(parsed)
     return
   end
 
@@ -1539,6 +1620,22 @@ local HELP_TOPICS = {
     },
   },
   {
+    key = "gag",
+    title = "Gag",
+    aliases = { "gag" },
+    commands = {
+      "boop gag",
+      "boop gag on",
+      "boop gag off",
+      "boop gag own on",
+      "boop gag others on",
+    },
+    notes = {
+      "Replaces matched attack lines with compact Who: What -> Victim output.",
+      "Own and others are separately toggleable.",
+    },
+  },
+  {
     key = "setget",
     title = "Set/Get",
     aliases = { "setget", "set", "get" },
@@ -1982,6 +2079,12 @@ local function configRenderDebugSection()
     uiPrintRow(4, "Clear trace", "CLEAR", "red", function()
       boop.ui.config("4")
     end, "Clear trace buffer")
+    uiPrintRow(5, "Gag own attacks", boolText(not not boop.config.gagOwnAttacks), boolColor(not not boop.config.gagOwnAttacks), function()
+      boop.ui.config("5")
+    end, "Toggle gagging your own attack lines")
+    uiPrintRow(6, "Gag others attacks", boolText(not not boop.config.gagOthersAttacks), boolColor(not not boop.config.gagOthersAttacks), function()
+      boop.ui.config("6")
+    end, "Toggle gagging other players' attack lines")
     uiPrintFooter("Type: boop config <number> to change | boop config back | boop config home")
     return
   end
@@ -1991,6 +2094,8 @@ local function configRenderDebugSection()
   boop.util.echo("[2] Debug snapshot            [ SHOW ]")
   boop.util.echo("[3] Trace buffer              [ SHOW ]")
   boop.util.echo("[4] Clear trace               [ CLEAR ]")
+  boop.util.echo("[5] Gag own attacks           [ " .. boolText(not not boop.config.gagOwnAttacks) .. " ]")
+  boop.util.echo("[6] Gag others attacks        [ " .. boolText(not not boop.config.gagOthersAttacks) .. " ]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config <number> to change | boop config back | boop config home")
 end
@@ -2114,6 +2219,12 @@ local function configApplySectionOption(sectionKey, option)
       else
         boop.util.echo("trace unavailable")
       end
+      return true
+    elseif n == 5 then
+      boop.gag.setOwn(not boop.config.gagOwnAttacks)
+      return true
+    elseif n == 6 then
+      boop.gag.setOthers(not boop.config.gagOthersAttacks)
       return true
     end
     return false

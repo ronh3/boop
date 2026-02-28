@@ -18,6 +18,12 @@
     "script": ""
   },
   {
+    "name": "Gag",
+    "isActive": "yes",
+    "isFolder": "yes",
+    "script": ""
+  },
+  {
     "name": "IH",
     "isActive": "yes",
     "isFolder": "yes",
@@ -25,6 +31,12 @@
   },
   {
     "name": "Rage",
+    "isActive": "yes",
+    "isFolder": "yes",
+    "script": ""
+  },
+  {
+    "name": "Shield",
     "isActive": "yes",
     "isFolder": "yes",
     "script": ""

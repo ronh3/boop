@@ -8,6 +8,7 @@
   {"name": "boop_rage", "isActive": "yes", "isFolder": "no", "script": ""},
   {"name": "boop_ih", "isActive": "yes", "isFolder": "no", "script": ""},
   {"name": "boop_targets", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_gag", "isActive": "yes", "isFolder": "no", "script": ""},
   {"name": "boop_attacks", "isActive": "yes", "isFolder": "no", "script": ""},
   {"name": "attacks", "isActive": "yes", "isFolder": "yes", "script": ""},
   {"name": "boop_safety", "isActive": "yes", "isFolder": "no", "script": ""},

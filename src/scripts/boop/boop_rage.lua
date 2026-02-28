@@ -89,3 +89,77 @@ function boop.rage.onHyenaMaulNotReady()
     boop.trace.log("hyena maul not ready")
   end
 end
+
+local function normalizeEntityName(name)
+  if not name then return "" end
+  local value = boop.util.trim(tostring(name))
+  value = value:gsub("\226\128\152", "'") -- left single quotation mark
+  value = value:gsub("\226\128\153", "'") -- right single quotation mark
+  return boop.util.safeLower(value)
+end
+
+local function sameEntityName(a, b)
+  local left = normalizeEntityName(a)
+  local right = normalizeEntityName(b)
+  if left == "" or right == "" then return false end
+  return left == right
+end
+
+local function resolveCapture(expr, matchTable)
+  if type(expr) ~= "table" then return "" end
+  local kind = expr.kind
+  if kind == "match" then
+    local idx = tonumber(expr.index)
+    if not idx or type(matchTable) ~= "table" then return "" end
+    return tostring(matchTable[idx] or "")
+  end
+  if kind == "literal" then
+    return tostring(expr.value or "")
+  end
+  return ""
+end
+
+local function shouldTrackTarget(targetName)
+  local captured = boop.util.trim(targetName or "")
+  if captured == "" then return true end
+
+  boop.state = boop.state or {}
+  local current = boop.util.trim(boop.state.targetName or "")
+  if current == "" and (boop.state.currentTargetId or "") ~= "" then
+    -- Populate when we have an id but no name yet; this avoids dropping early lines.
+    boop.state.targetName = captured
+    current = captured
+  end
+  if current == "" then return false end
+  return sameEntityName(captured, current)
+end
+
+function boop.rage.onAfflictionTrigger(spec, matchTable, _rawLine)
+  if type(spec) ~= "table" then return end
+  if not boop.afflictions then return end
+  if boop.config and boop.config.enabled == false then return end
+
+  local mode = boop.util.safeLower(spec.mode or "")
+  local affs = spec.affs or {}
+  if type(affs) ~= "table" or #affs == 0 then return end
+
+  local target = resolveCapture(spec.target, matchTable)
+  if not shouldTrackTarget(target) then return end
+
+  local actor = resolveCapture(spec.user, matchTable)
+  local source = boop.util.trim(spec.source or "battlerage")
+
+  for _, aff in ipairs(affs) do
+    local key = boop.util.safeLower(boop.util.trim(aff or ""))
+    if key ~= "" then
+      if mode == "add" then
+        boop.afflictions.addTarget(key)
+      elseif mode == "remove" then
+        boop.afflictions.removeTarget(key)
+      end
+      if boop.trace and boop.trace.log then
+        boop.trace.log(string.format("rage aff %s: %s (%s) actor=%s target=%s", mode, key, source, actor ~= "" and actor or "?", target ~= "" and target or "?"))
+      end
+    end
+  end
+end

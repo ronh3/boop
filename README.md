@@ -24,6 +24,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop lead` / `boop lead <seconds>` (prequeue lead timing)
 - `boop get [key]` / `boop set <key> <value>`
 - `boop trace` / `boop trace on|off|show [n]|clear`
+- `boop gag` / `boop gag on|off|own|others|all|<scope> on|off`
 - `boop targeting <manual|whitelist|blacklist|auto>`
 - `boop ragemode <simple|dam|big|small|aff|cond|buff|pool|none>` (default: `simple`)
 - `diag` (queue-clear + diagnose; temporarily pauses boop attacks until diagnose result + prompt)
@@ -59,9 +60,12 @@ Standalone Mudlet package for Achaea auto hunting.
 - Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.
 - In queueing mode, boop caches the last `BOOP_ATTACK` alias payload and skips redundant `setalias` sends when unchanged.
 - Trace buffer records recent boop decisions/commands for post-mortem debugging (`boop trace show`).
+- Attack-line gagging can be toggled separately for your own attacks and other players' attacks, replacing matched lines with `Who: What -> Victim`.
 - Foxhunt import reads Mudlet DB `hunting` lists directly; `merge` is default, `overwrite` clears boop lists first, `dryrun` reports counts only.
 - `boop combos` infers synergy from class rage profiles, including per-class affliction providers and conditional readiness.
 - Conditional needs default to `any` (one affliction present) unless a profile explicitly sets `needsMode = "all"`.
+- Battlerage afflictions are auto-tracked from class/general combat lines (gain + wear-off), and updates are scoped to your current target context for conditional rage checks.
+- Shield state is now cleared from a broad set of class/general break and "no shield" combat lines, reducing repeated/wasted shieldbreak attempts when the shield is already down.
 
 ## Maintenance
 - `tools/sort_manifests.sh` sorts display-order manifests for aliases, triggers, and attack scripts.

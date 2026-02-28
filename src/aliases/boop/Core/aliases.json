@@ -21,6 +21,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Gag",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+gag(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Get",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+get(?:\\s+(\\w+))?$",

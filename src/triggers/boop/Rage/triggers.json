@@ -120,6 +120,12 @@
     "script": ""
   },
   {
+    "name": "Afflictions",
+    "isActive": "yes",
+    "isFolder": "yes",
+    "script": ""
+  },
+  {
     "name": "Rage Ready List",
     "isActive": "yes",
     "isFolder": "no",

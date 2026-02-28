@@ -1,0 +1,5806 @@
+[
+  {
+    "name": "Alchemist Battlerage Cadmium",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) sketch a bisected triangle in the air and direct the energy of cadmium to pierce (.+)'s skin, weakening \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) sketches a bisected triangle in the air in the direction of (.+), who begins to slump down as if \\w+ has been weakened\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Alchemist Battlerage Caustic",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) mix together the ingredients of the caustic chemical and fling it at (.+)'s shield, watching as it is consumed\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) mixes together a few ingredients and flings the mixture at (.+)'s shield, watching as it is consumed.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Alchemist Battlerage Hypnotic",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Taking care to avoid the fumes, (\\w+) quickly forms? the hypnotic chemical and throws? it into (.+)'s face\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Alchemist Battlerage Magnesium",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) sketch out the symbol for magnesium and direct the energy to sear (.+)'s flesh\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^White\\-hot flames sear (.+)'s flesh as (\\w+) sketches the symbol magnesium in the air\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Alchemist Battlerage Miasma",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) quickly mixe?s? together several chemical by\\-products and flings? the toxic mixture into (.+)'s face, causing \\w+ to cough and choke\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Alchemist Battlerage Pathogen",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) quickly combines? and throw \\w+ virulent pathogen at (.+?)\\.",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Alchemist General Copper",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Directing the energy of copper, (you) send myriad russet streams towards (.+), shattering \\w+ shield\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) sends myriad russet streams towards (.+), shattering \\w+ shield\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Directing the energy of copper, (you) send myriad russet streams towards (.+), which whip around \\w+ ineffectually\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Alchemist General Iron",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Directing the energy of iron, (you) engulf (.+)'s body with ashen flames, which burn \\w+ skin with their frigid touch\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(Ashen) flames engulf (.+)'s body, burning \\w+ skin with their frigid touch\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Apostate Battlerage Bloodlet",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+)'?s? daegger flits around (.+)'s stunned figure, stabbing repeatedly as small mouths along the blade feed on the blood\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+)'?s? daegger flies towards (.+) and attempts to stab into \\w+ neck, but is only able to strike a glancing blow\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+)'?s? daegger stabs into (.+)'s neck, dozens of tiny mouths opening along the blade and sucking hungrily at the blood\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Apostate Battlerage Burrow",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) points? at (.+) and \\w+ daegger flies towards (\\w+ victim|\\w+), burrowing into \\w+ body and emerging out the other side\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Apostate Battlerage Convulsions",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) stares? at (.+), giving \\w+ the evileye\\. \\w+ limbs begin to convulse\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Apostate Battlerage Horrify",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) stares? at (.+), giving \\w+ the evil\\s?eye\\. Terror floods .+'s features as \\w+ begins to run about in a panic\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Apostate Battlerage Pierce",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+)'?s? daegger flings itself at (.+)'s translucent shield, piercing through it and causing it to fade\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Apostate Battlerage Possess",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) holds? out one hand towards (.+) as something made of shadow and ice rises from the ground and flies into \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Apostate General Evileye",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) stares? at (.+), giving \\w+ the evil eye\\. Blood begins to flow from \\w+ pores\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Apostate General Strip",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) bid your Baalzadeen to strip a defence from (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+)'s Baalzadeen stares passively, but powerfully, at (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Bard Battlerage Charm",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) directs? a soothing song at (.+), enticing \\w+ into",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Bard Battlerage Cyclone",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) spins \\w+ way past (.+), .+'s stunned ",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Your careful footwork leads (you) in a tight spin past (.+), \\w+ stunned ",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Your careful footwork leads (you) in a tight spin past (.+), slashing out ",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Your careful footwork leads (you) in a tight spin past (.+), but ",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) spins \\w+ way past (.+), slashing out ",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) spins \\w+ way past (.+), but ",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Bard Battlerage Howlslash",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) use your powerful voice to distract (.+) with a ululating howl before stepping in with a vicious slash\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) distracts (.+) with a ululating howl before stepping in with a vicious slash\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Bard Battlerage Moulinet",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) twists? \\w+ wrist swiftly, slicing (.+) with a long slash of \\w+ sweeping blade\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Bard Battlerage Resonance",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) hums? a low note at (.+), causing \\w+ translucent shield to shatter as it resonates with the power of \\w+ voice\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Bard Battlerage Trill",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) directs? \\w+ voice in a high-pitched trill at (.+), dazing \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Bard General Cantata",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) lets? the grace of \\w+ voice shine forth with a Scarlattan cantata at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+)'?s? cantata shatters the magical shield surrounding (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Blademaster Battlerage Daze",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) hurls? a precise blast of Shin energy at (.+)'s eyes\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Blademaster Battlerage Headstrike",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) delivers? a glancing blow to (.+)'s head\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) waits? for an opening in (.+)'s (aggressive|fearful) (stance|flailing) before delivering a single devastating strike to \\w+ head\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Blademaster Battlerage Leapstrike",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A Shin-enhanced leap flings you high into the air. (You) extend one knee downwards as you begin to fall, squarely striking (.+) and driving \\w+ to the ground as you land\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) flies upward in a Shin-enhanced leap, extending one knee downwards as \\w+ begins to fall back down. \\w+ squarely strikes (.+) as \\w+ lands\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Blademaster Battlerage Nerveslash",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) lightly stabs (.+) in a series of specific locations with \\w+ blade, causing (.+) to slump weakly\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) lightly stab (.+) in several key locations with your blade, causing \\w+ to slump weakly\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Blademaster Battlerage Shatter",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) unleashe?s? a burst of Shin energy at (.+), tearing apart \\w+ translucent shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Blademaster Battlerage Spinslash",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) twists? in a tight circle, slashing (.+) with each spin\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Blademaster General Drawslash",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^With expert precision, (you) draw .+ from its scabbard and unleash a vicious slash towards (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) unleashes a vicious slash towards (.+) before resheathing \\w+ blade, .+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker Battlerage Boinad",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Locking \\w+ gaze to that of (.+), (\\w+) speaks a terrible word of power\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Locking your gaze to that of (.+), (you) (e|i)ntone, 'Boinad'\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker Battlerage Curse",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) fixes \\w+ gaze upon (.+), who suddenly seems to be moving in slow motion\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Bending (your) formidable will upon (.+), you slow the passage of time about \\w+ to a crawl\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker Battlerage Drain",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) hisses something in an ancient tongue, and the shadow of (.+) grows more opaque as (.+) grows paler\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) command the shadow of (.+) to begin siphoning away the life of its host\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker Battlerage Erasure",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) viciously eradicate parts of the concept of (.+) from the timestream",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) makes a slashing motion with a hand towards the weakened form of (.+), who",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) makes a slashing motion with a hand towards (.+), who",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker Battlerage Lash",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) summon whips of shadow to viciously lash the form of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) gestures and whips of shadow form, viciously lashing the form of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker Battlerage Nakail",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^As (\\w+) speaks a terrible word of power, the magical shield surrounding (.+) shatters into prismatic shards\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Directing (your) power against the magical shield surrounding (.+), you intone, \"Nakail\"\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker General Cull",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) lays into (.+) with a terrible blow from .+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) lay into (.+) with a vicious blow from .+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker General Reap",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) lashes out with a swift, reaping blow at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) unleash a vicious reaping blow at (.+) with .+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker General Strike",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(Your) shadow leaps for (.+), hammering \\w+ shield in a silent frenzy that causes it to explode in a shower of prismatic shards\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The shadow of (\\w+) suddenly comes alive, leaping forward to hammer at the magical shield surrounding (.+) in a silent frenzy of blows\\. \\w+ protection lasts mere moments before exploding in a shower of prismatic shards\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(.+) is not surrounded by a magical shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon All Dragons General Gut",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) rips? into (.+) with \\w+ massive\\, deadly claws\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon All Dragons General Incantation",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A resonant vibration emanates from (\\w+) as \\w+ invokes a rumbling, sonorous chant in the dragon tongue\\. As the sound increases, (.+) jerks violently, \\w+ body wracked by an unseen force\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Drawing from the well of your puissance, you invoke a dramatic chant in the dragon tongue\\. (You)r voice resonates with each word, culminating in a wave of magical energy that you bend to your will and thrust towards (.+), bombarding \\w+ with the ancient power\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon All Dragons General Tailsmash",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) dismissively flicks \\w+ tail at (.+), annihilating the magical shield surrounding \\w+ with casual ease\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) flick your tail at (.+), dismissively brushing aside the paltry shield protecting \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) prepare yourself to flick your tail at (.+) before realising that doing so would not actually do anything\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Black Dragon Battlerage Corrode",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) opens? \\w+ gigantic maw and spews? acid on (.+)\\. \\w+ (dodges|is)",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Black Dragon Battlerage Dissolve",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) bathes? (.+)'s translucent shield in \\w+ noxious breath, dissolving it\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Black Dragon Battlerage Dragonfear",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) opens? \\w+ enormous maw and lets? loose a mighty roar at (.+), causing \\w+ to quail in fear\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Black Dragon Battlerage Dragonspit",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) spits? a stream of acidic venom at (.+) who writhes in agony as the spittle seeps into \\w+ skin\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Black Dragon Battlerage Dragonsting",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) swings \\w+ mighty tail around and stabs (.+) with an acid-covered spine\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) swing your mighty tail around, stabbing (.+) with an acid-covered spine\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Black Dragon Battlerage Override",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) barrels? into (.+) and knocks? \\w+ to the ground before stomping over \\w+ prone form\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Black Dragon General Blast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Opening \\w+ maw, (\\w+) belches out a tremendous stream of eradicating acid, blasting the flesh from (.+)'s very bones\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Opening your maw, (you) force out a tremendous stream of acid, blasting the flesh from the very bones of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Blue Dragon Battlerage Ague",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) lets? loose a steady stream of cold air around (.+), who begins to shiver uncontrollably\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Blue Dragon Battlerage Dragonchill",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) form small chunks of ice in your enormous maw, then spit them at (.+) in a barrage\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) spits a barrage of icy chunks at (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Blue Dragon Battlerage Frostrive",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(.+)'s translucent shield cracks and fades away as (\\w+) breathes? an icy blast at it\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Blue Dragon Battlerage Frostwave",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) breathes? a wave of icy air at (.+?)\\.",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) breathes a wave of icy air at (.+), but \\w+ backs away from it and avoids the brunt of the attack\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Blue Dragon Battlerage Glaciate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) breathes? a column of icy air at (.+)'s head, stunning \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Blue Dragon Battlerage Override",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) barrels? into (.+) and knocks? \\w+ to the ground before stomping over \\w+ prone form\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Blue Dragon General Blast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Opening \\w+ massive maw, (\\w+) throws? \\w+ head forward and blasts? wave after wave of deadly, all-consuming cold at (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Golden Dragon Battlerage Deaden",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) psychically slams? \\w+ mind into (.+)'s, deadening .+ reactions\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Golden Dragon Battlerage Overwhelm",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) charge quickly at (.+), throwing your mighty form into \\w+ and sending \\w+ staggering back\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) charges quickly at (.+), throwing \\w+ massive form at \\w+ target in a mighty crash\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Golden Dragon Battlerage Psiblast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) level your draconic gaze at (.+), assaulting \\w+ with psychic waves of force\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) levels \\w+ draconic gaze at (.+), visible waves of psychic force emanating out\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Golden Dragon Battlerage Psidaze",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) summons? sparkles of psi energy around (.+), causing \\w+ to forget \\w+ actions as the sparkles distract \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Golden Dragon Battlerage Psishatter",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) blasts? (.+) with psychic energy, demolishing \\w+ translucent shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Golden Dragon Battlerage Psistorm",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) summons? a psychic storm around (.+), but \\w+ stands",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) summons? a psychic storm around (.+), the winds",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Golden Dragon General Blast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^With a roar of triumph, (\\w+) unleashes a cataclysm of crushing psi energy at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^With a roar of triumph, (\\w+) unleash a cataclysm of crushing psi energy, laying waste to (.+)'s mind\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Green Dragon Battlerage Deteriorate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(.+)'s translucent shield fades away as (\\w+) covers it with \\w+ deadly wyrmvenom\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Green Dragon Battlerage Dragonsap",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) snap your head forward and sink your teeth into (.+), your poisonous teeth injecting \\w+ with a weakening toxin\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+)'s head snaps forward and sinks \\w+ teeth into (.+), infecting \\w+ with a weakening toxin\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Green Dragon Battlerage Dragonspit",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) spits? a stream of acidic venom at (.+) who writhes in agony as the spittle seeps into \\w+ skin\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Green Dragon Battlerage Override",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) barrels? into (.+) and knocks? \\w+ to the ground before stomping over \\w+ prone form\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Green Dragon Battlerage Scour",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) spits? a thick gob of slime at (.+), coating \\w+ and inhibiting \\w+ ability to heal\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Green Dragon Battlerage Slaver",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Positioning \\w+ mighty head over (.+)\\, (\\w+) lets? \\w+ acidic saliva flow over \\w+",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Green Dragon General Blast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Opening \\w+ maw to its fullest, (\\w+) blasts? (.+) with \\w+ toxic wrath",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Red Dragon Battlerage Dragonblaze",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) breathes? a long torrent of flame at (.+)\\, igniting \\w+ skin\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Red Dragon Battlerage Dragontaunt",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) slaps? \\w+ tail on the ground while growling at (.+)\\, forcing \\w+ to recklessly attack\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) slaps? \\w+ tail on the ground while growling at (.+)\\, forcing \\w+ to attack recklessly\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Red Dragon Battlerage Flamebath",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) blasts? (.+) with a bath of flame",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Red Dragon Battlerage Melt",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) breathe a white\\-hot blast of flame at (.+) and burn away \\w+ translucent shield\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) breathes a white\\-hot blast of flame at (.+) and burns away \\w+ translucent shield\\.$",
+        "type": "startOfLine"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Red Dragon Battlerage Overwhelm",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) charge quickly at (.+), throwing your mighty form into \\w+ and sending \\w+ staggering back\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) charges quickly at (.+), throwing \\w+ massive form at \\w+ target in a mighty crash\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Red Dragon Battlerage Scorch",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) blackens? (.+)'s flesh with a quick blast of flame, slowing \\w+ healing process\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Red Dragon General Blast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) rears? back \\w+ head, and with a keening roar unleashe?s? incandescent hell upon (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Silver Dragon Battlerage Dragonspark",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) opens? \\w+ cavernous maw and summons? a blast of lightning to pulverize (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Silver Dragon Battlerage Galvanize",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) puffs? small bolts of lightning at (.+), enraging \\w+ and causing \\w+ to attack recklessly\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Silver Dragon Battlerage Overwhelm",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) charge quickly at (.+), throwing your mighty form into \\w+ and sending \\w+ staggering back\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) charges quickly at (.+), throwing \\w+ massive form at \\w+ target in a mighty crash\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Silver Dragon Battlerage Sizzle",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) breathes? at (.+), small bolts of lightning crackling around \\w+ and sensitizing \\w+ skin\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Silver Dragon Battlerage Splinter",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A bolt of lightning cracks out from (\\w+)'s maw and obliterates (.+)'s translucent shield\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^A bolt of lightning cracks out from (you)r maw and obliterates (.+)'s translucent shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Silver Dragon Battlerage Stormflare",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) breathes? a series of lightning strikes around (.+), but ",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) breathes? a series of lightning strikes around (.+)\\. \\w+ absent\\-mindedly",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) breathes? a series of lightning strikes around (.+)\\. \\w+ panicked movements",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) breathe a series of lightning strikes in a lattice around (.+), but",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) breathe a series of lightning strikes in a lattice around (.+)\\. \\w+ absent\\-mindedly",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) breathe a series of lightning strikes in a lattice around (.+)\\. \\w+ panicked movements",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Silver Dragon General Blast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Opening your great maw, (\\w+) unleashe?s? an overpowering blast of flesh\\-searing lightning at (.+), whose body goes rigid as \\w+ screams in agony\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Air Elemental Battlerage Bolt",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) call down a lightning bolt to destroy (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(A) bolt of lightning strikes down without warning, transfixing (.+) with its storm\\-forged fury\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Air Elemental Battlerage Compress",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) raise the pressure surrounding the already vulnerable form of (.+) to terrible heights, crushing the life from \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) raise the pressure surrounding (.+) to terrible heights, but \\w+ manages to struggle free of your intangible grasp\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) brings \\w+ hands together in a resounding clap, but nothing seems to happen\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) raise the pressure surrounding the unresponsive form of (.+) to terrible heights, seeking to crush the life from \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) brings \\w+ hands together in a resounding clap, and blood begins to leak from the eyes of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Air Elemental Battlerage Drill",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) form a localised twister, spinning it at incredible speed to form a drill that plunges straight through the magical shield surrounding (.+), utterly destroying it\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The air in front of (\\w+) begins to warp, a high pitched whining screach filling your ears\\. Then the magical shield surrounding (.+) explodes into translucent shards as if struck by some great force\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Air Elemental Battlerage Pressurewave",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) send a crushing wave of pressurised air at (.+), pulverising \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(The) wind rises again, battering at (.+) with relentless intensity\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Air Elemental Battlerage Suffocate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) rip the breath from (.+), depriving \\w+ of air for several seconds and leaving \\w+ gasping and weak\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) flicks a hand at (.+) who begins struggling to draw breath, \\w+ face turning blue\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Air Elemental Battlerage Vacuum",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) bring a vacuum into being with (.+) at the centre, denying \\w+ any chance at breathing\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(A) violent thud of displaced air heralds the suddenly panic stricken expression upon the face of (.+), \\w+ attempts to draw breath clearly failing\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Air Elemental General Buffet",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) violently buffet (.+), battering \\w+ relentlessly\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(The) body of (.+) jerks violently, as if struck by some great open handed blow\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Air Elemental General Gale",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You whip up a gale, sending it towards (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) whips up a raging gale of wind, sending it towards (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Earth Elemental Battlerage Charge",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) becomes wreathed in magma, charging at (.+) and smashing straight through the magical shield that surrounds \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Wreathing (you)rself in magma, you charge into (.+), smashing through the magical shield that surrounds \\w+ with the might of your stone\\-forged form\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Earth Elemental Battlerage Flurry",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Imbuing your form with the might of earth, (you) launch a terrible assault upon (.+), raining blow after blow down upon \\w+ with your empowered fists\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) glows an ominous red as \\w+ rains blow after blow down upon (.+) in a devastating flurry of attacks\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Earth Elemental Battlerage Magmaburst",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) call up a column of magma to strike down (.+), but \\w+ steps back away from the danger\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) calls up a colunn of magma to strike down (.+), but \\w+ quickly steps back out of danger\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) calls up a column of magma to strike down (.+), but \\w+ quickly steps back out of danger\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) calls up a column of magma, sending it crashing down upon the helpless form of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) call up a column of magma, sending it crashing over the helpless form of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) summons up a column of magma, sending it crashing down upon the over confident form of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) call up a column of magma, sending it crashing down upon the over confident form of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Earth Elemental Battlerage Rampart",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^The stone-forged form of (\\w+) steps before \\w+, protecting \\w+ from those that would strike out against \\w+ charge\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) move to stand before \\w+ ready to protect \\w+ from harm\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Earth Elemental Battlerage Rockfall",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) manifest rocks directly above \\w+, burying \\w+ under a cascading hammer of stone\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) points at (.+), who is suddenly buried under a cascading downpour of stone\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Earth Elemental Battlerage Smash",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) brings? one of \\w+ stone fists down upon (.+) in a smashing blow\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Earth Elemental General Crunch",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) launch a magma\\-wreathed fist at (.+), but \\w+ ducks aside at the last moment\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) swings a magma\\-wreathed punch at (.+), but \\w+ ducks aside at the last possible moment\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Impossibly fast, (\\w+) brings a magma\\-wreathed fist around, driving it straight through the magical shield surrounding (.+) without visible effort\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) bring a magma\\-wreathed fist around, pulverising the magical shield surrounding (.+) with a single blow\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Earth Elemental General Pulverise",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) rains? a flurry of blows down upon (.+) with \\w+ stone fists\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Fire Elemental Battlerage Cataclysm",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) unleash a raging cataclysm of destruction, the area directly surrounding (.+) becoming nothing but fire and ash\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) prepare to unleash a cataclysm against (.+), but \\w+ anticipates your intent and moves out of your target area\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The flames that compose (\\w+) burn brighter for a moment, but seeming to sense some danger (.+) quickly moves away from \\w+ current position\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^As the flames that compose (\\w+) burn ever brighter, the area surrounding (.+) is consumed in a raging cataclysm of destruction, the inferno burning white hot as it engulfs \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Fire Elemental Battlerage Devastation",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) call forth a raging firestorm to destroy (.+), its insatiable fury falling upon \\w+ with ravenous intent\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^A raging firestorm comes into being at the will of (\\w+), its insatiable fury decesnding upon (.+), completely engulfing \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Fire Elemental Battlerage Engulf",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Summoning forth the primal fires, (you) engulf (.+) in flames\\!$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) burns white hot for an instant as flames explode into being around (.+), engulfing \\w+ utterly\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Fire Elemental Battlerage Scourge",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) scourge (.+) with a whip of flame, leaving \\w+ sensitive and raw\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) scourges the form of (.+) with a hissing whip of flame, leaving \\w+ sensitive and raw\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Fire Elemental Battlerage Searingbonds",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) manifest a net of flame and cast it about the form of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^A net of flame coalesces in the grasp of (\\w+), and \\w+ casts it about the form of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Fire Elemental Battlerage Wires",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Raising a hand, (you) send forth thin wires of flame, their searing filaments tearing through the magical shield surrounding (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Fine? filaments of flame leap from the upraised hand of (\\w+), tearing through the translucent shield that protects (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Fire Elemental General Flamewhip",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A whip of liquid flame coalesces in (you)r hand, and with a savage lash you send it to scourge the flesh of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^A whip of flame coalesces in the hand of (\\w+), which \\w+ brings around in a savage lashing motion to scourge the flesh of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Fire Elemental General Vapourise",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^The magical shield surrounding (.+) suddenly shatters for no visible reason, flames spontaneously igniting upon \\w+ skin\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You superheat the air surrounding (.+), \\w+ magical shield shattering under the onslaught and \\w+ skin catching aflame\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Water Elemental Battlerage Aquahammer",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) form a giant hammer out of water and bring it crashing down upon the magical shield surrounding (.+), destroying it\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^A giant hammer of contained water coalesces before (\\w+), descending upon the magical shield surro?unding (.+) and destroying it completely\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Water Elemental Battlerage Dehydrate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) dehydrate the moisture from (.+), leaving \\w+ swaying and unsteady\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The amorphous form of (\\w+) appears to grow larger as (.+) seems somehow diminished and frailer\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Water Elemental Battlerage Icicles",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) manifest icicles from the vapour surrounding you, casting them in a deadly volley at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^An array of needle-sharp icicles coalesce in the grasp of (\\w+), and with a casual flick \\w+ sends them shooting at (.+) in a deadly volley\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Water Elemental Battlerage Needlerain",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) call down a rain of needle-sharp spears of ice, sending them plunging into the body of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The amorphous form of (\\w+) ripples as a hail of needle-sharp spears of ice fall like rain upon (.+), repeatedly impaling \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Water Elemental Battlerage Swell",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) begin to draw the fluid from (.+), \\w+ vitality draining even as your form becomes greater\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The amorphous form of (\\w+) seems to grow ever larger as (.+) becomes diminished\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Water Elemental Battlerage Waterfall",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) bring down a deluge upon (.+), \\w+ clumsy attempts to evade your retribution not availing \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The amorphous form of (\\w+) roils as a huge deluge of water and ice hammers down upon (.+), \\w+ clumsy attempts to jump back from \\w+ oncoming fate not availing \\w+ at all\\.",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You bring down a deluge upon (.+), but \\w+ leaps back out of the range, suffering little more than a faceful of icy spray\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The amorphous form of (\\w+) roils as a huge deluge of ice and water falls towards (.+), but \\w+ leaps back out of range, suffering little more than a faceful of icy spray\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The amorphous form of (\\w+) roils as a huge deluge of water and ice hammers down upon the sluggish and unresponsive form of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) bring down a deluge upon (.+), \\w+ sluggish and unresponsive form having no hope of evading your retribution\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Water Elemental General Blade",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) conjures? a blade of ice and sends? it to lacerate the flesh of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) conjures a blade of ice and sends it to slash at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) conjure a blade of ice and drive it straight through the magical shield surrounding (.+), causing it to explode in a shower of prismatic shards\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) conjures a blade of ice and drives it straight through the translucent shield surrounding (.+), the protection exploding in a shower of prismatic shards\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "General Attacks Axe Throw",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) cock back your arm and throw .+ at (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "General Attacks Jab",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Lightning\\-quick, (\\w+) jab? (.+) with .+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) viciously jab .+ into (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "General Attacks Raze",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) razes? (.+)'s magical shield with .+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) whips? .+ through the air in front of (.+), to no effect\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Infernal Battlerage Deathlink",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You gesture at (\\w+) and a fragile ethereal thread forms into existence between you\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Infernal Battlerage Hellstrike",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Dark fire courses down (.+?) as (\\w+) strikes? (.+) with a solid blow\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Dark fire courses down (.+?) as (\\w+) strikes? (.+), (absorbing|easily)",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Infernal Battlerage Ravage",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A black tendril of mist coalesces from (\\w+)'?s? hand and enters (.+)'s (brain|head), causing \\w+ to flinch in pain\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Infernal Battlerage Shiver",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Dark energy wreathes .+ as (\\w+) slashe?s? at (.+) with it, causing \\w+ translucent shield to crumble\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Infernal Battlerage Soulshield",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "A miasma of black flames springs up around you.",
+        "type": "exactMatch"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Infernal Battlerage Spike",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) leap upon (.+), forming putrid spikes on your armour that tear into \\w+ flesh\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) forms putrid spikes on \\w+ armour before leaping upon (.+), tearing into \\w+ flesh\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Jester Battlerage Befuddle",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) strikes? up a dialogue with (.+), gleefully mocking \\w+ ",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) strikes? up a bantering dialogue with (.+), but ",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Jester Battlerage Dustthrow",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) takes? a pinch of diamond dust and flicks? it at (.+)'s face\\. \\w+ begins to cough and retch to expel the fine dust\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Jester Battlerage Ensconce",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) brushes up against (.+), giggling softly\\. Moments later, a firecracker detonates, leaving a blistering around on .+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) discreetly secret a lit firecracker to (.+). After a few moments, the firecracker explodes, leaving a blistering wound\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Jester Battlerage Jacks",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) throws? a handful of small metallic jacks at (.+)\\, the sharpened points shredding \\w+ translucent shield\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) throw a handful of small metallic jacks at (.+), the sharpened points shredding \\w+ translucent shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Jester Battlerage Noogie",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) wraps? (.+) in a tight headlock and repeatedly rubs? \\w+ knuckles painfully across \\w+ scalp\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) wraps? (.+) in a tight headlock and repeatedly rubs? \\w+ knuckles painfully across \\w+ victim's scalp\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Jester Battlerage Rap",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) whistles? innocuously as \\w+ saunters? by (.+), then suddenly spins? and whips? \\w+ (victim )?in the back of the (head|hand) with \\w+ blackjack, stunning \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Jester General Bop",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) reache?s? out and bops? (.+) on the nose with \\w+ blackjack\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) gives? (.+) a sound thumping with \\w+ blackjack\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Magi Battlerage Dilation",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) summons? a polar vortex in a tight field around (.+), chilling the small pocket so intensely that time itself begins to slow\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Magi Battlerage Disintegrate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) summons? a whirlwind of flame around (.+) which consumes \\w+ translucent shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Magi Battlerage Firefall",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) raises? \\w+ hands dramatically and summons? a mighty flaming rock from the sky down at (.+), but \\w+",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) raises? \\w+ hands dramatically and summons? a mighty flaming rock from the sky\\. (.+) (recklessly)",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) raises? \\w+ hands dramatically and summons? a mighty flaming rock from the sky that slams into the clumsy form of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Magi Battlerage Squeeze",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^At (.+) command, .+ stomps over to (.+) and wraps \\w+ in a tight embrace, squeezing the life from \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Magi Battlerage Stormbolt",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A bolt of lightning roars out from (\\w+)'?s? hands as \\w+ casts? a powerful spell at (.+), inciting sensitive nerves across \\w+ skin\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Magi Battlerage Windlash",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) draw upon the power of air to summon sharp gusts of wind which begin to whip across (.+)'s exposed flesh.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) chants a quick spell and sharp gusts of wind begin to whip across (.+)'s exposed flesh\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Magi General Erode",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) casts? a spell of erosion at (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Magi General Firelash",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) forms? a lash of fire, and sends? it to scorch the flesh of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Magi General Staffcast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) points? .+ at (.+) and \\w+ screams in pain as \\w+ skin begins to freeze and crack\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) points? .+ at (.+), and a stream of bile-like acid streams out, covering \\w+",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) point .+ at (.+), and cause a bolt of lightning to cascade out and roar screaming into \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^As (\\w+) points? .+ at (.+), a scintilla of bright, burning light shoots out, striking \\w+ with focused elemental power\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) points .+ at (.+), and a bolt of lightning cascades out and roars, screaming, into \\w+ body\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Magi General Stormhammer",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^The sky grows dark as (\\w+) calls upon powerful magics\\. Raising \\w+ hands balefully, \\w+ causes lightning bolts, the hammer of the storm, to shoot from \\w+ hands and slam into (.+)\\.",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The sky above grows dark as (you) call upon powerful magics\\. Raising your hands balefully, you causelightning bolts, the hammer of the storm, to shoot from your hands and slam into (.+)\\.",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk Battlerage Mindblast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Marshalling (you)r psychic reserves, you hurl them in a blast at (.+?)\\.",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) focuses intently on (.+) and a visible wave of force sweeps",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Marshalling (you)r psychic reserves, you hurl them in a blast at (.+), clamping",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk Battlerage Ripplestrike",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) quickly strikes? (.+) with the tips of \\w+ fingers",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk Battlerage Scramble",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) rummage quickly through (.+)'s mind, finding the link to fine motor control before exerting a small amount of psychic force and deadening it\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+)'s eyes glaze over momentarily as \\w+ focuses on (.+), who begins to stumble about clumsily\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk Battlerage Spinningbackfist",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) spins? and strikes? (.+) with the back of \\w+ fist\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk Battlerage Splinterkick",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) focuse?s? \\w+ rage in a single powerful sidekick, shattering (.+)'s translucent shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk Battlerage Tornadokick",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) leaps? and spins? in the air, striking (.+) repeatedly with an outstretched foot\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Mind Crush",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) reach out with your mind, tightening its grip around (.+) to crush the life out of \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(.+) clutches \\w+ sides and howls in pain\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Dart",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Sharply extending out your arms in front of you, (you) deliver a lightning-fast thrust to the .+? of (.+) with .+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Spinning on one foot (you) bring .+ around in a lightning fast thrust at the .+? of (.+)\\.$ ",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Snapping \\w+ arms out in front of her, (\\w+) delivers a lightning-fast thrust to the .+? of (.+) with .+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Spinning on one foot (\\w+) brings .+ around in a lightning-fast thrust at the .+? of (.+)\\,$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Flashheel",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Snapping \\w+ leg out to its full extent, (\\w+) drives? \\w+ heel into the \\w+ knee of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Form Change",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "You spin your staff in the opening sequence of the form of Tykonos, snapping into a ready stance.",
+        "type": "exactMatch"
+      },
+      {
+        "pattern": "Twirling your staff, you sink into the calm required for the form of Willows Shaken by the Wind.",
+        "type": "exactMatch"
+      },
+      {
+        "pattern": "Dropping into a lower stance, you snap your weapon into an offensive position, tensing your muscles in preparation for the form of Willows in Rain Storm.",
+        "type": "exactMatch"
+      },
+      {
+        "pattern": "Rising onto the balls of your feet, you prepare to begin the deadly form of the Live Oak.",
+        "type": "exactMatch"
+      },
+      {
+        "pattern": "You let your eyes fall closed and instinct guide you as you flow into the form of Gaital.",
+        "type": "exactMatch"
+      },
+      {
+        "pattern": "You allow your kai to flow through you, circulating throughout your limbs and down your weapon in preparation to begin the form of the Unrelenting Storm.",
+        "type": "exactMatch"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Frontkick",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) lash out with a straight kick at the \\w+ shoulder of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) lashes out with a straight kick at (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Hiraku",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Bracing \\w+ back foot, (\\w+) lunges? forward with .+ at the face of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Stepping forward, (\\w+) drives? .+ at the face of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Hiru",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Whirling .+ in a tight arc, (you) bring the weapon around to crash into the side of the head of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Snapping back into a ready stance, (you) whirl .+ in a long sweep at the head of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) whips .+ in a tight arc, sweeping it at the head of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Snapping back into a ready stance, (\\w+) whips .+ in a wide arc at the head of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Jinzuku",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Stepping to the side of (.+), (you) drive .+ at \\w+ kidneys\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) flow around (.+), .+ lashing out in a swift strike at \\w+ kidneys\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Stepping to the side of (.+), (\\w+) drives .+ into \\w+ vulnerable kidneys\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Flowing around (.+) like water, (\\w+) lashes out with a swift thrust of .+ at \\w+ kidneys\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Kata",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You are now maintaining a kata chain of (\\d+) actions\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Kuro",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Dropping into a lower stance, (you) sweep .+ at the \\w+ thigh of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Falling back into a low crouch, (you) lash out with a swift strike at the \\w+ thigh of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Dropping back into a low crouch, (\\w+) whips .+ in a swift strike at the \\w+ thigh of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Dropping into a lower stance, (\\w+) sweeps .+ at the \\w+thigh of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Livestrike",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Lunging forward, (you) drive the end of .+ viciously into the solar plexus of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Lunging off \\w+ back foot, (\\w+) viciously drives .+ into the solar plexus of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Needle",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^With pinpoint precision, (you) drive .+ at the throat of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Reversing your grip on .+, (you) drive the top of the weapon into the throat of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^With pinpoint precision, (\\w+) thrusts .+ at the throat of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Reversing \\w+ grip on .+, (\\w+) drives the top of the weapo ninto the throat of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Nervestrike",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) whips? .+ at the side of (.+)'s neck\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Risingkick",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) drive your foot up in a rising kick at the \\w+ of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) lashes out with a rising kick at the \\w+ of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Ruku",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) whip .+ at (.+) in a controlled arc, bringing its length to crack against .+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) spin a full rotation, bringing .+ around in a blur of motion to smash into the .+ of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) whips .+ in a controlled arc, bringing the length of the weapon to crash into the .+ of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) spins a full rotation, bringing .+ around in a blur to crash into the .+ of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Shatter",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Bracing \\w+ feet, (\\w+) drives? .+ towards (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Spinkick",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Whirling around, (\\w+) brings? the ball of \\w+ foot crashing into the temple of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Thrust",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Stepping forward, (you) drive the end of .+ into the .+? of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Continuing your kata, (you) spin .+ in your hands and drive it in a sharp thrust towards the .+? of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Stepping forward, (\\w+) drives the end of .+ into the .+? of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Continuing \\w+ kata, (\\w+) spins .+ in \\w+ hands and drives theweapon into the .+? of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Tekura Kicks",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) pumps? out at (.+) with a powerful side kick\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) lets? fly at (.+) with a snap kick\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) spins? into the air and throws? a whirlwind kick towards (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) kicks? \\w+ leg high and scythes? downwards at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) hurls? \\w+ towards (.+) with a lightning-fast moon kick\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Tekura Punches",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) launche?s? a powerful uppercut at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) forms? a spear hand and stabs? out towards (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) balls? up one fist and hammerfists? (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) unleashe?s? a powerful hook towards (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Tekura Roundhouse",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) twists? \\w+ torso and sends? a roundhouse towards (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Occultist Battlerage Chaosgate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) cups? \\w+ hands together and flings? them outwards,? sending a spiral of shimmering portals into (.+)'s body\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Occultist Battlerage Fluctuate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) concentrates? intently on (.+) and watche?s? as grotesque mutations sprout all over .+ body\\.",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) concentrates? intently on (.+), (terror|pain)",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) concentrates? intently on (.+)\\. (Terror|Pain)",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Occultist Battlerage Harry",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Raising your hands in the air, (you) summon horrific visions to torment (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) raises \\w+ hands in the air and summons horrific visions to torment (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Occultist Battlerage Ruin",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) gestures? in a slashing motion at (.+), and small tears form in \\w+ translucent shield as chaos rips it apart\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Occultist Battlerage Stagnate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) waves? one arm at (.+), causing a small time rift to form around \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Occultist Battlerage Temperance",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Multicoloured rays burst forth from (.+) outstretched hands and strike (.+) in the head",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Occultist General Warp",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) reache?s? out and clenche?s? a fist before (.+), who screams and doubles over in agony as \\w+ skin suddenly bubbles with gangrenous growths\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Paladin Battlerage Faithrend",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) raises? .+ high in the air and utters? a quick prayer as \\w+ brings? it crashing down on (.+), shattering \\w+ translucent shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Paladin Battlerage Harrow",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Holy fire lends strength to (you)r arm as you bring .+ crashing down on (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Holy fire wreathes (\\w+)'s limb as \\w+ brings .+ crashing down on (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Paladin Battlerage Punishment",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) performs? a punishing rite against (.+), (but \\w+|great pain)",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Paladin Battlerage Recovery",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You lay your hands upon \\w+, infusing \\w+ with a protective blessing\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Paladin Battlerage Regeneration",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "You perform a holy rite and a gold-tinged aura springs up around you.",
+        "type": "exactMatch"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Paladin Battlerage Shock",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) perform a holy rite and bind it to (.+)'s soul, creating a conduit for holy lightning to strike down upon \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Holy lightning strikes from the heavens and burns around (.+) as (\\w+) binds a holy rite to \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Priest Battlerage Crack",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) strikes? (.+)'s translucent shield with \\w+ mace, shattering it completely\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Priest Battlerage Desolation",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Praying to the Gods, (\\w+) lays? a desolating rite on (.+)'s body and watche?s? as \\w+ arches \\w+ back in agony\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Priest Battlerage Hammer",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) raises? \\w+ mace high in the air before bringing it crashing down on the (oblivious|clumsy) form of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) raises? \\w+ mace high in the air before bringing it crashing down in a glancing blow on (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Priest Battlerage Horrify",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(.+) begins to rush about in terror as (\\w+) summons? a horrific rite to torment \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Priest Battlerage Incense",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+)'?s? guardian angel becomes translucent as \\w+ floats first through \\w+ and then (.+), (absorbing|filling)",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Priest Battlerage Torment",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+)'?s? angel flares its wings and flaps them powerfully at (.+), causing shards of crystal to tear through \\w+ flesh\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Priest General Smite",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) utters? a prayer and smites? (.+) with .+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Priest General Strip",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) bid your guardian angel to strip a defence from (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+)'s guardian angel stares passively, but powerfully, at (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion Battlerage Barbedblade",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) weave a jagged blade into being and viciously hack at (.+), opening bleeding wounds\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^A viciously barbed sword coalesces in the hand of (\\w+), as \\w+ viciously ravages (\\w+) with it\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion Battlerage Devastate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) hammer the mind of (.+) with a devastating psionic onslaught\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^()(.+) violently spasms without visible cause\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion Battlerage Pulverise",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) weave a great warhammer into being and with an overhand swing obliterate the magical shield surrounding (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^A warhammer comes into being in (\\w+)'s hands, and with an almighty overhand swing \\w+ annihilates the magical shield surrounding (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion Battlerage Regrowth",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) direct nature to restrain (.+), and vines flash from nothingness into being to bind \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(Vicious) thorny vines come into being as if from nowhere, lashing themselves about (.+) and binding \\w+ in place\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion Battlerage Terror",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) inspire abject terror in the mind of (.+), coaxing \\w+ darkest fears to the surface\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion Battlerage Whirlwind",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) burst into motion, blades materialising in your hands as you deliver a relentless flurry of blows against (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) bursts into savage motion, blades materialising in \\w+ hands as \\w+ delivers blow after blow against (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Backhand",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) deliver a savage backhanded blow with a translucent mace to the face of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) delivers a backhanded blow to the face of (.+) with a translucent mace\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Charge",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": " ^Charging forward, (you) drive a translucent spear into (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) rushes at (.+), driving a translucent spear deep into \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Cleave",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) bring a translucent battleaxe in a powerful overhead blow down upon (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) brings a translucent battleaxe down in a powerful overhanded blow upon (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Deathblow",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Striking like coiled lightning, (you)r hand flashes out and lays open the throat of (.+) with a translucent dagger in a spray of crimson\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Almost too swift to perceive, (\\w+) lashes out with a translucent dagger, tracing a bloody line across the throat of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Exsanguinate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Stepping forward, (you) brutally drive a translucent sword into (.+)'s guts, ripping it free in a spray of crimson\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) drives a translucent sword into the guts of (.+) with a brutal thrust, ripping it free in a spray of crimson\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Flurry",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) rushes at (.+), slashing at \\w+ \\w+ times? in a flurry of lethal motion\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) rush at (.+), unleashing a flurry of .+ blows? with your blade to rend \\w+ asunder\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Hamstring",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) duck low, your blade slicing into the \\w+ leg of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) ducks low, \\w+ blade slicing into the \\w+ leg of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Lightsteal",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) slashes a translucent dagger across the eyes of (.+) in a lightning\\-fast motion\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) slash a translucent dagger across the eyes of (.+), viciously robbing \\w+ of sight\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Overhand",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) bring a translucent mace around in a savage overhand strike, smashing it into the face of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) brings a translucent mace around in a savage overhand strike, smashing it into the head of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Puncture",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^With a lightning\\-fast jab of your blade (you) puncture the cluster of nerves just below the \\w+ shoulder of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) lashes out with lightning speed, \\w+ blade driving into (.+) just beneath \\w+ \\w+ shoulder\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Sever",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^With a precise strike (you) sever the muscles in the \\w+ arm of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) severs the muscles in the \\w+ arm of (.+) with a precise blow of \\w+ a translucent sword\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Shatter",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) reach out with grim intent, seeking to shatter the psyche of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) clenches \\w+ fists and glares in the direction of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Splinter",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) drive a spike of psychic force straight through the shield surrounding (.+), causing it to explode into translucent shards\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Runewarden Battlerage Bulwark",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "The runes on your armour flare brightly as you adopt a defensive stance.",
+        "type": "exactMatch"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Runewarden Battlerage Collide",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) charges? at (.+), slamming into \\w+ and throwing \\w+ back\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Runewarden Battlerage Etch",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) traces? the outline of a rune in the air with .+\\. The edges catch fire as it hurtles towards (.+) and explodes",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) traces? the outline of a rune in the air with .+\\. The edges catch fire as it hurtles towards (.+), clipping",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) traces? the outline of a rune in the air with .+\\. The edges catch fire as it hurtles towards (.+) and \\w+ is unable",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Runewarden Battlerage Fragment",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) strikes? at (.+)'s translucent shield with (.+), drawing the outline of a rough rune that detonates, consuming the shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Runewarden Battlerage Onslaught",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) unleashe?s? a ferocious onslaught on (.+), relentlessly pounding \\w+ with .+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Runewarden Battlerage Safeguard",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) quickly sketch a shimmering rune in the air and send it to settle around \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel Battlerage Bore",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) thrusts? forward with .+, piercing through (.+)'s shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel Battlerage Goad",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) cower before (.+), causing \\w+ to recklessly attack you with no regard for\\w+ own safety\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) cowers before (.+), causing \\w+ to recklessly attack with no regard for \\w+ own safety\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel Battlerage Pester",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) gives out a chittering call and a small squirrel suddenly appears and leaps at (.+), biting \\w+ and continuing to scamper around \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) give out a chittering call and a small squirrel appears and leaps at (.+) and bites \\w+, continuing to scamper around \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel Battlerage Skewer",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) leaps high into the air, .+ held high above \\w+ head as \\w+ lands on top of (.+) and skewers \\w+ with the weapon\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) leap high into the air, .+ held high above your head as you land on top of (.+), skewering \\w+ with your weapon\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel Battlerage Swarm",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) utter a loud, buzzing call, and a swarm of wasps rushes in but they do little more than annoy (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) utters a loud, buzzing call and a swarm of wasps rushes in but they do little more than annoy (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) utters a loud, buzzing call and a swarm of wasps rushes in, swarming over (.+)'s slowed form and stinging \\w+ flesh\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) utter a loud, buzzing call and a swarm of wasps rushes in, swarming over (.+)'s slowed form and stinging \\w+ flesh\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) utters a loud, buzzing call and a swarm of wasps rushes in, swarming over (.+)'s form and stinging \\w+slow\\-healing flesh\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) utter a loud, buzzing call and a swarm of wasps rushes in, swarming over (.+)'s form and stinging \\w+ slow\\-healing flesh\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel Battlerage Tame",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Making soothing noises, (\\w+) carefully approaches (.+), temporarily charming \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Making soothing noises, (you) carefully approach (.+), assuring \\w+ that you are afriend and urging \\w+ to fight for you\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel General Maul",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) spring forwards onto (.+), and maul \\w+ viciously\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) leaps forwards onto (.+) and mauls \\w+ viciously\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel General Rive",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) thrusts? .+ towards (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel General Thrust",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) deftly thrusts? .+ into (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Serpent Battlerage Excoriate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) lashe?s? out at (.+) with \\w+ whip, stripping .+ translucent shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Serpent Battlerage Flagellate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) cracks? .+ lightly against (.+)'s flesh, awakening sensitive nerves\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Serpent Battlerage Obliviate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) draw (.+)'s attention with the wavering tip of one finger, then quickly snap your fingers in front of \\w+ face, the sudden sound temporarily blanking \\w+ mind\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) draws (.+)'s attention with the wavering tip of one finger, then quickly snaps",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Serpent Battlerage Snare",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) steps? behind (.+) and trips? \\w+ into \\w+ waiting whip",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Serpent Battlerage Thrash",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) crack .+ over your head before repeatedly lashing (.+) with it\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Cracking .+ over \\w+ head, (\\w+) repeatedly lashes (.+) with it\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Serpent Battlerage Throatrip",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) leaps? upon (.+) and sinks? \\w+ fangs into \\w+ throat before leaping away, blood gushing from the horrific wound\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) leaps? upon (.+) and sinks? \\w+ fangs into \\w+ target's throat before leaping away, blood gushing from the horrific wound\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Serpent General Bite",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) sink your fangs into (.+), injecting just the proper amount of \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) sinks \\w+ fangs into (.+)'s body\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Serpent General Flay",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) try to flay a non\\-existent shield from (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) flays away (.+)'s shield defence\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) flay away (.+)'s shield defence\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Serpent General Garrote",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) slips? behind (.+) and garrotes? \\w+ with \\w+ whip\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman Battlerage Cesaret",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) gestures at (.+), whose eyes begin to fill with bloodlust and all thoughts of defense flee from \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Warmth spreads up your arm as (you) gesture at (.+), filling \\w+ with foolish bloodlust\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman Battlerage Corruption",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) points? an imperious finger at (.+)\\. \\w+ flesh blackens and sloughs off\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman Battlerage Haemorrhage",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) points? an imperious finger at (.+)\\. Blood spurts out of .+'s eyes, ears, nose, and mouth\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman Battlerage Korkma",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) call upon the spirit of Korkma, sending \\w+ many-tentacled form to torment (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) grows still for a moment, then flings \\w+ arms out toward (.+)\\. You catch a glimpse of writhing tentacles flying towards .+ as \\w+ begins to flee in terror\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman Battlerage Vulnerability",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) points? an imperious finger at (.+) and \\w+ translucent shield fades away\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman Battlerage Vurus",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) call upon the spirit of Vurus and form an ethereal dagger in your hand. Dashing behind the oblivious form of (.+), you plant the dagger in \\w+ back\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) holds one hand out to \\w+ side\\. As an ethereal dagger appears there, \\w+ dashes behind the oblivious form of (.+) and plants the dagger in \\w+ back\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) call upon the spirit of Vurus and form an ethereal dagger in your hand. Dashing behind (.+), you plant the dagger in \\w+ back\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) holds one hand out to \\w+ side\\. As an ethereal dagger appears there, \\w+ dashes behind (.+) and plants the dagger in \\w+ back\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) call upon the spirit of Vurus and form an ethereal dagger in your hand\\. You dash behind (.+), but are only able to strike a glancing blow as \\w+ dodges aside\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) holds one hand out to \\w+ side\\. As an ethereal dagger appears there, \\w+ dashes behind (.+) but is only able to deliver a glancing blow\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman General Bleed",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) points? an imperious finger at (.+) and blood begins to flow from \\w+ pores\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman General Roar",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A terrible cold fills your chest, constricting your lungs\\. (You)r mouth falls open and an unearthly, terrible roar emanates forth at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The mouth of (\\w+) falls open as \\w+ eyes grow unfocused, and \\w+ directs a terrible, unearthly roar at (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan Battlerage Leechroot",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A deadly root flies from (\\w+)'?s? hand and burrows into (.+)'s flesh",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan Battlerage Pierce",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A thorny vine reaches out from (\\w+) and pierces through (.+)'s translucent shield, causing it to fade\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan Battlerage Rockshot",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) forms? a small pebble, then channels? air to fling it violently at (.+)'s head, causing \\w+ to look dazed\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan Battlerage Sandstorm",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(.+) stumbles about in fear and flails at \\w+ head as (\\w+) summons? a small sandstorm around it\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan Battlerage Stonevine",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) summons? a great vine to wrap itself around (.+), then channels? the element of earth into it, causing it to become rock hard and shatter as it constricts around .+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan Battlerage Torrent",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(.+) coughs and splutters as (\\w+) channels? a gout of water at \\w+ face\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan General Shear",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You summon a blade of wind to shear at the magical shield of (.+), but find no such barrier\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You summon a blade of condensed air and shear cleanly through the protective shield surrounding (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^\\w+ summons a blade of condensed air and shears cleanly through the magical shield surrounding (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan General Thornrend",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) command the razor-edged thorny vines around you to lash out and rend the flesh of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The thorny vines of the Viridian (\\w+) lash out and rip into (.+)'s flesh\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

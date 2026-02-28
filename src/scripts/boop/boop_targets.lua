@@ -85,6 +85,12 @@ function boop.targets.setTarget(id)
   if changed and boop.targets.clearTargetShield then
     boop.targets.clearTargetShield("target changed")
   end
+  if changed and boop.afflictions and boop.afflictions.clearTarget then
+    boop.afflictions.clearTarget()
+    if boop.trace and boop.trace.log then
+      boop.trace.log("target afflictions cleared: target changed")
+    end
+  end
   boop.state.currentTargetId = nextId
   for _, v in ipairs(boop.state.denizens) do
     if v.id == boop.state.currentTargetId then
@@ -694,13 +700,91 @@ end
 
 function boop.targets.onShielded(name)
   if not name then return end
-  if boop.state.targetName ~= "" and sameName(boop.state.targetName, name) then
+  local captured = boop.util.trim(tostring(name))
+  if captured == "" then return end
+
+  local current = boop.util.trim(boop.state.targetName or "")
+  if current == "" and (boop.state.currentTargetId or "") ~= "" then
+    boop.state.targetName = captured
+    current = captured
+  end
+
+  if current ~= "" and sameName(current, captured) then
     if boop.state.targetShield and boop.state.targetShield.timer then
       killTimer(boop.state.targetShield.timer)
     end
     boop.state.targetShield = { gained = os.clock(), attempted = false }
     boop.state.targetShield.timer = tempTimer(3, function() boop.state.targetShield = false end)
+    if boop.trace and boop.trace.log then
+      boop.trace.log("shield seen: " .. captured)
+    end
   end
+end
+
+local function resolveShieldCapture(expr, matchTable)
+  if type(expr) ~= "table" then return "" end
+  if expr.kind == "match" then
+    local idx = tonumber(expr.index)
+    if not idx or type(matchTable) ~= "table" then return "" end
+    return tostring(matchTable[idx] or "")
+  end
+  if expr.kind == "literal" then
+    return tostring(expr.value or "")
+  end
+  return ""
+end
+
+local function findTargetNameFromMatches(matchTable)
+  if type(matchTable) ~= "table" then return "" end
+  local current = boop.util.trim(boop.state and boop.state.targetName or "")
+  if current == "" then return "" end
+  for i = 2, #matchTable do
+    local text = boop.util.trim(tostring(matchTable[i] or ""))
+    if text ~= "" and sameName(text, current) then
+      return text
+    end
+  end
+  return ""
+end
+
+function boop.targets.onShieldDownTrigger(spec, matchTable, rawLine)
+  boop.state = boop.state or {}
+  local current = boop.util.trim(boop.state.targetName or "")
+  if current == "" and (boop.state.currentTargetId or "") == "" then
+    return false
+  end
+
+  local source = boop.util.trim(spec and spec.source or "shield trigger")
+  local candidate = ""
+  if type(spec) == "table" then
+    candidate = boop.util.trim(resolveShieldCapture(spec.target, matchTable))
+  end
+  if candidate == "" then
+    candidate = findTargetNameFromMatches(matchTable)
+  end
+
+  if current == "" and candidate ~= "" and (boop.state.currentTargetId or "") ~= "" then
+    if boop.targets.isDenizenName and boop.targets.isDenizenName(candidate) then
+      boop.state.targetName = candidate
+      current = candidate
+    end
+  end
+
+  if current == "" then
+    return false
+  end
+
+  if current ~= "" and candidate ~= "" and not sameName(current, candidate) then
+    local fallback = findTargetNameFromMatches(matchTable)
+    if fallback == "" or not sameName(current, fallback) then
+      return false
+    end
+    candidate = fallback
+  end
+
+  local lineText = boop.util.trim(rawLine or "")
+  boop.targets.clearTargetShield(source .. (lineText ~= "" and (": " .. lineText) or ""))
+  return true
 end
 
 function boop.targets.onShieldbreakAttempt()

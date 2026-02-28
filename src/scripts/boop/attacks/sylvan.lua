@@ -13,7 +13,7 @@ boop.attacks.register("sylvan", {  standard = {
         ["rage"] = 25
       },
       ["rockshot"] = {
-        ["aff"] = "amnesia",
+        ["aff"] = "clumsiness",
         ["cmd"] = "cast rockshot at &tar",
         ["desc"] = "Gives Affliction",
         ["name"] = "rockshot",
