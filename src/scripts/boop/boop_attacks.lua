@@ -126,6 +126,14 @@ local function selectDamageForHp(profile, rageBudget)
   return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rageBudget)
 end
 
+local function normalizeAffName(raw)
+  local key = boop.util.safeLower(boop.util.trim(raw or ""))
+  if key == "stunned" then
+    return "stun"
+  end
+  return key
+end
+
 local function rosterClassKeys(selfClassKey)
   local classes = {}
   local seen = {}
@@ -155,7 +163,7 @@ local function rosterProvidersByAff(selfClassKey)
     local rageProfile = classProfile and classProfile.rage
     local abilities = rageProfile and rageProfile.abilities or {}
     for _, ability in pairs(abilities) do
-      local aff = boop.util.safeLower(boop.util.trim(ability.aff or ""))
+      local aff = normalizeAffName(ability.aff or "")
       if aff ~= "" and abilityKnown(ability) then
         providers[aff] = providers[aff] or {}
         providers[aff][classKey] = true
@@ -174,7 +182,7 @@ local function conditionalNeedsProviderSupport(selfClassKey, ability)
   local mode = boop.util.safeLower(boop.util.trim(ability.needsMode or "any"))
   local supported = 0
   for _, need in ipairs(ability.needs) do
-    local key = boop.util.safeLower(boop.util.trim(need or ""))
+    local key = normalizeAffName(need or "")
     if key ~= "" and providersByAff[key] then
       supported = supported + 1
     end
@@ -210,7 +218,62 @@ local function traceComboDecision(classKey, reason)
   boop.trace.log("combo mode: " .. why)
 end
 
-local function selectRageCombo(profile, rage, classKey)
+local function conditionalMissingNeeds(ability)
+  local missing = {}
+  if not ability or type(ability.needs) ~= "table" then
+    return missing
+  end
+
+  for _, need in ipairs(ability.needs) do
+    local key = normalizeAffName(need or "")
+    if key ~= "" then
+      local hasAff = false
+      if boop.afflictions and boop.afflictions.hasTarget then
+        hasAff = boop.afflictions.hasTarget(key)
+      end
+      if not hasAff then
+        missing[#missing + 1] = key
+      end
+    end
+  end
+  return missing
+end
+
+local function findConditionalPrimer(profile, conditionalAbility, rage)
+  if not profile or not profile.abilities then
+    return nil
+  end
+
+  local missing = conditionalMissingNeeds(conditionalAbility)
+  if #missing == 0 then
+    return nil
+  end
+
+  local missingSet = {}
+  for _, aff in ipairs(missing) do
+    missingSet[aff] = true
+  end
+
+  local best = nil
+  local bestRage = nil
+  local bestAff = nil
+  for _, ability in pairs(profile.abilities) do
+    if ability.desc == "Gives Affliction" then
+      local aff = normalizeAffName(ability.aff or "")
+      if aff ~= "" and missingSet[aff] and abilityKnown(ability) and boop.attacks.rageReady(ability, rage) then
+        local cost = tonumber(ability.rage) or 999
+        if not best or cost < bestRage or (cost == bestRage and aff < bestAff) then
+          best = ability
+          bestRage = cost
+          bestAff = aff
+        end
+      end
+    end
+  end
+  return best
+end
+
+local function selectRageCombo(profile, rage, classKey, allowPriming, allowHold)
   local conditionalNow = findByDesc(profile, "Conditional", rage)
   if conditionalNow and boop.attacks.canUseConditional(conditionalNow) then
     traceComboDecision(classKey, "fire conditional")
@@ -228,11 +291,23 @@ local function selectRageCombo(profile, rage, classKey)
     return selectDamageForHp(profile, rage)
   end
 
+  if allowPriming then
+    local primer = findConditionalPrimer(profile, conditionalReady, rage)
+    if primer then
+      traceComboDecision(classKey, "prime conditional with " .. tostring(primer.name or primer.skill or primer.aff or "aff"))
+      return primer
+    end
+  end
+
   local reserve = tonumber(conditionalReady.rage) or 0
   local budget = (tonumber(rage) or 0) - reserve
   if budget <= 0 then
-    traceComboDecision(classKey, "hold rage for conditional")
-    return nil
+    if allowHold then
+      traceComboDecision(classKey, "hold rage for conditional")
+      return nil
+    end
+    traceComboDecision(classKey, "fallback simple (reserve unmet)")
+    return selectDamageForHp(profile, rage)
   end
 
   local spender = selectDamageForHp(profile, budget)
@@ -241,8 +316,12 @@ local function selectRageCombo(profile, rage, classKey)
     return spender
   end
 
-  traceComboDecision(classKey, "hold rage (no overflow spender)")
-  return nil
+  if allowHold then
+    traceComboDecision(classKey, "hold rage (no overflow spender)")
+    return nil
+  end
+  traceComboDecision(classKey, "fallback simple (no overflow spender)")
+  return selectDamageForHp(profile, rage)
 end
 
 function boop.attacks.selectRage(profile, rage, classKey)
@@ -296,7 +375,9 @@ function boop.attacks.selectRage(profile, rage, classKey)
     end
     return nil
   elseif mode == "combo" then
-    return selectRageCombo(profile, rage, classKey)
+    return selectRageCombo(profile, rage, classKey, true, true)
+  elseif mode == "hybrid" then
+    return selectRageCombo(profile, rage, classKey, true, false)
   elseif mode == "buff" then
     return findByDesc(profile, "Buff", rage)
   end

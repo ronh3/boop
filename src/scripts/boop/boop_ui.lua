@@ -1846,14 +1846,16 @@ local HELP_TOPICS = {
     title = "Ragemode",
     aliases = { "ragemode", "rage", "attackmode" },
     commands = {
-      "boop ragemode <simple|dam|big|small|aff|cond|combo|buff|pool|none>",
+      "boop ragemode <simple|dam|big|small|aff|cond|combo|hybrid|buff|pool|none>",
       "boop ragemode simple",
       "boop ragemode combo",
+      "boop ragemode hybrid",
       "boop ragemode big",
       "boop ragemode none",
     },
     notes = {
-      "combo: fire conditional when enabled; otherwise hold reserve rage and spend overflow.",
+      "combo: conditional-first with aff priming, then hold reserve rage and spend overflow.",
+      "hybrid: same as combo, but falls back to normal damage instead of hard-holding rage.",
     },
   },
   {
