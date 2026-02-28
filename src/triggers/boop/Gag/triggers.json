@@ -5934,5 +5934,109 @@
       }
     ],
     "script": ""
+  },
+  {
+    "name": "Combat Battlefury Speed",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Channeling the fury of battle, you prepare to unleash a brutally swift stroke against your foe\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Combat Damage Dealt",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Damage dealt: ([0-9,]+) \\((.+)\\)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Combat Balance Used",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Balance used: ([0-9]+\\.?[0-9]*)s\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Combat Slain",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You have slain (.+), retrieving the corpse\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You have slain (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Combat Experience Gain",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You have gained ([0-9,]+) experience\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
   }
 ]
