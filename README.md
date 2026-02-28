@@ -68,6 +68,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Unnamable battlerage `Shriek` line is included in gag replacement coverage.
 - Unnamable battlerage `Sunder` line is included in gag replacement coverage and shield-down tracking.
 - Unnamable battlerage `Destroy` line is included in gag replacement coverage.
+- Unnamable/Infernal pet maul command lines (`hound maul`/`hyena maul`) are included in gag replacement coverage so their damage/crit can fold into a compact summary.
 - Foxhunt import reads Mudlet DB `hunting` lists directly; `merge` is default, `overwrite` clears boop lists first, `dryrun` reports counts only.
 - `boop combos` infers synergy from class rage profiles, including per-class affliction providers and conditional readiness.
 - Conditional needs default to `any` (one affliction present) unless a profile explicitly sets `needsMode = "all"`.
