@@ -332,13 +332,23 @@ function boop.attacks.selectRage(profile, rage, classKey)
     if ability then return ability end
   end
 
-  local mode = boop.config.attackMode or "dam"
+  local mode = boop.util.safeLower(boop.util.trim(boop.config.attackMode or "simple"))
+  local modeAliases = {
+    damage = "simple",
+    dam = "simple",
+    condition = "combo",
+    conditional = "combo",
+    cond = "combo",
+    pool = "none",
+    buff = "aff",
+  }
+  mode = modeAliases[mode] or mode
 
-  if mode == "none" or mode == "pool" then
+  if mode == "none" then
     return nil
   end
 
-  if mode == "simple" or mode == "dam" then
+  if mode == "simple" then
     local hp = boop.attacks.getTargetHpPerc()
     local cfg = profile.configRage or { bigDamage = 101, smallDamage = 0 }
 
@@ -368,18 +378,10 @@ function boop.attacks.selectRage(profile, rage, classKey)
     return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage)
   elseif mode == "aff" then
     return findByDesc(profile, "Gives Affliction", rage)
-  elseif mode == "cond" then
-    local ability = findByDesc(profile, "Conditional", rage)
-    if boop.attacks.canUseConditional(ability) then
-      return ability
-    end
-    return nil
   elseif mode == "combo" then
     return selectRageCombo(profile, rage, classKey, true, true)
   elseif mode == "hybrid" then
     return selectRageCombo(profile, rage, classKey, true, false)
-  elseif mode == "buff" then
-    return findByDesc(profile, "Buff", rage)
   end
 
   return selectDamageForHp(profile, rage)

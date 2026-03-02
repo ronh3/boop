@@ -252,17 +252,27 @@ end
 
 local RAGE_MODE_OPTIONS = {
   { id = 1, key = "simple", label = "Simple", desc = "HP-aware damage selection." },
-  { id = 2, key = "dam", label = "Damage", desc = "Alias of simple HP-aware damage." },
-  { id = 3, key = "big", label = "Big", desc = "Pool for big hits; fallback small on cooldown." },
-  { id = 4, key = "small", label = "Small", desc = "Prefer small/mid damage spenders." },
-  { id = 5, key = "aff", label = "Aff", desc = "Spend rage on affliction attacks." },
-  { id = 6, key = "cond", label = "Cond", desc = "Only fire conditionals when ready." },
-  { id = 7, key = "combo", label = "Combo", desc = "Conditional-first with priming + reserve hold." },
-  { id = 8, key = "hybrid", label = "Hybrid", desc = "Combo logic; fallback to damage when blocked." },
-  { id = 9, key = "buff", label = "Buff", desc = "Use buff rage ability only." },
-  { id = 10, key = "pool", label = "Pool", desc = "Do not spend rage (bank it)." },
-  { id = 11, key = "none", label = "None", desc = "Disable rage attacks." },
+  { id = 2, key = "big", label = "Big", desc = "Pool for big hits; fallback small on cooldown." },
+  { id = 3, key = "small", label = "Small", desc = "Prefer small/mid damage spenders." },
+  { id = 4, key = "aff", label = "Aff", desc = "Spend rage on affliction attacks." },
+  { id = 5, key = "combo", label = "Combo", desc = "Conditional-first with priming + reserve hold." },
+  { id = 6, key = "hybrid", label = "Hybrid", desc = "Combo logic; fallback to damage when blocked." },
+  { id = 7, key = "none", label = "None", desc = "Disable rage attacks." },
 }
+
+local function canonicalRageMode(raw)
+  local mode = boop.util.safeLower(boop.util.trim(raw or ""))
+  local aliases = {
+    damage = "simple",
+    dam = "simple",
+    condition = "combo",
+    conditional = "combo",
+    cond = "combo",
+    pool = "none",
+    buff = "aff",
+  }
+  return aliases[mode] or mode
+end
 
 local function rageModeById(id)
   local n = tonumber(id)
@@ -276,7 +286,7 @@ local function rageModeById(id)
 end
 
 function boop.ui.showRageModeMenu()
-  local current = boop.util.safeLower(boop.config.attackMode or "simple")
+  local current = canonicalRageMode(boop.config.attackMode or "simple")
 
   if cecho then
     local rows = {}
@@ -366,23 +376,14 @@ function boop.ui.setAttackMode(mode)
     chosenByNumber = true
   end
 
-  local aliases = {
-    damage = "dam",
-    condition = "cond",
-    conditional = "cond",
-  }
-  mode = aliases[mode] or mode
+  mode = canonicalRageMode(mode)
   local valid = {
     simple = true,
-    dam = true,
     big = true,
     small = true,
     aff = true,
-    cond = true,
     combo = true,
     hybrid = true,
-    buff = true,
-    pool = true,
     none = true,
   }
   if mode == "" then
@@ -391,6 +392,7 @@ function boop.ui.setAttackMode(mode)
   end
   if not valid[mode] then
     boop.util.warn("Invalid ragemode: " .. tostring(mode))
+    boop.util.info("Valid modes: simple, big, small, aff, combo, hybrid, none")
     boop.ui.showRageModeMenu()
     return
   end
@@ -1955,7 +1957,7 @@ local HELP_TOPICS = {
     commands = {
       "boop ragemode",
       "boop ragemode <number>",
-      "boop ragemode <simple|dam|big|small|aff|cond|combo|hybrid|buff|pool|none>",
+      "boop ragemode <simple|big|small|aff|combo|hybrid|none>",
       "boop ragemode simple",
       "boop ragemode combo",
       "boop ragemode hybrid",
@@ -1965,6 +1967,7 @@ local HELP_TOPICS = {
     notes = {
       "combo: conditional-first with aff priming, then hold reserve rage and spend overflow.",
       "hybrid: same as combo, but falls back to normal damage instead of hard-holding rage.",
+      "Legacy aliases still parse: dam->simple, cond->combo, buff->aff, pool->none.",
     },
   },
   {

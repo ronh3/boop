@@ -27,7 +27,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop trace` / `boop trace on|off|show [n]|clear`
 - `boop gag` / `boop gag on|off|own|others|all|<scope> on|off`
 - `boop targeting <manual|whitelist|blacklist|auto>`
-- `boop ragemode <simple|dam|big|small|aff|cond|combo|hybrid|buff|pool|none>` (default: `simple`)
+- `boop ragemode <simple|big|small|aff|combo|hybrid|none>` (default: `simple`)
 - `diag` (queue-clear + diagnose; temporarily pauses boop attacks until diagnose result + prompt)
 - `boop ih` (also overrides `ih`)
 - `boop whitelist` / `boop whitelist add <name>` / `boop whitelist remove <name>` (display is clickable: up/down/remove)
