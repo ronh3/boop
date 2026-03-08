@@ -554,6 +554,9 @@ function boop.tick()
   if actions.rage and actions.rage ~= "" then
     if boop.canUseRage() then
       boop.executeRageAction(actions.rage)
+      if boop.stats and boop.stats.onRageExecuted then
+        boop.stats.onRageExecuted(actions.rageAbility, actions.rageDecision)
+      end
       if actions.rageAbility and actions.rageAbility.desc == "Shieldbreak" and boop.targets and boop.targets.onShieldbreakAttempt then
         boop.targets.onShieldbreakAttempt()
       end

@@ -218,6 +218,20 @@ local function traceComboDecision(classKey, reason)
   boop.trace.log("combo mode: " .. why)
 end
 
+local function finalizeRageDecision(mode, outcome, ability)
+  local canonicalMode = boop.util.safeLower(boop.util.trim(mode or "simple"))
+  local decision = {
+    mode = canonicalMode ~= "" and canonicalMode or "simple",
+    outcome = boop.util.safeLower(boop.util.trim(outcome or "")),
+    ability = ability,
+    targetId = boop.util.trim(tostring(boop.state and boop.state.currentTargetId or "")),
+  }
+  if boop.stats and boop.stats.onRageDecision then
+    boop.stats.onRageDecision(decision)
+  end
+  return ability, decision
+end
+
 local function conditionalMissingNeeds(ability)
   local missing = {}
   if not ability or type(ability.needs) ~= "table" then
@@ -277,25 +291,25 @@ local function selectRageCombo(profile, rage, classKey, allowPriming, allowHold)
   local conditionalNow = findByDesc(profile, "Conditional", rage)
   if conditionalNow and boop.attacks.canUseConditional(conditionalNow) then
     traceComboDecision(classKey, "fire conditional")
-    return conditionalNow
+    return conditionalNow, "combo_conditional"
   end
 
   local conditionalReady = findByDesc(profile, "Conditional", nil)
   if not conditionalReady then
     traceComboDecision(classKey, "fallback simple (conditional unavailable)")
-    return selectDamageForHp(profile, rage)
+    return selectDamageForHp(profile, rage), "combo_fallback"
   end
 
   if not conditionalNeedsProviderSupport(classKey, conditionalReady) then
     traceComboDecision(classKey, "fallback simple (no provider support)")
-    return selectDamageForHp(profile, rage)
+    return selectDamageForHp(profile, rage), "combo_fallback"
   end
 
   if allowPriming then
     local primer = findConditionalPrimer(profile, conditionalReady, rage)
     if primer then
       traceComboDecision(classKey, "prime conditional with " .. tostring(primer.name or primer.skill or primer.aff or "aff"))
-      return primer
+      return primer, "combo_primer"
     end
   end
 
@@ -304,24 +318,24 @@ local function selectRageCombo(profile, rage, classKey, allowPriming, allowHold)
   if budget <= 0 then
     if allowHold then
       traceComboDecision(classKey, "hold rage for conditional")
-      return nil
+      return nil, "combo_hold"
     end
     traceComboDecision(classKey, "fallback simple (reserve unmet)")
-    return selectDamageForHp(profile, rage)
+    return selectDamageForHp(profile, rage), "combo_fallback"
   end
 
   local spender = selectDamageForHp(profile, budget)
   if spender then
     traceComboDecision(classKey, "spend overflow rage")
-    return spender
+    return spender, "combo_spend_overflow"
   end
 
   if allowHold then
     traceComboDecision(classKey, "hold rage (no overflow spender)")
-    return nil
+    return nil, "combo_hold"
   end
   traceComboDecision(classKey, "fallback simple (no overflow spender)")
-  return selectDamageForHp(profile, rage)
+  return selectDamageForHp(profile, rage), "hybrid_fallback"
 end
 
 local function abilityRageCost(ability)
@@ -367,7 +381,7 @@ local function selectRageTempo(profile, rage, classKey)
   local affChoices = collectRageAbilitiesByDesc(profile, { ["Gives Affliction"] = true }, rage)
   if #affChoices == 0 then
     traceComboDecision(classKey, "tempo fallback damage (no aff available)")
-    return selectDamageForHp(profile, rage)
+    return selectDamageForHp(profile, rage), "tempo_fallback"
   end
   sortAbilitiesByCost(affChoices, false)
   local aff = affChoices[1]
@@ -385,7 +399,7 @@ local function selectRageTempo(profile, rage, classKey)
     local post = (tonumber(rage) or 0) - cost
     if post >= reserve then
       traceComboDecision(classKey, "tempo squeeze damage (free reserve)")
-      return dmg
+      return dmg, "tempo_squeeze"
     end
 
     local eta = nil
@@ -394,20 +408,20 @@ local function selectRageTempo(profile, rage, classKey)
     end
     if eta and eta <= tempoEta then
       traceComboDecision(classKey, string.format("tempo squeeze damage (eta %.2fs)", eta))
-      return dmg
+      return dmg, "tempo_squeeze"
     end
   end
 
   traceComboDecision(classKey, "tempo prioritize aff")
-  return aff
+  return aff, "tempo_aff"
 end
 
 function boop.attacks.selectRage(profile, rage, classKey)
-  if not profile then return nil end
+  if not profile then return nil, nil end
 
   if boop.state.targetShield and (type(boop.state.targetShield) ~= "table" or not boop.state.targetShield.attempted) then
     local ability = findByDesc(profile, "Shieldbreak", rage)
-    if ability then return ability end
+    if ability then return finalizeRageDecision("shieldbreak", "shieldbreak", ability) end
   end
 
   local mode = boop.util.safeLower(boop.util.trim(boop.config.attackMode or "simple"))
@@ -426,7 +440,7 @@ function boop.attacks.selectRage(profile, rage, classKey)
   mode = modeAliases[mode] or mode
 
   if mode == "none" then
-    return nil
+    return finalizeRageDecision(mode, "suppressed", nil)
   end
 
   if mode == "simple" then
@@ -434,40 +448,43 @@ function boop.attacks.selectRage(profile, rage, classKey)
     local cfg = profile.configRage or { bigDamage = 101, smallDamage = 0 }
 
     if hp >= (cfg.bigDamage or 101) then
-      return findByDescList(profile, {"Big Damage", "Mid Damage", "Small Damage"}, rage)
+      return finalizeRageDecision(mode, "damage", findByDescList(profile, {"Big Damage", "Mid Damage", "Small Damage"}, rage))
     end
 
     if hp >= (cfg.smallDamage or 0) then
-      return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage)
+      return finalizeRageDecision(mode, "damage", findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage))
     end
 
-    return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage)
+    return finalizeRageDecision(mode, "damage", findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage))
   elseif mode == "big" then
     -- Pool rage until a big hit is affordable; only fall back to small while big is on cooldown.
     local big = findByDesc(profile, "Big Damage", rage)
     if big then
-      return big
+      return finalizeRageDecision(mode, "big_damage", big)
     end
 
     local bigReadyNoCost = findByDesc(profile, "Big Damage", nil)
     if bigReadyNoCost then
-      return nil
+      return finalizeRageDecision(mode, "big_hold", nil)
     end
 
-    return findByDesc(profile, "Small Damage", rage)
+    return finalizeRageDecision(mode, "small_damage", findByDesc(profile, "Small Damage", rage))
   elseif mode == "small" then
-    return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage)
+    return finalizeRageDecision(mode, "small_damage", findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage))
   elseif mode == "aff" then
-    return findByDesc(profile, "Gives Affliction", rage)
+    return finalizeRageDecision(mode, "aff", findByDesc(profile, "Gives Affliction", rage))
   elseif mode == "tempo" then
-    return selectRageTempo(profile, rage, classKey)
+    local ability, outcome = selectRageTempo(profile, rage, classKey)
+    return finalizeRageDecision(mode, outcome, ability)
   elseif mode == "combo" then
-    return selectRageCombo(profile, rage, classKey, true, true)
+    local ability, outcome = selectRageCombo(profile, rage, classKey, true, true)
+    return finalizeRageDecision(mode, outcome, ability)
   elseif mode == "hybrid" then
-    return selectRageCombo(profile, rage, classKey, true, false)
+    local ability, outcome = selectRageCombo(profile, rage, classKey, true, false)
+    return finalizeRageDecision(mode, outcome, ability)
   end
 
-  return selectDamageForHp(profile, rage)
+  return finalizeRageDecision(mode, "damage", selectDamageForHp(profile, rage))
 end
 
 local function standardCommand(entry)
@@ -718,13 +735,15 @@ function boop.attacks.choose()
 
   local rageAction = ""
   local rageAbility = nil
+  local rageDecision = nil
   if profile.rage then
     local rage = boop.attacks.getRage()
-    local ability = boop.attacks.selectRage(profile.rage, rage, class)
+    local ability, decision = boop.attacks.selectRage(profile.rage, rage, class)
     if ability and ability.cmd and ability.cmd ~= "" then
       rageAction = ability.cmd
       rageAbility = ability
     end
+    rageDecision = decision
   end
 
   local targetId = boop.state.currentTargetId or ""
@@ -740,6 +759,7 @@ function boop.attacks.choose()
     standardShieldbreak = standardShieldbreak,
     standardIsOpener = standardIsOpener,
     rage = rageAction,
-    rageAbility = rageAbility
+    rageAbility = rageAbility,
+    rageDecision = rageDecision
   }
 end

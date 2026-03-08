@@ -21,6 +21,22 @@ local function currentPartySize()
   return size
 end
 
+local function currentClass()
+  if gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class then
+    local class = boop.util.safeLower(gmcp.Char.Status.class)
+    if class ~= "" then
+      return class
+    end
+  end
+  if boop and boop.state and boop.state.class then
+    local class = boop.util.safeLower(boop.state.class)
+    if class ~= "" then
+      return class
+    end
+  end
+  return "unknown"
+end
+
 local function formatStatValue(value, decimals)
   local num = tonumber(value)
   if not num then
@@ -30,6 +46,37 @@ local function formatStatValue(value, decimals)
     return tostring(math.floor(num))
   end
   return string.format("%." .. tostring(decimals or 1) .. "f", num)
+end
+
+local function newRageStats()
+  return {
+    decisions = 0,
+    uses = 0,
+    suppressed = 0,
+    holds = 0,
+    shieldbreaks = 0,
+    totalCost = 0,
+    comboConditional = 0,
+    comboPrimers = 0,
+    comboFallbacks = 0,
+    tempoAffs = 0,
+    tempoSqueezes = 0,
+    tempoFallbacks = 0,
+    byMode = {},
+    byOutcome = {},
+    byDesc = {},
+    byAbility = {},
+  }
+end
+
+local function currentScopeMeta(startedAt)
+  return {
+    attackMode = tostring((boop.config and boop.config.attackMode) or "simple"),
+    partySize = currentPartySize(),
+    class = currentClass(),
+    area = currentArea(),
+    startedAt = tonumber(startedAt) or nowSeconds(),
+  }
 end
 
 local function newScope(startedAt)
@@ -53,11 +100,14 @@ local function newScope(startedAt)
     areas = {},
     abilities = {},
     targetStats = {},
+    rage = newRageStats(),
     records = {
       bestHit = nil,
       fastestKill = nil,
       slowestKill = nil,
     },
+    meta = currentScopeMeta(startedAt),
+    currentArea = nil,
   }
 end
 
@@ -89,7 +139,10 @@ local function ensureScope(scope, defaultStart)
   scope.areas = scope.areas or {}
   scope.abilities = scope.abilities or {}
   scope.targetStats = scope.targetStats or {}
+  scope.rage = scope.rage or newRageStats()
   scope.records = scope.records or { bestHit = nil, fastestKill = nil, slowestKill = nil }
+  scope.meta = scope.meta or currentScopeMeta(scope.startedAt)
+  scope.currentArea = scope.currentArea or nil
   return scope
 end
 
@@ -131,6 +184,29 @@ local function ensureAbility(scope, ability)
   entry.crits = tonumber(entry.crits) or 0
   entry.critTiers = entry.critTiers or {}
   return entry
+end
+
+local function ensureRageStats(scope)
+  scope = ensureScope(scope)
+  scope.rage = scope.rage or newRageStats()
+  local rage = scope.rage
+  rage.decisions = tonumber(rage.decisions) or 0
+  rage.uses = tonumber(rage.uses) or 0
+  rage.suppressed = tonumber(rage.suppressed) or 0
+  rage.holds = tonumber(rage.holds) or 0
+  rage.shieldbreaks = tonumber(rage.shieldbreaks) or 0
+  rage.totalCost = tonumber(rage.totalCost) or 0
+  rage.comboConditional = tonumber(rage.comboConditional) or 0
+  rage.comboPrimers = tonumber(rage.comboPrimers) or 0
+  rage.comboFallbacks = tonumber(rage.comboFallbacks) or 0
+  rage.tempoAffs = tonumber(rage.tempoAffs) or 0
+  rage.tempoSqueezes = tonumber(rage.tempoSqueezes) or 0
+  rage.tempoFallbacks = tonumber(rage.tempoFallbacks) or 0
+  rage.byMode = rage.byMode or {}
+  rage.byOutcome = rage.byOutcome or {}
+  rage.byDesc = rage.byDesc or {}
+  rage.byAbility = rage.byAbility or {}
+  return rage
 end
 
 local function ensureTargetEntry(scope, area, partySize, name)
@@ -318,6 +394,50 @@ local function scopeStop(scope, at)
   return scope
 end
 
+local function startAreaTracking(scope, area, at)
+  scope = ensureScope(scope, at)
+  local areaName = boop.util.trim(area or "")
+  if areaName == "" then
+    areaName = currentArea()
+  end
+  if areaName == "" then
+    areaName = "UNKNOWN"
+  end
+  if scope.currentArea == areaName then
+    return scope
+  end
+  if scope.currentArea and scope.currentArea ~= "" then
+    scopeStop(ensureArea(scope, scope.currentArea), at)
+  end
+  scope.currentArea = areaName
+  scopeStart(ensureArea(scope, areaName), at)
+  return scope
+end
+
+local function stopAreaTracking(scope, at)
+  scope = ensureScope(scope, at)
+  if scope.currentArea and scope.currentArea ~= "" then
+    scopeStop(ensureArea(scope, scope.currentArea), at)
+  end
+  scope.currentArea = nil
+  return scope
+end
+
+local function switchAreaTracking(scope, area, at)
+  scope = ensureScope(scope, at)
+  local areaName = boop.util.trim(area or "")
+  if areaName == "" then
+    areaName = currentArea()
+  end
+  if areaName == "" then
+    areaName = "UNKNOWN"
+  end
+  if scope.currentArea == areaName then
+    return scope
+  end
+  return startAreaTracking(scope, areaName, at)
+end
+
 local function elapsedFor(scope)
   scope = ensureScope(scope)
   local elapsed = tonumber(scope.activeSeconds) or 0
@@ -353,6 +473,9 @@ end
 local function scopeByName(name)
   local key = boop.util.safeLower(boop.util.trim(name or "session"))
   if key == "" then key = "session" end
+  if key == "lasttrip" or key == "last" then
+    return boop.stats.lastTrip or newScope(nowSeconds()), "lasttrip"
+  end
   if key == "lifetime" or key == "life" then
     return boop.stats.lifetime, "lifetime"
   end
@@ -365,6 +488,29 @@ end
 local function formatNumber(value, decimals)
   local num = tonumber(value) or 0
   return string.format("%." .. tostring(decimals or 1) .. "f", num)
+end
+
+local function deepCopy(value, seen)
+  if type(value) ~= "table" then
+    return value
+  end
+  seen = seen or {}
+  if seen[value] then
+    return seen[value]
+  end
+  local out = {}
+  seen[value] = out
+  for key, inner in pairs(value) do
+    out[deepCopy(key, seen)] = deepCopy(inner, seen)
+  end
+  return out
+end
+
+function boop.stats.cloneScope(scope)
+  if type(scope) ~= "table" then
+    return nil
+  end
+  return deepCopy(scope)
 end
 
 local function currentGoldFromStatus()
@@ -706,6 +852,7 @@ function boop.stats.init()
   boop.stats.session = newScope(now)
   boop.stats.trip = ensureScope(boop.stats.trip, now)
   boop.stats.lifetime = ensureScope(boop.stats.lifetime, now)
+  boop.stats.lastTrip = boop.stats.lastTrip or nil
   boop.stats.mobXp = boop.stats.mobXp or {}
   boop.stats.lastGold = nil
   boop.stats.lastXp = nil
@@ -713,10 +860,15 @@ function boop.stats.init()
   boop.stats.lastKill = boop.stats.lastKill or nil
   boop.stats.pendingAttack = nil
   boop.stats.lastResolvedAttack = nil
+  boop.stats.lastRageDecision = nil
   if boop.config and boop.config.enabled then
     scopeStart(boop.stats.session, now)
     scopeStart(boop.stats.lifetime, now)
+    startAreaTracking(boop.stats.session, currentArea(), now)
+    startAreaTracking(boop.stats.lifetime, currentArea(), now)
   else
+    stopAreaTracking(boop.stats.session, now)
+    stopAreaTracking(boop.stats.lifetime, now)
     scopeStop(boop.stats.session, now)
     scopeStop(boop.stats.lifetime, now)
   end
@@ -893,7 +1045,17 @@ function boop.stats.onTargetRemoved(targetId, targetName)
 end
 
 function boop.stats.onRoomChange()
+  local now = nowSeconds()
   incrementCounter("roomMoves", currentArea())
+  if boop.stats.session and boop.stats.session.activeSince then
+    switchAreaTracking(boop.stats.session, currentArea(), now)
+  end
+  if boop.stats.trip and boop.stats.trip.activeSince then
+    switchAreaTracking(boop.stats.trip, currentArea(), now)
+  end
+  if boop.stats.lifetime and boop.stats.lifetime.activeSince then
+    switchAreaTracking(boop.stats.lifetime, currentArea(), now)
+  end
 end
 
 function boop.stats.onFlee()
@@ -907,9 +1069,9 @@ function boop.stats.onExperienceGain(amount, area)
   local resolvedArea = area or currentArea()
   addRawExperience(gained, resolvedArea)
   if hasActiveScopes() then
-    local mobArea, mobName = findMobXpTarget(resolvedArea)
+    local mobArea, mobName, mobPartySize = findMobXpTarget(resolvedArea)
     if mobArea and mobName then
-      observeMobXp(mobArea, mobName, gained, currentPartySize())
+      observeMobXp(mobArea, mobName, gained, mobPartySize or currentPartySize())
     end
   end
 end
@@ -948,7 +1110,11 @@ function boop.stats.onEnabledChanged(enabled)
       scopeStart(boop.stats.session, now)
     end
     scopeStart(boop.stats.lifetime, now)
+    startAreaTracking(boop.stats.session, currentArea(), now)
+    startAreaTracking(boop.stats.lifetime, currentArea(), now)
   else
+    stopAreaTracking(boop.stats.session, now)
+    stopAreaTracking(boop.stats.lifetime, now)
     scopeStop(boop.stats.session, now)
     scopeStop(boop.stats.lifetime, now)
     boop.stats.activeTarget = nil
@@ -978,12 +1144,16 @@ function boop.stats.reset(scopeName)
     boop.stats.lifetime = resetScopeData(nil, now)
     if boopActive then
       scopeStart(boop.stats.lifetime, now)
+      startAreaTracking(boop.stats.session, currentArea(), now)
+      startAreaTracking(boop.stats.lifetime, currentArea(), now)
     end
     boop.stats.mobXp = {}
+    boop.stats.lastTrip = nil
     boop.stats.lastKill = nil
     boop.stats.activeTarget = nil
     boop.stats.pendingAttack = nil
     boop.stats.lastResolvedAttack = nil
+    boop.stats.lastRageDecision = nil
     seedBaselinesFromStatus()
     if boop.db and boop.db.clearMobXpStats then
       boop.db.clearMobXpStats()
@@ -997,6 +1167,7 @@ function boop.stats.reset(scopeName)
     boop.stats.session = resetScopeData(nil, now)
     if boopActive then
       scopeStart(boop.stats.session, now)
+      startAreaTracking(boop.stats.session, currentArea(), now)
     end
     boop.stats.lastKill = nil
     boop.stats.pendingAttack = nil
@@ -1012,6 +1183,7 @@ function boop.stats.reset(scopeName)
     if hadStopwatch then
       resetTripStopwatch(boop.stats.trip)
       scopeStart(boop.stats.trip, now)
+      startAreaTracking(boop.stats.trip, currentArea(), now)
     end
     boop.stats.lastKill = nil
     boop.stats.pendingAttack = nil
@@ -1025,6 +1197,7 @@ function boop.stats.reset(scopeName)
     boop.stats.lifetime = resetScopeData(nil, now)
     if boopActive then
       scopeStart(boop.stats.lifetime, now)
+      startAreaTracking(boop.stats.lifetime, currentArea(), now)
     end
     boop.stats.mobXp = {}
     boop.stats.pendingAttack = nil
@@ -1071,6 +1244,148 @@ function boop.stats.show(scopeName)
     "%s friction: %d retargets | %d abandoned | %d room moves | %d flees",
     label, scope.retargets, scope.abandoned, scope.roomMoves, scope.flees
   ))
+end
+
+local function formatScopeMeta(scope)
+  local meta = scope and scope.meta or {}
+  return string.format(
+    "mode %s | class %s | p%d | area %s",
+    tostring(meta.attackMode or "simple"),
+    tostring(meta.class or "unknown"),
+    tonumber(meta.partySize) or 1,
+    tostring(meta.area or "UNKNOWN")
+  )
+end
+
+local function rageDecisionFingerprint(info)
+  if type(info) ~= "table" then
+    return ""
+  end
+  local ability = type(info.ability) == "table" and (info.ability.name or info.ability.skill or "") or tostring(info.ability or "")
+  return table.concat({
+    tostring(info.mode or ""),
+    tostring(info.outcome or ""),
+    tostring(info.targetId or (boop.state and boop.state.currentTargetId) or ""),
+    tostring(ability),
+  }, "|")
+end
+
+function boop.stats.onRageDecision(info)
+  if type(info) ~= "table" then
+    return
+  end
+  local now = nowSeconds()
+  local fingerprint = rageDecisionFingerprint(info)
+  local last = boop.stats.lastRageDecision
+  if fingerprint ~= "" and last and last.fingerprint == fingerprint and (now - (tonumber(last.at) or 0)) < 0.4 then
+    return
+  end
+  boop.stats.lastRageDecision = { fingerprint = fingerprint, at = now }
+
+  local mode = boop.util.safeLower(info.mode or "simple")
+  local outcome = boop.util.safeLower(info.outcome or "")
+  eachActiveScope(function(scope)
+    local rage = ensureRageStats(scope)
+    rage.decisions = rage.decisions + 1
+    rage.byOutcome[outcome] = (tonumber(rage.byOutcome[outcome]) or 0) + 1
+    if outcome == "suppressed" then
+      rage.suppressed = rage.suppressed + 1
+    end
+    if outcome == "combo_hold" or outcome == "big_hold" then
+      rage.holds = rage.holds + 1
+    end
+  end)
+end
+
+function boop.stats.onRageExecuted(ability, info)
+  if not ability then
+    return
+  end
+
+  local mode = boop.util.safeLower((info and info.mode) or (boop.config and boop.config.attackMode) or "simple")
+  local outcome = boop.util.safeLower((info and info.outcome) or "")
+  local desc = tostring(ability.desc or "")
+  local name = tostring(ability.name or ability.skill or "")
+  local cost = tonumber(ability.rage) or 0
+
+  eachActiveScope(function(scope)
+    local rage = ensureRageStats(scope)
+    rage.uses = rage.uses + 1
+    rage.totalCost = rage.totalCost + cost
+    rage.byMode[mode] = (tonumber(rage.byMode[mode]) or 0) + 1
+    rage.byDesc[desc] = (tonumber(rage.byDesc[desc]) or 0) + 1
+    rage.byAbility[name] = (tonumber(rage.byAbility[name]) or 0) + 1
+    if desc == "Shieldbreak" then
+      rage.shieldbreaks = rage.shieldbreaks + 1
+    end
+    if outcome == "combo_conditional" then
+      rage.comboConditional = rage.comboConditional + 1
+    elseif outcome == "combo_primer" then
+      rage.comboPrimers = rage.comboPrimers + 1
+    elseif outcome == "combo_fallback" or outcome == "combo_spend_overflow" or outcome == "hybrid_fallback" then
+      rage.comboFallbacks = rage.comboFallbacks + 1
+    elseif outcome == "tempo_aff" then
+      rage.tempoAffs = rage.tempoAffs + 1
+    elseif outcome == "tempo_squeeze" then
+      rage.tempoSqueezes = rage.tempoSqueezes + 1
+    elseif outcome == "tempo_fallback" then
+      rage.tempoFallbacks = rage.tempoFallbacks + 1
+    end
+  end)
+  persistLifetime()
+end
+
+local function topCounts(map, limit)
+  local rows = {}
+  for key, count in pairs(map or {}) do
+    local n = tonumber(count) or 0
+    if n > 0 then
+      rows[#rows + 1] = { key = key, count = n }
+    end
+  end
+  table.sort(rows, function(a, b)
+    if a.count == b.count then
+      return boop.util.safeLower(a.key) < boop.util.safeLower(b.key)
+    end
+    return a.count > b.count
+  end)
+  local pieces = {}
+  local maxRows = tonumber(limit) or 4
+  for i = 1, math.min(#rows, maxRows) do
+    pieces[#pieces + 1] = string.format("%s %d", rows[i].key, rows[i].count)
+  end
+  return pieces
+end
+
+function boop.stats.showRage(scopeName)
+  local scope, label = scopeByName(scopeName)
+  local rage = ensureRageStats(scope)
+  local avgCost = rage.uses > 0 and (rage.totalCost / rage.uses) or 0
+  boop.util.info(string.format(
+    "%s rage: %d decisions | %d uses | %d rage spent | avg cost %s | holds %d | suppressed %d | shieldbreaks %d",
+    label,
+    rage.decisions,
+    rage.uses,
+    rage.totalCost,
+    formatStatValue(avgCost, 1),
+    rage.holds,
+    rage.suppressed,
+    rage.shieldbreaks
+  ))
+  boop.util.info(string.format(
+    "%s rage flow: combo cond %d | combo prime %d | combo fallback %d | tempo aff %d | tempo squeeze %d | tempo fallback %d",
+    label,
+    rage.comboConditional,
+    rage.comboPrimers,
+    rage.comboFallbacks,
+    rage.tempoAffs,
+    rage.tempoSqueezes,
+    rage.tempoFallbacks
+  ))
+  local modeBits = topCounts(rage.byMode, 5)
+  boop.util.info(string.format("%s rage modes: %s", label, #modeBits > 0 and table.concat(modeBits, " | ") or "(none)"))
+  local abilityBits = topCounts(rage.byAbility, 5)
+  boop.util.info(string.format("%s rage abilities: %s", label, #abilityBits > 0 and table.concat(abilityBits, " | ") or "(none)"))
 end
 
 local function aggregateCrits(scope)
@@ -1170,10 +1485,11 @@ function boop.stats.showRecords(scopeName)
   end
 end
 
-function boop.stats.showAreas(scopeName, limit)
+function boop.stats.showAreas(scopeName, limit, sortKey)
   local scope, label = scopeByName(scopeName)
   local rows = {}
   for area, data in pairs(scope.areas or {}) do
+    local elapsed = elapsedFor(data)
     if (tonumber(data.kills) or 0) > 0
       or (tonumber(data.gold) or 0) > 0
       or math.abs(tonumber(data.experience) or 0) > 0
@@ -1186,20 +1502,46 @@ function boop.stats.showAreas(scopeName, limit)
         experience = tonumber(data.experience) or 0,
         rawExperience = tonumber(data.rawExperience) or 0,
         avgTtk = avgTtk(data),
+        killsPerHour = perHour(tonumber(data.kills) or 0, elapsed),
+        goldPerHour = perHour(tonumber(data.gold) or 0, elapsed),
+        rawXpPerHour = perHour(tonumber(data.rawExperience) or 0, elapsed),
+        elapsed = elapsed,
       }
     end
   end
 
+  local sortMode = boop.util.safeLower(sortKey or "")
+  if sortMode == "" then
+    sortMode = "killshr"
+  end
   table.sort(rows, function(a, b)
-    if a.kills == b.kills then
+    local left
+    local right
+    if sortMode == "gold" then
+      left, right = a.gold, b.gold
+    elseif sortMode == "rawxp" or sortMode == "xp" then
+      left, right = a.rawExperience, b.rawExperience
+    elseif sortMode == "goldhr" then
+      left, right = a.goldPerHour, b.goldPerHour
+    elseif sortMode == "rawxphr" or sortMode == "xphr" then
+      left, right = a.rawXpPerHour, b.rawXpPerHour
+    elseif sortMode == "ttk" then
+      left, right = a.avgTtk, b.avgTtk
+    else
+      left, right = a.killsPerHour, b.killsPerHour
+    end
+    if math.abs((left or 0) - (right or 0)) < 0.000001 then
       return boop.util.safeLower(a.area) < boop.util.safeLower(b.area)
     end
-    return a.kills > b.kills
+    if sortMode == "ttk" then
+      return left < right
+    end
+    return left > right
   end)
 
   local maxRows = tonumber(limit) or 5
   if maxRows < 1 then maxRows = 1 end
-  boop.util.info(string.format("%s areas:", label))
+  boop.util.info(string.format("%s areas (sorted by %s):", label, sortMode))
   if #rows == 0 then
     boop.util.info("  (no area activity yet)")
     return
@@ -1207,8 +1549,16 @@ function boop.stats.showAreas(scopeName, limit)
   for i = 1, math.min(#rows, maxRows) do
     local row = rows[i]
     boop.util.info(string.format(
-      "  %d. %s | %d kills | %d gold | %s%% xp | %d xp | avg ttk %ss",
-      i, row.area, row.kills, row.gold, formatNumber(row.experience, 2), row.rawExperience, formatNumber(row.avgTtk, 2)
+      "  %d. %s | %d kills | %s kills/hr | %d gold | %s gold/hr | %d xp | %s xp/hr | avg ttk %ss",
+      i,
+      row.area,
+      row.kills,
+      formatNumber(row.killsPerHour, 1),
+      row.gold,
+      formatNumber(row.goldPerHour, 1),
+      row.rawExperience,
+      formatNumber(row.rawXpPerHour, 1),
+      formatNumber(row.avgTtk, 2)
     ))
   end
 end
@@ -1441,6 +1791,42 @@ function boop.stats.showAbilities(scopeName, limit)
   end
 end
 
+local function compareLine(name, left, right, decimals)
+  left = tonumber(left) or 0
+  right = tonumber(right) or 0
+  local delta = left - right
+  local percent = right ~= 0 and ((delta / right) * 100) or nil
+  local deltaText = (delta >= 0 and "+" or "") .. formatStatValue(delta, decimals)
+  local percentText = percent and string.format(" | %s%%", (percent >= 0 and "+" or "") .. formatStatValue(percent, 1)) or ""
+  return string.format("%s: %s vs %s (%s%s)", name, formatStatValue(left, decimals), formatStatValue(right, decimals), deltaText, percentText)
+end
+
+function boop.stats.showCompare(leftName, rightName)
+  local leftScope, leftLabel = scopeByName(leftName)
+  local rightScope, rightLabel = scopeByName(rightName)
+  leftScope = ensureScope(leftScope)
+  rightScope = ensureScope(rightScope)
+  local leftElapsed = elapsedFor(leftScope)
+  local rightElapsed = elapsedFor(rightScope)
+
+  boop.util.info(string.format(
+    "compare %s vs %s: %s || %s",
+    leftLabel,
+    rightLabel,
+    formatScopeMeta(leftScope),
+    formatScopeMeta(rightScope)
+  ))
+  boop.util.info(compareLine("kills", leftScope.kills, rightScope.kills, 0))
+  boop.util.info(compareLine("gold", leftScope.gold, rightScope.gold, 0))
+  boop.util.info(compareLine("raw xp", leftScope.rawExperience or 0, rightScope.rawExperience or 0, 0))
+  boop.util.info(compareLine("avg ttk", avgTtk(leftScope), avgTtk(rightScope), 2))
+  boop.util.info(compareLine("kills/hr", perHour(leftScope.kills, leftElapsed), perHour(rightScope.kills, rightElapsed), 1))
+  boop.util.info(compareLine("gold/hr", perHour(leftScope.gold, leftElapsed), perHour(rightScope.gold, rightElapsed), 1))
+  boop.util.info(compareLine("xp/hr", perHour(leftScope.rawExperience or 0, leftElapsed), perHour(rightScope.rawExperience or 0, rightElapsed), 1))
+  boop.util.info(compareLine("retargets", leftScope.retargets, rightScope.retargets, 0))
+  boop.util.info(compareLine("flees", leftScope.flees, rightScope.flees, 0))
+end
+
 function boop.stats.command(raw)
   local text = boop.util.trim(raw or "")
   local first, rest = text:match("^(%S+)%s*(.-)$")
@@ -1458,7 +1844,12 @@ function boop.stats.command(raw)
   end
 
   if cmd == "areas" then
-    local scope, limit = arg:match("^(%S+)%s+(%d+)$")
+    local scope, limit, metric = arg:match("^(%S+)%s+(%d+)%s+(%S+)$")
+    if scope then
+      boop.stats.showAreas(scope, tonumber(limit), metric)
+      return
+    end
+    scope, limit = arg:match("^(%S+)%s+(%d+)$")
     if scope then
       boop.stats.showAreas(scope, tonumber(limit))
       return
@@ -1522,12 +1913,27 @@ function boop.stats.command(raw)
     return
   end
 
+  if cmd == "rage" then
+    boop.stats.showRage(arg ~= "" and arg or "session")
+    return
+  end
+
   if cmd == "records" then
     boop.stats.showRecords(arg ~= "" and arg or "session")
     return
   end
 
-  boop.util.info("Usage: boop stats [session|trip|lifetime|areas [scope] [limit]|mobs [area] [limit]|targets [scope] [limit]|abilities [scope] [limit]|crits [scope]|records [scope]|reset <session|trip|lifetime|all>]")
+  if cmd == "compare" then
+    local left, right = arg:match("^(%S+)%s+(%S+)$")
+    if left and right then
+      boop.stats.showCompare(left, right)
+      return
+    end
+    boop.stats.showCompare("trip", "lasttrip")
+    return
+  end
+
+  boop.util.info("Usage: boop stats [session|trip|lifetime|lasttrip|areas [scope] [limit] [metric]|mobs [area] [limit]|targets [scope] [limit]|abilities [scope] [limit]|crits [scope]|rage [scope]|records [scope]|compare [left] [right]|reset <session|trip|lifetime|all>]")
 end
 
 function boop.stats.startTrip()
@@ -1535,8 +1941,10 @@ function boop.stats.startTrip()
     boop.util.warn("Trip already running.")
     return
   end
-  boop.stats.trip = newScope(nowSeconds())
-  scopeStart(boop.stats.trip, nowSeconds())
+  local now = nowSeconds()
+  boop.stats.trip = newScope(now)
+  scopeStart(boop.stats.trip, now)
+  startAreaTracking(boop.stats.trip, currentArea(), now)
   if createStopWatch then
     boop.stats.trip.stopwatch = createStopWatch()
   end
@@ -1554,7 +1962,15 @@ function boop.stats.stopTrip()
   if stopStopWatch then
     stopStopWatch(boop.stats.trip.stopwatch)
   end
-  scopeStop(boop.stats.trip, nowSeconds())
+  local now = nowSeconds()
+  stopAreaTracking(boop.stats.trip, now)
+  scopeStop(boop.stats.trip, now)
+  if boop.stats.cloneScope then
+    boop.stats.lastTrip = boop.stats.cloneScope(boop.stats.trip)
+    if boop.stats.lastTrip then
+      boop.stats.lastTrip.stopwatch = nil
+    end
+  end
   boop.util.ok("Stopped hunting trip.")
   boop.stats.show("trip")
   boop.stats.trip.stopwatch = nil

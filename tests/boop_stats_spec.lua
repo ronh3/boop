@@ -230,7 +230,34 @@ describe("boop stats", function()
     assert.is_true(messages[1]:find("session stats: 4 kills | 5 targets | 200 gold | 2.50% xp | 28376 xp", 1, true) ~= nil)
     assert.is_true(messages[2]:find("raw xp/kill 7094.0", 1, true) ~= nil)
     assert.is_true(messages[3]:find("851280.0 xp/hr", 1, true) ~= nil)
-    assert.is_true(messages[5]:find("Test Area | 4 kills | 200 gold | 2.50% xp | 28376 xp | avg ttk 4.00s", 1, true) ~= nil)
+    assert.is_true(messages[5]:find("Test Area | 4 kills | 120.0 kills/hr | 200 gold | 6000.0 gold/hr | 28376 xp | 851280.0 xp/hr | avg ttk 4.00s", 1, true) ~= nil)
+  end)
+
+  it("shows ranked area performance with richer rate output", function()
+    boop.stats.session.areas["Fast Area"] = {
+      kills = 8,
+      gold = 800,
+      rawExperience = 40000,
+      totalTtk = 20,
+      startedAt = 0,
+      endedAt = 120,
+      activeSeconds = 120,
+    }
+    boop.stats.session.areas["Slow Area"] = {
+      kills = 6,
+      gold = 1200,
+      rawExperience = 70000,
+      totalTtk = 60,
+      startedAt = 0,
+      endedAt = 600,
+      activeSeconds = 600,
+    }
+
+    boop.stats.showAreas("session", 5, "goldhr")
+
+    assert.are.equal("session areas (sorted by goldhr):", messages[1])
+    assert.is_true(messages[2]:find("Fast Area | 8 kills | 240.0 kills/hr | 800 gold | 24000.0 gold/hr | 40000 xp | 1200000.0 xp/hr | avg ttk 2.50s", 1, true) ~= nil)
+    assert.is_true(messages[3]:find("Slow Area | 6 kills | 36.0 kills/hr | 1200 gold | 7200.0 gold/hr | 70000 xp | 420000.0 xp/hr | avg ttk 10s", 1, true) ~= nil)
   end)
 
   it("shows current-area mob xp summaries", function()
@@ -420,6 +447,68 @@ describe("boop stats", function()
     assert.are.equal("  best hit: 12345 dmg | Slaughter -> a vicious gnoll soldier | Test Area | p3 | 32xCRIT", messages[2])
     assert.are.equal("  fastest kill: 1.25s | a lesser gnoll | Test Area | p1", messages[3])
     assert.are.equal("  slowest kill: 9.50s | a hulking troll | Deep Dungeon | p2", messages[4])
+  end)
+
+  it("shows rage efficiency summaries", function()
+    boop.ui.setEnabled(true, true)
+    local ticks = { 10, 11, 12, 13 }
+    local idx = 0
+    epoch_stub = stub(_G, "getEpoch", function()
+      idx = idx + 1
+      return ticks[idx] or ticks[#ticks]
+    end)
+
+    boop.stats.onRageDecision({ mode = "combo", outcome = "combo_conditional", ability = { name = "fluctuate" }, targetId = "42" })
+    boop.stats.onRageExecuted({ name = "fluctuate", desc = "Conditional", rage = 24 }, { mode = "combo", outcome = "combo_conditional" })
+    boop.stats.onRageDecision({ mode = "tempo", outcome = "tempo_squeeze", ability = { name = "harry" }, targetId = "42" })
+    boop.stats.onRageExecuted({ name = "harry", desc = "Big Damage", rage = 18 }, { mode = "tempo", outcome = "tempo_squeeze" })
+    boop.stats.onRageDecision({ mode = "combo", outcome = "combo_hold", ability = nil, targetId = "42" })
+
+    boop.stats.showRage("session")
+
+    assert.are.equal("session rage: 3 decisions | 2 uses | 42 rage spent | avg cost 21 | holds 1 | suppressed 0 | shieldbreaks 0", messages[1])
+    assert.are.equal("session rage flow: combo cond 1 | combo prime 0 | combo fallback 0 | tempo aff 0 | tempo squeeze 1 | tempo fallback 0", messages[2])
+    assert.are.equal("session rage modes: combo 1 | tempo 1", messages[3])
+    assert.are.equal("session rage abilities: fluctuate 1 | harry 1", messages[4])
+  end)
+
+  it("compares the current trip against the last trip snapshot", function()
+    boop.stats.trip.meta = { attackMode = "combo", class = "occultist", partySize = 1, area = "Mhaldor" }
+    boop.stats.trip.kills = 10
+    boop.stats.trip.gold = 500
+    boop.stats.trip.rawExperience = 40000
+    boop.stats.trip.totalTtk = 30
+    boop.stats.trip.retargets = 2
+    boop.stats.trip.flees = 0
+    boop.stats.trip.startedAt = 0
+    boop.stats.trip.endedAt = 300
+    boop.stats.trip.activeSeconds = 300
+
+    boop.stats.lastTrip = {
+      meta = { attackMode = "tempo", class = "occultist", partySize = 1, area = "Mhaldor" },
+      kills = 8,
+      gold = 440,
+      rawExperience = 36000,
+      totalTtk = 40,
+      retargets = 3,
+      flees = 1,
+      startedAt = 0,
+      endedAt = 400,
+      activeSeconds = 400,
+      areas = {},
+      abilities = {},
+      targetStats = {},
+      rage = {},
+      records = {},
+    }
+
+    boop.stats.showCompare("trip", "lasttrip")
+
+    assert.are.equal("compare trip vs lasttrip: mode combo | class occultist | p1 | area Mhaldor || mode tempo | class occultist | p1 | area Mhaldor", messages[1])
+    assert.are.equal("kills: 10 vs 8 (+2 | +25.0%)", messages[2])
+    assert.are.equal("gold: 500 vs 440 (+60 | +13.6%)", messages[3])
+    assert.are.equal("raw xp: 40000 vs 36000 (+4000 | +11.1%)", messages[4])
+    assert.are.equal("avg ttk: 3 vs 5 (-2 | -40.0%)", messages[5])
   end)
 
   it("starts and stops session and lifetime timing with boop enabled state", function()
