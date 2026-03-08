@@ -72,6 +72,7 @@ describe("boop stats", function()
   it("accumulates gold and experience deltas into session trip lifetime and area buckets", function()
     helper.setArea("Test Area")
     boop.ui.setEnabled(true, true)
+    boop.stats.startTrip()
 
     gmcp.Char.Status.gold = "1000"
     gmcp.Char.Status.level = "80"
@@ -94,6 +95,7 @@ describe("boop stats", function()
   it("tracks raw xp gains separately from percent-based gmcp xp", function()
     helper.setArea("Test Area")
     boop.ui.setEnabled(true, true)
+    boop.stats.startTrip()
 
     boop.stats.onExperienceGain("28,376")
 
@@ -158,15 +160,15 @@ describe("boop stats", function()
   end)
 
   it("tracks retargets kills and time-to-kill across target cycles", function()
+    helper.setArea("Test Area")
+    boop.ui.setEnabled(true, true)
+
     local ticks = { 100, 104, 110 }
     local idx = 0
     epoch_stub = stub(_G, "getEpoch", function()
       idx = idx + 1
       return ticks[idx] or ticks[#ticks]
     end)
-
-    helper.setArea("Test Area")
-    boop.ui.setEnabled(true, true)
 
     boop.stats.onTargetSet("42", "first denizen")
     boop.stats.onTargetSet("43", "second denizen")
@@ -209,10 +211,10 @@ describe("boop stats", function()
     boop.stats.show("session")
     boop.stats.showAreas("session", 3)
 
-    assert.is_true(messages[1]:find("session stats: 4 kills | 5 targets | 200 gold | 2.50%% xp | 28376 xp", 1, true) ~= nil)
+    assert.is_true(messages[1]:find("session stats: 4 kills | 5 targets | 200 gold | 2.50% xp | 28376 xp", 1, true) ~= nil)
     assert.is_true(messages[2]:find("raw xp/kill 7094.0", 1, true) ~= nil)
     assert.is_true(messages[3]:find("851280.0 xp/hr", 1, true) ~= nil)
-    assert.is_true(messages[5]:find("Test Area | 4 kills | 200 gold | 2.50%% xp | 28376 xp | avg ttk 4.00s", 1, true) ~= nil)
+    assert.is_true(messages[5]:find("Test Area | 4 kills | 200 gold | 2.50% xp | 28376 xp | avg ttk 4.00s", 1, true) ~= nil)
   end)
 
   it("shows current-area mob xp summaries", function()
