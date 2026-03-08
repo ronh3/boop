@@ -265,7 +265,31 @@ describe("boop stats", function()
     boop.stats.showTargets("session", 5)
 
     assert.are.equal("session target stats for Test Area (party size 1):", messages[1])
-    assert.is_true(messages[2]:find("a vicious gnoll soldier | kills 2 | avg ttk 0s | best 0s | worst 0s | xp mean 28500 | median 28500 | mode 28000 (1x)", 1, true) ~= nil)
+    assert.is_true(messages[2]:find("a vicious gnoll soldier | kills 2 | avg ttk 0s | best 0s | worst 0s | avg gold 0.0 | avg raw xp 28500.0 | best raw xp 29000", 1, true) ~= nil)
+    assert.is_true(messages[2]:find("| xp mean 28500 | median 28500 | mode 28000 (1x)", 1, true) ~= nil)
+  end)
+
+  it("attributes gold deltas onto the recent target summary", function()
+    helper.setArea("Test Area")
+    boop.ui.setEnabled(true, true)
+    boop.stats.startTrip()
+
+    gmcp.Char.Status.gold = "1000"
+    boop.stats.onCharStatus()
+
+    boop.stats.onTargetSet("42", "a vicious gnoll soldier")
+    boop.stats.onExperienceGain("28,000")
+    boop.stats.onTargetRemoved("42", "a vicious gnoll soldier")
+
+    gmcp.Char.Status.gold = "1125"
+    boop.stats.onCharStatus()
+
+    local entry = boop.stats.session.targetStats["Test Area"][1]["a vicious gnoll soldier"]
+    assert.is_not_nil(entry)
+    assert.are.equal(125, entry.gold)
+    assert.are.equal(28000, entry.rawExperience)
+    assert.are.equal(125, entry.bestGold)
+    assert.are.equal(28000, entry.bestRawExperience)
   end)
 
   it("tracks per-ability combat stats from attack damage crit balance and kill lines", function()
@@ -330,6 +354,72 @@ describe("boop stats", function()
     assert.are.equal("session ability stats:", messages[1])
     assert.is_true(messages[2]:find("Slaughter | uses 3 | kills 2 | avg dmg 10000 | max dmg 12345 | crit 66.7% | avg bal 2.90s | best crit 32xCRIT", 1, true) ~= nil)
     assert.is_true(messages[3]:find("Warp | uses 2 | kills 1 | avg dmg 4500 | max dmg 5000 | crit 0% | avg bal 2.50s", 1, true) ~= nil)
+  end)
+
+  it("shows crit summaries derived from ability usage", function()
+    boop.stats.session.abilities = {
+      Slaughter = {
+        uses = 3,
+        kills = 2,
+        totalDamage = 30000,
+        hitsWithDamage = 3,
+        maxDamage = 12345,
+        minDamage = 8000,
+        totalBalance = 8.7,
+        balances = 3,
+        crits = 2,
+        critTiers = { ["8xCRIT"] = 1, ["32xCRIT"] = 1 },
+      },
+      Warp = {
+        uses = 2,
+        kills = 1,
+        totalDamage = 9000,
+        hitsWithDamage = 2,
+        maxDamage = 5000,
+        minDamage = 4000,
+        totalBalance = 5.0,
+        balances = 2,
+        crits = 1,
+        critTiers = { ["2xCRIT"] = 1 },
+      },
+    }
+
+    boop.stats.showCrits("session")
+
+    assert.are.equal("session crits: 3 crits across 5 uses (60.0%)", messages[1])
+    assert.are.equal("session crit tiers: 2x 1 | 4x 0 | 8x 1 | 16x 0 | 32x 1", messages[2])
+  end)
+
+  it("shows best-hit and kill-speed records for a stat scope", function()
+    boop.stats.session.records = {
+      bestHit = {
+        ability = "Slaughter",
+        target = "a vicious gnoll soldier",
+        area = "Test Area",
+        partySize = 3,
+        damage = 12345,
+        critTier = "32xCRIT",
+      },
+      fastestKill = {
+        target = "a lesser gnoll",
+        area = "Test Area",
+        partySize = 1,
+        ttk = 1.25,
+      },
+      slowestKill = {
+        target = "a hulking troll",
+        area = "Deep Dungeon",
+        partySize = 2,
+        ttk = 9.5,
+      },
+    }
+
+    boop.stats.showRecords("session")
+
+    assert.are.equal("session records:", messages[1])
+    assert.are.equal("  best hit: 12345 dmg | Slaughter -> a vicious gnoll soldier | Test Area | p3 | 32xCRIT", messages[2])
+    assert.are.equal("  fastest kill: 1.25s | a lesser gnoll | Test Area | p1", messages[3])
+    assert.are.equal("  slowest kill: 9.50s | a hulking troll | Deep Dungeon | p2", messages[4])
   end)
 
   it("starts and stops session and lifetime timing with boop enabled state", function()

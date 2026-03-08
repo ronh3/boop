@@ -53,6 +53,11 @@ local function newScope(startedAt)
     areas = {},
     abilities = {},
     targetStats = {},
+    records = {
+      bestHit = nil,
+      fastestKill = nil,
+      slowestKill = nil,
+    },
   }
 end
 
@@ -84,6 +89,7 @@ local function ensureScope(scope, defaultStart)
   scope.areas = scope.areas or {}
   scope.abilities = scope.abilities or {}
   scope.targetStats = scope.targetStats or {}
+  scope.records = scope.records or { bestHit = nil, fastestKill = nil, slowestKill = nil }
   return scope
 end
 
@@ -145,6 +151,10 @@ local function ensureTargetEntry(scope, area, partySize, name)
     bestTtk = nil,
     worstTtk = nil,
     lastTtk = nil,
+    gold = 0,
+    rawExperience = 0,
+    bestGold = nil,
+    bestRawExperience = nil,
   }
 
   local entry = scope.targetStats[areaKey][sizeKey][nameKey]
@@ -153,6 +163,10 @@ local function ensureTargetEntry(scope, area, partySize, name)
   entry.bestTtk = entry.bestTtk ~= nil and tonumber(entry.bestTtk) or nil
   entry.worstTtk = entry.worstTtk ~= nil and tonumber(entry.worstTtk) or nil
   entry.lastTtk = entry.lastTtk ~= nil and tonumber(entry.lastTtk) or nil
+  entry.gold = tonumber(entry.gold) or 0
+  entry.rawExperience = tonumber(entry.rawExperience) or 0
+  entry.bestGold = entry.bestGold ~= nil and tonumber(entry.bestGold) or nil
+  entry.bestRawExperience = entry.bestRawExperience ~= nil and tonumber(entry.bestRawExperience) or nil
   return entry
 end
 
@@ -193,6 +207,8 @@ local function persistLifetime()
   end
 end
 
+local findMobXpTarget
+
 local function addGold(delta, area)
   if not delta or delta <= 0 then return end
   eachActiveScope(function(scope)
@@ -200,6 +216,16 @@ local function addGold(delta, area)
       bucket.gold = bucket.gold + delta
     end)
   end)
+  local rewardArea, rewardName, rewardPartySize = findMobXpTarget(area)
+  if rewardArea and rewardName then
+    eachActiveScope(function(scope)
+      local entry = ensureTargetEntry(scope, rewardArea, rewardPartySize, rewardName)
+      entry.gold = entry.gold + delta
+      if not entry.bestGold or delta > entry.bestGold then
+        entry.bestGold = delta
+      end
+    end)
+  end
   persistLifetime()
 end
 
@@ -220,6 +246,16 @@ local function addRawExperience(delta, area)
       bucket.rawExperience = (tonumber(bucket.rawExperience) or 0) + delta
     end)
   end)
+  local rewardArea, rewardName, rewardPartySize = findMobXpTarget(area)
+  if rewardArea and rewardName then
+    eachActiveScope(function(scope)
+      local entry = ensureTargetEntry(scope, rewardArea, rewardPartySize, rewardName)
+      entry.rawExperience = entry.rawExperience + delta
+      if not entry.bestRawExperience or delta > entry.bestRawExperience then
+        entry.bestRawExperience = delta
+      end
+    end)
+  end
   persistLifetime()
 end
 
@@ -532,6 +568,18 @@ local function recordAbilityUse(ability, data)
       if not entry.minDamage or damage < entry.minDamage then
         entry.minDamage = damage
       end
+
+      local bestHit = scope.records and scope.records.bestHit or nil
+      if not bestHit or damage > (tonumber(bestHit.damage) or 0) then
+        scope.records.bestHit = {
+          ability = name,
+          target = boop.util.trim(data and data.target or ""),
+          area = boop.util.trim(data and data.area or currentArea()),
+          partySize = currentPartySize(),
+          damage = damage,
+          critTier = boop.util.trim(data and data.critTier or ""),
+        }
+      end
     end
 
     local balance = tonumber(data and data.balance) or nil
@@ -581,16 +629,37 @@ local function recordTargetKill(area, name, seconds, partySize)
     if not entry.worstTtk or elapsed > entry.worstTtk then
       entry.worstTtk = elapsed
     end
+
+    local records = scope.records or {}
+    local fastest = records.fastestKill
+    if not fastest or elapsed < (tonumber(fastest.ttk) or math.huge) then
+      records.fastestKill = {
+        target = cleanName,
+        area = cleanArea,
+        partySize = size,
+        ttk = elapsed,
+      }
+    end
+    local slowest = records.slowestKill
+    if not slowest or elapsed > (tonumber(slowest.ttk) or -1) then
+      records.slowestKill = {
+        target = cleanName,
+        area = cleanArea,
+        partySize = size,
+        ttk = elapsed,
+      }
+    end
+    scope.records = records
   end)
 end
 
-local function findMobXpTarget(area)
+findMobXpTarget = function(area)
   local active = boop.stats.activeTarget
   if active then
     local activeArea = boop.util.trim(active.area or area or "")
     local activeName = boop.util.trim(active.name or "")
     if activeArea ~= "" and activeName ~= "" then
-      return activeArea, activeName
+      return activeArea, activeName, currentPartySize()
     end
   end
 
@@ -599,11 +668,11 @@ local function findMobXpTarget(area)
     local killArea = boop.util.trim(lastKill.area or area or "")
     local killName = boop.util.trim(lastKill.name or "")
     if killArea ~= "" and killName ~= "" then
-      return killArea, killName
+      return killArea, killName, tonumber(lastKill.partySize) or currentPartySize()
     end
   end
 
-  return nil, nil
+  return nil, nil, nil
 end
 
 local function observeMobXp(area, name, amount, partySize)
@@ -989,9 +1058,11 @@ function boop.stats.show(scopeName)
     label, formatNumber(avg, 2), formatNumber(goldPerKill, 1), formatNumber(xpPerKill, 2), formatNumber(rawXpPerKill, 1)
   ))
   boop.util.info(string.format(
-    "%s rates: %s kills/hr | %s gold/hr | %s%% xp/hr | %s xp/hr",
+    "%s rates: %s kills/hr | %s targets/hr | %s rooms/hr | %s gold/hr | %s%% xp/hr | %s xp/hr",
     label,
     formatNumber(perHour(scope.kills, elapsed), 1),
+    formatNumber(perHour(scope.targets, elapsed), 1),
+    formatNumber(perHour(scope.roomMoves, elapsed), 1),
     formatNumber(perHour(scope.gold, elapsed), 1),
     formatNumber(perHour(scope.experience, elapsed), 2),
     formatNumber(perHour(scope.rawExperience or 0, elapsed), 1)
@@ -1000,6 +1071,103 @@ function boop.stats.show(scopeName)
     "%s friction: %d retargets | %d abandoned | %d room moves | %d flees",
     label, scope.retargets, scope.abandoned, scope.roomMoves, scope.flees
   ))
+end
+
+local function aggregateCrits(scope)
+  local totals = {
+    uses = 0,
+    crits = 0,
+    tiers = {
+      ["2xCRIT"] = 0,
+      ["4xCRIT"] = 0,
+      ["8xCRIT"] = 0,
+      ["16xCRIT"] = 0,
+      ["32xCRIT"] = 0,
+    },
+  }
+
+  for _, entry in pairs(scope.abilities or {}) do
+    totals.uses = totals.uses + (tonumber(entry.uses) or 0)
+    totals.crits = totals.crits + (tonumber(entry.crits) or 0)
+    for tier, count in pairs(entry.critTiers or {}) do
+      totals.tiers[tier] = (tonumber(totals.tiers[tier]) or 0) + (tonumber(count) or 0)
+    end
+  end
+
+  return totals
+end
+
+function boop.stats.showCrits(scopeName)
+  local scope, label = scopeByName(scopeName)
+  local totals = aggregateCrits(scope)
+  local rate = totals.uses > 0 and (totals.crits * 100 / totals.uses) or 0
+  boop.util.info(string.format(
+    "%s crits: %d crits across %d uses (%s%%)",
+    label,
+    totals.crits,
+    totals.uses,
+    formatStatValue(rate, 1)
+  ))
+  boop.util.info(string.format(
+    "%s crit tiers: 2x %d | 4x %d | 8x %d | 16x %d | 32x %d",
+    label,
+    tonumber(totals.tiers["2xCRIT"]) or 0,
+    tonumber(totals.tiers["4xCRIT"]) or 0,
+    tonumber(totals.tiers["8xCRIT"]) or 0,
+    tonumber(totals.tiers["16xCRIT"]) or 0,
+    tonumber(totals.tiers["32xCRIT"]) or 0
+  ))
+end
+
+function boop.stats.showRecords(scopeName)
+  local scope, label = scopeByName(scopeName)
+  local records = scope.records or {}
+  local bestHit = records.bestHit
+  local fastest = records.fastestKill
+  local slowest = records.slowestKill
+
+  boop.util.info(string.format("%s records:", label))
+  if bestHit then
+    local critText = boop.util.trim(bestHit.critTier or "")
+    if critText ~= "" then
+      critText = " | " .. critText
+    end
+    boop.util.info(string.format(
+      "  best hit: %s dmg | %s -> %s | %s | p%d%s",
+      formatStatValue(bestHit.damage, 1),
+      tostring(bestHit.ability or "Attack"),
+      tostring(bestHit.target or "(unknown)"),
+      tostring(bestHit.area or "UNKNOWN"),
+      tonumber(bestHit.partySize) or 1,
+      critText
+    ))
+  else
+    boop.util.info("  best hit: (none)")
+  end
+
+  if fastest then
+    boop.util.info(string.format(
+      "  fastest kill: %ss | %s | %s | p%d",
+      formatStatValue(fastest.ttk, 2),
+      tostring(fastest.target or "(unknown)"),
+      tostring(fastest.area or "UNKNOWN"),
+      tonumber(fastest.partySize) or 1
+    ))
+  else
+    boop.util.info("  fastest kill: (none)")
+  end
+
+  if slowest then
+    boop.util.info(string.format(
+      "  slowest kill: %ss | %s | %s | p%d",
+      formatStatValue(slowest.ttk, 2),
+      tostring(slowest.target or "(unknown)"),
+      tostring(slowest.area or "UNKNOWN"),
+      tonumber(slowest.partySize) or 1
+    ))
+  else
+    boop.util.info("  slowest kill: (none)")
+  end
 end
 
 function boop.stats.showAreas(scopeName, limit)
@@ -1140,6 +1308,10 @@ function boop.stats.showTargets(scopeName, limit)
         avgTtk = kills > 0 and ((tonumber(entry.totalTtk) or 0) / kills) or 0,
         bestTtk = tonumber(entry.bestTtk) or 0,
         worstTtk = tonumber(entry.worstTtk) or 0,
+        gold = tonumber(entry.gold) or 0,
+        rawExperience = tonumber(entry.rawExperience) or 0,
+        bestGold = tonumber(entry.bestGold) or 0,
+        bestRawExperience = tonumber(entry.bestRawExperience) or 0,
         meanXp = meanMobXp(xpEntry),
         medianXp = medianMobXp(xpEntry),
         modeXp = modeXp,
@@ -1175,14 +1347,29 @@ function boop.stats.showTargets(scopeName, limit)
       formatStatValue(row.modeXp, 1),
       tonumber(row.modeCount) or 0
     ) or ""
+    local rewardText = ""
+    if row.gold > 0 or row.rawExperience > 0 then
+      rewardText = string.format(
+        " | avg gold %s | avg raw xp %s",
+        formatStatValue(row.kills > 0 and (row.gold / row.kills) or 0, 1),
+        formatStatValue(row.kills > 0 and (row.rawExperience / row.kills) or 0, 1)
+      )
+      if row.bestGold > 0 then
+        rewardText = rewardText .. string.format(" | best gold %s", formatStatValue(row.bestGold, 1))
+      end
+      if row.bestRawExperience > 0 then
+        rewardText = rewardText .. string.format(" | best raw xp %s", formatStatValue(row.bestRawExperience, 1))
+      end
+    end
     boop.util.info(string.format(
-      "  %d. %s | kills %d | avg ttk %ss | best %ss | worst %ss%s",
+      "  %d. %s | kills %d | avg ttk %ss | best %ss | worst %ss%s%s",
       i,
       row.name,
       row.kills,
       formatStatValue(row.avgTtk, 2),
       formatStatValue(row.bestTtk, 2),
       formatStatValue(row.worstTtk, 2),
+      rewardText,
       xpText
     ))
   end
@@ -1330,7 +1517,17 @@ function boop.stats.command(raw)
     return
   end
 
-  boop.util.info("Usage: boop stats [session|trip|lifetime|areas [scope] [limit]|mobs [area] [limit]|targets [scope] [limit]|abilities [scope] [limit]|reset <session|trip|lifetime|all>]")
+  if cmd == "crits" then
+    boop.stats.showCrits(arg ~= "" and arg or "session")
+    return
+  end
+
+  if cmd == "records" then
+    boop.stats.showRecords(arg ~= "" and arg or "session")
+    return
+  end
+
+  boop.util.info("Usage: boop stats [session|trip|lifetime|areas [scope] [limit]|mobs [area] [limit]|targets [scope] [limit]|abilities [scope] [limit]|crits [scope]|records [scope]|reset <session|trip|lifetime|all>]")
 end
 
 function boop.stats.startTrip()
