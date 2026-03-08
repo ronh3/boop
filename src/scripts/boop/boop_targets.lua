@@ -245,6 +245,51 @@ local function sortedDenizens(order)
   return denizens
 end
 
+local function findDenizenById(denizens, id)
+  local targetId = tostring(id or "")
+  if targetId == "" then return nil end
+  for _, denizen in ipairs(denizens or {}) do
+    if tostring(denizen.id or "") == targetId then
+      return denizen
+    end
+  end
+  return nil
+end
+
+local function currentTargetEligible(mode, area, denizens)
+  local currentId = tostring(boop.state.currentTargetId or "")
+  if currentId == "" then return "" end
+
+  local current = findDenizenById(denizens, currentId)
+  if not current then return "" end
+
+  if mode == "whitelist" then
+    local whitelist = boop.lists.whitelist[area]
+    if not whitelist or #whitelist == 0 then return "" end
+    if listContains(whitelist, current.name) then
+      return current.id
+    end
+    return ""
+  end
+
+  if mode == "blacklist" then
+    local blacklist = boop.lists.blacklist[area] or {}
+    if listContains(blacklist, current.name) or listContains(boop.lists.globalBlacklist, current.name) then
+      return ""
+    end
+    return current.id
+  end
+
+  if mode == "auto" then
+    if listContains(boop.lists.globalBlacklist, current.name) then
+      return ""
+    end
+    return current.id
+  end
+
+  return ""
+end
+
 function boop.targets.choose()
   local mode = boop.config.targetingMode
   local area = boop.targets.getArea()
@@ -252,6 +297,13 @@ function boop.targets.choose()
 
   if mode == "manual" then
     return boop.state.currentTargetId
+  end
+
+  if boop.config.retargetOnPriority == false then
+    local keep = currentTargetEligible(mode, area, denizens)
+    if keep ~= "" then
+      return keep
+    end
   end
 
   if mode == "whitelist" then

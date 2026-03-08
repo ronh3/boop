@@ -140,6 +140,8 @@ local function renderStatusDashboard()
     row = row + 1
     uiPrintRow(row, "Whitelist priority", boolText(not not boop.config.whitelistPriorityOrder), boolColor(not not boop.config.whitelistPriorityOrder))
     row = row + 1
+    uiPrintRow(row, "Retarget priority", boolText(not not boop.config.retargetOnPriority), boolColor(not not boop.config.retargetOnPriority))
+    row = row + 1
     uiPrintRow(row, "Target order", tostring(boop.config.targetOrder or "order"), "cyan")
     row = row + 1
     uiPrintRow(row, "Trace logging", boolText(not not boop.config.traceEnabled), boolColor(not not boop.config.traceEnabled))
@@ -168,6 +170,7 @@ local function renderStatusDashboard()
   boop.util.echo("  autoGrabGold: " .. tostring(boop.config.autoGrabGold))
   boop.util.echo("  goldPack: " .. tostring(shownPack))
   boop.util.echo("  whitelistPriorityOrder: " .. tostring(boop.config.whitelistPriorityOrder))
+  boop.util.echo("  retargetOnPriority: " .. tostring(boop.config.retargetOnPriority))
   boop.util.echo("  targetOrder: " .. tostring(boop.config.targetOrder))
   boop.util.echo("  traceEnabled: " .. tostring(boop.config.traceEnabled))
   boop.util.echo("  gagOwnAttacks: " .. tostring(boop.config.gagOwnAttacks))
@@ -600,6 +603,10 @@ local function canonConfigKey(raw)
     pack = "goldPack",
     goldpack = "goldPack",
     whitelistpriorityorder = "whitelistPriorityOrder",
+    retargetonpriority = "retargetOnPriority",
+    retargetpriority = "retargetOnPriority",
+    stickytarget = "retargetOnPriority",
+    stickyoncurrent = "retargetOnPriority",
     targetorder = "targetOrder",
     ragemode = "attackMode",
     attackmode = "attackMode",
@@ -638,6 +645,7 @@ function boop.ui.listConfigValues()
     "autoGrabGold",
     "goldPack",
     "whitelistPriorityOrder",
+    "retargetOnPriority",
     "targetOrder",
     "attackMode",
     "traceEnabled",
@@ -717,6 +725,17 @@ function boop.ui.setConfigValue(key, value)
   end
 
   if canonical == "whitelistPriorityOrder" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.warn(canonical .. " expects on/off")
+      return
+    end
+    saveConfigValue(canonical, parsed)
+    boop.util.ok(canonical .. ": " .. (parsed and "on" or "off"))
+    return
+  end
+
+  if canonical == "retargetOnPriority" then
     local parsed = parseBool(value)
     if parsed == nil then
       boop.util.warn(canonical .. " expects on/off")
@@ -1914,6 +1933,7 @@ local HELP_TOPICS = {
     },
     notes = {
       "Use boop config for clickable mode switching.",
+      "Set retargetOnPriority OFF to keep current target until it dies/leaves.",
     },
   },
   {
@@ -2460,15 +2480,18 @@ local function configRenderTargetingSection()
     uiPrintRow(3, "Target order", boop.config.targetOrder or "order", "cyan", function()
       boop.ui.config("3")
     end, "Cycle target order")
-    uiPrintSection("list managers")
-    uiPrintRow(4, "Whitelist manager", "OPEN", "green", function()
+    uiPrintRow(4, "Retarget on higher priority", boolText(not not boop.config.retargetOnPriority), boolColor(not not boop.config.retargetOnPriority), function()
       boop.ui.config("4")
-    end, "Open whitelist manager")
-    uiPrintRow(5, "Whitelist browse", "OPEN", "green", function()
+    end, "Toggle retargeting when higher-priority mobs enter")
+    uiPrintSection("list managers")
+    uiPrintRow(5, "Whitelist manager", "OPEN", "green", function()
       boop.ui.config("5")
-    end, "Open whitelist area browser")
-    uiPrintRow(6, "Blacklist manager", "OPEN", "green", function()
+    end, "Open whitelist manager")
+    uiPrintRow(6, "Whitelist browse", "OPEN", "green", function()
       boop.ui.config("6")
+    end, "Open whitelist area browser")
+    uiPrintRow(7, "Blacklist manager", "OPEN", "green", function()
+      boop.ui.config("7")
     end, "Open blacklist manager")
     uiPrintFooter("Type: boop config <number> to change | boop config back | boop config home")
     return
@@ -2478,9 +2501,10 @@ local function configRenderTargetingSection()
   boop.util.echo("[1] Targeting mode            [ " .. tostring(boop.config.targetingMode or "whitelist") .. " ]")
   boop.util.echo("[2] Whitelist priority order  [ " .. boolText(not not boop.config.whitelistPriorityOrder) .. " ]")
   boop.util.echo("[3] Target order              [ " .. tostring(boop.config.targetOrder or "order") .. " ]")
-  boop.util.echo("[4] Whitelist manager         [ OPEN ]")
-  boop.util.echo("[5] Whitelist browse          [ OPEN ]")
-  boop.util.echo("[6] Blacklist manager         [ OPEN ]")
+  boop.util.echo("[4] Retarget on priority      [ " .. boolText(not not boop.config.retargetOnPriority) .. " ]")
+  boop.util.echo("[5] Whitelist manager         [ OPEN ]")
+  boop.util.echo("[6] Whitelist browse          [ OPEN ]")
+  boop.util.echo("[7] Blacklist manager         [ OPEN ]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config <number> to change | boop config back | boop config home")
 end
@@ -2640,12 +2664,15 @@ local function configApplySectionOption(sectionKey, option)
       boop.ui.cycleTargetOrder(1, true)
       return true
     elseif n == 4 then
-      boop.targets.displayWhitelist()
+      boop.ui.toggleConfigBool("retargetOnPriority", true)
       return true
     elseif n == 5 then
-      boop.targets.displayWhitelistBrowse()
+      boop.targets.displayWhitelist()
       return true
     elseif n == 6 then
+      boop.targets.displayWhitelistBrowse()
+      return true
+    elseif n == 7 then
       boop.targets.displayBlacklist()
       return true
     end

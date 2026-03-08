@@ -81,6 +81,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop ragemode combo` is conditional-first, primes missing conditional needs with your own aff rage attacks, then holds reserve rage and spends only overflow.
 - `boop ragemode hybrid` uses the same conditional/priming logic, but falls back to normal damage when reserve logic would otherwise hold.
 - `boop targeting` and `boop ragemode` now show current value + usage when called without arguments, and clear errors for invalid values.
+- Targeting now supports `retargetOnPriority` (default `on`); set it `off` to keep your current target instead of swapping when higher-priority mobs enter.
 - Command feedback now uses consistent tags for quick scanning: `[OK]`, `[INFO]`, `[WARN]`, `[ERR]`.
 - Conditional needs default to `any` (one affliction present) unless a profile explicitly sets `needsMode = "all"`.
 - Battlerage afflictions are auto-tracked from class/general combat lines (gain + wear-off), and updates are scoped to your current target context for conditional rage checks.

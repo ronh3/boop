@@ -1,11 +1,12 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.105"
+boop.version = boop.version or "0.1.106"
 
 boop.defaults = {
   enabled = false,
   targetingMode = "whitelist",
   whitelistPriorityOrder = true,
+  retargetOnPriority = true,
   targetOrder = "order",
   targetCall = false,
   useQueueing = false,
