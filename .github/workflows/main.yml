@@ -10,8 +10,6 @@ jobs:
   build:
     permissions: write-all
     runs-on: ubuntu-latest
-    env:
-      MUDLET_VERSION: Mudlet-4.19.1
 
     steps:
       - uses: actions/checkout@v4
@@ -46,15 +44,17 @@ jobs:
         id: cache-mudlet
         with:
           path: /tmp/Mudlet.AppImage
-          key: ${{ env.MUDLET_VERSION }}
+          key: mudlet-linux-download-51
 
       - name: Download Mudlet AppImage
         if: steps.cache-mudlet.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
-          url="https://www.mudlet.org/wp-content/files/${MUDLET_VERSION}-linux-x64.AppImage.tar"
+          url="https://www.mudlet.org/download/51/"
           curl -L --fail --retry 5 --retry-delay 2 --retry-all-errors \
             -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36" \
+            -c /tmp/mudlet-cookies.txt \
+            -b /tmp/mudlet-cookies.txt \
             "$url" -o /tmp/Mudlet.tar
           tar tf /tmp/Mudlet.tar >/dev/null
           tar xf /tmp/Mudlet.tar -C /tmp
