@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MUDLET_RELEASE_TAG: ci-asset
-      MUDLET_RELEASE_ASSET: Mudlet-4.19.1-linux-x64.AppImage.tar
+      MUDLET_RELEASE_ASSET: Mudlet-4.20.1-linux-x64.AppImage.tar
 
     steps:
       - uses: actions/checkout@v4
