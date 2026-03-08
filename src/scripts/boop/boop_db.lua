@@ -279,6 +279,24 @@ function boop.db.loadStats()
       boop.stats.lifetime.gold = tonumber(row.value) or 0
     elseif row.name == "lifetime_experience" then
       boop.stats.lifetime.experience = tonumber(row.value) or 0
+    elseif row.name == "lifetime_kills" then
+      boop.stats.lifetime.kills = tonumber(row.value) or 0
+    elseif row.name == "lifetime_targets" then
+      boop.stats.lifetime.targets = tonumber(row.value) or 0
+    elseif row.name == "lifetime_retargets" then
+      boop.stats.lifetime.retargets = tonumber(row.value) or 0
+    elseif row.name == "lifetime_abandoned" then
+      boop.stats.lifetime.abandoned = tonumber(row.value) or 0
+    elseif row.name == "lifetime_flees" then
+      boop.stats.lifetime.flees = tonumber(row.value) or 0
+    elseif row.name == "lifetime_room_moves" then
+      boop.stats.lifetime.roomMoves = tonumber(row.value) or 0
+    elseif row.name == "lifetime_total_ttk" then
+      boop.stats.lifetime.totalTtk = tonumber(row.value) or 0
+    elseif row.name == "lifetime_best_ttk" then
+      boop.stats.lifetime.bestTtk = tonumber(row.value) or nil
+    elseif row.name == "lifetime_worst_ttk" then
+      boop.stats.lifetime.worstTtk = tonumber(row.value) or nil
     end
   end
 end
@@ -301,4 +319,13 @@ function boop.db.saveStats()
 
   save("lifetime_gold", boop.stats.lifetime.gold)
   save("lifetime_experience", boop.stats.lifetime.experience)
+  save("lifetime_kills", boop.stats.lifetime.kills or 0)
+  save("lifetime_targets", boop.stats.lifetime.targets or 0)
+  save("lifetime_retargets", boop.stats.lifetime.retargets or 0)
+  save("lifetime_abandoned", boop.stats.lifetime.abandoned or 0)
+  save("lifetime_flees", boop.stats.lifetime.flees or 0)
+  save("lifetime_room_moves", boop.stats.lifetime.roomMoves or 0)
+  save("lifetime_total_ttk", boop.stats.lifetime.totalTtk or 0)
+  save("lifetime_best_ttk", boop.stats.lifetime.bestTtk or "")
+  save("lifetime_worst_ttk", boop.stats.lifetime.worstTtk or "")
 end

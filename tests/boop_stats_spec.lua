@@ -1,0 +1,115 @@
+local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper.lua")
+
+describe("boop stats", function()
+  local epoch_stub
+  local send_gmcp_stub
+  local info_stub
+  local save_stats_stub
+  local messages
+
+  before_each(function()
+    helper.reset()
+    messages = {}
+
+    send_gmcp_stub = stub(_G, "sendGMCP", function(_) end)
+    info_stub = stub(boop.util, "info", function(msg)
+      messages[#messages + 1] = msg
+    end)
+    save_stats_stub = stub(boop.db, "saveStats", function() end)
+  end)
+
+  after_each(function()
+    if epoch_stub then
+      epoch_stub:revert()
+      epoch_stub = nil
+    end
+    if send_gmcp_stub then
+      send_gmcp_stub:revert()
+      send_gmcp_stub = nil
+    end
+    if info_stub then
+      info_stub:revert()
+      info_stub = nil
+    end
+    if save_stats_stub then
+      save_stats_stub:revert()
+      save_stats_stub = nil
+    end
+  end)
+
+  it("accumulates gold and experience deltas into session trip lifetime and area buckets", function()
+    helper.setArea("Test Area")
+
+    gmcp.Char.Status.gold = "1000"
+    gmcp.Char.Status.level = "80"
+    gmcp.Char.Status.xp = "50.0"
+    boop.stats.onCharStatus()
+
+    gmcp.Char.Status.gold = "1125"
+    gmcp.Char.Status.level = "80"
+    gmcp.Char.Status.xp = "51.5"
+    boop.stats.onCharStatus()
+
+    assert.are.equal(125, boop.stats.session.gold)
+    assert.are.equal(1.5, boop.stats.session.experience)
+    assert.are.equal(125, boop.stats.trip.areas["Test Area"].gold)
+    assert.are.equal(1.5, boop.stats.trip.areas["Test Area"].experience)
+    assert.are.equal(125, boop.stats.lifetime.gold)
+    assert.are.equal(1.5, boop.stats.lifetime.experience)
+  end)
+
+  it("tracks retargets kills and time-to-kill across target cycles", function()
+    local ticks = { 100, 104, 110 }
+    local idx = 0
+    epoch_stub = stub(_G, "getEpoch", function()
+      idx = idx + 1
+      return ticks[idx] or ticks[#ticks]
+    end)
+
+    helper.setArea("Test Area")
+
+    boop.stats.onTargetSet("42", "first denizen")
+    boop.stats.onTargetSet("43", "second denizen")
+    boop.stats.onTargetRemoved("43", "second denizen")
+
+    assert.are.equal(2, boop.stats.session.targets)
+    assert.are.equal(1, boop.stats.session.retargets)
+    assert.are.equal(1, boop.stats.session.abandoned)
+    assert.are.equal(1, boop.stats.session.kills)
+    assert.are.equal(6, boop.stats.session.totalTtk)
+    assert.are.equal(6, boop.stats.session.bestTtk)
+    assert.are.equal(6, boop.stats.session.worstTtk)
+    assert.are.equal("second denizen", boop.stats.lastKill.name)
+  end)
+
+  it("shows a human-readable summary and area breakdown", function()
+    helper.setArea("Test Area")
+    boop.stats.session.gold = 200
+    boop.stats.session.experience = 2.5
+    boop.stats.session.kills = 4
+    boop.stats.session.targets = 5
+    boop.stats.session.retargets = 1
+    boop.stats.session.abandoned = 1
+    boop.stats.session.roomMoves = 3
+    boop.stats.session.flees = 0
+    boop.stats.session.totalTtk = 16
+    boop.stats.session.startedAt = 0
+    boop.stats.session.endedAt = 120
+    boop.stats.session.areas["Test Area"] = {
+      gold = 200,
+      experience = 2.5,
+      kills = 4,
+      totalTtk = 16,
+      startedAt = 0,
+      endedAt = 120,
+    }
+
+    boop.stats.show("session")
+    boop.stats.showAreas("session", 3)
+
+    assert.is_true(messages[1]:find("session stats: 4 kills | 5 targets | 200 gold | 2.50%% xp", 1, true) ~= nil)
+    assert.is_true(messages[2]:find("avg ttk 4.00s", 1, true) ~= nil)
+    assert.is_true(messages[3]:find("120.0 kills/hr", 1, true) ~= nil)
+    assert.is_true(messages[5]:find("Test Area | 4 kills | 200 gold | 2.50%% xp | avg ttk 4.00s", 1, true) ~= nil)
+  end)
+end)

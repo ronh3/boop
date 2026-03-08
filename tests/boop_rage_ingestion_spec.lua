@@ -78,6 +78,7 @@ describe("boop rage ingestion", function()
 
   it("tracks matching rage affliction add and remove triggers and sends party callouts", function()
     helper.setTarget("42", "a test denizen", "80%")
+    boop.config.enabled = true
 
     boop.rage.onAfflictionTrigger({
       mode = "add",
@@ -102,6 +103,7 @@ describe("boop rage ingestion", function()
 
   it("ignores rage affliction triggers for other targets", function()
     helper.setTarget("42", "a test denizen", "80%")
+    boop.config.enabled = true
 
     boop.rage.onAfflictionTrigger({
       mode = "add",

@@ -1,5 +1,12 @@
 [
   {
+    "name": "Boop Stats",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+stats(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Trip Start",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+trip\\s+start$",

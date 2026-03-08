@@ -37,5 +37,8 @@ function boop.safety.flee()
   boop.executeAction(action)
   boop.util.ok("fleeing " .. dir .. " (boop disabled)")
   boop.state.fleeing = true
+  if boop.stats and boop.stats.onFlee then
+    boop.stats.onFlee()
+  end
   tempTimer(2, function() boop.state.fleeing = false end)
 end

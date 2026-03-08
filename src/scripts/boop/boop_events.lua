@@ -259,6 +259,7 @@ function boop.onRoomItemsRemove()
   if gmcp.Char.Items.Remove.location ~= "room" then return end
   local removed = gmcp.Char.Items.Remove.item
   local removedId = tostring((removed and removed.id) or "")
+  local removedName = removed and removed.name or ""
   boop.targets.removeRoomItem(removed)
 
   if removedId == "" then
@@ -269,6 +270,10 @@ function boop.onRoomItemsRemove()
   local current = tostring(boop.state.currentTargetId or "")
   if current == "" or current ~= removedId then
     return
+  end
+
+  if boop.stats and boop.stats.onTargetRemoved then
+    boop.stats.onTargetRemoved(removedId, removedName)
   end
 
   boop.state.currentTargetId = ""
@@ -333,6 +338,9 @@ function boop.onRoomInfo()
   end
 
   vars.room = gmcp.Room.Info.num
+  if vars.movedRooms and vars.lastRoom ~= "" and boop.stats and boop.stats.onRoomChange then
+    boop.stats.onRoomChange()
+  end
 end
 
 function boop.onTargetSet()

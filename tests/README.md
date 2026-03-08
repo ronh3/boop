@@ -46,6 +46,8 @@ Current coverage:
   Confirms rage readiness fallback, rage gain sampling, and rage affliction trigger ingestion.
 - `boop_persistence_spec.lua`
   Confirms public config, whitelist/blacklist, and whitelist-tag edits persist through the DB hooks.
+- `boop_stats_spec.lua`
+  Confirms gold/xp accumulation, target-cycle kill metrics, and human-readable stats summaries.
 
 Good candidates for future additions:
 
