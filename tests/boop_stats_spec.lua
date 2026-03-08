@@ -234,6 +234,70 @@ describe("boop stats", function()
     assert.is_true(messages[3]:find("a lesser gnoll | seen 1 | mean 12500 | median 12500 | mode 12500 (1x)", 1, true) ~= nil)
   end)
 
+  it("tracks per-ability combat stats from attack damage crit balance and kill lines", function()
+    helper.setArea("Test Area")
+    boop.ui.setEnabled(true, true)
+    boop.config.gagOwnAttacks = false
+
+    boop.gag.onAttackLine({
+      ability = "Slaughter",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, { "line", "a vicious gnoll soldier" }, "You swing at a vicious gnoll soldier.")
+    boop.gag.onDamageLine("12,345", "cutting", "Damage line")
+    boop.gag.onCriticalLine("obliterating critical", "Crit line")
+    boop.gag.onBalanceUsed("2.9", "Balance line")
+    boop.gag.onSlainLine("a vicious gnoll soldier", "Slain line")
+
+    local entry = boop.stats.session.abilities["Slaughter"]
+    assert.is_not_nil(entry)
+    assert.are.equal(1, entry.uses)
+    assert.are.equal(1, entry.kills)
+    assert.are.equal(12345, entry.totalDamage)
+    assert.are.equal(12345, entry.maxDamage)
+    assert.are.equal(12345, entry.minDamage)
+    assert.are.equal(1, entry.hitsWithDamage)
+    assert.are.equal(2.9, entry.totalBalance)
+    assert.are.equal(1, entry.balances)
+    assert.are.equal(1, entry.crits)
+    assert.are.equal(1, entry.critTiers["8xCRIT"])
+  end)
+
+  it("shows per-ability summaries for a stat scope", function()
+    boop.stats.session.abilities = {
+      Slaughter = {
+        uses = 3,
+        kills = 2,
+        totalDamage = 30000,
+        hitsWithDamage = 3,
+        maxDamage = 12345,
+        minDamage = 8000,
+        totalBalance = 8.7,
+        balances = 3,
+        crits = 2,
+        critTiers = { ["8xCRIT"] = 1, ["32xCRIT"] = 1 },
+      },
+      Warp = {
+        uses = 2,
+        kills = 1,
+        totalDamage = 9000,
+        hitsWithDamage = 2,
+        maxDamage = 5000,
+        minDamage = 4000,
+        totalBalance = 5.0,
+        balances = 2,
+        crits = 0,
+        critTiers = {},
+      },
+    }
+
+    boop.stats.showAbilities("session", 5)
+
+    assert.are.equal("session ability stats:", messages[1])
+    assert.is_true(messages[2]:find("Slaughter | uses 3 | kills 2 | avg dmg 10000 | max dmg 12345 | crit 66.7% | avg bal 2.90s | best crit 32xCRIT", 1, true) ~= nil)
+    assert.is_true(messages[3]:find("Warp | uses 2 | kills 1 | avg dmg 4500 | max dmg 5000 | crit 0% | avg bal 2.50s", 1, true) ~= nil)
+  end)
+
   it("starts and stops session and lifetime timing with boop enabled state", function()
     local ticks = { 100, 140, 200, 260 }
     local idx = 0

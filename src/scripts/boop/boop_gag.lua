@@ -341,10 +341,6 @@ function boop.gag.setBoth(value)
 end
 
 function boop.gag.onAttackLine(spec, matchTable, rawLine)
-  if not boop.config then return end
-  if not boop.config.gagOwnAttacks and not boop.config.gagOthersAttacks then
-    return
-  end
   if shouldSuppressDuplicate(rawLine) then
     return
   end
@@ -372,6 +368,15 @@ function boop.gag.onAttackLine(spec, matchTable, rawLine)
 
   local ability = boop.util.trim(spec and spec.ability or "")
 
+  if boop.stats and boop.stats.onAttackLine then
+    boop.stats.onAttackLine(actor, selfActor, ability, victim)
+  end
+
+  if not boop.config then return end
+  if not boop.config.gagOwnAttacks and not boop.config.gagOthersAttacks then
+    return
+  end
+
   deleteCurrent()
 
   if selfActor then
@@ -394,6 +399,9 @@ function boop.gag.onBattlefurySpeed(_rawLine)
 end
 
 function boop.gag.onDamageLine(amount, dtype, _rawLine)
+  if boop.stats and boop.stats.onAttackDamage then
+    boop.stats.onAttackDamage(amount)
+  end
   if not boop.config or not boop.config.gagOwnAttacks then
     return
   end
@@ -417,6 +425,9 @@ function boop.gag.onDamageLine(amount, dtype, _rawLine)
 end
 
 function boop.gag.onCriticalLine(critLabel, _rawLine)
+  if boop.stats and boop.stats.onAttackCritical then
+    boop.stats.onAttackCritical(critLabel)
+  end
   if not boop.config or not boop.config.gagOwnAttacks then
     return
   end
@@ -462,6 +473,9 @@ function boop.gag.onCompanionMaulFlavor(target, _rawLine)
 end
 
 function boop.gag.onBalanceUsed(seconds, _rawLine)
+  if boop.stats and boop.stats.onAttackBalance then
+    boop.stats.onAttackBalance(seconds)
+  end
   if not boop.config or not boop.config.gagOwnAttacks then
     return
   end
@@ -481,6 +495,9 @@ function boop.gag.onBalanceUsed(seconds, _rawLine)
 end
 
 function boop.gag.onSlainLine(target, _rawLine)
+  if boop.stats and boop.stats.onKillLine then
+    boop.stats.onKillLine(target or "")
+  end
   if not boop.config or not boop.config.gagOwnAttacks then
     return
   end

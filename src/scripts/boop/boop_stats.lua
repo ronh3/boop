@@ -42,6 +42,7 @@ local function newScope(startedAt)
     activeSeconds = 0,
     activeSince = nil,
     areas = {},
+    abilities = {},
   }
 end
 
@@ -71,6 +72,7 @@ local function ensureScope(scope, defaultStart)
   scope.activeSeconds = tonumber(scope.activeSeconds) or 0
   scope.activeSince = tonumber(scope.activeSince) or nil
   scope.areas = scope.areas or {}
+  scope.abilities = scope.abilities or {}
   return scope
 end
 
@@ -80,6 +82,38 @@ local function ensureArea(scope, area)
   scope.areas[key] = ensureScope(scope.areas[key], scope.startedAt)
   scope.areas[key].areas = nil
   return scope.areas[key]
+end
+
+local function ensureAbility(scope, ability)
+  scope = ensureScope(scope)
+  local key = boop.util.trim(tostring(ability or ""))
+  if key == "" then
+    key = "Attack"
+  end
+  scope.abilities[key] = scope.abilities[key] or {
+    uses = 0,
+    kills = 0,
+    totalDamage = 0,
+    hitsWithDamage = 0,
+    maxDamage = nil,
+    minDamage = nil,
+    totalBalance = 0,
+    balances = 0,
+    crits = 0,
+    critTiers = {},
+  }
+  local entry = scope.abilities[key]
+  entry.uses = tonumber(entry.uses) or 0
+  entry.kills = tonumber(entry.kills) or 0
+  entry.totalDamage = tonumber(entry.totalDamage) or 0
+  entry.hitsWithDamage = tonumber(entry.hitsWithDamage) or 0
+  entry.maxDamage = entry.maxDamage ~= nil and tonumber(entry.maxDamage) or nil
+  entry.minDamage = entry.minDamage ~= nil and tonumber(entry.minDamage) or nil
+  entry.totalBalance = tonumber(entry.totalBalance) or 0
+  entry.balances = tonumber(entry.balances) or 0
+  entry.crits = tonumber(entry.crits) or 0
+  entry.critTiers = entry.critTiers or {}
+  return entry
 end
 
 local function eachScope(fn)
@@ -397,6 +431,88 @@ local function formatMobXpSummary(entry)
   )
 end
 
+local function resolveCritTier(rawCrit)
+  local key = boop.util.safeLower(boop.util.trim(rawCrit or ""))
+  if key == "" then return "" end
+  key = key:gsub("%-", " ")
+  key = key:gsub("%s+", " ")
+  key = key:upper()
+
+  local map = {
+    ["CRITICAL"] = "2xCRIT",
+    ["CRUSHING CRITICAL"] = "4xCRIT",
+    ["OBLITERATING CRITICAL"] = "8xCRIT",
+    ["ANNIHILATINGLY POWERFUL CRITICAL"] = "16xCRIT",
+    ["WORLD SHATTERING CRITICAL"] = "32xCRIT",
+    ["2XCRIT"] = "2xCRIT",
+    ["4XCRIT"] = "4xCRIT",
+    ["8XCRIT"] = "8xCRIT",
+    ["16XCRIT"] = "16xCRIT",
+    ["32XCRIT"] = "32xCRIT",
+  }
+
+  return map[key] or ""
+end
+
+local function parseDamageAmount(value)
+  local cleaned = tostring(value or ""):gsub(",", "")
+  local match = cleaned:match("(%d+)")
+  return tonumber(match)
+end
+
+local function parseBalanceSeconds(value)
+  local match = tostring(value or ""):match("([%d%.]+)")
+  return tonumber(match)
+end
+
+local function critTierRank(tier)
+  local num = tostring(tier or ""):match("^(%d+)")
+  return tonumber(num) or 0
+end
+
+local function recordAbilityUse(ability, data)
+  local name = boop.util.trim(ability or "")
+  if name == "" then return end
+
+  eachActiveScope(function(scope)
+    local entry = ensureAbility(scope, name)
+    entry.uses = entry.uses + 1
+
+    local damage = tonumber(data and data.damage) or nil
+    if damage and damage > 0 then
+      entry.totalDamage = entry.totalDamage + damage
+      entry.hitsWithDamage = entry.hitsWithDamage + 1
+      if not entry.maxDamage or damage > entry.maxDamage then
+        entry.maxDamage = damage
+      end
+      if not entry.minDamage or damage < entry.minDamage then
+        entry.minDamage = damage
+      end
+    end
+
+    local balance = tonumber(data and data.balance) or nil
+    if balance and balance > 0 then
+      entry.totalBalance = entry.totalBalance + balance
+      entry.balances = entry.balances + 1
+    end
+
+    local critTier = boop.util.trim(data and data.critTier or "")
+    if critTier ~= "" then
+      entry.crits = entry.crits + 1
+      entry.critTiers[critTier] = (tonumber(entry.critTiers[critTier]) or 0) + 1
+    end
+  end)
+end
+
+local function recordAbilityKill(ability)
+  local name = boop.util.trim(ability or "")
+  if name == "" then return end
+  eachActiveScope(function(scope)
+    local entry = ensureAbility(scope, name)
+    entry.kills = entry.kills + 1
+  end)
+end
+
 local function findMobXpTarget(area)
   local active = boop.stats.activeTarget
   if active then
@@ -453,6 +569,8 @@ function boop.stats.init()
   boop.stats.lastXp = nil
   boop.stats.activeTarget = boop.stats.activeTarget or nil
   boop.stats.lastKill = boop.stats.lastKill or nil
+  boop.stats.pendingAttack = nil
+  boop.stats.lastResolvedAttack = nil
   if boop.config and boop.config.enabled then
     scopeStart(boop.stats.session, now)
     scopeStart(boop.stats.lifetime, now)
@@ -461,6 +579,98 @@ function boop.stats.init()
     scopeStop(boop.stats.lifetime, now)
   end
   seedBaselinesFromStatus()
+end
+
+local function resolvePendingAttack()
+  local pending = boop.stats.pendingAttack
+  if not pending then
+    return nil
+  end
+
+  local resolved = {
+    ability = boop.util.trim(pending.ability or ""),
+    target = boop.util.trim(pending.target or ""),
+    area = boop.util.trim(pending.area or currentArea()),
+    at = tonumber(pending.at) or nowSeconds(),
+    damage = tonumber(pending.damage) or nil,
+    critTier = boop.util.trim(pending.critTier or ""),
+    balance = tonumber(pending.balance) or nil,
+  }
+
+  boop.stats.pendingAttack = nil
+  recordAbilityUse(resolved.ability, resolved)
+  boop.stats.lastResolvedAttack = resolved
+  return resolved
+end
+
+function boop.stats.onAttackLine(actor, selfActor, ability, target)
+  if not selfActor then
+    return
+  end
+
+  if boop.stats.pendingAttack then
+    resolvePendingAttack()
+  end
+
+  boop.stats.pendingAttack = {
+    actor = boop.util.trim(actor or "You"),
+    ability = boop.util.trim(ability or ""),
+    target = boop.util.trim(target or ""),
+    area = currentArea(),
+    at = nowSeconds(),
+    damage = nil,
+    critTier = "",
+    balance = nil,
+  }
+end
+
+function boop.stats.onAttackDamage(amount)
+  local pending = boop.stats.pendingAttack
+  if not pending then
+    return
+  end
+  pending.damage = parseDamageAmount(amount)
+end
+
+function boop.stats.onAttackCritical(critLabel)
+  local pending = boop.stats.pendingAttack
+  if not pending then
+    return
+  end
+  pending.critTier = resolveCritTier(critLabel)
+end
+
+function boop.stats.onAttackBalance(seconds)
+  local pending = boop.stats.pendingAttack
+  if not pending then
+    return
+  end
+  pending.balance = parseBalanceSeconds(seconds)
+  resolvePendingAttack()
+end
+
+function boop.stats.onKillLine(target)
+  local victim = boop.util.trim(target or "")
+  if victim == "" then
+    return
+  end
+
+  local resolved = boop.stats.pendingAttack and resolvePendingAttack() or boop.stats.lastResolvedAttack
+  if not resolved then
+    return
+  end
+
+  if resolved.area ~= currentArea() then
+    return
+  end
+  if nowSeconds() - (tonumber(resolved.at) or 0) > 5 then
+    return
+  end
+  if boop.util.trim(resolved.target or "") ~= victim then
+    return
+  end
+
+  recordAbilityKill(resolved.ability)
 end
 
 function boop.stats.onCharStatus()
@@ -596,6 +806,7 @@ function boop.stats.onEnabledChanged(enabled)
     scopeStop(boop.stats.session, now)
     scopeStop(boop.stats.lifetime, now)
     boop.stats.activeTarget = nil
+    boop.stats.pendingAttack = nil
   end
 
   seedBaselinesFromStatus()
@@ -625,6 +836,8 @@ function boop.stats.reset(scopeName)
     boop.stats.mobXp = {}
     boop.stats.lastKill = nil
     boop.stats.activeTarget = nil
+    boop.stats.pendingAttack = nil
+    boop.stats.lastResolvedAttack = nil
     seedBaselinesFromStatus()
     if boop.db and boop.db.clearMobXpStats then
       boop.db.clearMobXpStats()
@@ -640,6 +853,8 @@ function boop.stats.reset(scopeName)
       scopeStart(boop.stats.session, now)
     end
     boop.stats.lastKill = nil
+    boop.stats.pendingAttack = nil
+    boop.stats.lastResolvedAttack = nil
     seedBaselinesFromStatus()
     boop.util.ok("stats reset: session")
     return
@@ -653,6 +868,8 @@ function boop.stats.reset(scopeName)
       scopeStart(boop.stats.trip, now)
     end
     boop.stats.lastKill = nil
+    boop.stats.pendingAttack = nil
+    boop.stats.lastResolvedAttack = nil
     seedBaselinesFromStatus()
     boop.util.ok("stats reset: trip")
     return
@@ -664,6 +881,8 @@ function boop.stats.reset(scopeName)
       scopeStart(boop.stats.lifetime, now)
     end
     boop.stats.mobXp = {}
+    boop.stats.pendingAttack = nil
+    boop.stats.lastResolvedAttack = nil
     seedBaselinesFromStatus()
     if boop.db and boop.db.clearMobXpStats then
       boop.db.clearMobXpStats()
@@ -817,6 +1036,72 @@ function boop.stats.showMobs(areaName, limit)
   end
 end
 
+function boop.stats.showAbilities(scopeName, limit)
+  local scope, label = scopeByName(scopeName)
+  local rows = {}
+  for ability, entry in pairs(scope.abilities or {}) do
+    local uses = tonumber(entry.uses) or 0
+    if uses > 0 then
+      local bestCrit = ""
+      local bestCritRank = 0
+      for tier, count in pairs(entry.critTiers or {}) do
+        if (tonumber(count) or 0) > 0 then
+          local rank = critTierRank(tier)
+          if rank > bestCritRank then
+            bestCritRank = rank
+            bestCrit = tier
+          end
+        end
+      end
+      rows[#rows + 1] = {
+        ability = ability,
+        uses = uses,
+        kills = tonumber(entry.kills) or 0,
+        avgDamage = (tonumber(entry.hitsWithDamage) or 0) > 0 and ((tonumber(entry.totalDamage) or 0) / (tonumber(entry.hitsWithDamage) or 1)) or 0,
+        maxDamage = tonumber(entry.maxDamage) or 0,
+        critRate = uses > 0 and ((tonumber(entry.crits) or 0) * 100 / uses) or 0,
+        avgBalance = (tonumber(entry.balances) or 0) > 0 and ((tonumber(entry.totalBalance) or 0) / (tonumber(entry.balances) or 1)) or 0,
+        bestCrit = bestCrit,
+      }
+    end
+  end
+
+  table.sort(rows, function(a, b)
+    if a.kills == b.kills then
+      if a.maxDamage == b.maxDamage then
+        return boop.util.safeLower(a.ability) < boop.util.safeLower(b.ability)
+      end
+      return a.maxDamage > b.maxDamage
+    end
+    return a.kills > b.kills
+  end)
+
+  local maxRows = tonumber(limit) or 10
+  if maxRows < 1 then maxRows = 1 end
+  boop.util.info(string.format("%s ability stats:", label))
+  if #rows == 0 then
+    boop.util.info("  (no recorded ability usage yet)")
+    return
+  end
+
+  for i = 1, math.min(#rows, maxRows) do
+    local row = rows[i]
+    local critText = row.bestCrit ~= "" and (" | best crit " .. row.bestCrit) or ""
+    boop.util.info(string.format(
+      "  %d. %s | uses %d | kills %d | avg dmg %s | max dmg %s | crit %s%% | avg bal %ss%s",
+      i,
+      row.ability,
+      row.uses,
+      row.kills,
+      formatStatValue(row.avgDamage, 1),
+      formatStatValue(row.maxDamage, 1),
+      formatStatValue(row.critRate, 1),
+      formatStatValue(row.avgBalance, 2),
+      critText
+    ))
+  end
+end
+
 function boop.stats.command(raw)
   local text = boop.util.trim(raw or "")
   local first, rest = text:match("^(%S+)%s*(.-)$")
@@ -863,7 +1148,22 @@ function boop.stats.command(raw)
     return
   end
 
-  boop.util.info("Usage: boop stats [session|trip|lifetime|areas [scope] [limit]|mobs [area] [limit]|reset <session|trip|lifetime|all>]")
+  if cmd == "abilities" or cmd == "attacks" then
+    local scope, limit = arg:match("^(%S+)%s+(%d+)$")
+    if scope then
+      boop.stats.showAbilities(scope, tonumber(limit))
+      return
+    end
+    local maybeNumber = tonumber(arg)
+    if maybeNumber then
+      boop.stats.showAbilities("session", maybeNumber)
+      return
+    end
+    boop.stats.showAbilities(arg ~= "" and arg or "session")
+    return
+  end
+
+  boop.util.info("Usage: boop stats [session|trip|lifetime|areas [scope] [limit]|mobs [area] [limit]|abilities [scope] [limit]|reset <session|trip|lifetime|all>]")
 end
 
 function boop.stats.startTrip()

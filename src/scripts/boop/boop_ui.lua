@@ -2137,6 +2137,7 @@ local HELP_TOPICS = {
       "boop stats trip|session|lifetime",
       "boop stats areas [scope] [limit]",
       "boop stats mobs [area] [limit]",
+      "boop stats abilities [scope] [limit]",
       "boop stats reset session|trip|lifetime|all",
       "boop trip start",
       "boop trip stop",
