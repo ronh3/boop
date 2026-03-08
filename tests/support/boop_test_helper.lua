@@ -182,6 +182,15 @@ function M.learnSkill(name, group)
   boop.skills.skillOriginal[key] = name
 end
 
+function M.setSkillKnown(name, known, group)
+  local key = norm(name)
+  boop.skills.known[key] = known and true or false
+  if group and group ~= "" then
+    boop.skills.skillToGroup[key] = norm(group)
+  end
+  boop.skills.skillOriginal[key] = name
+end
+
 function M.learnSkills(skills)
   for _, skill in ipairs(skills or {}) do
     if type(skill) == "table" then

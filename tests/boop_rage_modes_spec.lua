@@ -3,11 +3,11 @@ local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper
 describe("boop rage modes", function()
   before_each(function()
     helper.reset()
-    helper.setClass("Occultist")
     helper.setTarget("42", "a test denizen", "80%")
   end)
 
   it("falls back to simple damage in combo mode when no provider support exists", function()
+    helper.setClass("Occultist")
     helper.setRage(25)
     helper.learnSkills({
       { name = "Lycantha", group = "Domination" },
@@ -23,6 +23,7 @@ describe("boop rage modes", function()
   end)
 
   it("prioritizes an affliction in tempo mode when damage cannot preserve reserve", function()
+    helper.setClass("Occultist")
     helper.setRage(29)
     helper.learnSkills({
       { name = "Lycantha", group = "Domination" },
@@ -38,6 +39,7 @@ describe("boop rage modes", function()
   end)
 
   it("spends damage in tempo mode when it can keep aff reserve available", function()
+    helper.setClass("Occultist")
     helper.setRage(43)
     helper.learnSkills({
       { name = "Lycantha", group = "Domination" },
@@ -50,5 +52,84 @@ describe("boop rage modes", function()
 
     assert.are.equal("command hound at 42", actions.standard)
     assert.are.equal("harry 42", actions.rage)
+  end)
+
+  it("fires the conditional in combo mode when target afflictions already satisfy it", function()
+    helper.setClass("Occultist")
+    helper.setRage(25)
+    helper.learnSkills({
+      { name = "Lycantha", group = "Domination" },
+      { name = "fluctuate", group = "Attainment" },
+    })
+    helper.addTargetAfflictions({ "fear", "amnesia" })
+    boop.config.attackMode = "combo"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("command hound at 42", actions.standard)
+    assert.are.equal("fluctuate 42", actions.rage)
+  end)
+
+  it("suppresses rage actions in none mode", function()
+    helper.setClass("Sentinel")
+    helper.setRage(36)
+    helper.learnSkills({
+      { name = "Claw", group = "Metamorphosis" },
+      { name = "pester", group = "Attainment" },
+      { name = "skewer", group = "Attainment" },
+    })
+    boop.config.attackMode = "none"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("claw 42", actions.standard)
+    assert.are.equal("", actions.rage)
+  end)
+
+  it("uses the affliction attack in aff mode", function()
+    helper.setClass("Sentinel")
+    helper.setRage(32)
+    helper.learnSkills({
+      { name = "Claw", group = "Metamorphosis" },
+      { name = "tame", group = "Attainment" },
+    })
+    boop.config.attackMode = "aff"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("claw 42", actions.standard)
+    assert.are.equal("goad 42", actions.rage)
+  end)
+
+  it("holds rage for a big hit in big mode instead of spending a small attack", function()
+    helper.setClass("Sentinel")
+    helper.setRage(14)
+    helper.learnSkills({
+      { name = "Claw", group = "Metamorphosis" },
+      { name = "pester", group = "Attainment" },
+      { name = "skewer", group = "Attainment" },
+    })
+    boop.config.attackMode = "big"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("claw 42", actions.standard)
+    assert.are.equal("", actions.rage)
+  end)
+
+  it("uses the small damage action in small mode", function()
+    helper.setClass("Sentinel")
+    helper.setRage(14)
+    helper.learnSkills({
+      { name = "Claw", group = "Metamorphosis" },
+      { name = "pester", group = "Attainment" },
+      { name = "skewer", group = "Attainment" },
+    })
+    boop.config.attackMode = "small"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("claw 42", actions.standard)
+    assert.are.equal("pester 42", actions.rage)
   end)
 end)
