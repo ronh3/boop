@@ -16,6 +16,7 @@ local function newScope(startedAt)
   return {
     gold = 0,
     experience = 0,
+    rawExperience = 0,
     kills = 0,
     targets = 0,
     retargets = 0,
@@ -38,6 +39,7 @@ local function ensureScope(scope, defaultStart)
 
   scope.gold = tonumber(scope.gold) or 0
   scope.experience = tonumber(scope.experience) or 0
+  scope.rawExperience = tonumber(scope.rawExperience) or 0
   scope.kills = tonumber(scope.kills) or 0
   scope.targets = tonumber(scope.targets) or 0
   scope.retargets = tonumber(scope.retargets) or 0
@@ -99,6 +101,16 @@ local function addExperience(delta, area)
   eachScope(function(scope)
     withArea(scope, area, function(bucket)
       bucket.experience = bucket.experience + delta
+    end)
+  end)
+  persistLifetime()
+end
+
+local function addRawExperience(delta, area)
+  if not delta or delta <= 0 then return end
+  eachScope(function(scope)
+    withArea(scope, area, function(bucket)
+      bucket.rawExperience = (tonumber(bucket.rawExperience) or 0) + delta
     end)
   end)
   persistLifetime()
@@ -295,27 +307,108 @@ function boop.stats.onFlee()
   incrementCounter("flees", currentArea())
 end
 
+function boop.stats.onExperienceGain(amount, area)
+  local gained = tonumber(tostring(amount or ""):gsub(",", ""))
+  if not gained or gained <= 0 then return end
+  addRawExperience(gained, area or currentArea())
+end
+
+local function resetScopeData(scope, startedAt)
+  local fresh = newScope(startedAt or nowSeconds())
+  local stopwatch = scope and scope.stopwatch or nil
+  fresh.stopwatch = stopwatch
+  return fresh
+end
+
+local function resetTripStopwatch(scope)
+  if not scope then return end
+  if scope.stopwatch and stopStopWatch then
+    stopStopWatch(scope.stopwatch)
+  end
+  if createStopWatch then
+    scope.stopwatch = createStopWatch()
+  else
+    scope.stopwatch = nil
+  end
+  if scope.stopwatch and startStopWatch then
+    startStopWatch(scope.stopwatch)
+  end
+end
+
+function boop.stats.reset(scopeName)
+  local key = boop.util.safeLower(boop.util.trim(scopeName or "session"))
+  local now = nowSeconds()
+
+  if key == "all" then
+    local hadTripStopwatch = boop.stats.trip and boop.stats.trip.stopwatch
+    boop.stats.session = resetScopeData(nil, now)
+    boop.stats.trip = resetScopeData(boop.stats.trip, now)
+    if hadTripStopwatch then
+      resetTripStopwatch(boop.stats.trip)
+    end
+    boop.stats.lifetime = resetScopeData(nil, now)
+    boop.stats.lastKill = nil
+    boop.stats.activeTarget = nil
+    seedBaselinesFromStatus()
+    persistLifetime()
+    boop.util.ok("stats reset: all")
+    return
+  end
+
+  if key == "session" then
+    boop.stats.session = resetScopeData(nil, now)
+    boop.stats.lastKill = nil
+    seedBaselinesFromStatus()
+    boop.util.ok("stats reset: session")
+    return
+  end
+
+  if key == "trip" then
+    local hadStopwatch = boop.stats.trip and boop.stats.trip.stopwatch
+    boop.stats.trip = resetScopeData(boop.stats.trip, now)
+    if hadStopwatch then
+      resetTripStopwatch(boop.stats.trip)
+    end
+    boop.stats.lastKill = nil
+    seedBaselinesFromStatus()
+    boop.util.ok("stats reset: trip")
+    return
+  end
+
+  if key == "lifetime" or key == "life" then
+    boop.stats.lifetime = resetScopeData(nil, now)
+    seedBaselinesFromStatus()
+    persistLifetime()
+    boop.util.ok("stats reset: lifetime")
+    return
+  end
+
+  boop.util.info("Usage: boop stats reset <session|trip|lifetime|all>")
+end
+
 function boop.stats.show(scopeName)
   local scope, label = scopeByName(scopeName)
   local elapsed = elapsedFor(scope)
   local avg = avgTtk(scope)
   local goldPerKill = scope.kills > 0 and (scope.gold / scope.kills) or 0
   local xpPerKill = scope.kills > 0 and (scope.experience / scope.kills) or 0
+  local rawXpPerKill = scope.kills > 0 and ((scope.rawExperience or 0) / scope.kills) or 0
 
   boop.util.info(string.format(
-    "%s stats: %d kills | %d targets | %d gold | %s%% xp",
-    label, scope.kills, scope.targets, scope.gold, formatNumber(scope.experience, 2)
+    "%s stats: %d kills | %d targets | %d gold | %s%% xp | %d xp",
+    label, scope.kills, scope.targets, scope.gold, formatNumber(scope.experience, 2), tonumber(scope.rawExperience) or 0
   ))
   boop.util.info(string.format(
-    "%s efficiency: avg ttk %ss | gold/kill %s | xp/kill %s%%",
-    label, formatNumber(avg, 2), formatNumber(goldPerKill, 1), formatNumber(xpPerKill, 2)
+    "%s efficiency: avg ttk %ss | gold/kill %s | xp/kill %s%% | raw xp/kill %s",
+    label, formatNumber(avg, 2), formatNumber(goldPerKill, 1), formatNumber(xpPerKill, 2), formatNumber(rawXpPerKill, 1)
   ))
   boop.util.info(string.format(
-    "%s rates: %s kills/hr | %s gold/hr | %s%% xp/hr",
+    "%s rates: %s kills/hr | %s gold/hr | %s%% xp/hr | %s xp/hr",
     label,
     formatNumber(perHour(scope.kills, elapsed), 1),
     formatNumber(perHour(scope.gold, elapsed), 1),
-    formatNumber(perHour(scope.experience, elapsed), 2)
+    formatNumber(perHour(scope.experience, elapsed), 2),
+    formatNumber(perHour(scope.rawExperience or 0, elapsed), 1)
   ))
   boop.util.info(string.format(
     "%s friction: %d retargets | %d abandoned | %d room moves | %d flees",
@@ -327,12 +420,17 @@ function boop.stats.showAreas(scopeName, limit)
   local scope, label = scopeByName(scopeName)
   local rows = {}
   for area, data in pairs(scope.areas or {}) do
-    if (tonumber(data.kills) or 0) > 0 or (tonumber(data.gold) or 0) > 0 or math.abs(tonumber(data.experience) or 0) > 0 then
+    if (tonumber(data.kills) or 0) > 0
+      or (tonumber(data.gold) or 0) > 0
+      or math.abs(tonumber(data.experience) or 0) > 0
+      or (tonumber(data.rawExperience) or 0) > 0
+    then
       rows[#rows + 1] = {
         area = area,
         kills = tonumber(data.kills) or 0,
         gold = tonumber(data.gold) or 0,
         experience = tonumber(data.experience) or 0,
+        rawExperience = tonumber(data.rawExperience) or 0,
         avgTtk = avgTtk(data),
       }
     end
@@ -355,8 +453,8 @@ function boop.stats.showAreas(scopeName, limit)
   for i = 1, math.min(#rows, maxRows) do
     local row = rows[i]
     boop.util.info(string.format(
-      "  %d. %s | %d kills | %d gold | %s%% xp | avg ttk %ss",
-      i, row.area, row.kills, row.gold, formatNumber(row.experience, 2), formatNumber(row.avgTtk, 2)
+      "  %d. %s | %d kills | %d gold | %s%% xp | %d xp | avg ttk %ss",
+      i, row.area, row.kills, row.gold, formatNumber(row.experience, 2), row.rawExperience, formatNumber(row.avgTtk, 2)
     ))
   end
 end
@@ -369,6 +467,11 @@ function boop.stats.command(raw)
 
   if cmd == "" or cmd == "show" or cmd == "session" or cmd == "trip" or cmd == "lifetime" then
     boop.stats.show(cmd ~= "" and cmd or "session")
+    return
+  end
+
+  if cmd == "reset" then
+    boop.stats.reset(arg ~= "" and arg or "session")
     return
   end
 
@@ -387,7 +490,7 @@ function boop.stats.command(raw)
     return
   end
 
-  boop.util.info("Usage: boop stats [session|trip|lifetime|areas [scope] [limit]]")
+  boop.util.info("Usage: boop stats [session|trip|lifetime|areas [scope] [limit]|reset <session|trip|lifetime|all>]")
 end
 
 function boop.stats.startTrip()

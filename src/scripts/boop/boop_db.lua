@@ -279,6 +279,8 @@ function boop.db.loadStats()
       boop.stats.lifetime.gold = tonumber(row.value) or 0
     elseif row.name == "lifetime_experience" then
       boop.stats.lifetime.experience = tonumber(row.value) or 0
+    elseif row.name == "lifetime_raw_experience" then
+      boop.stats.lifetime.rawExperience = tonumber(row.value) or 0
     elseif row.name == "lifetime_kills" then
       boop.stats.lifetime.kills = tonumber(row.value) or 0
     elseif row.name == "lifetime_targets" then
@@ -319,6 +321,7 @@ function boop.db.saveStats()
 
   save("lifetime_gold", boop.stats.lifetime.gold)
   save("lifetime_experience", boop.stats.lifetime.experience)
+  save("lifetime_raw_experience", boop.stats.lifetime.rawExperience or 0)
   save("lifetime_kills", boop.stats.lifetime.kills or 0)
   save("lifetime_targets", boop.stats.lifetime.targets or 0)
   save("lifetime_retargets", boop.stats.lifetime.retargets or 0)

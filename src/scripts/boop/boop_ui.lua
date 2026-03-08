@@ -2133,6 +2133,7 @@ local HELP_TOPICS = {
       "boop stats",
       "boop stats trip|session|lifetime",
       "boop stats areas [scope] [limit]",
+      "boop stats reset session|trip|lifetime|all",
       "boop trip start",
       "boop trip stop",
       "boop set tempoRageWindowSeconds <seconds>",

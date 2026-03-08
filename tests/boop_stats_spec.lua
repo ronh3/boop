@@ -58,6 +58,17 @@ describe("boop stats", function()
     assert.are.equal(1.5, boop.stats.lifetime.experience)
   end)
 
+  it("tracks raw xp gains separately from percent-based gmcp xp", function()
+    helper.setArea("Test Area")
+
+    boop.stats.onExperienceGain("28,376")
+
+    assert.are.equal(28376, boop.stats.session.rawExperience)
+    assert.are.equal(28376, boop.stats.trip.rawExperience)
+    assert.are.equal(28376, boop.stats.lifetime.rawExperience)
+    assert.are.equal(28376, boop.stats.session.areas["Test Area"].rawExperience)
+  end)
+
   it("reseeds status baselines on init so existing wealth and xp are not counted as gains", function()
     gmcp.Char.Status.gold = "2500"
     gmcp.Char.Status.level = "80"
@@ -106,6 +117,7 @@ describe("boop stats", function()
     helper.setArea("Test Area")
     boop.stats.session.gold = 200
     boop.stats.session.experience = 2.5
+    boop.stats.session.rawExperience = 28376
     boop.stats.session.kills = 4
     boop.stats.session.targets = 5
     boop.stats.session.retargets = 1
@@ -118,6 +130,7 @@ describe("boop stats", function()
     boop.stats.session.areas["Test Area"] = {
       gold = 200,
       experience = 2.5,
+      rawExperience = 28376,
       kills = 4,
       totalTtk = 16,
       startedAt = 0,
@@ -127,9 +140,40 @@ describe("boop stats", function()
     boop.stats.show("session")
     boop.stats.showAreas("session", 3)
 
-    assert.is_true(messages[1]:find("session stats: 4 kills | 5 targets | 200 gold | 2.50%% xp", 1, true) ~= nil)
-    assert.is_true(messages[2]:find("avg ttk 4.00s", 1, true) ~= nil)
-    assert.is_true(messages[3]:find("120.0 kills/hr", 1, true) ~= nil)
-    assert.is_true(messages[5]:find("Test Area | 4 kills | 200 gold | 2.50%% xp | avg ttk 4.00s", 1, true) ~= nil)
+    assert.is_true(messages[1]:find("session stats: 4 kills | 5 targets | 200 gold | 2.50%% xp | 28376 xp", 1, true) ~= nil)
+    assert.is_true(messages[2]:find("raw xp/kill 7094.0", 1, true) ~= nil)
+    assert.is_true(messages[3]:find("851280.0 xp/hr", 1, true) ~= nil)
+    assert.is_true(messages[5]:find("Test Area | 4 kills | 200 gold | 2.50%% xp | 28376 xp | avg ttk 4.00s", 1, true) ~= nil)
+  end)
+
+  it("resets requested stat scopes without touching the others", function()
+    boop.stats.session.gold = 50
+    boop.stats.session.rawExperience = 100
+    boop.stats.trip.gold = 60
+    boop.stats.lifetime.gold = 70
+
+    boop.stats.reset("session")
+
+    assert.are.equal(0, boop.stats.session.gold)
+    assert.are.equal(0, boop.stats.session.rawExperience)
+    assert.are.equal(60, boop.stats.trip.gold)
+    assert.are.equal(70, boop.stats.lifetime.gold)
+  end)
+
+  it("resets all stat scopes and reseeds baselines", function()
+    gmcp.Char.Status.gold = "3000"
+    gmcp.Char.Status.level = "80"
+    gmcp.Char.Status.xp = "60.0"
+    boop.stats.session.gold = 50
+    boop.stats.trip.gold = 60
+    boop.stats.lifetime.gold = 70
+
+    boop.stats.reset("all")
+
+    assert.are.equal(0, boop.stats.session.gold)
+    assert.are.equal(0, boop.stats.trip.gold)
+    assert.are.equal(0, boop.stats.lifetime.gold)
+    assert.are.equal(3000, boop.stats.lastGold)
+    assert.are.equal(8060, boop.stats.lastXp)
   end)
 end)
