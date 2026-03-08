@@ -44,6 +44,30 @@ Guidance for Codex when working in this repository.
 - Keep `README.md` in sync when commands or features change.
 - Maintain the config UI look/feel (config theme + sectioned layout) for new menus.
 
+## User Preferences / Project Memory
+- Treat `CODEX.md` as the continuity file for new sessions; keep it current when preferences or workflow conventions change.
+- Push non-trivial changes after committing them. If a version was bumped, the expectation is to push unless the user says not to.
+- Keep `mfile.title` updated manually to `boop Hunter <version>`.
+- Avoid surfacing legacy/old command behavior in user-facing help or docs unless the user explicitly asks for backwards-compat details.
+- `boop` by itself should show status only. `boop help` should show help only.
+- `bh` and `boop on/off` should use the compact boop aesthetic summary, not the full dashboard.
+- Preserve the newer, streamlined boop UI direction: fewer broader help/config sections rather than many tiny topics.
+- Prefer runtime-safe refactors over aggressive cleanup.
+
+## Current UI / UX Conventions
+- Keep boop output in the established styled format using `cecho` color tags and sectioned headers where appropriate.
+- Help and config should share the same overall visual language.
+- Status is the place for current settings; help is the place for reference/documentation.
+- New user-facing command output should acknowledge success/failure clearly and should not silently fail.
+
+## Current Structure Notes
+- Trigger folders are now nested by class/category where practical.
+- `src/triggers/boop/Gag/` is organized into class folders, each with its own `triggers.json`.
+- `src/triggers/boop/Shield/` is organized into class folders, each with its own `triggers.json`.
+- `src/triggers/boop/Rage/Afflictions/` is organized into class folders, each with its own `triggers.json`.
+- When adding triggers in those areas, update the class-local manifest rather than flattening files back into the parent folder.
+- `tools/sort_manifests.sh` is safe to run for manifests, except for known load-order-sensitive files already excluded by the script.
+
 ## Session Startup (New Agent Checklist)
 - Read `README.md` and `DESIGN.md` to understand current scope and user-facing behavior.
 - Open `mfile` to confirm current version and title; bump `version` and manually sync `title` on every commit.
