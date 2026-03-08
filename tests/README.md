@@ -40,10 +40,14 @@ Current coverage:
   Confirms room and target gmcp transitions clear stale combat state and retarget correctly.
 - `boop_gag_spec.lua`
   Confirms condensed gag summaries for attack and kill replay lines.
+- `boop_skills_spec.lua`
+  Confirms skill GMCP ingestion, direct skill lookups, and learned/not-learned handling.
+- `boop_rage_ingestion_spec.lua`
+  Confirms rage readiness fallback, rage gain sampling, and rage affliction trigger ingestion.
+- `boop_persistence_spec.lua`
+  Confirms public config, whitelist/blacklist, and whitelist-tag edits persist through the DB hooks.
 
 Good candidates for future additions:
 
-- more class/spec-specific attack profiles
-- trigger-driven affliction updates
-- queue/prequeue timing race conditions
 - more text replay cases from live combat logs
+- Mudlet DB integration tests beyond save-hook verification
