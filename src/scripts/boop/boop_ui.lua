@@ -318,7 +318,7 @@ function boop.ui.showRageModeMenu()
         boop.ui.setAttackMode(tostring(option.id))
       end, "Set ragemode to " .. option.key, labelWidth)
     end
-    uiPrintFooter("Type: boop ragemode <number|mode> | boop config combat | boop help ragemode")
+    uiPrintFooter("Type: boop ragemode <number|mode> | boop config hunting | boop help combat")
     return
   end
 
@@ -329,7 +329,7 @@ function boop.ui.showRageModeMenu()
     boop.util.echo(string.format("[%d] %s - %s [%s]", option.id, option.label, option.desc, state))
   end
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Type: boop ragemode <number|mode> | boop config combat | boop help ragemode")
+  boop.util.echo("Type: boop ragemode <number|mode> | boop config hunting | boop help combat")
 end
 
 function boop.ui.setEnabled(value, quiet)
@@ -1965,111 +1965,88 @@ end
 
 local HELP_TOPICS = {
   {
-    key = "targeting",
-    title = "Targeting",
-    aliases = { "targeting" },
+    key = "start",
+    title = "Getting Started",
+    aliases = { "start", "gettingstarted", "intro", "basics", "general", "main", "home", "config" },
     commands = {
-      "boop targeting manual",
-      "boop targeting whitelist",
-      "boop targeting blacklist",
-      "boop targeting auto",
+      "boop",
+      "boop on",
+      "boop off",
+      "boop status",
+      "boop config",
+      "boop help <topic>",
     },
     notes = {
-      "Use boop config for clickable mode switching.",
-      "Set retargetOnPriority OFF to keep current target until it dies/leaves.",
+      "Use boop config for guided setting changes.",
+      "Use boop get/boop set for direct key/value control.",
     },
   },
   {
-    key = "whitelist",
-    title = "Whitelist",
-    aliases = { "whitelist" },
+    key = "targeting",
+    title = "Targeting",
+    aliases = { "targeting", "targets", "whitelist", "blacklist", "ih" },
     commands = {
+      "boop targeting <manual|whitelist|blacklist|auto>",
       "boop whitelist",
       "boop whitelist add <name>",
       "boop whitelist remove <name>",
       "boop whitelist browse [tag]",
+      "boop blacklist",
+      "boop blacklist add <name>",
+      "boop blacklist remove <name>",
       "boop whitelist tags <area>",
       "boop whitelist tag list",
       "boop whitelist tag add <area> | <tag[,tag2,...]>",
       "boop whitelist tag remove <area> | <tag[,tag2,...]>",
+      "boop set retargetOnPriority <on|off>",
+      "boop ih",
     },
     notes = {
-      "Whitelist display supports clickable up/down/remove ordering.",
-      "Priority order applies when whitelistPriorityOrder is ON.",
-      "Tags normalize to lowercase with dashes.",
+      "Whitelist/blacklist displays support clickable management.",
+      "Set retargetOnPriority OFF to keep current target until it dies/leaves.",
     },
   },
   {
-    key = "blacklist",
-    title = "Blacklist",
-    aliases = { "blacklist" },
-    commands = {
-      "boop blacklist",
-      "boop blacklist add <name>",
-      "boop blacklist remove <name>",
-    },
-    notes = {
-      "Blacklist display supports clickable up/down/remove ordering.",
-      "Blacklist mode attacks valid denizens except blacklisted entries.",
-    },
-  },
-  {
-    key = "ragemode",
-    title = "Ragemode",
-    aliases = { "ragemode", "rage", "attackmode" },
+    key = "combat",
+    title = "Combat",
+    aliases = { "combat", "ragemode", "rage", "attackmode", "diag", "diagnose", "aff", "afflictions" },
     commands = {
       "boop ragemode",
       "boop ragemode <number>",
       "boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>",
       "boop set tempoRageWindowSeconds <seconds>",
       "boop set tempoSqueezeEtaSeconds <seconds>",
-      "boop ragemode simple",
-      "boop ragemode tempo",
-      "boop ragemode combo",
-      "boop ragemode hybrid",
-      "boop ragemode big",
-      "boop ragemode none",
+      "diag",
+      "boop aff",
+      "boop aff add <a/b/c>",
+      "boop aff remove <a/b/c>",
+      "boop aff clear",
     },
     notes = {
       "tempo: prioritizes affs, but squeezes damage when rolling rage gain predicts fast recovery (default 10s window).",
       "combo: conditional-first with aff priming, then hold reserve rage and spend overflow.",
       "hybrid: same as combo, but falls back to normal damage instead of hard-holding rage.",
-      "Legacy aliases still parse: dam->simple, cond->combo, buff->aff, pool->none, affplus/smartaff/weave->tempo.",
     },
   },
   {
     key = "queueing",
     title = "Queueing",
-    aliases = { "queue", "queueing" },
+    aliases = { "queue", "queueing", "prequeue", "lead" },
     commands = {
-      "boop config",
+      "boop set useQueueing <on|off>",
       "boop prequeue [on|off]",
       "boop lead <seconds>",
+      "boop set diagTimeoutSeconds <seconds>",
     },
     notes = {
-      "Use queueing is controlled under boop config.",
+      "Use queueing controls standard attack dispatch timing.",
       "Rage actions are still sent directly.",
     },
   },
   {
-    key = "prequeue",
-    title = "Prequeue",
-    aliases = { "prequeue", "lead" },
-    commands = {
-      "boop prequeue",
-      "boop prequeue on",
-      "boop prequeue off",
-      "boop lead <seconds>",
-    },
-    notes = {
-      "Prequeue schedules standard attack queueing before recovery.",
-      "Default lead is 1.00 seconds.",
-    },
-  },
-  {
-    key = "gold",
-    title = "Gold",
-    aliases = { "gold", "autogold", "loot" },
+    key = "loot",
+    title = "Loot & Import",
+    aliases = { "loot", "gold", "autogold", "pack", "goldpack", "import", "foxhunt" },
     commands = {
       "boop autogold",
       "boop autogold on",
@@ -2077,194 +2054,64 @@ local HELP_TOPICS = {
       "boop pack <container>",
       "boop pack off",
       "boop pack test",
+      "boop import foxhunt [merge|overwrite|dryrun]",
     },
     notes = {
       "Auto pickup uses sovereigns keyword.",
-      "In queueing mode this prepends get sovereigns/<attack>.",
-    },
-  },
-  {
-    key = "pack",
-    title = "Gold Pack",
-    aliases = { "pack", "goldpack" },
-    commands = {
-      "boop pack",
-      "boop pack <container>",
-      "boop pack off",
-      "boop pack test",
-    },
-    notes = {
-      "Sets optional auto-stash container for sovereigns.",
-    },
-  },
-  {
-    key = "import",
-    title = "Import",
-    aliases = { "import", "foxhunt" },
-    commands = {
-      "boop import foxhunt",
-      "boop import foxhunt merge",
-      "boop import foxhunt overwrite",
-      "boop import foxhunt dryrun",
-    },
-    notes = {
-      "merge: replace boop list data for imported areas, keep other boop areas.",
-      "overwrite: clear boop lists first, then import all areas.",
-      "dryrun: report counts only.",
+      "Queueing mode prepends get sovereigns before attack when pending.",
     },
   },
   {
     key = "party",
-    title = "Party",
-    aliases = { "party" },
+    title = "Party & Combos",
+    aliases = { "party", "combos", "combo" },
     commands = {
       "boop party",
       "boop party <class...>",
       "boop party clear",
-      "boop party depthswalker occultist silverdragon",
-    },
-    notes = {
-      "Your current class is auto-included and does not need to be listed.",
-      "boop combos with no args uses this roster + your current class.",
-    },
-  },
-  {
-    key = "combos",
-    title = "Combos",
-    aliases = { "combos", "combo" },
-    commands = {
       "boop combos",
       "boop combos <class...>",
-      "boop combos <class1>, <class2>, <class3>",
       "boop combos list",
-      "boop combos unnamable occultist bluedragon",
     },
     notes = {
       "No-arg mode uses boop party roster + your own class.",
       "Shows conditional rage synergies inferred from boop attack profiles.",
-      "Dragon aliases like bluedragon/reddragon/golddragon are supported.",
       "Use quotes for multi-word classes: \"air elemental lady\".",
     },
   },
   {
-    key = "diag",
-    title = "Diag",
-    aliases = { "diag", "diagnose" },
-    commands = {
-      "diag",
-    },
-    notes = {
-      "Clears queue, queues diagnose, and pauses boop attacks.",
-      "Attacking resumes after diagnose line + prompt.",
-    },
-  },
-  {
-    key = "trace",
-    title = "Trace",
-    aliases = { "trace" },
+    key = "diagnostics",
+    title = "Diagnostics",
+    aliases = { "diagnostics", "debug", "trace", "gag" },
     commands = {
       "boop trace",
-      "boop trace on",
-      "boop trace off",
-      "boop trace show [n]",
-      "boop trace clear",
-    },
-    notes = {
-      "Tracks recent boop decisions/commands for debugging.",
-    },
-  },
-  {
-    key = "gag",
-    title = "Gag",
-    aliases = { "gag" },
-    commands = {
+      "boop trace on|off|show [n]|clear",
       "boop gag",
-      "boop gag on",
-      "boop gag off",
-      "boop gag own on",
-      "boop gag others on",
-    },
-    notes = {
-      "Replaces matched attack lines with compact Who: What -> Victim output.",
-      "Own and others are separately toggleable.",
-    },
-  },
-  {
-    key = "setget",
-    title = "Set/Get",
-    aliases = { "setget", "set", "get" },
-    commands = {
-      "boop get",
-      "boop get <key>",
-      "boop set <key> <value>",
-      "boop set prequeue off",
-      "boop set lead 0.8",
-    },
-    notes = {},
-  },
-  {
-    key = "ih",
-    title = "IH",
-    aliases = { "ih" },
-    commands = {
-      "ih",
-      "boop ih",
-    },
-    notes = {
-      "Shows room items and denizens.",
-      "Denizens get clickable whitelist/blacklist actions.",
-    },
-  },
-  {
-    key = "aff",
-    title = "Afflictions",
-    aliases = { "aff", "afflictions" },
-    commands = {
-      "boop aff",
-      "boop aff add <a/b/c>",
-      "boop aff remove <a/b/c>",
-      "boop aff clear",
-    },
-    notes = {},
-  },
-  {
-    key = "trip",
-    title = "Trip/Stats",
-    aliases = { "trip", "stats" },
-    commands = {
-      "boop trip start",
-      "boop trip stop",
-    },
-    notes = {
-      "Tracks trip/session/lifetime gains from GMCP status updates.",
-    },
-  },
-  {
-    key = "debug",
-    title = "Debug",
-    aliases = { "debug" },
-    commands = {
+      "boop gag on|off|own|others|all",
       "boop debug",
       "boop debug attacks",
       "boop debug skills",
       "boop debug skills dump",
     },
-    notes = {},
+    notes = {
+      "Trace is best for decision-flow debugging while hunting.",
+    },
   },
   {
-    key = "config",
-    title = "Config",
-    aliases = { "config" },
+    key = "advanced",
+    title = "Advanced",
+    aliases = { "advanced", "set", "get", "setget", "trip", "stats" },
     commands = {
-      "boop config",
-      "boop config <number>",
-      "boop config <section>",
-      "boop config <section> <number>",
-      "boop config back",
-      "boop config home",
+      "boop get",
+      "boop get <key>",
+      "boop set <key> <value>",
+      "boop trip start",
+      "boop trip stop",
+      "boop set tempoRageWindowSeconds <seconds>",
+      "boop set tempoSqueezeEtaSeconds <seconds>",
     },
     notes = {
-      "First screen is section menu, then each section has numbered actions.",
+      "Use boop get to inspect all available config keys.",
     },
   },
 }
@@ -2314,7 +2161,7 @@ local function helpRenderHome()
   end
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop help <number>  (example: boop help 2)")
-  boop.util.echo("Type: boop help <topic>   (example: boop help whitelist)")
+  boop.util.echo("Type: boop help <topic>   (example: boop help targeting)")
 end
 
 local function helpRenderTopic(topic)
@@ -2389,11 +2236,10 @@ function boop.ui.home()
 end
 
 local CONFIG_SECTIONS = {
-  { id = 1, key = "combat", label = "Combat" },
-  { id = 2, key = "targeting", label = "Targeting" },
-  { id = 3, key = "queueing", label = "Queueing" },
-  { id = 4, key = "loot", label = "Loot" },
-  { id = 5, key = "debug", label = "Debug" },
+  { id = 1, key = "combat", label = "Hunting", aliases = { "combat", "hunting", "queueing", "queue" } },
+  { id = 2, key = "targeting", label = "Targeting", aliases = { "targeting", "targets" } },
+  { id = 3, key = "loot", label = "Loot", aliases = { "loot", "gold", "import" } },
+  { id = 4, key = "debug", label = "Diagnostics", aliases = { "debug", "diagnostics", "trace", "gag" } },
 }
 
 local function configSectionByKey(key)
@@ -2402,6 +2248,11 @@ local function configSectionByKey(key)
     if section.key == k then
       return section
     end
+    for _, alias in ipairs(section.aliases or {}) do
+      if boop.util.safeLower(boop.util.trim(alias or "")) == k then
+        return section
+      end
+    end
   end
   return nil
 end
@@ -2409,6 +2260,9 @@ end
 local function configSectionById(id)
   local n = tonumber(id)
   if not n then return nil end
+  if n == 5 then
+    return configSectionByKey("debug")
+  end
   for _, section in ipairs(CONFIG_SECTIONS) do
     if section.id == n then
       return section
@@ -2435,6 +2289,11 @@ local function configResolveSection(token)
     end
     if normalizeConfigToken(section.label) == normalized then
       return section
+    end
+    for _, alias in ipairs(section.aliases or {}) do
+      if normalizeConfigToken(alias) == normalized then
+        return section
+      end
     end
   end
   return nil
@@ -2484,7 +2343,7 @@ local function configRenderHome()
   end
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config <number>  (example: boop config 1)")
-  boop.util.echo("Type: boop config <name>    (example: boop config combat)")
+  boop.util.echo("Type: boop config <name>    (example: boop config hunting)")
 end
 
 local function configRenderCombatSection()
@@ -2492,35 +2351,55 @@ local function configRenderCombatSection()
   if cecho then
     local tempoWindow = tonumber(boop.config.tempoRageWindowSeconds) or 10
     local tempoEta = tonumber(boop.config.tempoSqueezeEtaSeconds) or 2.5
-    uiPrintHeader("configuration > combat")
+    local lead = tonumber(boop.config.attackLeadSeconds) or 0
+    local diagTimeout = tonumber(boop.config.diagTimeoutSeconds) or 0
+    uiPrintHeader("configuration > hunting")
     uiPrintSection("controls")
     uiPrintRow(1, "Hunting enabled", boolText(boop.config.enabled), boolColor(boop.config.enabled), function()
       boop.ui.config("1")
     end, "Toggle hunting enabled")
     uiPrintRow(2, "Rage mode", tostring(boop.config.attackMode or "simple"), "yellow", function()
       boop.ui.config("2")
-    end, "Prepare boop ragemode command")
+    end, "Open ragemode menu")
     uiPrintRow(3, "Run diag", "RUN", "yellow", function()
       boop.ui.config("3")
     end, "Queue diagnose and pause attacks")
-    uiPrintRow(4, string.format("Tempo window (%.1fs)", tempoWindow), "SET", "yellow", function()
+    uiPrintRow(4, "Use queueing", boolText(not not boop.config.useQueueing), boolColor(not not boop.config.useQueueing), function()
       boop.ui.config("4")
-    end, "Prepare boop set tempoRageWindowSeconds command")
-    uiPrintRow(5, string.format("Tempo squeeze ETA (%.2fs)", tempoEta), "SET", "yellow", function()
+    end, "Toggle queueing mode")
+    uiPrintRow(5, "Prequeue", boolText(not not boop.config.prequeueEnabled), boolColor(not not boop.config.prequeueEnabled), function()
       boop.ui.config("5")
+    end, "Toggle prequeue")
+    uiPrintRow(6, string.format("Attack lead (%.2fs)", lead), "SET", "yellow", function()
+      boop.ui.config("6")
+    end, "Prepare boop lead command")
+    uiPrintRow(7, string.format("Diag timeout (%.2fs)", diagTimeout), "SET", "yellow", function()
+      boop.ui.config("7")
+    end, "Prepare boop set diagtimeout command")
+    uiPrintRow(8, string.format("Tempo window (%.1fs)", tempoWindow), "SET", "yellow", function()
+      boop.ui.config("8")
+    end, "Prepare boop set tempoRageWindowSeconds command")
+    uiPrintRow(9, string.format("Tempo squeeze ETA (%.2fs)", tempoEta), "SET", "yellow", function()
+      boop.ui.config("9")
     end, "Prepare boop set tempoSqueezeEtaSeconds command")
     uiPrintFooter("Type: boop config <number> to change | boop config back | boop config home")
     return
   end
   local tempoWindow = tonumber(boop.config.tempoRageWindowSeconds) or 10
   local tempoEta = tonumber(boop.config.tempoSqueezeEtaSeconds) or 2.5
-  boop.util.echo("CONFIGURATION > Combat")
+  local lead = tonumber(boop.config.attackLeadSeconds) or 0
+  local diagTimeout = tonumber(boop.config.diagTimeoutSeconds) or 0
+  boop.util.echo("CONFIGURATION > Hunting")
   boop.util.echo("----------------------------------------")
   boop.util.echo("[1] Hunting enabled           [ " .. boolText(boop.config.enabled) .. " ]")
   boop.util.echo("[2] Rage mode                 [ " .. tostring(boop.config.attackMode or "simple") .. " ]")
   boop.util.echo("[3] Run diag                  [ RUN ]")
-  boop.util.echo(string.format("[4] Tempo window              [ %.1fs ]", tempoWindow))
-  boop.util.echo(string.format("[5] Tempo squeeze ETA         [ %.2fs ]", tempoEta))
+  boop.util.echo("[4] Use queueing              [ " .. boolText(not not boop.config.useQueueing) .. " ]")
+  boop.util.echo("[5] Prequeue                  [ " .. boolText(not not boop.config.prequeueEnabled) .. " ]")
+  boop.util.echo(string.format("[6] Attack lead               [ %.2fs ]", lead))
+  boop.util.echo(string.format("[7] Diag timeout              [ %.2fs ]", diagTimeout))
+  boop.util.echo(string.format("[8] Tempo window              [ %.1fs ]", tempoWindow))
+  boop.util.echo(string.format("[9] Tempo squeeze ETA         [ %.2fs ]", tempoEta))
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config <number> to change | boop config back | boop config home")
 end
@@ -2564,38 +2443,6 @@ local function configRenderTargetingSection()
   boop.util.echo("[5] Whitelist manager         [ OPEN ]")
   boop.util.echo("[6] Whitelist browse          [ OPEN ]")
   boop.util.echo("[7] Blacklist manager         [ OPEN ]")
-  boop.util.echo("----------------------------------------")
-  boop.util.echo("Type: boop config <number> to change | boop config back | boop config home")
-end
-
-local function configRenderQueueingSection()
-  configSetScreen("queueing")
-  local lead = tonumber(boop.config.attackLeadSeconds) or 0
-  local diagTimeout = tonumber(boop.config.diagTimeoutSeconds) or 0
-  if cecho then
-    uiPrintHeader("configuration > queueing")
-    uiPrintSection("queue controls")
-    uiPrintRow(1, "Use queueing", boolText(not not boop.config.useQueueing), boolColor(not not boop.config.useQueueing), function()
-      boop.ui.config("1")
-    end, "Toggle queueing mode")
-    uiPrintRow(2, "Prequeue", boolText(not not boop.config.prequeueEnabled), boolColor(not not boop.config.prequeueEnabled), function()
-      boop.ui.config("2")
-    end, "Toggle prequeue")
-    uiPrintRow(3, string.format("Attack lead (%.2fs)", lead), "SET", "yellow", function()
-      boop.ui.config("3")
-    end, "Prepare boop lead command")
-    uiPrintRow(4, string.format("Diag timeout (%.2fs)", diagTimeout), "SET", "yellow", function()
-      boop.ui.config("4")
-    end, "Prepare boop set diagtimeout command")
-    uiPrintFooter("Type: boop config <number> to change | boop config back | boop config home")
-    return
-  end
-  boop.util.echo("CONFIGURATION > Queueing")
-  boop.util.echo("----------------------------------------")
-  boop.util.echo("[1] Use queueing              [ " .. boolText(not not boop.config.useQueueing) .. " ]")
-  boop.util.echo("[2] Prequeue                  [ " .. boolText(not not boop.config.prequeueEnabled) .. " ]")
-  boop.util.echo(string.format("[3] Attack lead               [ %.2fs ]", lead))
-  boop.util.echo(string.format("[4] Diag timeout              [ %.2fs ]", diagTimeout))
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config <number> to change | boop config back | boop config home")
 end
@@ -2679,10 +2526,6 @@ local function configRenderSection(key)
     configRenderTargetingSection()
     return
   end
-  if key == "queueing" then
-    configRenderQueueingSection()
-    return
-  end
   if key == "loot" then
     configRenderLootSection()
     return
@@ -2703,15 +2546,27 @@ local function configApplySectionOption(sectionKey, option)
       boop.ui.setEnabled(not boop.config.enabled, true)
       return true
     elseif n == 2 then
-      uiSetCommandLine("boop ragemode ")
+      boop.ui.showRageModeMenu()
       return true
     elseif n == 3 then
       boop.ui.diag()
       return true
     elseif n == 4 then
-      uiSetCommandLine("boop set tempoRageWindowSeconds ")
+      boop.ui.toggleConfigBool("useQueueing", true)
       return true
     elseif n == 5 then
+      boop.ui.setPrequeueEnabled(not boop.config.prequeueEnabled)
+      return true
+    elseif n == 6 then
+      uiSetCommandLine("boop lead ")
+      return true
+    elseif n == 7 then
+      uiSetCommandLine("boop set diagtimeout ")
+      return true
+    elseif n == 8 then
+      uiSetCommandLine("boop set tempoRageWindowSeconds ")
+      return true
+    elseif n == 9 then
       uiSetCommandLine("boop set tempoSqueezeEtaSeconds ")
       return true
     end
@@ -2739,23 +2594,6 @@ local function configApplySectionOption(sectionKey, option)
       return true
     elseif n == 7 then
       boop.targets.displayBlacklist()
-      return true
-    end
-    return false
-  end
-
-  if sectionKey == "queueing" then
-    if n == 1 then
-      boop.ui.toggleConfigBool("useQueueing", true)
-      return true
-    elseif n == 2 then
-      boop.ui.setPrequeueEnabled(not boop.config.prequeueEnabled)
-      return true
-    elseif n == 3 then
-      uiSetCommandLine("boop lead ")
-      return true
-    elseif n == 4 then
-      uiSetCommandLine("boop set diagtimeout ")
       return true
     end
     return false

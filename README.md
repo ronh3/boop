@@ -13,7 +13,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop` (current settings/status dashboard)
 - `bh` (toggle on/off)
 - `boop on` / `boop off`
-- `boop help` / `boop help <number|topic|home>` (examples: `boop help 2`, `boop help whitelist`)
+- `boop help` / `boop help <number|topic|home>` (examples: `boop help 2`, `boop help targeting`)
 - `boop status` (current settings/status dashboard)
 - `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow)
 - `boop party` / `boop party <class...>` / `boop party clear` (save party class roster; your own class is auto-included)
@@ -82,6 +82,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop ragemode hybrid` uses the same conditional/priming logic, but falls back to normal damage when reserve logic would otherwise hold.
 - `boop ragemode tempo` is aff-first, but can spend on damage when rolling rage gain predicts quick recovery (10s window).
 - Tune tempo behavior with `boop set tempoRageWindowSeconds <seconds>` and `boop set tempoSqueezeEtaSeconds <seconds>`.
+- `boop help` and `boop config` are streamlined into fewer top-level sections for faster navigation.
 - `boop targeting` and `boop ragemode` now show current value + usage when called without arguments, and clear errors for invalid values.
 - Targeting now supports `retargetOnPriority` (default `on`); set it `off` to keep your current target instead of swapping when higher-priority mobs enter.
 - Command feedback now uses consistent tags for quick scanning: `[OK]`, `[INFO]`, `[WARN]`, `[ERR]`.
