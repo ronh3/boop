@@ -185,6 +185,31 @@ local function renderStatusDashboard()
   boop.util.echo("  gagOthersAttacks: " .. tostring(boop.config.gagOthersAttacks))
 end
 
+local function renderStateSummary()
+  local class = currentClass()
+  local targetingMode = tostring(boop.config.targetingMode or "whitelist")
+  local rageMode = tostring(boop.config.attackMode or "simple")
+
+  if cecho then
+    uiPrintHeader("boop > state")
+    uiPrintSection("core")
+    uiPrintRow(1, "Enabled", boolText(boop.config.enabled), boolColor(boop.config.enabled))
+    uiPrintRow(2, "Class", tostring(class), "cyan")
+    uiPrintRow(3, "Targeting mode", targetingMode, "cyan")
+    uiPrintRow(4, "Ragemode", rageMode, "cyan")
+    uiPrintFooter("Type: boop status | boop config")
+    return
+  end
+
+  boop.util.echo(string.format(
+    "state | enabled: %s | class: %s | targeting: %s | ragemode: %s",
+    boop.config.enabled and "on" or "off",
+    tostring(class),
+    targetingMode,
+    rageMode
+  ))
+end
+
 function boop.ui.status(context)
   if boop.util.safeLower(boop.util.trim(context or "")) == "status" then
     renderStatusDashboard()
@@ -347,7 +372,7 @@ function boop.ui.setEnabled(value, quiet)
     boop.db.saveConfig("enabled", boop.config.enabled)
   end
   if not quiet then
-    boop.ui.status("boop")
+    renderStateSummary()
   end
 end
 

@@ -1,0 +1,90 @@
+[
+  {
+    "name": "Shaman Cesaret",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) gestures at (.+), whose eyes begin to fill with bloodlust and all thoughts of defense flee from \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Warmth spreads up your arm as (you) gesture at (.+), filling \\w+ with foolish bloodlust\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman Cesaret Off",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^The spirit of the foolhardy no longer possesses (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman Korkma",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) call upon the spirit of Korkma, sending \\w+ many-tentacled form to torment (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) grows still for a moment, then flings \\w+ arms out toward (.+)\\. You catch a glimpse of writhing tentacles flying towards .+ as \\w+ begins to flee in terror\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman Korkma Off",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^The terrible visage of Korkma no longer torments (.+) and \\w+ ceases fleeing\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

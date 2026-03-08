@@ -1,0 +1,334 @@
+[
+  {
+    "name": "Psion Battlerage Pulverise",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) weave a great warhammer into being and with an overhand swing obliterate the magical shield surrounding (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^A warhammer comes into being in (\\w+)'s hands, and with an almighty overhand swing \\w+ annihilates the magical shield surrounding (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Backhand",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) deliver a savage backhanded blow with a translucent mace to the face of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) delivers a backhanded blow to the face of (.+) with a translucent mace\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Charge",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": " ^Charging forward, (you) drive a translucent spear into (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) rushes at (.+), driving a translucent spear deep into \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Cleave",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) bring a translucent battleaxe in a powerful overhead blow down upon (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) brings a translucent battleaxe down in a powerful overhanded blow upon (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Deathblow",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Striking like coiled lightning, (you)r hand flashes out and lays open the throat of (.+) with a translucent dagger in a spray of crimson\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Almost too swift to perceive, (\\w+) lashes out with a translucent dagger, tracing a bloody line across the throat of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Exsanguinate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Stepping forward, (you) brutally drive a translucent sword into (.+)'s guts, ripping it free in a spray of crimson\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) drives a translucent sword into the guts of (.+) with a brutal thrust, ripping it free in a spray of crimson\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Flurry",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) rushes at (.+), slashing at \\w+ \\w+ times? in a flurry of lethal motion\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) rush at (.+), unleashing a flurry of .+ blows? with your blade to rend \\w+ asunder\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Hamstring",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) duck low, your blade slicing into the \\w+ leg of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) ducks low, \\w+ blade slicing into the \\w+ leg of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Lightsteal",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) slashes a translucent dagger across the eyes of (.+) in a lightning\\-fast motion\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) slash a translucent dagger across the eyes of (.+), viciously robbing \\w+ of sight\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Overhand",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) bring a translucent mace around in a savage overhand strike, smashing it into the face of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) brings a translucent mace around in a savage overhand strike, smashing it into the head of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Puncture",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^With a lightning\\-fast jab of your blade (you) puncture the cluster of nerves just below the \\w+ shoulder of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) lashes out with lightning speed, \\w+ blade driving into (.+) just beneath \\w+ \\w+ shoulder\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Sever",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^With a precise strike (you) sever the muscles in the \\w+ arm of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) severs the muscles in the \\w+ arm of (.+) with a precise blow of \\w+ a translucent sword\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Shatter",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) reach out with grim intent, seeking to shatter the psyche of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) clenches \\w+ fists and glares in the direction of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Psion General Splinter",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) drive a spike of psychic force straight through the shield surrounding (.+), causing it to explode into translucent shards\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

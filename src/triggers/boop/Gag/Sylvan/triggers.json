@@ -1,0 +1,174 @@
+[
+  {
+    "name": "Sylvan Battlerage Leechroot",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A deadly root flies from (\\w+)'?s? hand and burrows into (.+)'s flesh",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan Battlerage Pierce",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A thorny vine reaches out from (\\w+) and pierces through (.+)'s translucent shield, causing it to fade\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan Battlerage Rockshot",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) forms? a small pebble, then channels? air to fling it violently at (.+)'s head, causing \\w+ to look dazed\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan Battlerage Sandstorm",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(.+) stumbles about in fear and flails at \\w+ head as (\\w+) summons? a small sandstorm around it\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan Battlerage Stonevine",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) summons? a great vine to wrap itself around (.+), then channels? the element of earth into it, causing it to become rock hard and shatter as it constricts around .+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan Battlerage Torrent",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(.+) coughs and splutters as (\\w+) channels? a gout of water at \\w+ face\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan General Shear",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You summon a blade of wind to shear at the magical shield of (.+), but find no such barrier\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You summon a blade of condensed air and shear cleanly through the protective shield surrounding (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^\\w+ summons a blade of condensed air and shears cleanly through the magical shield surrounding (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sylvan General Thornrend",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) command the razor-edged thorny vines around you to lash out and rend the flesh of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The thorny vines of the Viridian (\\w+) lash out and rip into (.+)'s flesh\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

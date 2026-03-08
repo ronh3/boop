@@ -1,0 +1,90 @@
+[
+  {
+    "name": "Depthswalker Boinad",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Locking \\w+ gaze to that of (.+), (\\w+) speaks a terrible word of power\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Locking your gaze to that of (.+), (you) (e|i)ntone, 'Boinad'\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker Boinad Off",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(.+) glares hatefully at \\w+, becoming visibly enraged\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker Curse",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) fixes \\w+ gaze upon (.+), who suddenly seems to be moving in slow motion\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Bending (your) formidable will upon (.+), you slow the passage of time about \\w+ to a crawl\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker Curse Off",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(.+) abruptly begins to move at normal speed again\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

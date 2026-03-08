@@ -1,0 +1,46 @@
+[
+  {
+    "name": "Alchemist Cadmium",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) sketch a bisected triangle in the air and direct the energy of cadmium to pierce (.+)'s skin, weakening \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) sketches a bisected triangle in the air in the direction of (.+), who begins to slump down as if \\w+ has been weakened\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Alchemist Hypnotic",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Taking care to avoid the fumes, (\\w+) quickly forms? the hypnotic chemical and throws? it into (.+)'s face\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

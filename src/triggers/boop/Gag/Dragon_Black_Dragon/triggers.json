@@ -1,0 +1,150 @@
+[
+  {
+    "name": "Dragon Black Dragon Battlerage Corrode",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) opens? \\w+ gigantic maw and spews? acid on (.+)\\. \\w+ (dodges|is)",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Black Dragon Battlerage Dissolve",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) bathes? (.+)'s translucent shield in \\w+ noxious breath, dissolving it\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Black Dragon Battlerage Dragonfear",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) opens? \\w+ enormous maw and lets? loose a mighty roar at (.+), causing \\w+ to quail in fear\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Black Dragon Battlerage Dragonspit",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) spits? a stream of acidic venom at (.+) who writhes in agony as the spittle seeps into \\w+ skin\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Black Dragon Battlerage Dragonsting",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) swings \\w+ mighty tail around and stabs (.+) with an acid-covered spine\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) swing your mighty tail around, stabbing (.+) with an acid-covered spine\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Black Dragon Battlerage Override",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) barrels? into (.+) and knocks? \\w+ to the ground before stomping over \\w+ prone form\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Black Dragon General Blast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Opening \\w+ maw, (\\w+) belches out a tremendous stream of eradicating acid, blasting the flesh from (.+)'s very bones\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Opening your maw, (you) force out a tremendous stream of acid, blasting the flesh from the very bones of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

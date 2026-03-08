@@ -1,5 +1,11 @@
 [
   {
+    "name": "Afflictions",
+    "isActive": "yes",
+    "isFolder": "yes",
+    "script": ""
+  },
+  {
     "name": "Hound Maul Not Ready",
     "isActive": "yes",
     "isFolder": "no",
@@ -117,12 +123,6 @@
         "type": "regex"
       }
     ],
-    "script": ""
-  },
-  {
-    "name": "Afflictions",
-    "isActive": "yes",
-    "isFolder": "yes",
     "script": ""
   },
   {

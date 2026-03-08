@@ -1,0 +1,46 @@
+[
+  {
+    "name": "Dragon Black Dragon Battlerage Dissolve",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) bathes? (.+)'s translucent shield in \\w+ noxious breath, dissolving it\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Black Dragon General Blast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Opening \\w+ maw, (\\w+) belches out a tremendous stream of eradicating acid, blasting the flesh from (.+)'s very bones\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Opening your maw, (you) force out a tremendous stream of acid, blasting the flesh from the very bones of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

@@ -1,0 +1,194 @@
+[
+  {
+    "name": "Shaman Battlerage Cesaret",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) gestures at (.+), whose eyes begin to fill with bloodlust and all thoughts of defense flee from \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Warmth spreads up your arm as (you) gesture at (.+), filling \\w+ with foolish bloodlust\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman Battlerage Corruption",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) points? an imperious finger at (.+)\\. \\w+ flesh blackens and sloughs off\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman Battlerage Haemorrhage",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) points? an imperious finger at (.+)\\. Blood spurts out of .+'s eyes, ears, nose, and mouth\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman Battlerage Korkma",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) call upon the spirit of Korkma, sending \\w+ many-tentacled form to torment (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) grows still for a moment, then flings \\w+ arms out toward (.+)\\. You catch a glimpse of writhing tentacles flying towards .+ as \\w+ begins to flee in terror\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman Battlerage Vulnerability",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) points? an imperious finger at (.+) and \\w+ translucent shield fades away\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman Battlerage Vurus",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) call upon the spirit of Vurus and form an ethereal dagger in your hand. Dashing behind the oblivious form of (.+), you plant the dagger in \\w+ back\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) holds one hand out to \\w+ side\\. As an ethereal dagger appears there, \\w+ dashes behind the oblivious form of (.+) and plants the dagger in \\w+ back\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) call upon the spirit of Vurus and form an ethereal dagger in your hand. Dashing behind (.+), you plant the dagger in \\w+ back\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) holds one hand out to \\w+ side\\. As an ethereal dagger appears there, \\w+ dashes behind (.+) and plants the dagger in \\w+ back\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) call upon the spirit of Vurus and form an ethereal dagger in your hand\\. You dash behind (.+), but are only able to strike a glancing blow as \\w+ dodges aside\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) holds one hand out to \\w+ side\\. As an ethereal dagger appears there, \\w+ dashes behind (.+) but is only able to deliver a glancing blow\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman General Bleed",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) points? an imperious finger at (.+) and blood begins to flow from \\w+ pores\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Shaman General Roar",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A terrible cold fills your chest, constricting your lungs\\. (You)r mouth falls open and an unearthly, terrible roar emanates forth at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The mouth of (\\w+) falls open as \\w+ eyes grow unfocused, and \\w+ directs a terrible, unearthly roar at (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

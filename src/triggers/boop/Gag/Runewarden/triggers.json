@@ -1,0 +1,130 @@
+[
+  {
+    "name": "Runewarden Battlerage Bulwark",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "The runes on your armour flare brightly as you adopt a defensive stance.",
+        "type": "exactMatch"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Runewarden Battlerage Collide",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) charges? at (.+), slamming into \\w+ and throwing \\w+ back\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Runewarden Battlerage Etch",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) traces? the outline of a rune in the air with .+\\. The edges catch fire as it hurtles towards (.+) and explodes",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) traces? the outline of a rune in the air with .+\\. The edges catch fire as it hurtles towards (.+), clipping",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) traces? the outline of a rune in the air with .+\\. The edges catch fire as it hurtles towards (.+) and \\w+ is unable",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Runewarden Battlerage Fragment",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) strikes? at (.+)'s translucent shield with (.+), drawing the outline of a rough rune that detonates, consuming the shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Runewarden Battlerage Onslaught",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) unleashe?s? a ferocious onslaught on (.+), relentlessly pounding \\w+ with .+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Runewarden Battlerage Safeguard",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) quickly sketch a shimmering rune in the air and send it to settle around \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

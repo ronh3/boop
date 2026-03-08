@@ -1,0 +1,154 @@
+[
+  {
+    "name": "Occultist Battlerage Chaosgate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) cups? \\w+ hands together and flings? them outwards,? sending a spiral of shimmering portals into (.+)'s body\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Occultist Battlerage Fluctuate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) concentrates? intently on (.+) and watche?s? as grotesque mutations sprout all over .+ body\\.",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) concentrates? intently on (.+), (terror|pain)",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) concentrates? intently on (.+)\\. (Terror|Pain)",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Occultist Battlerage Harry",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Raising your hands in the air, (you) summon horrific visions to torment (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) raises \\w+ hands in the air and summons horrific visions to torment (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Occultist Battlerage Ruin",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) gestures? in a slashing motion at (.+), and small tears form in \\w+ translucent shield as chaos rips it apart\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Occultist Battlerage Stagnate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) waves? one arm at (.+), causing a small time rift to form around \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Occultist Battlerage Temperance",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Multicoloured rays burst forth from (.+) outstretched hands and strike (.+) in the head",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Occultist General Warp",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) reache?s? out and clenche?s? a fist before (.+), who screams and doubles over in agony as \\w+ skin suddenly bubbles with gangrenous growths\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

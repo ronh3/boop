@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Elemental Water Elemental Battlerage Aquahammer",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) form a giant hammer out of water and bring it crashing down upon the magical shield surrounding (.+), destroying it\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^A giant hammer of contained water coalesces before (\\w+), descending upon the magical shield surro?unding (.+) and destroying it completely\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Water Elemental General Blade",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) conjures? a blade of ice and sends? it to lacerate the flesh of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) conjures a blade of ice and sends it to slash at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) conjure a blade of ice and drive it straight through the magical shield surrounding (.+), causing it to explode in a shower of prismatic shards\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) conjures a blade of ice and drives it straight through the translucent shield surrounding (.+), the protection exploding in a shower of prismatic shards\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

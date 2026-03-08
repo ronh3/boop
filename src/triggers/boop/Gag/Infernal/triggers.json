@@ -1,0 +1,130 @@
+[
+  {
+    "name": "Infernal Battlerage Deathlink",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You gesture at (\\w+) and a fragile ethereal thread forms into existence between you\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Infernal Battlerage Hellstrike",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Dark fire courses down (.+?) as (\\w+) strikes? (.+) with a solid blow\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Dark fire courses down (.+?) as (\\w+) strikes? (.+), (absorbing|easily)",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Infernal Battlerage Ravage",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A black tendril of mist coalesces from (\\w+)'?s? hand and enters (.+)'s (brain|head), causing \\w+ to flinch in pain\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Infernal Battlerage Shiver",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Dark energy wreathes .+ as (\\w+) slashe?s? at (.+) with it, causing \\w+ translucent shield to crumble\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Infernal Battlerage Soulshield",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "A miasma of black flames springs up around you.",
+        "type": "exactMatch"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Infernal Battlerage Spike",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) leap upon (.+), forming putrid spikes on your armour that tear into \\w+ flesh\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) forms putrid spikes on \\w+ armour before leaping upon (.+), tearing into \\w+ flesh\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

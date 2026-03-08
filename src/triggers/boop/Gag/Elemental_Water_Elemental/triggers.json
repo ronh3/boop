@@ -1,0 +1,194 @@
+[
+  {
+    "name": "Elemental Water Elemental Battlerage Aquahammer",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) form a giant hammer out of water and bring it crashing down upon the magical shield surrounding (.+), destroying it\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^A giant hammer of contained water coalesces before (\\w+), descending upon the magical shield surro?unding (.+) and destroying it completely\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Water Elemental Battlerage Dehydrate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) dehydrate the moisture from (.+), leaving \\w+ swaying and unsteady\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The amorphous form of (\\w+) appears to grow larger as (.+) seems somehow diminished and frailer\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Water Elemental Battlerage Icicles",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) manifest icicles from the vapour surrounding you, casting them in a deadly volley at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^An array of needle-sharp icicles coalesce in the grasp of (\\w+), and with a casual flick \\w+ sends them shooting at (.+) in a deadly volley\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Water Elemental Battlerage Needlerain",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) call down a rain of needle-sharp spears of ice, sending them plunging into the body of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The amorphous form of (\\w+) ripples as a hail of needle-sharp spears of ice fall like rain upon (.+), repeatedly impaling \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Water Elemental Battlerage Swell",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) begin to draw the fluid from (.+), \\w+ vitality draining even as your form becomes greater\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The amorphous form of (\\w+) seems to grow ever larger as (.+) becomes diminished\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Water Elemental Battlerage Waterfall",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) bring down a deluge upon (.+), \\w+ clumsy attempts to evade your retribution not availing \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The amorphous form of (\\w+) roils as a huge deluge of water and ice hammers down upon (.+), \\w+ clumsy attempts to jump back from \\w+ oncoming fate not availing \\w+ at all\\.",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You bring down a deluge upon (.+), but \\w+ leaps back out of the range, suffering little more than a faceful of icy spray\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The amorphous form of (\\w+) roils as a huge deluge of ice and water falls towards (.+), but \\w+ leaps back out of range, suffering little more than a faceful of icy spray\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The amorphous form of (\\w+) roils as a huge deluge of water and ice hammers down upon the sluggish and unresponsive form of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) bring down a deluge upon (.+), \\w+ sluggish and unresponsive form having no hope of evading your retribution\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Water Elemental General Blade",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) conjures? a blade of ice and sends? it to lacerate the flesh of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) conjures a blade of ice and sends it to slash at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) conjure a blade of ice and drive it straight through the magical shield surrounding (.+), causing it to explode in a shower of prismatic shards\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) conjures a blade of ice and drives it straight through the translucent shield surrounding (.+), the protection exploding in a shower of prismatic shards\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

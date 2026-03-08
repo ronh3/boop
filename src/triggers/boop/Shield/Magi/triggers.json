@@ -1,0 +1,122 @@
+[
+  {
+    "name": "Magi Battlerage Disintegrate",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) summons? a whirlwind of flame around (.+) which consumes \\w+ translucent shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Magi General Erode",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) casts? a spell of erosion at (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Magi General Firelash",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) forms? a lash of fire, and sends? it to scorch the flesh of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Magi General Staffcast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) points? .+ at (.+) and \\w+ screams in pain as \\w+ skin begins to freeze and crack\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) points? .+ at (.+), and a stream of bile-like acid streams out, covering \\w+",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) point .+ at (.+), and cause a bolt of lightning to cascade out and roar screaming into \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^As (\\w+) points? .+ at (.+), a scintilla of bright, burning light shoots out, striking \\w+ with focused elemental power\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) points .+ at (.+), and a bolt of lightning cascades out and roars, screaming, into \\w+ body\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Magi General Stormhammer",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^The sky grows dark as (\\w+) calls upon powerful magics\\. Raising \\w+ hands balefully, \\w+ causes lightning bolts, the hammer of the storm, to shoot from \\w+ hands and slam into (.+)\\.",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The sky above grows dark as (you) call upon powerful magics\\. Raising your hands balefully, you causelightning bolts, the hammer of the storm, to shoot from your hands and slam into (.+)\\.",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

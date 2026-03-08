@@ -1,0 +1,154 @@
+[
+  {
+    "name": "Dragon Red Dragon Battlerage Dragonblaze",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) breathes? a long torrent of flame at (.+)\\, igniting \\w+ skin\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Red Dragon Battlerage Dragontaunt",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) slaps? \\w+ tail on the ground while growling at (.+)\\, forcing \\w+ to recklessly attack\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) slaps? \\w+ tail on the ground while growling at (.+)\\, forcing \\w+ to attack recklessly\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Red Dragon Battlerage Flamebath",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) blasts? (.+) with a bath of flame",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Red Dragon Battlerage Melt",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) breathe a white\\-hot blast of flame at (.+) and burn away \\w+ translucent shield\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) breathes a white\\-hot blast of flame at (.+) and burns away \\w+ translucent shield\\.$",
+        "type": "startOfLine"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Red Dragon Battlerage Overwhelm",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) charge quickly at (.+), throwing your mighty form into \\w+ and sending \\w+ staggering back\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) charges quickly at (.+), throwing \\w+ massive form at \\w+ target in a mighty crash\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Red Dragon Battlerage Scorch",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) blackens? (.+)'s flesh with a quick blast of flame, slowing \\w+ healing process\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon Red Dragon General Blast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) rears? back \\w+ head, and with a keening roar unleashe?s? incandescent hell upon (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

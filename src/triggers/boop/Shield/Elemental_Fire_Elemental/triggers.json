@@ -1,0 +1,74 @@
+[
+  {
+    "name": "Elemental Fire Elemental Battlerage Wires",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Raising a hand, (you) send forth thin wires of flame, their searing filaments tearing through the magical shield surrounding (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Fine? filaments of flame leap from the upraised hand of (\\w+), tearing through the translucent shield that protects (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Fire Elemental General Flamewhip",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A whip of liquid flame coalesces in (you)r hand, and with a savage lash you send it to scourge the flesh of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^A whip of flame coalesces in the hand of (\\w+), which \\w+ brings around in a savage lashing motion to scourge the flesh of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Elemental Fire Elemental General Vapourise",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^The magical shield surrounding (.+) suddenly shatters for no visible reason, flames spontaneously igniting upon \\w+ skin\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^You superheat the air surrounding (.+), \\w+ magical shield shattering under the onslaught and \\w+ skin catching aflame\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

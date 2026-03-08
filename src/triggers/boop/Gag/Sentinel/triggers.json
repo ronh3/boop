@@ -1,0 +1,222 @@
+[
+  {
+    "name": "Sentinel Battlerage Bore",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) thrusts? forward with .+, piercing through (.+)'s shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel Battlerage Goad",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) cower before (.+), causing \\w+ to recklessly attack you with no regard for\\w+ own safety\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) cowers before (.+), causing \\w+ to recklessly attack with no regard for \\w+ own safety\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel Battlerage Pester",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) gives out a chittering call and a small squirrel suddenly appears and leaps at (.+), biting \\w+ and continuing to scamper around \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) give out a chittering call and a small squirrel appears and leaps at (.+) and bites \\w+, continuing to scamper around \\w+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel Battlerage Skewer",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) leaps high into the air, .+ held high above \\w+ head as \\w+ lands on top of (.+) and skewers \\w+ with the weapon\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) leap high into the air, .+ held high above your head as you land on top of (.+), skewering \\w+ with your weapon\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel Battlerage Swarm",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) utter a loud, buzzing call, and a swarm of wasps rushes in but they do little more than annoy (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) utters a loud, buzzing call and a swarm of wasps rushes in but they do little more than annoy (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) utters a loud, buzzing call and a swarm of wasps rushes in, swarming over (.+)'s slowed form and stinging \\w+ flesh\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) utter a loud, buzzing call and a swarm of wasps rushes in, swarming over (.+)'s slowed form and stinging \\w+ flesh\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) utters a loud, buzzing call and a swarm of wasps rushes in, swarming over (.+)'s form and stinging \\w+slow\\-healing flesh\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) utter a loud, buzzing call and a swarm of wasps rushes in, swarming over (.+)'s form and stinging \\w+ slow\\-healing flesh\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel Battlerage Tame",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Making soothing noises, (\\w+) carefully approaches (.+), temporarily charming \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Making soothing noises, (you) carefully approach (.+), assuring \\w+ that you are afriend and urging \\w+ to fight for you\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel General Maul",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) spring forwards onto (.+), and maul \\w+ viciously\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) leaps forwards onto (.+) and mauls \\w+ viciously\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel General Rive",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) thrusts? .+ towards (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel General Thrust",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) deftly thrusts? .+ into (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

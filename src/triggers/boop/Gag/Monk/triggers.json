@@ -1,0 +1,706 @@
+[
+  {
+    "name": "Monk Battlerage Mindblast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Marshalling (you)r psychic reserves, you hurl them in a blast at (.+?)\\.",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) focuses intently on (.+) and a visible wave of force sweeps",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Marshalling (you)r psychic reserves, you hurl them in a blast at (.+), clamping",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk Battlerage Ripplestrike",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) quickly strikes? (.+) with the tips of \\w+ fingers",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk Battlerage Scramble",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) rummage quickly through (.+)'s mind, finding the link to fine motor control before exerting a small amount of psychic force and deadening it\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+)'s eyes glaze over momentarily as \\w+ focuses on (.+), who begins to stumble about clumsily\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk Battlerage Spinningbackfist",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) spins? and strikes? (.+) with the back of \\w+ fist\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk Battlerage Splinterkick",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) focuse?s? \\w+ rage in a single powerful sidekick, shattering (.+)'s translucent shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk Battlerage Tornadokick",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) leaps? and spins? in the air, striking (.+) repeatedly with an outstretched foot\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Mind Crush",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) reach out with your mind, tightening its grip around (.+) to crush the life out of \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(.+) clutches \\w+ sides and howls in pain\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Dart",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Sharply extending out your arms in front of you, (you) deliver a lightning-fast thrust to the .+? of (.+) with .+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Spinning on one foot (you) bring .+ around in a lightning fast thrust at the .+? of (.+)\\.$ ",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Snapping \\w+ arms out in front of her, (\\w+) delivers a lightning-fast thrust to the .+? of (.+) with .+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Spinning on one foot (\\w+) brings .+ around in a lightning-fast thrust at the .+? of (.+)\\,$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Flashheel",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Snapping \\w+ leg out to its full extent, (\\w+) drives? \\w+ heel into the \\w+ knee of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Form Change",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "You spin your staff in the opening sequence of the form of Tykonos, snapping into a ready stance.",
+        "type": "exactMatch"
+      },
+      {
+        "pattern": "Twirling your staff, you sink into the calm required for the form of Willows Shaken by the Wind.",
+        "type": "exactMatch"
+      },
+      {
+        "pattern": "Dropping into a lower stance, you snap your weapon into an offensive position, tensing your muscles in preparation for the form of Willows in Rain Storm.",
+        "type": "exactMatch"
+      },
+      {
+        "pattern": "Rising onto the balls of your feet, you prepare to begin the deadly form of the Live Oak.",
+        "type": "exactMatch"
+      },
+      {
+        "pattern": "You let your eyes fall closed and instinct guide you as you flow into the form of Gaital.",
+        "type": "exactMatch"
+      },
+      {
+        "pattern": "You allow your kai to flow through you, circulating throughout your limbs and down your weapon in preparation to begin the form of the Unrelenting Storm.",
+        "type": "exactMatch"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Frontkick",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) lash out with a straight kick at the \\w+ shoulder of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) lashes out with a straight kick at (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Hiraku",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Bracing \\w+ back foot, (\\w+) lunges? forward with .+ at the face of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Stepping forward, (\\w+) drives? .+ at the face of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Hiru",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Whirling .+ in a tight arc, (you) bring the weapon around to crash into the side of the head of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Snapping back into a ready stance, (you) whirl .+ in a long sweep at the head of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) whips .+ in a tight arc, sweeping it at the head of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Snapping back into a ready stance, (\\w+) whips .+ in a wide arc at the head of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Jinzuku",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Stepping to the side of (.+), (you) drive .+ at \\w+ kidneys\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) flow around (.+), .+ lashing out in a swift strike at \\w+ kidneys\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Stepping to the side of (.+), (\\w+) drives .+ into \\w+ vulnerable kidneys\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Flowing around (.+) like water, (\\w+) lashes out with a swift thrust of .+ at \\w+ kidneys\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Kata",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^You are now maintaining a kata chain of (\\d+) actions\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Kuro",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Dropping into a lower stance, (you) sweep .+ at the \\w+ thigh of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Falling back into a low crouch, (you) lash out with a swift strike at the \\w+ thigh of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Dropping back into a low crouch, (\\w+) whips .+ in a swift strike at the \\w+ thigh of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Dropping into a lower stance, (\\w+) sweeps .+ at the \\w+thigh of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Livestrike",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Lunging forward, (you) drive the end of .+ viciously into the solar plexus of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Lunging off \\w+ back foot, (\\w+) viciously drives .+ into the solar plexus of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Needle",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^With pinpoint precision, (you) drive .+ at the throat of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Reversing your grip on .+, (you) drive the top of the weapon into the throat of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^With pinpoint precision, (\\w+) thrusts .+ at the throat of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Reversing \\w+ grip on .+, (\\w+) drives the top of the weapo ninto the throat of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Nervestrike",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) whips? .+ at the side of (.+)'s neck\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Risingkick",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) drive your foot up in a rising kick at the \\w+ of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) lashes out with a rising kick at the \\w+ of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Ruku",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) whip .+ at (.+) in a controlled arc, bringing its length to crack against .+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) spin a full rotation, bringing .+ around in a blur of motion to smash into the .+ of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) whips .+ in a controlled arc, bringing the length of the weapon to crash into the .+ of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) spins a full rotation, bringing .+ around in a blur to crash into the .+ of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Shatter",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Bracing \\w+ feet, (\\w+) drives? .+ towards (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Spinkick",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Whirling around, (\\w+) brings? the ball of \\w+ foot crashing into the temple of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Shikudo Thrust",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Stepping forward, (you) drive the end of .+ into the .+? of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Continuing your kata, (you) spin .+ in your hands and drive it in a sharp thrust towards the .+? of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Stepping forward, (\\w+) drives the end of .+ into the .+? of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Continuing \\w+ kata, (\\w+) spins .+ in \\w+ hands and drives theweapon into the .+? of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Tekura Kicks",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) pumps? out at (.+) with a powerful side kick\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) lets? fly at (.+) with a snap kick\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) spins? into the air and throws? a whirlwind kick towards (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) kicks? \\w+ leg high and scythes? downwards at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) hurls? \\w+ towards (.+) with a lightning-fast moon kick\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Tekura Punches",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) launche?s? a powerful uppercut at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) forms? a spear hand and stabs? out towards (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) balls? up one fist and hammerfists? (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) unleashe?s? a powerful hook towards (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Monk General Tekura Roundhouse",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) twists? \\w+ torso and sends? a roundhouse towards (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

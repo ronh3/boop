@@ -1,0 +1,90 @@
+[
+  {
+    "name": "Sentinel Goad",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) cower before (.+), causing \\w+ to recklessly attack you with no regard for\\w+ own safety\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) cowers before (.+), causing \\w+ to recklessly attack with no regard for \\w+ own safety\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel Goad Off",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(.+) ceases \\w+ reckless attacks\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel Tame",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Making soothing noises, (\\w+) carefully approaches (.+), temporarily charming \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Making soothing noises, (you) carefully approach (.+), assuring \\w+ that you are afriend and urging \\w+ to fight for you\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Sentinel Tame Off",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(.+) glares hatefully at (\\w+), becoming visibly enraged\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

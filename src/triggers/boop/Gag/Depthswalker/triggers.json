@@ -1,0 +1,226 @@
+[
+  {
+    "name": "Depthswalker Battlerage Boinad",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^Locking \\w+ gaze to that of (.+), (\\w+) speaks a terrible word of power\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Locking your gaze to that of (.+), (you) (e|i)ntone, 'Boinad'\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker Battlerage Curse",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) fixes \\w+ gaze upon (.+), who suddenly seems to be moving in slow motion\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Bending (your) formidable will upon (.+), you slow the passage of time about \\w+ to a crawl\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker Battlerage Drain",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) hisses something in an ancient tongue, and the shadow of (.+) grows more opaque as (.+) grows paler\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) command the shadow of (.+) to begin siphoning away the life of its host\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker Battlerage Erasure",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) viciously eradicate parts of the concept of (.+) from the timestream",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) makes a slashing motion with a hand towards the weakened form of (.+), who",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) makes a slashing motion with a hand towards (.+), who",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker Battlerage Lash",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(You) summon whips of shadow to viciously lash the form of (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) gestures and whips of shadow form, viciously lashing the form of (.+)\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker Battlerage Nakail",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^As (\\w+) speaks a terrible word of power, the magical shield surrounding (.+) shatters into prismatic shards\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Directing (your) power against the magical shield surrounding (.+), you intone, \"Nakail\"\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker General Cull",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) lays into (.+) with a terrible blow from .+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) lay into (.+) with a vicious blow from .+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker General Reap",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) lashes out with a swift, reaping blow at (.+)\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) unleash a vicious reaping blow at (.+) with .+\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Depthswalker General Strike",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(Your) shadow leaps for (.+), hammering \\w+ shield in a silent frenzy that causes it to explode in a shower of prismatic shards\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^The shadow of (\\w+) suddenly comes alive, leaping forward to hammer at the magical shield surrounding (.+) in a silent frenzy of blows\\. \\w+ protection lasts mere moments before exploding in a shower of prismatic shards\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(.+) is not surrounded by a magical shield\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]

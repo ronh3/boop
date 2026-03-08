@@ -1,0 +1,74 @@
+[
+  {
+    "name": "Dragon All Dragons General Gut",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) rips? into (.+) with \\w+ massive\\, deadly claws\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon All Dragons General Incantation",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^A resonant vibration emanates from (\\w+) as \\w+ invokes a rumbling, sonorous chant in the dragon tongue\\. As the sound increases, (.+) jerks violently, \\w+ body wracked by an unseen force\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^Drawing from the well of your puissance, you invoke a dramatic chant in the dragon tongue\\. (You)r voice resonates with each word, culminating in a wave of magical energy that you bend to your will and thrust towards (.+), bombarding \\w+ with the ancient power\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  },
+  {
+    "name": "Dragon All Dragons General Tailsmash",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^(\\w+) dismissively flicks \\w+ tail at (.+), annihilating the magical shield surrounding \\w+ with casual ease\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) flick your tail at (.+), dismissively brushing aside the paltry shield protecting \\w+\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(You) prepare yourself to flick your tail at (.+) before realising that doing so would not actually do anything\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
+  }
+]
