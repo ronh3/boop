@@ -81,6 +81,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop ragemode combo` is conditional-first, primes missing conditional needs with your own aff rage attacks, then holds reserve rage and spends only overflow.
 - `boop ragemode hybrid` uses the same conditional/priming logic, but falls back to normal damage when reserve logic would otherwise hold.
 - `boop ragemode tempo` is aff-first, but can spend on damage when rolling rage gain predicts quick recovery (10s window).
+- Tune tempo behavior with `boop set tempoRageWindowSeconds <seconds>` and `boop set tempoSqueezeEtaSeconds <seconds>`.
 - `boop targeting` and `boop ragemode` now show current value + usage when called without arguments, and clear errors for invalid values.
 - Targeting now supports `retargetOnPriority` (default `on`); set it `off` to keep your current target instead of swapping when higher-priority mobs enter.
 - Command feedback now uses consistent tags for quick scanning: `[OK]`, `[INFO]`, `[WARN]`, `[ERR]`.

@@ -88,6 +88,8 @@ local function renderStatusDashboard()
   local class = currentClass()
   local lead = tonumber(boop.config.attackLeadSeconds) or 0
   local diagTimeout = tonumber(boop.config.diagTimeoutSeconds) or 0
+  local tempoWindow = tonumber(boop.config.tempoRageWindowSeconds) or 10
+  local tempoEta = tonumber(boop.config.tempoSqueezeEtaSeconds) or 2.5
   local pack = boop.util.trim(boop.config.goldPack or "")
   local partyRaw = boop.util.trim(boop.config.partyRoster or "")
   local partyCount = 0
@@ -134,6 +136,10 @@ local function renderStatusDashboard()
     uiPrintSection("combat / loot")
     uiPrintRow(row, "Ragemode", tostring(boop.config.attackMode or "simple"), "cyan")
     row = row + 1
+    uiPrintRow(row, "Tempo window", string.format("%.1fs", tempoWindow), "yellow")
+    row = row + 1
+    uiPrintRow(row, "Tempo squeeze ETA", string.format("%.2fs", tempoEta), "yellow")
+    row = row + 1
     uiPrintRow(row, "Auto gold", boolText(not not boop.config.autoGrabGold), boolColor(not not boop.config.autoGrabGold))
     row = row + 1
     uiPrintRow(row, "Gold pack", tostring(shownPack), "cyan")
@@ -167,6 +173,8 @@ local function renderStatusDashboard()
   boop.util.echo(string.format("  attackLeadSeconds: %.2f", lead))
   boop.util.echo(string.format("  diagTimeoutSeconds: %.2f", diagTimeout))
   boop.util.echo("  attackMode: " .. tostring(boop.config.attackMode))
+  boop.util.echo(string.format("  tempoRageWindowSeconds: %.2f", tempoWindow))
+  boop.util.echo(string.format("  tempoSqueezeEtaSeconds: %.2f", tempoEta))
   boop.util.echo("  autoGrabGold: " .. tostring(boop.config.autoGrabGold))
   boop.util.echo("  goldPack: " .. tostring(shownPack))
   boop.util.echo("  whitelistPriorityOrder: " .. tostring(boop.config.whitelistPriorityOrder))
@@ -626,6 +634,12 @@ local function canonConfigKey(raw)
     diagtimeoutseconds = "diagTimeoutSeconds",
     party = "partyRoster",
     partyroster = "partyRoster",
+    tempowindow = "tempoRageWindowSeconds",
+    temporagewindow = "tempoRageWindowSeconds",
+    temporagewindowseconds = "tempoRageWindowSeconds",
+    tempoeta = "tempoSqueezeEtaSeconds",
+    temposqueezeeta = "tempoSqueezeEtaSeconds",
+    temposqueezeetaseconds = "tempoSqueezeEtaSeconds",
   }
   return map[key] or ""
 end
@@ -653,6 +667,8 @@ function boop.ui.listConfigValues()
     "retargetOnPriority",
     "targetOrder",
     "attackMode",
+    "tempoRageWindowSeconds",
+    "tempoSqueezeEtaSeconds",
     "traceEnabled",
     "gagOwnAttacks",
     "gagOthersAttacks",
@@ -764,6 +780,28 @@ function boop.ui.setConfigValue(key, value)
 
   if canonical == "attackMode" then
     boop.ui.setRageMode(value)
+    return
+  end
+
+  if canonical == "tempoRageWindowSeconds" then
+    local seconds = tonumber(boop.util.trim(value or ""))
+    if not seconds or seconds <= 0 then
+      boop.util.warn("tempoRageWindowSeconds expects number > 0")
+      return
+    end
+    saveConfigValue("tempoRageWindowSeconds", seconds)
+    boop.util.ok(string.format("tempo rage window: %.2fs", seconds))
+    return
+  end
+
+  if canonical == "tempoSqueezeEtaSeconds" then
+    local seconds = tonumber(boop.util.trim(value or ""))
+    if not seconds or seconds < 0 then
+      boop.util.warn("tempoSqueezeEtaSeconds expects number >= 0")
+      return
+    end
+    saveConfigValue("tempoSqueezeEtaSeconds", seconds)
+    boop.util.ok(string.format("tempo squeeze eta: %.2fs", seconds))
     return
   end
 
@@ -1983,6 +2021,8 @@ local HELP_TOPICS = {
       "boop ragemode",
       "boop ragemode <number>",
       "boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>",
+      "boop set tempoRageWindowSeconds <seconds>",
+      "boop set tempoSqueezeEtaSeconds <seconds>",
       "boop ragemode simple",
       "boop ragemode tempo",
       "boop ragemode combo",
@@ -1991,7 +2031,7 @@ local HELP_TOPICS = {
       "boop ragemode none",
     },
     notes = {
-      "tempo: prioritizes affs, but squeezes damage when rolling rage gain predicts fast recovery (10s window).",
+      "tempo: prioritizes affs, but squeezes damage when rolling rage gain predicts fast recovery (default 10s window).",
       "combo: conditional-first with aff priming, then hold reserve rage and spend overflow.",
       "hybrid: same as combo, but falls back to normal damage instead of hard-holding rage.",
       "Legacy aliases still parse: dam->simple, cond->combo, buff->aff, pool->none, affplus/smartaff/weave->tempo.",
@@ -2450,6 +2490,8 @@ end
 local function configRenderCombatSection()
   configSetScreen("combat")
   if cecho then
+    local tempoWindow = tonumber(boop.config.tempoRageWindowSeconds) or 10
+    local tempoEta = tonumber(boop.config.tempoSqueezeEtaSeconds) or 2.5
     uiPrintHeader("configuration > combat")
     uiPrintSection("controls")
     uiPrintRow(1, "Hunting enabled", boolText(boop.config.enabled), boolColor(boop.config.enabled), function()
@@ -2461,14 +2503,24 @@ local function configRenderCombatSection()
     uiPrintRow(3, "Run diag", "RUN", "yellow", function()
       boop.ui.config("3")
     end, "Queue diagnose and pause attacks")
+    uiPrintRow(4, string.format("Tempo window (%.1fs)", tempoWindow), "SET", "yellow", function()
+      boop.ui.config("4")
+    end, "Prepare boop set tempoRageWindowSeconds command")
+    uiPrintRow(5, string.format("Tempo squeeze ETA (%.2fs)", tempoEta), "SET", "yellow", function()
+      boop.ui.config("5")
+    end, "Prepare boop set tempoSqueezeEtaSeconds command")
     uiPrintFooter("Type: boop config <number> to change | boop config back | boop config home")
     return
   end
+  local tempoWindow = tonumber(boop.config.tempoRageWindowSeconds) or 10
+  local tempoEta = tonumber(boop.config.tempoSqueezeEtaSeconds) or 2.5
   boop.util.echo("CONFIGURATION > Combat")
   boop.util.echo("----------------------------------------")
   boop.util.echo("[1] Hunting enabled           [ " .. boolText(boop.config.enabled) .. " ]")
   boop.util.echo("[2] Rage mode                 [ " .. tostring(boop.config.attackMode or "simple") .. " ]")
   boop.util.echo("[3] Run diag                  [ RUN ]")
+  boop.util.echo(string.format("[4] Tempo window              [ %.1fs ]", tempoWindow))
+  boop.util.echo(string.format("[5] Tempo squeeze ETA         [ %.2fs ]", tempoEta))
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config <number> to change | boop config back | boop config home")
 end
@@ -2655,6 +2707,12 @@ local function configApplySectionOption(sectionKey, option)
       return true
     elseif n == 3 then
       boop.ui.diag()
+      return true
+    elseif n == 4 then
+      uiSetCommandLine("boop set tempoRageWindowSeconds ")
+      return true
+    elseif n == 5 then
+      uiSetCommandLine("boop set tempoSqueezeEtaSeconds ")
       return true
     end
     return false

@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.109"
+boop.version = boop.version or "0.1.110"
 
 boop.defaults = {
   enabled = false,
@@ -21,6 +21,8 @@ boop.defaults = {
   fleeAt = "30%",
   warnAt = "40%",
   rageFallbackSeconds = 26,
+  tempoRageWindowSeconds = 10,
+  tempoSqueezeEtaSeconds = 2.5,
   attackLeadSeconds = 1,
   diagTimeoutSeconds = 8,
   partyRoster = "",

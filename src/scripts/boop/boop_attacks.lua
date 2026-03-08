@@ -359,6 +359,11 @@ local function sortAbilitiesByCost(list, descending)
 end
 
 local function selectRageTempo(profile, rage, classKey)
+  local tempoWindow = tonumber((boop.config and boop.config.tempoRageWindowSeconds) or 10) or 10
+  local tempoEta = tonumber((boop.config and boop.config.tempoSqueezeEtaSeconds) or 2.5) or 2.5
+  if tempoWindow <= 0 then tempoWindow = 10 end
+  if tempoEta < 0 then tempoEta = 0 end
+
   local affChoices = collectRageAbilitiesByDesc(profile, { ["Gives Affliction"] = true }, rage)
   if #affChoices == 0 then
     traceComboDecision(classKey, "tempo fallback damage (no aff available)")
@@ -385,9 +390,9 @@ local function selectRageTempo(profile, rage, classKey)
 
     local eta = nil
     if boop.rage and boop.rage.etaToRage then
-      eta = boop.rage.etaToRage(reserve, post, 10)
+      eta = boop.rage.etaToRage(reserve, post, tempoWindow)
     end
-    if eta and eta <= 2.5 then
+    if eta and eta <= tempoEta then
       traceComboDecision(classKey, string.format("tempo squeeze damage (eta %.2fs)", eta))
       return dmg
     end
