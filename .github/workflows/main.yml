@@ -78,11 +78,36 @@ jobs:
           git clone --depth 1 https://github.com/demonnic/test-in-mudlet.git /tmp/test-in-mudlet
           mkdir -p "$HOME/.config/mudlet/profiles"
           cp -r /tmp/test-in-mudlet/profiles/GithubTests "$HOME/.config/mudlet/profiles/"
+          profile_xml=$(find "$HOME/.config/mudlet/profiles/GithubTests/current" -name '*.xml' | head -n 1)
+          if [ -z "$profile_xml" ]; then
+            echo "Unable to locate GithubTests profile XML"
+            exit 1
+          fi
+          perl -0pi -e "s/options\\.verbose = false/options.verbose = true/" "$profile_xml"
 
       - name: Run Busted tests in Mudlet
         uses: GabrielBB/xvfb-action@v1.6
         with:
-          run: /tmp/Mudlet.AppImage --profile "GithubTests" --mirror
+          run: >-
+            bash -lc '
+            set -o pipefail
+            /tmp/Mudlet.AppImage --profile "GithubTests" --mirror > /tmp/mudlet.raw.log 2>&1
+            status=$?
+            python - <<'"'"'PY'"'"'
+            from pathlib import Path
+
+            lines = Path("/tmp/mudlet.raw.log").read_text(errors="replace").splitlines()
+            i = 0
+            while i < len(lines):
+                line = lines[i]
+                if '"'"'XMLimport::readUnknownElement("Trigger") ERROR - UNKNOWN Package Element name: "path".'"'"' in line:
+                    i += 4
+                    continue
+                print(line)
+                i += 1
+            PY
+            exit $status
+            '
         env:
           AUTORUN_BUSTED_TESTS: "true"
           TESTS_DIRECTORY: ${{ github.workspace }}/tests
@@ -95,6 +120,13 @@ jobs:
             echo "Lua tests failed - see the Mudlet test step output above."
             exit 1
           fi
+
+      - name: Upload Mudlet test log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mudlet-test-log
+          path: /tmp/mudlet.raw.log
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
