@@ -40,7 +40,7 @@ jobs:
         run: |
           luarocks install busted
           sudo apt-get update
-          sudo apt-get install -y libfuse2 libopengl0
+          sudo apt-get install -y libfuse2 libopengl0 libegl1
 
       - name: Restore cached Mudlet AppImage
         uses: actions/cache@v4
