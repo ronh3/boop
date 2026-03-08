@@ -24,6 +24,12 @@ local function learnEntrySkills(entry)
   for _, option in ipairs(entry) do
     learnEntrySkills(option)
   end
+
+  for key, value in pairs(entry) do
+    if type(key) ~= "number" then
+      learnEntrySkills(value)
+    end
+  end
 end
 
 local function targetFormat(cmd)

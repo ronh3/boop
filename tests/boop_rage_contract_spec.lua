@@ -32,6 +32,12 @@ local function learnStandardSkills(entry)
   for _, option in ipairs(entry) do
     learnStandardSkills(option)
   end
+
+  for key, value in pairs(entry) do
+    if type(key) ~= "number" then
+      learnStandardSkills(value)
+    end
+  end
 end
 
 local function learnRageSkills(profile)
