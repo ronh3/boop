@@ -27,7 +27,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop trace` / `boop trace on|off|show [n]|clear`
 - `boop gag` / `boop gag on|off|own|others|all|<scope> on|off`
 - `boop targeting <manual|whitelist|blacklist|auto>`
-- `boop ragemode <simple|big|small|aff|combo|hybrid|none>` (default: `simple`)
+- `boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>` (default: `simple`)
 - `diag` (queue-clear + diagnose; temporarily pauses boop attacks until diagnose result + prompt)
 - `boop ih` (also overrides `ih`)
 - `boop whitelist` / `boop whitelist add <name>` / `boop whitelist remove <name>` (display is clickable: up/down/remove)
@@ -80,6 +80,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop party` also highlights which party conditionals your class can help enable from your rage afflictions.
 - `boop ragemode combo` is conditional-first, primes missing conditional needs with your own aff rage attacks, then holds reserve rage and spends only overflow.
 - `boop ragemode hybrid` uses the same conditional/priming logic, but falls back to normal damage when reserve logic would otherwise hold.
+- `boop ragemode tempo` is aff-first, but can spend on damage when rolling rage gain predicts quick recovery (10s window).
 - `boop targeting` and `boop ragemode` now show current value + usage when called without arguments, and clear errors for invalid values.
 - Targeting now supports `retargetOnPriority` (default `on`); set it `off` to keep your current target instead of swapping when higher-priority mobs enter.
 - Command feedback now uses consistent tags for quick scanning: `[OK]`, `[INFO]`, `[WARN]`, `[ERR]`.

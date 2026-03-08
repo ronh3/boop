@@ -258,9 +258,10 @@ local RAGE_MODE_OPTIONS = {
   { id = 2, key = "big", label = "Big", desc = "Pool for big hits; fallback small on cooldown." },
   { id = 3, key = "small", label = "Small", desc = "Prefer small/mid damage spenders." },
   { id = 4, key = "aff", label = "Aff", desc = "Spend rage on affliction attacks." },
-  { id = 5, key = "combo", label = "Combo", desc = "Conditional-first with priming + reserve hold." },
-  { id = 6, key = "hybrid", label = "Hybrid", desc = "Combo logic; fallback to damage when blocked." },
-  { id = 7, key = "none", label = "None", desc = "Disable rage attacks." },
+  { id = 5, key = "tempo", label = "Tempo", desc = "Aff-first; squeeze damage when rage flow allows." },
+  { id = 6, key = "combo", label = "Combo", desc = "Conditional-first with priming + reserve hold." },
+  { id = 7, key = "hybrid", label = "Hybrid", desc = "Combo logic; fallback to damage when blocked." },
+  { id = 8, key = "none", label = "None", desc = "Disable rage attacks." },
 }
 
 local function canonicalRageMode(raw)
@@ -271,6 +272,9 @@ local function canonicalRageMode(raw)
     condition = "combo",
     conditional = "combo",
     cond = "combo",
+    affplus = "tempo",
+    smartaff = "tempo",
+    weave = "tempo",
     pool = "none",
     buff = "aff",
   }
@@ -385,6 +389,7 @@ function boop.ui.setAttackMode(mode)
     big = true,
     small = true,
     aff = true,
+    tempo = true,
     combo = true,
     hybrid = true,
     none = true,
@@ -395,7 +400,7 @@ function boop.ui.setAttackMode(mode)
   end
   if not valid[mode] then
     boop.util.warn("Invalid ragemode: " .. tostring(mode))
-    boop.util.info("Valid modes: simple, big, small, aff, combo, hybrid, none")
+    boop.util.info("Valid modes: simple, big, small, aff, tempo, combo, hybrid, none")
     boop.ui.showRageModeMenu()
     return
   end
@@ -1977,17 +1982,19 @@ local HELP_TOPICS = {
     commands = {
       "boop ragemode",
       "boop ragemode <number>",
-      "boop ragemode <simple|big|small|aff|combo|hybrid|none>",
+      "boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>",
       "boop ragemode simple",
+      "boop ragemode tempo",
       "boop ragemode combo",
       "boop ragemode hybrid",
       "boop ragemode big",
       "boop ragemode none",
     },
     notes = {
+      "tempo: prioritizes affs, but squeezes damage when rolling rage gain predicts fast recovery (10s window).",
       "combo: conditional-first with aff priming, then hold reserve rage and spend overflow.",
       "hybrid: same as combo, but falls back to normal damage instead of hard-holding rage.",
-      "Legacy aliases still parse: dam->simple, cond->combo, buff->aff, pool->none.",
+      "Legacy aliases still parse: dam->simple, cond->combo, buff->aff, pool->none, affplus/smartaff/weave->tempo.",
     },
   },
   {

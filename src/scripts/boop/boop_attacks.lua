@@ -324,6 +324,79 @@ local function selectRageCombo(profile, rage, classKey, allowPriming, allowHold)
   return selectDamageForHp(profile, rage)
 end
 
+local function abilityRageCost(ability)
+  return tonumber(ability and ability.rage) or 999
+end
+
+local function collectRageAbilitiesByDesc(profile, descSet, rageBudget)
+  local out = {}
+  if not profile or not profile.abilities then
+    return out
+  end
+
+  for _, ability in pairs(profile.abilities) do
+    if descSet[ability.desc] and abilityKnown(ability) and boop.attacks.rageReady(ability, rageBudget) then
+      out[#out + 1] = ability
+    end
+  end
+  return out
+end
+
+local function sortAbilitiesByCost(list, descending)
+  table.sort(list, function(a, b)
+    local ca = abilityRageCost(a)
+    local cb = abilityRageCost(b)
+    if ca == cb then
+      local na = tostring(a.name or a.skill or "")
+      local nb = tostring(b.name or b.skill or "")
+      return na < nb
+    end
+    if descending then
+      return ca > cb
+    end
+    return ca < cb
+  end)
+end
+
+local function selectRageTempo(profile, rage, classKey)
+  local affChoices = collectRageAbilitiesByDesc(profile, { ["Gives Affliction"] = true }, rage)
+  if #affChoices == 0 then
+    traceComboDecision(classKey, "tempo fallback damage (no aff available)")
+    return selectDamageForHp(profile, rage)
+  end
+  sortAbilitiesByCost(affChoices, false)
+  local aff = affChoices[1]
+  local reserve = abilityRageCost(aff)
+
+  local damageChoices = collectRageAbilitiesByDesc(profile, {
+    ["Big Damage"] = true,
+    ["Mid Damage"] = true,
+    ["Small Damage"] = true,
+  }, rage)
+  sortAbilitiesByCost(damageChoices, true)
+
+  for _, dmg in ipairs(damageChoices) do
+    local cost = abilityRageCost(dmg)
+    local post = (tonumber(rage) or 0) - cost
+    if post >= reserve then
+      traceComboDecision(classKey, "tempo squeeze damage (free reserve)")
+      return dmg
+    end
+
+    local eta = nil
+    if boop.rage and boop.rage.etaToRage then
+      eta = boop.rage.etaToRage(reserve, post, 10)
+    end
+    if eta and eta <= 2.5 then
+      traceComboDecision(classKey, string.format("tempo squeeze damage (eta %.2fs)", eta))
+      return dmg
+    end
+  end
+
+  traceComboDecision(classKey, "tempo prioritize aff")
+  return aff
+end
+
 function boop.attacks.selectRage(profile, rage, classKey)
   if not profile then return nil end
 
@@ -339,6 +412,9 @@ function boop.attacks.selectRage(profile, rage, classKey)
     condition = "combo",
     conditional = "combo",
     cond = "combo",
+    affplus = "tempo",
+    smartaff = "tempo",
+    weave = "tempo",
     pool = "none",
     buff = "aff",
   }
@@ -378,6 +454,8 @@ function boop.attacks.selectRage(profile, rage, classKey)
     return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage)
   elseif mode == "aff" then
     return findByDesc(profile, "Gives Affliction", rage)
+  elseif mode == "tempo" then
+    return selectRageTempo(profile, rage, classKey)
   elseif mode == "combo" then
     return selectRageCombo(profile, rage, classKey, true, true)
   elseif mode == "hybrid" then

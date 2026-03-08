@@ -374,6 +374,10 @@ function boop.onCharStatus()
 end
 
 function boop.onVitals()
+  if boop.rage and boop.rage.onRageObserved and boop.attacks and boop.attacks.getRage then
+    boop.rage.onRageObserved(boop.attacks.getRage())
+  end
+
   if gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.charstats then
     local spec = ""
     for _, stat in ipairs(gmcp.Char.Vitals.charstats) do

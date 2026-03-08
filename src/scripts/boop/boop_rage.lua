@@ -5,9 +5,15 @@ local function keyForAbility(ability)
   return boop.util.safeLower(name)
 end
 
+local function nowSeconds()
+  if getEpoch then return getEpoch() end
+  return os.clock()
+end
+
 function boop.rage.init()
   boop.state.rageReady = boop.state.rageReady or {}
   boop.state.rageTimers = boop.state.rageTimers or {}
+  boop.state.rageSamples = boop.state.rageSamples or {}
 end
 
 function boop.rage.setReady(name, ready)
@@ -46,6 +52,76 @@ function boop.rage.onReadyList(list)
   for _, name in ipairs(list or {}) do
     boop.rage.setReady(name, true)
   end
+end
+
+function boop.rage.onRageObserved(value)
+  local rage = tonumber(value)
+  if not rage then return end
+
+  boop.state = boop.state or {}
+  boop.state.rageSamples = boop.state.rageSamples or {}
+  local samples = boop.state.rageSamples
+  local now = nowSeconds()
+
+  if #samples > 0 and math.abs((samples[#samples].t or 0) - now) < 0.05 then
+    samples[#samples].r = rage
+  else
+    samples[#samples + 1] = { t = now, r = rage }
+  end
+
+  local cutoff = now - 65
+  while #samples > 0 and (samples[1].t or 0) < cutoff do
+    table.remove(samples, 1)
+  end
+end
+
+function boop.rage.getGainRate(windowSeconds)
+  local window = tonumber(windowSeconds) or 10
+  if window <= 0 then return 0 end
+
+  local samples = boop.state and boop.state.rageSamples or {}
+  if not samples or #samples < 2 then return 0 end
+
+  local cutoff = nowSeconds() - window
+  local prev = nil
+  local firstT = nil
+  local lastT = nil
+  local gained = 0
+
+  for _, sample in ipairs(samples) do
+    local t = tonumber(sample.t) or 0
+    local r = tonumber(sample.r) or 0
+    if t >= cutoff then
+      if not firstT then
+        firstT = t
+      end
+      if prev then
+        local delta = r - (tonumber(prev.r) or 0)
+        if delta > 0 then
+          gained = gained + delta
+        end
+      end
+      lastT = t
+    end
+    prev = sample
+  end
+
+  if not firstT or not lastT then return 0 end
+  local elapsed = lastT - firstT
+  if elapsed <= 0 then return 0 end
+  return gained / elapsed
+end
+
+function boop.rage.etaToRage(targetRage, currentRage, windowSeconds)
+  local target = tonumber(targetRage)
+  local current = tonumber(currentRage)
+  if not target or not current then return nil end
+  if current >= target then return 0 end
+
+  local rate = boop.rage.getGainRate(windowSeconds or 10)
+  if rate <= 0 then return nil end
+
+  return (target - current) / rate
 end
 
 function boop.rage.onHoundMaulUsed()
