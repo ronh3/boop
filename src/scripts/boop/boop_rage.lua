@@ -147,6 +147,9 @@ local function sendAffCallout(mode, aff)
     text = string.format("pt %s: %s", targetId, key)
   end
   send(text, false)
+  if boop.util and boop.util.info then
+    boop.util.info("callout: " .. text)
+  end
 end
 
 function boop.rage.onAfflictionTrigger(spec, matchTable, _rawLine)
