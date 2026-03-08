@@ -4,6 +4,18 @@ local function root()
   return assert(os.getenv("TESTS_DIRECTORY"), "TESTS_DIRECTORY env var is required")
 end
 
+local function resetTableData(tbl)
+  if type(tbl) ~= "table" then
+    return
+  end
+
+  for key, value in pairs(tbl) do
+    if type(value) ~= "function" then
+      tbl[key] = nil
+    end
+  end
+end
+
 local function norm(value)
   value = tostring(value or "")
   return value:lower():gsub("^%s+", ""):gsub("%s+$", "")
@@ -26,6 +38,7 @@ end
 
 function M.reset()
   assert(boop, "boop package is not loaded")
+  local desiredGroups = boop.skills and boop.skills.desiredGroups or nil
 
   gmcp = {
     Char = {
@@ -75,11 +88,13 @@ function M.reset()
     separator = "/",
   }
 
-  boop.state = {}
+  resetTableData(boop.state)
   boop.state.init()
 
-  boop.afflictions.target = {}
+  resetTableData(boop.afflictions)
   boop.afflictions.init()
+  resetTableData(boop.skills)
+  boop.skills.desiredGroups = desiredGroups
   boop.rage.init()
   boop.skills.init()
 

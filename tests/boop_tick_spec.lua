@@ -34,10 +34,22 @@ describe("boop tick", function()
   end)
 
   after_each(function()
-    send_stub:revert()
-    send_gmcp_stub:revert()
-    timer_stub:revert()
-    kill_timer_stub:revert()
+    if send_stub then
+      send_stub:revert()
+      send_stub = nil
+    end
+    if send_gmcp_stub then
+      send_gmcp_stub:revert()
+      send_gmcp_stub = nil
+    end
+    if timer_stub then
+      timer_stub:revert()
+      timer_stub = nil
+    end
+    if kill_timer_stub then
+      kill_timer_stub:revert()
+      kill_timer_stub = nil
+    end
   end)
 
   it("targets the denizen and sends standard plus rage actions", function()
