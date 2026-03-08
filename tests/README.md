@@ -16,8 +16,16 @@ Current coverage:
   Confirms attack selection falls back correctly when required skills are unknown.
 - `boop_gold_spec.lua`
   Confirms auto-gold queueing and pending-gold flush behavior.
+- `boop_gold_retry_spec.lua`
+  Confirms gold get/put retry and give-up behavior after command failures.
 - `boop_safety_spec.lua`
   Confirms flee threshold parsing and flee execution.
+- `boop_shields_spec.lua`
+  Confirms shield seen/down tracking and shieldbreak attempt state updates.
+- `boop_prequeue_spec.lua`
+  Confirms prequeue scheduling and queued standard attack behavior.
+- `boop_profiles_spec.lua`
+  Confirms class/spec-specific standard attack selection for additional profiles.
 - `boop_diag_spec.lua`
   Confirms diagnose pauses attacks and resumes them after the diagnose line plus prompt.
 
