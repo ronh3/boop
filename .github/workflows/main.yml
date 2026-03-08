@@ -10,6 +10,9 @@ jobs:
   build:
     permissions: write-all
     runs-on: ubuntu-latest
+    env:
+      MUDLET_RELEASE_TAG: ci-asset
+      MUDLET_RELEASE_ASSET: Mudlet-4.19.1-linux-x64.AppImage.tar
 
     steps:
       - uses: actions/checkout@v4
@@ -44,18 +47,28 @@ jobs:
         id: cache-mudlet
         with:
           path: /tmp/Mudlet.AppImage
-          key: mudlet-linux-download-51
+          key: mudlet-release-${{ env.MUDLET_RELEASE_TAG }}-${{ env.MUDLET_RELEASE_ASSET }}
 
       - name: Download Mudlet AppImage
         if: steps.cache-mudlet.outputs.cache-hit != 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          url="https://www.mudlet.org/download/51/"
+          release_api="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${MUDLET_RELEASE_TAG}"
+          asset_api_url=$(curl -fsSL \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "$release_api" \
+            | jq -r --arg name "${MUDLET_RELEASE_ASSET}" '.assets[] | select(.name == $name) | .url')
+          if [ -z "$asset_api_url" ] || [ "$asset_api_url" = "null" ]; then
+            echo "Failed to find release asset ${MUDLET_RELEASE_ASSET} on tag ${MUDLET_RELEASE_TAG}"
+            exit 1
+          fi
           curl -L --fail --retry 5 --retry-delay 2 --retry-all-errors \
-            -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36" \
-            -c /tmp/mudlet-cookies.txt \
-            -b /tmp/mudlet-cookies.txt \
-            "$url" -o /tmp/Mudlet.tar
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/octet-stream" \
+            "$asset_api_url" -o /tmp/Mudlet.tar
           tar tf /tmp/Mudlet.tar >/dev/null
           tar xf /tmp/Mudlet.tar -C /tmp
           chmod +x /tmp/Mudlet.AppImage
