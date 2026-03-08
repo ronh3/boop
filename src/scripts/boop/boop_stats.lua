@@ -172,15 +172,44 @@ local function formatNumber(value, decimals)
   return string.format("%." .. tostring(decimals or 1) .. "f", num)
 end
 
+local function currentGoldFromStatus()
+  if gmcp and gmcp.Char and gmcp.Char.Status then
+    return tonumber(gmcp.Char.Status.gold)
+  end
+  return nil
+end
+
+local function currentXpFromStatus()
+  if not gmcp or not gmcp.Char or not gmcp.Char.Status then
+    return nil
+  end
+  local lvl = tonumber((gmcp.Char.Status.level or ""):match("^(%d+)") or 0)
+  local xp = tonumber((gmcp.Char.Status.xp or ""):match("([%d%.]+)") or 0)
+  return lvl * 100 + xp
+end
+
+local function seedBaselinesFromStatus()
+  local gold = currentGoldFromStatus()
+  if gold ~= nil then
+    boop.stats.lastGold = gold
+  end
+
+  local xp = currentXpFromStatus()
+  if xp ~= nil then
+    boop.stats.lastXp = xp
+  end
+end
+
 function boop.stats.init()
   local now = nowSeconds()
   boop.stats.session = ensureScope(boop.stats.session, now)
   boop.stats.trip = ensureScope(boop.stats.trip, now)
   boop.stats.lifetime = ensureScope(boop.stats.lifetime, now)
-  boop.stats.lastGold = boop.stats.lastGold or nil
-  boop.stats.lastXp = boop.stats.lastXp or nil
+  boop.stats.lastGold = nil
+  boop.stats.lastXp = nil
   boop.stats.activeTarget = boop.stats.activeTarget or nil
   boop.stats.lastKill = boop.stats.lastKill or nil
+  seedBaselinesFromStatus()
 end
 
 function boop.stats.onCharStatus()

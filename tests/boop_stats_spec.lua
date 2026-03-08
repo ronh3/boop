@@ -58,6 +58,26 @@ describe("boop stats", function()
     assert.are.equal(1.5, boop.stats.lifetime.experience)
   end)
 
+  it("reseeds status baselines on init so existing wealth and xp are not counted as gains", function()
+    gmcp.Char.Status.gold = "2500"
+    gmcp.Char.Status.level = "80"
+    gmcp.Char.Status.xp = "55.0"
+    boop.stats.lastGold = 100
+    boop.stats.lastXp = 10
+
+    boop.stats.init()
+
+    assert.are.equal(2500, boop.stats.lastGold)
+    assert.are.equal(8055, boop.stats.lastXp)
+    assert.are.equal(0, boop.stats.session.gold)
+    assert.are.equal(0, boop.stats.session.experience)
+
+    boop.stats.onCharStatus()
+
+    assert.are.equal(0, boop.stats.session.gold)
+    assert.are.equal(0, boop.stats.session.experience)
+  end)
+
   it("tracks retargets kills and time-to-kill across target cycles", function()
     local ticks = { 100, 104, 110 }
     local idx = 0
