@@ -308,7 +308,8 @@ function boop.stats.onFlee()
 end
 
 function boop.stats.onExperienceGain(amount, area)
-  local gained = tonumber(tostring(amount or ""):gsub(",", ""))
+  local cleaned = tostring(amount or ""):gsub(",", "")
+  local gained = tonumber(cleaned)
   if not gained or gained <= 0 then return end
   addRawExperience(gained, area or currentArea())
 end
