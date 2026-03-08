@@ -212,6 +212,9 @@ end
 
 local function sendAffCallout(mode, aff)
   local key = boop.util.safeLower(boop.util.trim(aff or ""))
+  if key == "stunned" then
+    key = "stun"
+  end
   if key == "" then return end
   local targetId = boop.util.trim(tostring((boop.state and boop.state.currentTargetId) or ""))
   if targetId == "" then return end

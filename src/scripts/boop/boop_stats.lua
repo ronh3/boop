@@ -195,8 +195,18 @@ local function currentXpFromStatus()
   if not gmcp or not gmcp.Char or not gmcp.Char.Status then
     return nil
   end
-  local lvl = tonumber((gmcp.Char.Status.level or ""):match("^(%d+)") or 0)
-  local xp = tonumber((gmcp.Char.Status.xp or ""):match("([%d%.]+)") or 0)
+  local levelRaw = tostring(gmcp.Char.Status.level or "")
+  local xpRaw = tostring(gmcp.Char.Status.xp or "")
+  local levelMatch = levelRaw:match("^(%d+)")
+  local xpMatch = xpRaw:match("([%d%.]+)")
+  if not levelMatch or not xpMatch then
+    return nil
+  end
+  local lvl = tonumber(levelMatch)
+  local xp = tonumber(xpMatch)
+  if lvl == nil or xp == nil then
+    return nil
+  end
   return lvl * 100 + xp
 end
 

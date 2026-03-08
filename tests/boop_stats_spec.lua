@@ -89,6 +89,20 @@ describe("boop stats", function()
     assert.are.equal(0, boop.stats.session.experience)
   end)
 
+  it("does not seed percent-xp baseline from missing status values", function()
+    helper.reset()
+
+    assert.is_nil(boop.stats.lastXp)
+    assert.are.equal(0, boop.stats.session.experience)
+
+    gmcp.Char.Status.level = "80"
+    gmcp.Char.Status.xp = "50.0"
+    boop.stats.onCharStatus()
+
+    assert.are.equal(0, boop.stats.session.experience)
+    assert.are.equal(8050, boop.stats.lastXp)
+  end)
+
   it("tracks retargets kills and time-to-kill across target cycles", function()
     local ticks = { 100, 104, 110 }
     local idx = 0
