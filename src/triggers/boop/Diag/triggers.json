@@ -13,7 +13,7 @@
     "highlightBG": "#ffff00",
     "patterns": [
       {
-        "pattern": "^You are: .+$",
+        "pattern": "^(?i)\\s*You are:\\s*.*$",
         "type": "regex"
       }
     ],
@@ -33,7 +33,7 @@
     "highlightBG": "#ffff00",
     "patterns": [
       {
-        "pattern": "^You are in perfect health\\.$",
+        "pattern": "^(?i)\\s*You are in perfect health\\.?$",
         "type": "regex"
       }
     ],
