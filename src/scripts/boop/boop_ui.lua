@@ -2,6 +2,12 @@ boop.ui = boop.ui or {}
 
 local function saveConfigValue(key, value)
   boop.config[key] = value
+  if key == "partySize" then
+    if boop.db and boop.db.deleteConfig then
+      boop.db.deleteConfig(key)
+    end
+    return
+  end
   if boop.db and boop.db.saveConfig then
     boop.db.saveConfig(key, boop.config[key])
   end

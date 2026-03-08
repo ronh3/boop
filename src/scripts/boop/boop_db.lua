@@ -229,7 +229,9 @@ function boop.db.loadConfig()
   local rows = db:fetch(boop.db.handle.config, nil, { boop.db.handle.config.name })
   for _, row in ipairs(rows) do
     local key = row.name
-    if boop.defaults[key] ~= nil then
+    if key == "partySize" then
+      -- party size is session-local and should reset to the default on startup.
+    elseif boop.defaults[key] ~= nil then
       boop.config[key] = castValue(row.value, boop.defaults[key])
     else
       boop.config[key] = row.value
@@ -240,11 +242,16 @@ function boop.db.loadConfig()
     if boop.config[k] == nil then
       boop.config[k] = v
     end
-    boop.db.saveConfig(k, boop.config[k])
+    if k ~= "partySize" then
+      boop.db.saveConfig(k, boop.config[k])
+    end
   end
+
+  boop.db.deleteConfig("partySize")
 end
 
 function boop.db.saveConfig(key, value)
+  if key == "partySize" then return end
   if not boop.db.handle then return end
   local dbtable = boop.db.handle.config
   local row = db:fetch(dbtable, db:eq(dbtable.name, key))[1]
@@ -256,6 +263,15 @@ function boop.db.saveConfig(key, value)
       row.value = strValue
       db:update(dbtable, row)
     end
+  end
+end
+
+function boop.db.deleteConfig(key)
+  if not boop.db.handle then return end
+  local dbtable = boop.db.handle.config
+  local row = db:fetch(dbtable, db:eq(dbtable.name, key))[1]
+  if row and row._row_id then
+    db:delete(dbtable, row._row_id)
   end
 end
 

@@ -2,6 +2,7 @@ local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper
 
 describe("boop config and list persistence paths", function()
   local save_config_stub
+  local delete_config_stub
   local save_list_stub
   local save_tags_stub
   local ok_stub
@@ -19,6 +20,9 @@ describe("boop config and list persistence paths", function()
 
     save_config_stub = stub(boop.db, "saveConfig", function(key, value)
       saved_configs[#saved_configs + 1] = { key = key, value = value }
+    end)
+    delete_config_stub = stub(boop.db, "deleteConfig", function(key)
+      saved_configs[#saved_configs + 1] = { delete = key }
     end)
     save_list_stub = stub(boop.db, "saveList", function(kind, area, list)
       local copy = {}
@@ -44,6 +48,10 @@ describe("boop config and list persistence paths", function()
       save_config_stub:revert()
       save_config_stub = nil
     end
+    if delete_config_stub then
+      delete_config_stub:revert()
+      delete_config_stub = nil
+    end
     if save_list_stub then
       save_list_stub:revert()
       save_list_stub = nil
@@ -66,7 +74,7 @@ describe("boop config and list persistence paths", function()
     end
   end)
 
-  it("persists canonicalized targeting, gold-pack, and party-size config edits", function()
+  it("persists canonicalized targeting and gold-pack edits, but keeps party size session-local", function()
     boop.ui.setTargetingMode("wl", true)
     boop.ui.setGoldPack("pack")
     boop.ui.setConfigValue("partySize", "3")
@@ -76,7 +84,16 @@ describe("boop config and list persistence paths", function()
     assert.are.equal(3, boop.config.partySize)
     assert.are.same({ key = "targetingMode", value = "whitelist" }, saved_configs[1])
     assert.are.same({ key = "goldPack", value = "pack" }, saved_configs[2])
-    assert.are.same({ key = "partySize", value = 3 }, saved_configs[3])
+    assert.are.same({ delete = "partySize" }, saved_configs[3])
+    assert.stub(save_config_stub).was_not.called_with("partySize", 3)
+  end)
+
+  it("resets party size to the default on a fresh load", function()
+    boop.config.partySize = 4
+
+    helper.reset()
+
+    assert.are.equal(1, boop.config.partySize)
   end)
 
   it("persists disabling boop and clears the outstanding prequeue timer", function()
