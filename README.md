@@ -86,6 +86,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Conditional needs default to `any` (one affliction present) unless a profile explicitly sets `needsMode = "all"`.
 - Battlerage afflictions are auto-tracked from class/general combat lines (gain + wear-off), and updates are scoped to your current target context for conditional rage checks.
 - Shield state is now cleared from a broad set of class/general break and "no shield" combat lines, reducing repeated/wasted shieldbreak attempts when the shield is already down.
+- Rage affliction tracker now emits party callouts for target aff changes using target id format (for example `pt 12345: amnesia`, `pt 12345: amnesia down`).
 
 ## Maintenance
 - `tools/sort_manifests.sh` sorts display-order manifests for aliases, triggers, and attack scripts.

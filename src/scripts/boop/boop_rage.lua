@@ -134,6 +134,21 @@ local function shouldTrackTarget(targetName)
   return sameEntityName(captured, current)
 end
 
+local function sendAffCallout(mode, aff)
+  local key = boop.util.safeLower(boop.util.trim(aff or ""))
+  if key == "" then return end
+  local targetId = boop.util.trim(tostring((boop.state and boop.state.currentTargetId) or ""))
+  if targetId == "" then return end
+
+  local text
+  if mode == "remove" then
+    text = string.format("pt %s: %s down", targetId, key)
+  else
+    text = string.format("pt %s: %s", targetId, key)
+  end
+  send(text, false)
+end
+
 function boop.rage.onAfflictionTrigger(spec, matchTable, _rawLine)
   if type(spec) ~= "table" then return end
   if not boop.afflictions then return end
@@ -153,9 +168,15 @@ function boop.rage.onAfflictionTrigger(spec, matchTable, _rawLine)
     local key = boop.util.safeLower(boop.util.trim(aff or ""))
     if key ~= "" then
       if mode == "add" then
-        boop.afflictions.addTarget(key)
+        local changed = boop.afflictions.addTarget(key)
+        if changed then
+          sendAffCallout(mode, key)
+        end
       elseif mode == "remove" then
-        boop.afflictions.removeTarget(key)
+        local changed = boop.afflictions.removeTarget(key)
+        if changed then
+          sendAffCallout(mode, key)
+        end
       end
       if boop.trace and boop.trace.log then
         boop.trace.log(string.format("rage aff %s: %s (%s) actor=%s target=%s", mode, key, source, actor ~= "" and actor or "?", target ~= "" and target or "?"))

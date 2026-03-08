@@ -29,16 +29,24 @@ end
 
 function boop.afflictions.addTarget(aff)
   local key = affKey(aff)
-  if key == "" then return end
+  if key == "" then return false end
   boop.afflictions.target = boop.afflictions.target or {}
+  if boop.afflictions.target[key] == true then
+    return false
+  end
   boop.afflictions.target[key] = true
+  return true
 end
 
 function boop.afflictions.removeTarget(aff)
   local key = affKey(aff)
-  if key == "" then return end
+  if key == "" then return false end
   boop.afflictions.target = boop.afflictions.target or {}
+  if boop.afflictions.target[key] == nil then
+    return false
+  end
   boop.afflictions.target[key] = nil
+  return true
 end
 
 function boop.afflictions.hasTarget(aff)
