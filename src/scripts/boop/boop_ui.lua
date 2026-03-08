@@ -91,6 +91,8 @@ local function renderStatusDashboard()
   local tempoWindow = tonumber(boop.config.tempoRageWindowSeconds) or 10
   local tempoEta = tonumber(boop.config.tempoSqueezeEtaSeconds) or 2.5
   local pack = boop.util.trim(boop.config.goldPack or "")
+  local partySize = tonumber(boop.config.partySize) or 1
+  if partySize < 1 then partySize = 1 end
   local partyRaw = boop.util.trim(boop.config.partyRoster or "")
   local partyCount = 0
   for _ in partyRaw:gmatch("([^,]+)") do
@@ -111,6 +113,8 @@ local function renderStatusDashboard()
     uiPrintRow(row, "Enabled", boolText(boop.config.enabled), boolColor(boop.config.enabled))
     row = row + 1
     uiPrintRow(row, "Class", tostring(class), "cyan")
+    row = row + 1
+    uiPrintRow(row, "Party size", tostring(partySize), "cyan")
     row = row + 1
     uiPrintRow(row, "Party members", tostring(partyCount), "cyan")
     row = row + 1
@@ -163,6 +167,7 @@ local function renderStatusDashboard()
   boop.util.echo("Status > boop")
   boop.util.echo("  enabled: " .. tostring(boop.config.enabled))
   boop.util.echo("  class: " .. tostring(class))
+  boop.util.echo("  partySize: " .. tostring(partySize))
   boop.util.echo("  partyMembers: " .. tostring(partyCount))
   boop.util.echo("  targetingMode: " .. tostring(boop.config.targetingMode))
   boop.util.echo("  currentTargetId: " .. tostring(targetShown))
@@ -660,6 +665,9 @@ local function canonConfigKey(raw)
     gagothersattacks = "gagOthersAttacks",
     diagtimeout = "diagTimeoutSeconds",
     diagtimeoutseconds = "diagTimeoutSeconds",
+    partysize = "partySize",
+    partycount = "partySize",
+    groupsize = "partySize",
     party = "partyRoster",
     partyroster = "partyRoster",
     tempowindow = "tempoRageWindowSeconds",
@@ -701,6 +709,7 @@ function boop.ui.listConfigValues()
     "gagOwnAttacks",
     "gagOthersAttacks",
     "diagTimeoutSeconds",
+    "partySize",
     "partyRoster",
   }
   boop.util.info("config keys:")
@@ -871,6 +880,17 @@ function boop.ui.setConfigValue(key, value)
     end
     saveConfigValue("diagTimeoutSeconds", timeout)
     boop.util.ok(string.format("diag timeout: %.2fs", timeout))
+    return
+  end
+
+  if canonical == "partySize" then
+    local size = tonumber(boop.util.trim(value or ""))
+    if not size or size < 1 or size ~= math.floor(size) then
+      boop.util.warn("partySize expects integer >= 1")
+      return
+    end
+    saveConfigValue("partySize", size)
+    boop.util.ok("party size: " .. tostring(size))
     return
   end
 
@@ -2137,8 +2157,10 @@ local HELP_TOPICS = {
       "boop stats trip|session|lifetime",
       "boop stats areas [scope] [limit]",
       "boop stats mobs [area] [limit]",
+      "boop stats targets [scope] [limit]",
       "boop stats abilities [scope] [limit]",
       "boop stats reset session|trip|lifetime|all",
+      "boop set partySize <n>",
       "boop trip start",
       "boop trip stop",
       "boop set tempoRageWindowSeconds <seconds>",

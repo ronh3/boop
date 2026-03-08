@@ -45,9 +45,9 @@ Current coverage:
 - `boop_rage_ingestion_spec.lua`
   Confirms rage readiness fallback, rage gain sampling, and rage affliction trigger ingestion.
 - `boop_persistence_spec.lua`
-  Confirms public config, whitelist/blacklist, and whitelist-tag edits persist through the DB hooks.
+  Confirms public config, including party-size settings, plus whitelist/blacklist and whitelist-tag edits persist through the DB hooks.
 - `boop_stats_spec.lua`
-  Confirms gold/xp accumulation, raw xp tracking, mob xp mean/median/mode tracking, per-ability damage/crit/kill summaries, reset behavior, whitelist rendering, and human-readable stats summaries.
+  Confirms gold/xp accumulation, party-size-aware mob xp bucketing, per-target efficiency summaries, per-ability damage/crit/kill summaries, reset behavior, whitelist rendering, and human-readable stats summaries.
 
 Good candidates for future additions:
 

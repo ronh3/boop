@@ -66,14 +66,17 @@ describe("boop config and list persistence paths", function()
     end
   end)
 
-  it("persists canonicalized targeting and gold-pack config edits", function()
+  it("persists canonicalized targeting, gold-pack, and party-size config edits", function()
     boop.ui.setTargetingMode("wl", true)
     boop.ui.setGoldPack("pack")
+    boop.ui.setConfigValue("partySize", "3")
 
     assert.are.equal("whitelist", boop.config.targetingMode)
     assert.are.equal("pack", boop.config.goldPack)
+    assert.are.equal(3, boop.config.partySize)
     assert.are.same({ key = "targetingMode", value = "whitelist" }, saved_configs[1])
     assert.are.same({ key = "goldPack", value = "pack" }, saved_configs[2])
+    assert.are.same({ key = "partySize", value = 3 }, saved_configs[3])
   end)
 
   it("persists disabling boop and clears the outstanding prequeue timer", function()

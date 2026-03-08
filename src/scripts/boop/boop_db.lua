@@ -19,6 +19,17 @@ local function mobXpSchema()
   }
 end
 
+local function mobXpV2Schema()
+  return {
+    area = "",
+    party_size = 1,
+    name = "",
+    xp = 0,
+    count = 0,
+    _index = { "area", "party_size", "name" },
+  }
+end
+
 local function warnDb(message)
   if boop and boop.util and boop.util.warn then
     boop.util.warn(message)
@@ -100,14 +111,15 @@ function boop.db.ensureMobXpTable()
   end
 
   local function verifySheet()
-    if not boop.db.handle.mob_xp then
-      return false, "mob_xp handle missing"
+    if not boop.db.handle.mob_xp_v2 then
+      return false, "mob_xp_v2 handle missing"
     end
     local ok, err = pcall(function()
-      db:fetch(boop.db.handle.mob_xp, nil, {
-        boop.db.handle.mob_xp.area,
-        boop.db.handle.mob_xp.name,
-        boop.db.handle.mob_xp.xp,
+      db:fetch(boop.db.handle.mob_xp_v2, nil, {
+        boop.db.handle.mob_xp_v2.area,
+        boop.db.handle.mob_xp_v2.party_size,
+        boop.db.handle.mob_xp_v2.name,
+        boop.db.handle.mob_xp_v2.xp,
       })
     end)
     if not ok then
@@ -122,7 +134,7 @@ function boop.db.ensureMobXpTable()
   end
 
   local created, createErr = pcall(function()
-    db:create("boop", { mob_xp = mobXpSchema() })
+    db:create("boop", { mob_xp_v2 = mobXpV2Schema() })
   end)
   if not created then
     return false, tostring(createErr)
@@ -182,6 +194,7 @@ function boop.db.init()
     },
     whitelist_tags = whitelistTagsSchema(),
     mob_xp = mobXpSchema(),
+    mob_xp_v2 = mobXpV2Schema(),
     stats = {
       name = "",
       value = "",
@@ -381,15 +394,16 @@ function boop.db.loadStats()
   end
 
   local mobOk = boop.db.ensureMobXpTable()
-  if not mobOk or not boop.db.handle.mob_xp then
+  if not mobOk or not boop.db.handle.mob_xp_v2 then
     return
   end
 
   local fetched, mobRowsOrErr = pcall(function()
-    return db:fetch(boop.db.handle.mob_xp, nil, {
-      boop.db.handle.mob_xp.area,
-      boop.db.handle.mob_xp.name,
-      boop.db.handle.mob_xp.xp,
+    return db:fetch(boop.db.handle.mob_xp_v2, nil, {
+      boop.db.handle.mob_xp_v2.area,
+      boop.db.handle.mob_xp_v2.party_size,
+      boop.db.handle.mob_xp_v2.name,
+      boop.db.handle.mob_xp_v2.xp,
     })
   end)
   if not fetched then
@@ -399,12 +413,14 @@ function boop.db.loadStats()
 
   for _, row in ipairs(mobRowsOrErr) do
     local area = tostring(row.area or "")
+    local partySize = tonumber(row.party_size) or 1
     local name = tostring(row.name or "")
     local xp = tonumber(row.xp)
     local count = tonumber(row.count) or 0
     if area ~= "" and name ~= "" and xp and count > 0 then
       boop.stats.mobXp[area] = boop.stats.mobXp[area] or {}
-      local entry = boop.stats.mobXp[area][name]
+      boop.stats.mobXp[area][partySize] = boop.stats.mobXp[area][partySize] or {}
+      local entry = boop.stats.mobXp[area][partySize][name]
       if not entry then
         entry = {
           observations = 0,
@@ -413,7 +429,7 @@ function boop.db.loadStats()
           max = nil,
           values = {},
         }
-        boop.stats.mobXp[area][name] = entry
+        boop.stats.mobXp[area][partySize][name] = entry
       end
       entry.observations = entry.observations + count
       entry.total = entry.total + (xp * count)
@@ -428,15 +444,17 @@ function boop.db.loadStats()
   end
 end
 
-function boop.db.recordMobXpObservation(area, name, xp, delta)
+function boop.db.recordMobXpObservation(area, partySize, name, xp, delta)
   local ok, err = boop.db.ensureMobXpTable()
   if not ok then
     warnDb("boop: warning: cannot save mob xp observation (" .. tostring(err) .. ")")
     return
   end
-  if not boop.db.handle or not boop.db.handle.mob_xp then return end
+  if not boop.db.handle or not boop.db.handle.mob_xp_v2 then return end
 
   local cleanArea = tostring(area or "")
+  local size = tonumber(partySize) or 1
+  if size < 1 then size = 1 end
   local cleanName = tostring(name or "")
   local xpValue = tonumber(xp)
   local addCount = tonumber(delta) or 1
@@ -444,7 +462,7 @@ function boop.db.recordMobXpObservation(area, name, xp, delta)
     return
   end
 
-  local dbtable = boop.db.handle.mob_xp
+  local dbtable = boop.db.handle.mob_xp_v2
   local fetched, rowsOrErr = pcall(function()
     return db:fetch(dbtable, db:eq(dbtable.area, cleanArea))
   end)
@@ -455,7 +473,10 @@ function boop.db.recordMobXpObservation(area, name, xp, delta)
 
   local row
   for _, candidate in ipairs(rowsOrErr) do
-    if tostring(candidate.name or "") == cleanName and tonumber(candidate.xp) == xpValue then
+    if (tonumber(candidate.party_size) or 1) == size
+      and tostring(candidate.name or "") == cleanName
+      and tonumber(candidate.xp) == xpValue
+    then
       row = candidate
       break
     end
@@ -465,6 +486,7 @@ function boop.db.recordMobXpObservation(area, name, xp, delta)
     local added, addErr = pcall(function()
       db:add(dbtable, {
         area = cleanArea,
+        party_size = size,
         name = cleanName,
         xp = xpValue,
         count = addCount,
@@ -491,9 +513,9 @@ function boop.db.clearMobXpStats()
     warnDb("boop: warning: cannot clear mob xp stats (" .. tostring(err) .. ")")
     return
   end
-  if not boop.db.handle or not boop.db.handle.mob_xp then return end
+  if not boop.db.handle or not boop.db.handle.mob_xp_v2 then return end
 
-  local dbtable = boop.db.handle.mob_xp
+  local dbtable = boop.db.handle.mob_xp_v2
   local fetched, rowsOrErr = pcall(function()
     return db:fetch(dbtable, nil)
   end)

@@ -121,8 +121,24 @@ describe("boop stats", function()
     assert.are.equal(116000, entry.total)
     assert.are.equal(28000, entry.min)
     assert.are.equal(31000, entry.max)
-    assert.are.equal("xp mean 29000 | median 28500 | mode 28000 (2x) | seen 4", boop.stats.formatMobXp("Test Area", "a vicious gnoll soldier"))
+    assert.are.equal("xp mean 29000 | median 28500 | mode 28000 (2x) | seen 4 | p1", boop.stats.formatMobXp("Test Area", "a vicious gnoll soldier"))
     assert.stub(record_mob_xp_stub).was.called(4)
+  end)
+
+  it("buckets mob xp observations by configured party size", function()
+    helper.setArea("Test Area")
+    boop.ui.setEnabled(true, true)
+    boop.stats.onTargetSet("42", "a vicious gnoll soldier")
+    boop.config.partySize = 1
+    boop.stats.onExperienceGain("28,000")
+
+    boop.config.partySize = 3
+    boop.stats.onTargetSet("42", "a vicious gnoll soldier")
+    boop.stats.onExperienceGain("9,500")
+
+    assert.are.equal(28000, boop.stats.getMobXp("Test Area", "a vicious gnoll soldier", 1).total)
+    assert.are.equal(9500, boop.stats.getMobXp("Test Area", "a vicious gnoll soldier", 3).total)
+    assert.are.equal("xp mean 9500 | median 9500 | mode 9500 (1x) | seen 1 | p3", boop.stats.formatMobXp("Test Area", "a vicious gnoll soldier", 3))
   end)
 
   it("reseeds status baselines on init so existing wealth and xp are not counted as gains", function()
@@ -229,9 +245,27 @@ describe("boop stats", function()
 
     boop.stats.showMobs("Test Area", 5)
 
-    assert.are.equal("mob xp stats for Test Area:", messages[1])
+    assert.are.equal("mob xp stats for Test Area (party size 1):", messages[1])
     assert.is_true(messages[2]:find("a vicious gnoll soldier | seen 3 | mean 28666.7 | median 29000 | mode 29000 (2x)", 1, true) ~= nil)
     assert.is_true(messages[3]:find("a lesser gnoll | seen 1 | mean 12500 | median 12500 | mode 12500 (1x)", 1, true) ~= nil)
+  end)
+
+  it("shows per-target kill efficiency joined with current party-size xp stats", function()
+    helper.setArea("Test Area")
+    boop.ui.setEnabled(true, true)
+
+    boop.stats.onTargetSet("42", "a vicious gnoll soldier")
+    boop.stats.onExperienceGain("28,000")
+    boop.stats.onTargetRemoved("42", "a vicious gnoll soldier")
+
+    boop.stats.onTargetSet("42", "a vicious gnoll soldier")
+    boop.stats.onExperienceGain("29,000")
+    boop.stats.onTargetRemoved("42", "a vicious gnoll soldier")
+
+    boop.stats.showTargets("session", 5)
+
+    assert.are.equal("session target stats for Test Area (party size 1):", messages[1])
+    assert.is_true(messages[2]:find("a vicious gnoll soldier | kills 2 | avg ttk 0s | best 0s | worst 0s | xp mean 28500 | median 28500 | mode 28000 (1x)", 1, true) ~= nil)
   end)
 
   it("tracks per-ability combat stats from attack damage crit balance and kill lines", function()
@@ -375,6 +409,6 @@ describe("boop stats", function()
     boop.targets.displayWhitelist("Test Area")
 
     assert.are.equal("Whitelist for Test Area:", echoes[1])
-    assert.is_true(echoes[2]:find("a vicious gnoll soldier | xp mean 28500 | median 28500 | mode 28000 (1x) | seen 2", 1, true) ~= nil)
+    assert.is_true(echoes[2]:find("a vicious gnoll soldier | xp mean 28500 | median 28500 | mode 28000 (1x) | seen 2 | p1", 1, true) ~= nil)
   end)
 end)

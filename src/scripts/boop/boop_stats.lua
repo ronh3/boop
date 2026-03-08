@@ -12,6 +12,15 @@ local function currentArea()
   return "UNKNOWN"
 end
 
+local function currentPartySize()
+  local size = tonumber(boop and boop.config and boop.config.partySize) or 1
+  size = math.floor(size)
+  if size < 1 then
+    return 1
+  end
+  return size
+end
+
 local function formatStatValue(value, decimals)
   local num = tonumber(value)
   if not num then
@@ -43,6 +52,7 @@ local function newScope(startedAt)
     activeSince = nil,
     areas = {},
     abilities = {},
+    targetStats = {},
   }
 end
 
@@ -73,6 +83,7 @@ local function ensureScope(scope, defaultStart)
   scope.activeSince = tonumber(scope.activeSince) or nil
   scope.areas = scope.areas or {}
   scope.abilities = scope.abilities or {}
+  scope.targetStats = scope.targetStats or {}
   return scope
 end
 
@@ -113,6 +124,35 @@ local function ensureAbility(scope, ability)
   entry.balances = tonumber(entry.balances) or 0
   entry.crits = tonumber(entry.crits) or 0
   entry.critTiers = entry.critTiers or {}
+  return entry
+end
+
+local function ensureTargetEntry(scope, area, partySize, name)
+  scope = ensureScope(scope)
+  local areaKey = tostring(area or "UNKNOWN")
+  local sizeKey = tonumber(partySize) or 1
+  if sizeKey < 1 then sizeKey = 1 end
+  local nameKey = boop.util.trim(tostring(name or ""))
+  if nameKey == "" then
+    nameKey = "(unknown)"
+  end
+
+  scope.targetStats[areaKey] = scope.targetStats[areaKey] or {}
+  scope.targetStats[areaKey][sizeKey] = scope.targetStats[areaKey][sizeKey] or {}
+  scope.targetStats[areaKey][sizeKey][nameKey] = scope.targetStats[areaKey][sizeKey][nameKey] or {
+    kills = 0,
+    totalTtk = 0,
+    bestTtk = nil,
+    worstTtk = nil,
+    lastTtk = nil,
+  }
+
+  local entry = scope.targetStats[areaKey][sizeKey][nameKey]
+  entry.kills = tonumber(entry.kills) or 0
+  entry.totalTtk = tonumber(entry.totalTtk) or 0
+  entry.bestTtk = entry.bestTtk ~= nil and tonumber(entry.bestTtk) or nil
+  entry.worstTtk = entry.worstTtk ~= nil and tonumber(entry.worstTtk) or nil
+  entry.lastTtk = entry.lastTtk ~= nil and tonumber(entry.lastTtk) or nil
   return entry
 end
 
@@ -329,15 +369,18 @@ local function seedBaselinesFromStatus()
   end
 end
 
-local function ensureMobArea(area)
+local function ensureMobArea(area, partySize)
   local key = tostring(area or "UNKNOWN")
+  local sizeKey = tonumber(partySize) or 1
+  if sizeKey < 1 then sizeKey = 1 end
   boop.stats.mobXp = boop.stats.mobXp or {}
   boop.stats.mobXp[key] = boop.stats.mobXp[key] or {}
-  return boop.stats.mobXp[key]
+  boop.stats.mobXp[key][sizeKey] = boop.stats.mobXp[key][sizeKey] or {}
+  return boop.stats.mobXp[key][sizeKey]
 end
 
-local function ensureMobEntry(area, name)
-  local mobs = ensureMobArea(area)
+local function ensureMobEntry(area, partySize, name)
+  local mobs = ensureMobArea(area, partySize)
   local key = tostring(name or "")
   mobs[key] = mobs[key] or {
     observations = 0,
@@ -416,18 +459,19 @@ local function modeMobXp(entry)
   return bestXp or 0, bestCount
 end
 
-local function formatMobXpSummary(entry)
+local function formatMobXpSummary(entry, partySize)
   if not entry or (tonumber(entry.observations) or 0) <= 0 then
     return nil
   end
   local modeXp, modeCount = modeMobXp(entry)
   return string.format(
-    "xp mean %s | median %s | mode %s (%dx) | seen %d",
+    "xp mean %s | median %s | mode %s (%dx) | seen %d | p%d",
     formatStatValue(meanMobXp(entry), 1),
     formatStatValue(medianMobXp(entry), 1),
     formatStatValue(modeXp, 1),
     tonumber(modeCount) or 0,
-    tonumber(entry.observations) or 0
+    tonumber(entry.observations) or 0,
+    tonumber(partySize) or 1
   )
 end
 
@@ -513,6 +557,33 @@ local function recordAbilityKill(ability)
   end)
 end
 
+local function recordTargetKill(area, name, seconds, partySize)
+  local cleanArea = boop.util.trim(area or "")
+  local cleanName = boop.util.trim(name or "")
+  local elapsed = tonumber(seconds) or 0
+  local size = tonumber(partySize) or currentPartySize()
+  if size < 1 then size = 1 end
+  if cleanArea == "" or cleanName == "" then
+    return
+  end
+  if elapsed < 0 then
+    elapsed = 0
+  end
+
+  eachActiveScope(function(scope)
+    local entry = ensureTargetEntry(scope, cleanArea, size, cleanName)
+    entry.kills = entry.kills + 1
+    entry.totalTtk = entry.totalTtk + elapsed
+    entry.lastTtk = elapsed
+    if not entry.bestTtk or elapsed < entry.bestTtk then
+      entry.bestTtk = elapsed
+    end
+    if not entry.worstTtk or elapsed > entry.worstTtk then
+      entry.worstTtk = elapsed
+    end
+  end)
+end
+
 local function findMobXpTarget(area)
   local active = boop.stats.activeTarget
   if active then
@@ -535,15 +606,17 @@ local function findMobXpTarget(area)
   return nil, nil
 end
 
-local function observeMobXp(area, name, amount)
+local function observeMobXp(area, name, amount, partySize)
   local cleanArea = boop.util.trim(area or "")
   local cleanName = boop.util.trim(name or "")
   local gained = tonumber(amount)
+  local size = tonumber(partySize) or currentPartySize()
+  if size < 1 then size = 1 end
   if cleanArea == "" or cleanName == "" or not gained or gained <= 0 then
     return
   end
 
-  local entry = ensureMobEntry(cleanArea, cleanName)
+  local entry = ensureMobEntry(cleanArea, size, cleanName)
   entry.observations = entry.observations + 1
   entry.total = entry.total + gained
   entry.values[tostring(gained)] = (tonumber(entry.values[tostring(gained)]) or 0) + 1
@@ -555,7 +628,7 @@ local function observeMobXp(area, name, amount)
   end
 
   if boop.db and boop.db.recordMobXpObservation then
-    boop.db.recordMobXpObservation(cleanArea, cleanName, gained, 1)
+    boop.db.recordMobXpObservation(cleanArea, size, cleanName, gained, 1)
   end
 end
 
@@ -735,11 +808,15 @@ function boop.stats.onTargetRemoved(targetId, targetName)
   local finishedAt = nowSeconds()
   local elapsed = finishedAt - (tonumber(current.startedAt) or finishedAt)
   local area = current.area or currentArea()
+  local name = boop.util.trim(targetName or current.name or "")
+  local partySize = currentPartySize()
   recordKill(elapsed, area)
+  recordTargetKill(area, name, elapsed, partySize)
   boop.stats.lastKill = {
     id = removedId,
-    name = boop.util.trim(targetName or current.name or ""),
+    name = name,
     area = area,
+    partySize = partySize,
     ttk = elapsed,
     at = finishedAt,
   }
@@ -763,7 +840,7 @@ function boop.stats.onExperienceGain(amount, area)
   if hasActiveScopes() then
     local mobArea, mobName = findMobXpTarget(resolvedArea)
     if mobArea and mobName then
-      observeMobXp(mobArea, mobName, gained)
+      observeMobXp(mobArea, mobName, gained, currentPartySize())
     end
   end
 end
@@ -968,9 +1045,11 @@ function boop.stats.showAreas(scopeName, limit)
   end
 end
 
-function boop.stats.getMobXp(area, name)
+function boop.stats.getMobXp(area, name, partySize)
   local cleanArea = tostring(area or "")
   local cleanName = tostring(name or "")
+  local size = tonumber(partySize) or currentPartySize()
+  if size < 1 then size = 1 end
   if cleanArea == "" or cleanName == "" then
     return nil
   end
@@ -978,11 +1057,17 @@ function boop.stats.getMobXp(area, name)
   if not areaMobs then
     return nil
   end
-  return areaMobs[cleanName]
+  local sizeMobs = areaMobs[size]
+  if not sizeMobs then
+    return nil
+  end
+  return sizeMobs[cleanName]
 end
 
-function boop.stats.formatMobXp(area, name)
-  return formatMobXpSummary(boop.stats.getMobXp(area, name))
+function boop.stats.formatMobXp(area, name, partySize)
+  local size = tonumber(partySize) or currentPartySize()
+  if size < 1 then size = 1 end
+  return formatMobXpSummary(boop.stats.getMobXp(area, name, size), size)
 end
 
 function boop.stats.showMobs(areaName, limit)
@@ -990,8 +1075,9 @@ function boop.stats.showMobs(areaName, limit)
   if area == "" then
     area = currentArea()
   end
+  local partySize = currentPartySize()
 
-  local areaMobs = boop.stats.mobXp and boop.stats.mobXp[area] or {}
+  local areaMobs = boop.stats.mobXp and boop.stats.mobXp[area] and boop.stats.mobXp[area][partySize] or {}
   local rows = {}
   for name, entry in pairs(areaMobs) do
     if (tonumber(entry.observations) or 0) > 0 then
@@ -1016,7 +1102,7 @@ function boop.stats.showMobs(areaName, limit)
 
   local maxRows = tonumber(limit) or 10
   if maxRows < 1 then maxRows = 1 end
-  boop.util.info(string.format("mob xp stats for %s:", area))
+  boop.util.info(string.format("mob xp stats for %s (party size %d):", area, partySize))
   if #rows == 0 then
     boop.util.info("  (no observed mob xp yet)")
     return
@@ -1032,6 +1118,72 @@ function boop.stats.showMobs(areaName, limit)
       formatStatValue(row.median, 1),
       formatStatValue(row.mode, 1),
       tonumber(row.modeCount) or 0
+    ))
+  end
+end
+
+function boop.stats.showTargets(scopeName, limit)
+  local scope, label = scopeByName(scopeName)
+  local area = currentArea()
+  local partySize = currentPartySize()
+  local buckets = scope.targetStats and scope.targetStats[area] and scope.targetStats[area][partySize] or {}
+  local rows = {}
+
+  for name, entry in pairs(buckets) do
+    local kills = tonumber(entry.kills) or 0
+    if kills > 0 then
+      local xpEntry = boop.stats.getMobXp(area, name, partySize)
+      local modeXp, modeCount = modeMobXp(xpEntry or {})
+      rows[#rows + 1] = {
+        name = name,
+        kills = kills,
+        avgTtk = kills > 0 and ((tonumber(entry.totalTtk) or 0) / kills) or 0,
+        bestTtk = tonumber(entry.bestTtk) or 0,
+        worstTtk = tonumber(entry.worstTtk) or 0,
+        meanXp = meanMobXp(xpEntry),
+        medianXp = medianMobXp(xpEntry),
+        modeXp = modeXp,
+        modeCount = tonumber(modeCount) or 0,
+      }
+    end
+  end
+
+  table.sort(rows, function(a, b)
+    if a.kills == b.kills then
+      if a.meanXp == b.meanXp then
+        return boop.util.safeLower(a.name) < boop.util.safeLower(b.name)
+      end
+      return a.meanXp > b.meanXp
+    end
+    return a.kills > b.kills
+  end)
+
+  local maxRows = tonumber(limit) or 10
+  if maxRows < 1 then maxRows = 1 end
+  boop.util.info(string.format("%s target stats for %s (party size %d):", label, area, partySize))
+  if #rows == 0 then
+    boop.util.info("  (no recorded target kills yet)")
+    return
+  end
+
+  for i = 1, math.min(#rows, maxRows) do
+    local row = rows[i]
+    local xpText = row.meanXp > 0 and string.format(
+      " | xp mean %s | median %s | mode %s (%dx)",
+      formatStatValue(row.meanXp, 1),
+      formatStatValue(row.medianXp, 1),
+      formatStatValue(row.modeXp, 1),
+      tonumber(row.modeCount) or 0
+    ) or ""
+    boop.util.info(string.format(
+      "  %d. %s | kills %d | avg ttk %ss | best %ss | worst %ss%s",
+      i,
+      row.name,
+      row.kills,
+      formatStatValue(row.avgTtk, 2),
+      formatStatValue(row.bestTtk, 2),
+      formatStatValue(row.worstTtk, 2),
+      xpText
     ))
   end
 end
@@ -1163,7 +1315,22 @@ function boop.stats.command(raw)
     return
   end
 
-  boop.util.info("Usage: boop stats [session|trip|lifetime|areas [scope] [limit]|mobs [area] [limit]|abilities [scope] [limit]|reset <session|trip|lifetime|all>]")
+  if cmd == "targets" or cmd == "mobsummary" then
+    local scope, limit = arg:match("^(%S+)%s+(%d+)$")
+    if scope then
+      boop.stats.showTargets(scope, tonumber(limit))
+      return
+    end
+    local maybeNumber = tonumber(arg)
+    if maybeNumber then
+      boop.stats.showTargets("session", maybeNumber)
+      return
+    end
+    boop.stats.showTargets(arg ~= "" and arg or "session")
+    return
+  end
+
+  boop.util.info("Usage: boop stats [session|trip|lifetime|areas [scope] [limit]|mobs [area] [limit]|targets [scope] [limit]|abilities [scope] [limit]|reset <session|trip|lifetime|all>]")
 end
 
 function boop.stats.startTrip()

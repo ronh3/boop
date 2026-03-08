@@ -25,6 +25,7 @@ boop.defaults = {
   tempoSqueezeEtaSeconds = 2.5,
   attackLeadSeconds = 1,
   diagTimeoutSeconds = 8,
+  partySize = 1,
   partyRoster = "",
 }
 
