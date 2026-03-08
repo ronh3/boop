@@ -103,7 +103,7 @@ jobs:
           i = 0
           while i < len(lines):
               line = lines[i]
-              if 'XMLimport::readUnknownElement("Trigger") ERROR - UNKNOWN Package Element name: "path".' in line:
+              if 'XMLimport::readUnknownElement(' in line and 'UNKNOWN Package Element name: "path".' in line:
                   i += 4
                   continue
               print(line)
