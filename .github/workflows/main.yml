@@ -85,29 +85,39 @@ jobs:
           fi
           perl -0pi -e "s/options\\.verbose = false/options.verbose = true/" "$profile_xml"
 
+      - name: Prepare Mudlet test runner
+        run: |
+          cat >/tmp/run-mudlet-tests.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          set +e
+          /tmp/Mudlet.AppImage --profile "GithubTests" --mirror > /tmp/mudlet.raw.log 2>&1
+          status=$?
+          set -e
+
+          python - <<'PY'
+          from pathlib import Path
+
+          lines = Path("/tmp/mudlet.raw.log").read_text(errors="replace").splitlines()
+          i = 0
+          while i < len(lines):
+              line = lines[i]
+              if 'XMLimport::readUnknownElement("Trigger") ERROR - UNKNOWN Package Element name: "path".' in line:
+                  i += 4
+                  continue
+              print(line)
+              i += 1
+          PY
+
+          exit "$status"
+          EOF
+          chmod +x /tmp/run-mudlet-tests.sh
+
       - name: Run Busted tests in Mudlet
         uses: GabrielBB/xvfb-action@v1.6
         with:
-          run: >-
-            bash -lc '
-            set -o pipefail
-            /tmp/Mudlet.AppImage --profile "GithubTests" --mirror > /tmp/mudlet.raw.log 2>&1
-            status=$?
-            python - <<'"'"'PY'"'"'
-            from pathlib import Path
-
-            lines = Path("/tmp/mudlet.raw.log").read_text(errors="replace").splitlines()
-            i = 0
-            while i < len(lines):
-                line = lines[i]
-                if '"'"'XMLimport::readUnknownElement("Trigger") ERROR - UNKNOWN Package Element name: "path".'"'"' in line:
-                    i += 4
-                    continue
-                print(line)
-                i += 1
-            PY
-            exit $status
-            '
+          run: bash /tmp/run-mudlet-tests.sh
         env:
           AUTORUN_BUSTED_TESTS: "true"
           TESTS_DIRECTORY: ${{ github.workspace }}/tests
