@@ -28,6 +28,8 @@ local function newScope(startedAt)
     worstTtk = nil,
     startedAt = startedAt or nowSeconds(),
     endedAt = nil,
+    activeSeconds = 0,
+    activeSince = nil,
     areas = {},
   }
 end
@@ -55,6 +57,8 @@ local function ensureScope(scope, defaultStart)
   end
   scope.startedAt = tonumber(scope.startedAt) or defaultStart or nowSeconds()
   scope.endedAt = tonumber(scope.endedAt) or nil
+  scope.activeSeconds = tonumber(scope.activeSeconds) or 0
+  scope.activeSince = tonumber(scope.activeSince) or nil
   scope.areas = scope.areas or {}
   return scope
 end
@@ -73,6 +77,18 @@ local function eachScope(fn)
   fn(boop.stats.lifetime)
 end
 
+local function eachActiveScope(fn)
+  if boop.stats.session and boop.stats.session.activeSince then
+    fn(boop.stats.session)
+  end
+  if boop.stats.trip and boop.stats.trip.activeSince then
+    fn(boop.stats.trip)
+  end
+  if boop.stats.lifetime and boop.stats.lifetime.activeSince then
+    fn(boop.stats.lifetime)
+  end
+end
+
 local function withArea(scope, area, fn)
   fn(scope)
   if area and area ~= "" then
@@ -88,7 +104,7 @@ end
 
 local function addGold(delta, area)
   if not delta or delta <= 0 then return end
-  eachScope(function(scope)
+  eachActiveScope(function(scope)
     withArea(scope, area, function(bucket)
       bucket.gold = bucket.gold + delta
     end)
@@ -98,7 +114,7 @@ end
 
 local function addExperience(delta, area)
   if not delta or delta == 0 then return end
-  eachScope(function(scope)
+  eachActiveScope(function(scope)
     withArea(scope, area, function(bucket)
       bucket.experience = bucket.experience + delta
     end)
@@ -108,7 +124,7 @@ end
 
 local function addRawExperience(delta, area)
   if not delta or delta <= 0 then return end
-  eachScope(function(scope)
+  eachActiveScope(function(scope)
     withArea(scope, area, function(bucket)
       bucket.rawExperience = (tonumber(bucket.rawExperience) or 0) + delta
     end)
@@ -118,7 +134,7 @@ end
 
 local function incrementCounter(name, area, amount)
   local delta = tonumber(amount) or 1
-  eachScope(function(scope)
+  eachActiveScope(function(scope)
     withArea(scope, area, function(bucket)
       bucket[name] = (tonumber(bucket[name]) or 0) + delta
     end)
@@ -131,7 +147,7 @@ end
 local function recordKill(seconds, area)
   local elapsed = tonumber(seconds) or 0
   if elapsed < 0 then elapsed = 0 end
-  eachScope(function(scope)
+  eachActiveScope(function(scope)
     withArea(scope, area, function(bucket)
       bucket.kills = (tonumber(bucket.kills) or 0) + 1
       bucket.totalTtk = (tonumber(bucket.totalTtk) or 0) + elapsed
@@ -146,10 +162,50 @@ local function recordKill(seconds, area)
   persistLifetime()
 end
 
+local function scopeStart(scope, at)
+  scope = ensureScope(scope, at)
+  local now = tonumber(at) or nowSeconds()
+  if scope.activeSince then
+    return scope
+  end
+  scope.activeSince = now
+  if not scope.startedAt or scope.startedAt <= 0 then
+    scope.startedAt = now
+  end
+  scope.endedAt = nil
+  return scope
+end
+
+local function scopeStop(scope, at)
+  scope = ensureScope(scope, at)
+  if not scope.activeSince then
+    return scope
+  end
+  local now = tonumber(at) or nowSeconds()
+  local delta = now - scope.activeSince
+  if delta > 0 then
+    scope.activeSeconds = (tonumber(scope.activeSeconds) or 0) + delta
+  end
+  scope.activeSince = nil
+  scope.endedAt = now
+  return scope
+end
+
 local function elapsedFor(scope)
   scope = ensureScope(scope)
-  local finish = scope.endedAt or nowSeconds()
-  local elapsed = finish - (scope.startedAt or finish)
+  local elapsed = tonumber(scope.activeSeconds) or 0
+  if scope.activeSince then
+    local delta = nowSeconds() - scope.activeSince
+    if delta > 0 then
+      elapsed = elapsed + delta
+    end
+  elseif elapsed <= 0 and scope.startedAt then
+    local finish = scope.endedAt or nowSeconds()
+    local fallback = finish - scope.startedAt
+    if fallback > 0 then
+      elapsed = fallback
+    end
+  end
   if elapsed < 0 then
     return 0
   end
@@ -224,13 +280,20 @@ end
 
 function boop.stats.init()
   local now = nowSeconds()
-  boop.stats.session = ensureScope(boop.stats.session, now)
+  boop.stats.session = newScope(now)
   boop.stats.trip = ensureScope(boop.stats.trip, now)
   boop.stats.lifetime = ensureScope(boop.stats.lifetime, now)
   boop.stats.lastGold = nil
   boop.stats.lastXp = nil
   boop.stats.activeTarget = boop.stats.activeTarget or nil
   boop.stats.lastKill = boop.stats.lastKill or nil
+  if boop.config and boop.config.enabled then
+    scopeStart(boop.stats.session, now)
+    scopeStart(boop.stats.lifetime, now)
+  else
+    scopeStop(boop.stats.session, now)
+    scopeStop(boop.stats.lifetime, now)
+  end
   seedBaselinesFromStatus()
 end
 
@@ -247,16 +310,14 @@ function boop.stats.onCharStatus()
     boop.stats.lastGold = goldNumber
   end
 
-  local lvl = tonumber((gmcp.Char.Status.level or ""):match("^(%d+)") or 0)
-  local xp = tonumber((gmcp.Char.Status.xp or ""):match("([%d%.]+)") or 0)
-  local newXp = lvl * 100 + xp
-
-  if boop.stats.lastXp ~= nil then
-    local delta = newXp - boop.stats.lastXp
-    addExperience(delta, area)
+  local newXp = currentXpFromStatus()
+  if newXp ~= nil then
+    if boop.stats.lastXp ~= nil then
+      local delta = newXp - boop.stats.lastXp
+      addExperience(delta, area)
+    end
+    boop.stats.lastXp = newXp
   end
-
-  boop.stats.lastXp = newXp
 end
 
 function boop.stats.onTargetSet(targetId, targetName)
@@ -346,18 +407,48 @@ local function resetTripStopwatch(scope)
   end
 end
 
+function boop.stats.onEnabledChanged(enabled)
+  local now = nowSeconds()
+  local active = enabled and true or false
+  boop.stats.session = ensureScope(boop.stats.session, now)
+  boop.stats.lifetime = ensureScope(boop.stats.lifetime, now)
+
+  if active then
+    if not boop.stats.session.activeSince then
+      boop.stats.session = newScope(now)
+      scopeStart(boop.stats.session, now)
+    end
+    scopeStart(boop.stats.lifetime, now)
+  else
+    scopeStop(boop.stats.session, now)
+    scopeStop(boop.stats.lifetime, now)
+    boop.stats.activeTarget = nil
+  end
+
+  seedBaselinesFromStatus()
+  persistLifetime()
+end
+
 function boop.stats.reset(scopeName)
   local key = boop.util.safeLower(boop.util.trim(scopeName or "session"))
   local now = nowSeconds()
+  local boopActive = boop.config and boop.config.enabled
 
   if key == "all" then
     local hadTripStopwatch = boop.stats.trip and boop.stats.trip.stopwatch
     boop.stats.session = resetScopeData(nil, now)
+    if boopActive then
+      scopeStart(boop.stats.session, now)
+    end
     boop.stats.trip = resetScopeData(boop.stats.trip, now)
     if hadTripStopwatch then
       resetTripStopwatch(boop.stats.trip)
+      scopeStart(boop.stats.trip, now)
     end
     boop.stats.lifetime = resetScopeData(nil, now)
+    if boopActive then
+      scopeStart(boop.stats.lifetime, now)
+    end
     boop.stats.lastKill = nil
     boop.stats.activeTarget = nil
     seedBaselinesFromStatus()
@@ -368,6 +459,9 @@ function boop.stats.reset(scopeName)
 
   if key == "session" then
     boop.stats.session = resetScopeData(nil, now)
+    if boopActive then
+      scopeStart(boop.stats.session, now)
+    end
     boop.stats.lastKill = nil
     seedBaselinesFromStatus()
     boop.util.ok("stats reset: session")
@@ -379,6 +473,7 @@ function boop.stats.reset(scopeName)
     boop.stats.trip = resetScopeData(boop.stats.trip, now)
     if hadStopwatch then
       resetTripStopwatch(boop.stats.trip)
+      scopeStart(boop.stats.trip, now)
     end
     boop.stats.lastKill = nil
     seedBaselinesFromStatus()
@@ -388,6 +483,9 @@ function boop.stats.reset(scopeName)
 
   if key == "lifetime" or key == "life" then
     boop.stats.lifetime = resetScopeData(nil, now)
+    if boopActive then
+      scopeStart(boop.stats.lifetime, now)
+    end
     seedBaselinesFromStatus()
     persistLifetime()
     boop.util.ok("stats reset: lifetime")
@@ -510,6 +608,7 @@ function boop.stats.startTrip()
     return
   end
   boop.stats.trip = newScope(nowSeconds())
+  scopeStart(boop.stats.trip, nowSeconds())
   if createStopWatch then
     boop.stats.trip.stopwatch = createStopWatch()
   end
@@ -527,7 +626,7 @@ function boop.stats.stopTrip()
   if stopStopWatch then
     stopStopWatch(boop.stats.trip.stopwatch)
   end
-  boop.stats.trip.endedAt = nowSeconds()
+  scopeStop(boop.stats.trip, nowSeconds())
   boop.util.ok("Stopped hunting trip.")
   boop.stats.show("trip")
   boop.stats.trip.stopwatch = nil

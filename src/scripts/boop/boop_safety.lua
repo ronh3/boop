@@ -23,6 +23,9 @@ end
 function boop.safety.flee()
   boop.state.attacking = false
   boop.config.enabled = false
+  if boop.stats and boop.stats.onEnabledChanged then
+    boop.stats.onEnabledChanged(false)
+  end
   if boop.db and boop.db.saveConfig then
     boop.db.saveConfig("enabled", boop.config.enabled)
   end

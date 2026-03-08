@@ -368,6 +368,9 @@ function boop.ui.setEnabled(value, quiet)
   else
     boop.state.queueAliasDirty = true
   end
+  if boop.stats and boop.stats.onEnabledChanged then
+    boop.stats.onEnabledChanged(boop.config.enabled)
+  end
   if boop.db and boop.db.saveConfig then
     boop.db.saveConfig("enabled", boop.config.enabled)
   end

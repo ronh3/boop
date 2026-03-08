@@ -281,6 +281,8 @@ function boop.db.loadStats()
       boop.stats.lifetime.experience = tonumber(row.value) or 0
     elseif row.name == "lifetime_raw_experience" then
       boop.stats.lifetime.rawExperience = tonumber(row.value) or 0
+    elseif row.name == "lifetime_active_seconds" then
+      boop.stats.lifetime.activeSeconds = tonumber(row.value) or 0
     elseif row.name == "lifetime_kills" then
       boop.stats.lifetime.kills = tonumber(row.value) or 0
     elseif row.name == "lifetime_targets" then
@@ -305,6 +307,11 @@ end
 
 function boop.db.saveStats()
   if not boop.db.handle then return end
+  local function nowSeconds()
+    if getEpoch then return getEpoch() end
+    return os.clock()
+  end
+
   local function save(name, value)
     local dbtable = boop.db.handle.stats
     local row = db:fetch(dbtable, db:eq(dbtable.name, name))[1]
@@ -319,9 +326,18 @@ function boop.db.saveStats()
     end
   end
 
+  local lifetimeActiveSeconds = boop.stats.lifetime.activeSeconds or 0
+  if boop.stats.lifetime.activeSince then
+    local delta = nowSeconds() - boop.stats.lifetime.activeSince
+    if delta > 0 then
+      lifetimeActiveSeconds = lifetimeActiveSeconds + delta
+    end
+  end
+
   save("lifetime_gold", boop.stats.lifetime.gold)
   save("lifetime_experience", boop.stats.lifetime.experience)
   save("lifetime_raw_experience", boop.stats.lifetime.rawExperience or 0)
+  save("lifetime_active_seconds", lifetimeActiveSeconds)
   save("lifetime_kills", boop.stats.lifetime.kills or 0)
   save("lifetime_targets", boop.stats.lifetime.targets or 0)
   save("lifetime_retargets", boop.stats.lifetime.retargets or 0)
