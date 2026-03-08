@@ -9,6 +9,16 @@ local function whitelistTagsSchema()
   }
 end
 
+local function mobXpSchema()
+  return {
+    area = "",
+    name = "",
+    xp = 0,
+    count = 0,
+    _index = { "area", "name" },
+  }
+end
+
 local function warnDb(message)
   if boop and boop.util and boop.util.warn then
     boop.util.warn(message)
@@ -72,6 +82,65 @@ function boop.db.ensureWhitelistTagsTable()
   return true, nil
 end
 
+function boop.db.ensureMobXpTable()
+  if not db then
+    return false, "Mudlet DB unavailable"
+  end
+
+  if not boop.db.handle then
+    local ok, handleOrErr = pcall(function() return db:get_database("boop") end)
+    if not ok then
+      return false, tostring(handleOrErr)
+    end
+    boop.db.handle = handleOrErr
+  end
+
+  if not boop.db.handle then
+    return false, "boop DB handle unavailable"
+  end
+
+  local function verifySheet()
+    if not boop.db.handle.mob_xp then
+      return false, "mob_xp handle missing"
+    end
+    local ok, err = pcall(function()
+      db:fetch(boop.db.handle.mob_xp, nil, {
+        boop.db.handle.mob_xp.area,
+        boop.db.handle.mob_xp.name,
+        boop.db.handle.mob_xp.xp,
+      })
+    end)
+    if not ok then
+      return false, tostring(err)
+    end
+    return true, nil
+  end
+
+  local ok, err = verifySheet()
+  if ok then
+    return true, nil
+  end
+
+  local created, createErr = pcall(function()
+    db:create("boop", { mob_xp = mobXpSchema() })
+  end)
+  if not created then
+    return false, tostring(createErr)
+  end
+
+  local handleOk, handleOrErr = pcall(function() return db:get_database("boop") end)
+  if not handleOk then
+    return false, tostring(handleOrErr)
+  end
+  boop.db.handle = handleOrErr
+
+  local verifyOk, verifyErr = verifySheet()
+  if not verifyOk then
+    return false, tostring(verifyErr or err)
+  end
+  return true, nil
+end
+
 local function castValue(raw, default)
   if raw == nil then return default end
   local t = type(default)
@@ -112,6 +181,7 @@ function boop.db.init()
       _index = { "area" },
     },
     whitelist_tags = whitelistTagsSchema(),
+    mob_xp = mobXpSchema(),
     stats = {
       name = "",
       value = "",
@@ -125,6 +195,11 @@ function boop.db.init()
   local tagOk, tagErr = boop.db.ensureWhitelistTagsTable()
   if not tagOk then
     warnDb("boop: warning: whitelist tag storage unavailable (" .. tostring(tagErr) .. ")")
+  end
+
+  local mobOk, mobErr = boop.db.ensureMobXpTable()
+  if not mobOk then
+    warnDb("boop: warning: mob xp storage unavailable (" .. tostring(mobErr) .. ")")
   end
 
   boop.db.loadConfig()
@@ -271,6 +346,7 @@ end
 function boop.db.loadStats()
   boop.stats = boop.stats or {}
   boop.stats.lifetime = boop.stats.lifetime or { gold = 0, experience = 0 }
+  boop.stats.mobXp = {}
 
   if not boop.db.handle then return end
   local rows = db:fetch(boop.db.handle.stats, nil, { boop.db.handle.stats.name })
@@ -301,6 +377,135 @@ function boop.db.loadStats()
       boop.stats.lifetime.bestTtk = tonumber(row.value) or nil
     elseif row.name == "lifetime_worst_ttk" then
       boop.stats.lifetime.worstTtk = tonumber(row.value) or nil
+    end
+  end
+
+  local mobOk = boop.db.ensureMobXpTable()
+  if not mobOk or not boop.db.handle.mob_xp then
+    return
+  end
+
+  local fetched, mobRowsOrErr = pcall(function()
+    return db:fetch(boop.db.handle.mob_xp, nil, {
+      boop.db.handle.mob_xp.area,
+      boop.db.handle.mob_xp.name,
+      boop.db.handle.mob_xp.xp,
+    })
+  end)
+  if not fetched then
+    warnDb("boop: warning: failed loading mob xp stats (" .. tostring(mobRowsOrErr) .. ")")
+    return
+  end
+
+  for _, row in ipairs(mobRowsOrErr) do
+    local area = tostring(row.area or "")
+    local name = tostring(row.name or "")
+    local xp = tonumber(row.xp)
+    local count = tonumber(row.count) or 0
+    if area ~= "" and name ~= "" and xp and count > 0 then
+      boop.stats.mobXp[area] = boop.stats.mobXp[area] or {}
+      local entry = boop.stats.mobXp[area][name]
+      if not entry then
+        entry = {
+          observations = 0,
+          total = 0,
+          min = nil,
+          max = nil,
+          values = {},
+        }
+        boop.stats.mobXp[area][name] = entry
+      end
+      entry.observations = entry.observations + count
+      entry.total = entry.total + (xp * count)
+      entry.values[tostring(xp)] = (tonumber(entry.values[tostring(xp)]) or 0) + count
+      if not entry.min or xp < entry.min then
+        entry.min = xp
+      end
+      if not entry.max or xp > entry.max then
+        entry.max = xp
+      end
+    end
+  end
+end
+
+function boop.db.recordMobXpObservation(area, name, xp, delta)
+  local ok, err = boop.db.ensureMobXpTable()
+  if not ok then
+    warnDb("boop: warning: cannot save mob xp observation (" .. tostring(err) .. ")")
+    return
+  end
+  if not boop.db.handle or not boop.db.handle.mob_xp then return end
+
+  local cleanArea = tostring(area or "")
+  local cleanName = tostring(name or "")
+  local xpValue = tonumber(xp)
+  local addCount = tonumber(delta) or 1
+  if cleanArea == "" or cleanName == "" or not xpValue or addCount <= 0 then
+    return
+  end
+
+  local dbtable = boop.db.handle.mob_xp
+  local fetched, rowsOrErr = pcall(function()
+    return db:fetch(dbtable, db:eq(dbtable.area, cleanArea))
+  end)
+  if not fetched then
+    warnDb("boop: warning: cannot fetch mob xp rows (" .. tostring(rowsOrErr) .. ")")
+    return
+  end
+
+  local row
+  for _, candidate in ipairs(rowsOrErr) do
+    if tostring(candidate.name or "") == cleanName and tonumber(candidate.xp) == xpValue then
+      row = candidate
+      break
+    end
+  end
+
+  if not row then
+    local added, addErr = pcall(function()
+      db:add(dbtable, {
+        area = cleanArea,
+        name = cleanName,
+        xp = xpValue,
+        count = addCount,
+      })
+    end)
+    if not added then
+      warnDb("boop: warning: cannot add mob xp row (" .. tostring(addErr) .. ")")
+    end
+    return
+  end
+
+  row.count = (tonumber(row.count) or 0) + addCount
+  local updated, updateErr = pcall(function()
+    db:update(dbtable, row)
+  end)
+  if not updated then
+    warnDb("boop: warning: cannot update mob xp row (" .. tostring(updateErr) .. ")")
+  end
+end
+
+function boop.db.clearMobXpStats()
+  local ok, err = boop.db.ensureMobXpTable()
+  if not ok then
+    warnDb("boop: warning: cannot clear mob xp stats (" .. tostring(err) .. ")")
+    return
+  end
+  if not boop.db.handle or not boop.db.handle.mob_xp then return end
+
+  local dbtable = boop.db.handle.mob_xp
+  local fetched, rowsOrErr = pcall(function()
+    return db:fetch(dbtable, nil)
+  end)
+  if not fetched then
+    warnDb("boop: warning: cannot fetch mob xp rows for clear (" .. tostring(rowsOrErr) .. ")")
+    return
+  end
+
+  for _, row in ipairs(rowsOrErr) do
+    local deleted = pcall(function() db:delete(dbtable, row._row_id) end)
+    if not deleted then
+      warnDb("boop: warning: failed deleting mob xp row")
     end
   end
 end

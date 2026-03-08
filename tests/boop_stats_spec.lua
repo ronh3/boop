@@ -4,18 +4,30 @@ describe("boop stats", function()
   local epoch_stub
   local send_gmcp_stub
   local info_stub
+  local echo_stub
   local save_stats_stub
+  local record_mob_xp_stub
+  local clear_mob_xp_stub
   local messages
+  local echoes
+  local saved_cecho
+  local saved_cecho_link
 
   before_each(function()
     helper.reset()
     messages = {}
+    echoes = {}
 
     send_gmcp_stub = stub(_G, "sendGMCP", function(_) end)
     info_stub = stub(boop.util, "info", function(msg)
       messages[#messages + 1] = msg
     end)
+    echo_stub = stub(boop.util, "echo", function(msg)
+      echoes[#echoes + 1] = msg
+    end)
     save_stats_stub = stub(boop.db, "saveStats", function() end)
+    record_mob_xp_stub = stub(boop.db, "recordMobXpObservation", function() end)
+    clear_mob_xp_stub = stub(boop.db, "clearMobXpStats", function() end)
   end)
 
   after_each(function()
@@ -31,9 +43,29 @@ describe("boop stats", function()
       info_stub:revert()
       info_stub = nil
     end
+    if echo_stub then
+      echo_stub:revert()
+      echo_stub = nil
+    end
     if save_stats_stub then
       save_stats_stub:revert()
       save_stats_stub = nil
+    end
+    if record_mob_xp_stub then
+      record_mob_xp_stub:revert()
+      record_mob_xp_stub = nil
+    end
+    if clear_mob_xp_stub then
+      clear_mob_xp_stub:revert()
+      clear_mob_xp_stub = nil
+    end
+    if saved_cecho ~= nil then
+      _G.cecho = saved_cecho
+      saved_cecho = nil
+    end
+    if saved_cecho_link ~= nil then
+      _G.cechoLink = saved_cecho_link
+      saved_cecho_link = nil
     end
   end)
 
@@ -69,6 +101,26 @@ describe("boop stats", function()
     assert.are.equal(28376, boop.stats.trip.rawExperience)
     assert.are.equal(28376, boop.stats.lifetime.rawExperience)
     assert.are.equal(28376, boop.stats.session.areas["Test Area"].rawExperience)
+  end)
+
+  it("tracks per-mob xp observations with mean median and mode", function()
+    helper.setArea("Test Area")
+    boop.ui.setEnabled(true, true)
+    boop.stats.onTargetSet("42", "a vicious gnoll soldier")
+
+    boop.stats.onExperienceGain("28,000")
+    boop.stats.onExperienceGain("28,000")
+    boop.stats.onExperienceGain("29,000")
+    boop.stats.onExperienceGain("31,000")
+
+    local entry = boop.stats.getMobXp("Test Area", "a vicious gnoll soldier")
+    assert.is_not_nil(entry)
+    assert.are.equal(4, entry.observations)
+    assert.are.equal(116000, entry.total)
+    assert.are.equal(28000, entry.min)
+    assert.are.equal(31000, entry.max)
+    assert.are.equal("xp mean 29000 | median 28500 | mode 28000 (2x) | seen 4", boop.stats.formatMobXp("Test Area", "a vicious gnoll soldier"))
+    assert.stub(record_mob_xp_stub).was.called(4)
   end)
 
   it("reseeds status baselines on init so existing wealth and xp are not counted as gains", function()
@@ -163,6 +215,23 @@ describe("boop stats", function()
     assert.is_true(messages[5]:find("Test Area | 4 kills | 200 gold | 2.50%% xp | 28376 xp | avg ttk 4.00s", 1, true) ~= nil)
   end)
 
+  it("shows current-area mob xp summaries", function()
+    helper.setArea("Test Area")
+    boop.ui.setEnabled(true, true)
+    boop.stats.onTargetSet("42", "a vicious gnoll soldier")
+    boop.stats.onExperienceGain("28,000")
+    boop.stats.onExperienceGain("29,000")
+    boop.stats.onExperienceGain("29,000")
+    boop.stats.onTargetSet("43", "a lesser gnoll")
+    boop.stats.onExperienceGain("12,500")
+
+    boop.stats.showMobs("Test Area", 5)
+
+    assert.are.equal("mob xp stats for Test Area:", messages[1])
+    assert.is_true(messages[2]:find("a vicious gnoll soldier | seen 3 | mean 28666.7 | median 29000 | mode 29000 (2x)", 1, true) ~= nil)
+    assert.is_true(messages[3]:find("a lesser gnoll | seen 1 | mean 12500 | median 12500 | mode 12500 (1x)", 1, true) ~= nil)
+  end)
+
   it("starts and stops session and lifetime timing with boop enabled state", function()
     local ticks = { 100, 140, 200, 260 }
     local idx = 0
@@ -196,6 +265,18 @@ describe("boop stats", function()
     assert.are.equal(70, boop.stats.lifetime.gold)
   end)
 
+  it("clears mob xp telemetry on lifetime reset", function()
+    helper.setArea("Test Area")
+    boop.ui.setEnabled(true, true)
+    boop.stats.onTargetSet("42", "a vicious gnoll soldier")
+    boop.stats.onExperienceGain("28,376")
+
+    boop.stats.reset("lifetime")
+
+    assert.is_nil(boop.stats.getMobXp("Test Area", "a vicious gnoll soldier"))
+    assert.stub(clear_mob_xp_stub).was.called(1)
+  end)
+
   it("resets all stat scopes and reseeds baselines", function()
     gmcp.Char.Status.gold = "3000"
     gmcp.Char.Status.level = "80"
@@ -211,5 +292,23 @@ describe("boop stats", function()
     assert.are.equal(0, boop.stats.lifetime.gold)
     assert.are.equal(3000, boop.stats.lastGold)
     assert.are.equal(8060, boop.stats.lastXp)
+  end)
+
+  it("shows mob xp summaries in plain whitelist output", function()
+    helper.setArea("Test Area")
+    helper.setWhitelist("Test Area", { "a vicious gnoll soldier" })
+    boop.ui.setEnabled(true, true)
+    boop.stats.onTargetSet("42", "a vicious gnoll soldier")
+    boop.stats.onExperienceGain("28,000")
+    boop.stats.onExperienceGain("29,000")
+    saved_cecho = _G.cecho
+    saved_cecho_link = _G.cechoLink
+    _G.cecho = nil
+    _G.cechoLink = nil
+
+    boop.targets.displayWhitelist("Test Area")
+
+    assert.are.equal("Whitelist for Test Area:", echoes[1])
+    assert.is_true(echoes[2]:find("a vicious gnoll soldier | xp mean 28500 | median 28500 | mode 28000 (1x) | seen 2", 1, true) ~= nil)
   end)
 end)

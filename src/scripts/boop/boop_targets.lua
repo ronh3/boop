@@ -489,6 +489,7 @@ function boop.targets.displayWhitelist(area)
     for i, v in ipairs(list) do
       local idx = i
       local name = v
+      local xpSummary = boop.stats and boop.stats.formatMobXp and boop.stats.formatMobXp(area, name) or nil
       cecho("\n  <yellow>" .. idx .. ".<reset> <white>" .. name .. "<reset> ")
 
       if idx > 1 then
@@ -516,6 +517,10 @@ function boop.targets.displayWhitelist(area)
         boop.targets.removeWhitelist(area, name)
         boop.targets.displayWhitelist(area)
       end, "Remove " .. name .. " from whitelist", true)
+
+      if xpSummary then
+        cecho("\n     <grey>" .. xpSummary .. "<reset>")
+      end
     end
     return
   end
@@ -526,7 +531,12 @@ function boop.targets.displayWhitelist(area)
     return
   end
   for i, v in ipairs(list) do
-    boop.util.echo("  " .. i .. ". " .. v)
+    local xpSummary = boop.stats and boop.stats.formatMobXp and boop.stats.formatMobXp(area, v) or nil
+    if xpSummary then
+      boop.util.echo("  " .. i .. ". " .. v .. " | " .. xpSummary)
+    else
+      boop.util.echo("  " .. i .. ". " .. v)
+    end
   end
 end
 

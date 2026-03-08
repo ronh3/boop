@@ -12,6 +12,17 @@ local function currentArea()
   return "UNKNOWN"
 end
 
+local function formatStatValue(value, decimals)
+  local num = tonumber(value)
+  if not num then
+    return "0"
+  end
+  if math.abs(num - math.floor(num)) < 0.000001 then
+    return tostring(math.floor(num))
+  end
+  return string.format("%." .. tostring(decimals or 1) .. "f", num)
+end
+
 local function newScope(startedAt)
   return {
     gold = 0,
@@ -87,6 +98,12 @@ local function eachActiveScope(fn)
   if boop.stats.lifetime and boop.stats.lifetime.activeSince then
     fn(boop.stats.lifetime)
   end
+end
+
+local function hasActiveScopes()
+  return (boop.stats.session and boop.stats.session.activeSince)
+    or (boop.stats.trip and boop.stats.trip.activeSince)
+    or (boop.stats.lifetime and boop.stats.lifetime.activeSince)
 end
 
 local function withArea(scope, area, fn)
@@ -278,11 +295,160 @@ local function seedBaselinesFromStatus()
   end
 end
 
+local function ensureMobArea(area)
+  local key = tostring(area or "UNKNOWN")
+  boop.stats.mobXp = boop.stats.mobXp or {}
+  boop.stats.mobXp[key] = boop.stats.mobXp[key] or {}
+  return boop.stats.mobXp[key]
+end
+
+local function ensureMobEntry(area, name)
+  local mobs = ensureMobArea(area)
+  local key = tostring(name or "")
+  mobs[key] = mobs[key] or {
+    observations = 0,
+    total = 0,
+    min = nil,
+    max = nil,
+    values = {},
+  }
+  local entry = mobs[key]
+  entry.observations = tonumber(entry.observations) or 0
+  entry.total = tonumber(entry.total) or 0
+  entry.min = entry.min ~= nil and tonumber(entry.min) or nil
+  entry.max = entry.max ~= nil and tonumber(entry.max) or nil
+  entry.values = entry.values or {}
+  return entry
+end
+
+local function sortedMobXpValues(entry)
+  local rows = {}
+  for xp, count in pairs(entry.values or {}) do
+    local xpValue = tonumber(xp)
+    local seen = tonumber(count) or 0
+    if xpValue and seen > 0 then
+      rows[#rows + 1] = { xp = xpValue, count = seen }
+    end
+  end
+  table.sort(rows, function(a, b) return a.xp < b.xp end)
+  return rows
+end
+
+local function meanMobXp(entry)
+  if not entry or (tonumber(entry.observations) or 0) <= 0 then
+    return 0
+  end
+  return (tonumber(entry.total) or 0) / (tonumber(entry.observations) or 1)
+end
+
+local function medianMobXp(entry)
+  local observations = tonumber(entry and entry.observations) or 0
+  if observations <= 0 then
+    return 0
+  end
+
+  local rows = sortedMobXpValues(entry)
+  local midpointA = math.floor((observations + 1) / 2)
+  local midpointB = math.floor((observations + 2) / 2)
+  local seen = 0
+  local first
+  local second
+  for _, row in ipairs(rows) do
+    seen = seen + row.count
+    if not first and seen >= midpointA then
+      first = row.xp
+    end
+    if seen >= midpointB then
+      second = row.xp
+      break
+    end
+  end
+  if first and second then
+    return (first + second) / 2
+  end
+  return first or second or 0
+end
+
+local function modeMobXp(entry)
+  local rows = sortedMobXpValues(entry)
+  local bestXp
+  local bestCount = 0
+  for _, row in ipairs(rows) do
+    if row.count > bestCount or (row.count == bestCount and (not bestXp or row.xp < bestXp)) then
+      bestXp = row.xp
+      bestCount = row.count
+    end
+  end
+  return bestXp or 0, bestCount
+end
+
+local function formatMobXpSummary(entry)
+  if not entry or (tonumber(entry.observations) or 0) <= 0 then
+    return nil
+  end
+  local modeXp, modeCount = modeMobXp(entry)
+  return string.format(
+    "xp mean %s | median %s | mode %s (%dx) | seen %d",
+    formatStatValue(meanMobXp(entry), 1),
+    formatStatValue(medianMobXp(entry), 1),
+    formatStatValue(modeXp, 1),
+    tonumber(modeCount) or 0,
+    tonumber(entry.observations) or 0
+  )
+end
+
+local function findMobXpTarget(area)
+  local active = boop.stats.activeTarget
+  if active then
+    local activeArea = boop.util.trim(active.area or area or "")
+    local activeName = boop.util.trim(active.name or "")
+    if activeArea ~= "" and activeName ~= "" then
+      return activeArea, activeName
+    end
+  end
+
+  local lastKill = boop.stats.lastKill
+  if lastKill and nowSeconds() - (tonumber(lastKill.at) or 0) <= 5 then
+    local killArea = boop.util.trim(lastKill.area or area or "")
+    local killName = boop.util.trim(lastKill.name or "")
+    if killArea ~= "" and killName ~= "" then
+      return killArea, killName
+    end
+  end
+
+  return nil, nil
+end
+
+local function observeMobXp(area, name, amount)
+  local cleanArea = boop.util.trim(area or "")
+  local cleanName = boop.util.trim(name or "")
+  local gained = tonumber(amount)
+  if cleanArea == "" or cleanName == "" or not gained or gained <= 0 then
+    return
+  end
+
+  local entry = ensureMobEntry(cleanArea, cleanName)
+  entry.observations = entry.observations + 1
+  entry.total = entry.total + gained
+  entry.values[tostring(gained)] = (tonumber(entry.values[tostring(gained)]) or 0) + 1
+  if not entry.min or gained < entry.min then
+    entry.min = gained
+  end
+  if not entry.max or gained > entry.max then
+    entry.max = gained
+  end
+
+  if boop.db and boop.db.recordMobXpObservation then
+    boop.db.recordMobXpObservation(cleanArea, cleanName, gained, 1)
+  end
+end
+
 function boop.stats.init()
   local now = nowSeconds()
   boop.stats.session = newScope(now)
   boop.stats.trip = ensureScope(boop.stats.trip, now)
   boop.stats.lifetime = ensureScope(boop.stats.lifetime, now)
+  boop.stats.mobXp = boop.stats.mobXp or {}
   boop.stats.lastGold = nil
   boop.stats.lastXp = nil
   boop.stats.activeTarget = boop.stats.activeTarget or nil
@@ -382,7 +548,14 @@ function boop.stats.onExperienceGain(amount, area)
   local cleaned = tostring(amount or ""):gsub(",", "")
   local gained = tonumber(cleaned)
   if not gained or gained <= 0 then return end
-  addRawExperience(gained, area or currentArea())
+  local resolvedArea = area or currentArea()
+  addRawExperience(gained, resolvedArea)
+  if hasActiveScopes() then
+    local mobArea, mobName = findMobXpTarget(resolvedArea)
+    if mobArea and mobName then
+      observeMobXp(mobArea, mobName, gained)
+    end
+  end
 end
 
 local function resetScopeData(scope, startedAt)
@@ -449,9 +622,13 @@ function boop.stats.reset(scopeName)
     if boopActive then
       scopeStart(boop.stats.lifetime, now)
     end
+    boop.stats.mobXp = {}
     boop.stats.lastKill = nil
     boop.stats.activeTarget = nil
     seedBaselinesFromStatus()
+    if boop.db and boop.db.clearMobXpStats then
+      boop.db.clearMobXpStats()
+    end
     persistLifetime()
     boop.util.ok("stats reset: all")
     return
@@ -486,7 +663,11 @@ function boop.stats.reset(scopeName)
     if boopActive then
       scopeStart(boop.stats.lifetime, now)
     end
+    boop.stats.mobXp = {}
     seedBaselinesFromStatus()
+    if boop.db and boop.db.clearMobXpStats then
+      boop.db.clearMobXpStats()
+    end
     persistLifetime()
     boop.util.ok("stats reset: lifetime")
     return
@@ -568,6 +749,74 @@ function boop.stats.showAreas(scopeName, limit)
   end
 end
 
+function boop.stats.getMobXp(area, name)
+  local cleanArea = tostring(area or "")
+  local cleanName = tostring(name or "")
+  if cleanArea == "" or cleanName == "" then
+    return nil
+  end
+  local areaMobs = boop.stats.mobXp and boop.stats.mobXp[cleanArea]
+  if not areaMobs then
+    return nil
+  end
+  return areaMobs[cleanName]
+end
+
+function boop.stats.formatMobXp(area, name)
+  return formatMobXpSummary(boop.stats.getMobXp(area, name))
+end
+
+function boop.stats.showMobs(areaName, limit)
+  local area = boop.util.trim(areaName or "")
+  if area == "" then
+    area = currentArea()
+  end
+
+  local areaMobs = boop.stats.mobXp and boop.stats.mobXp[area] or {}
+  local rows = {}
+  for name, entry in pairs(areaMobs) do
+    if (tonumber(entry.observations) or 0) > 0 then
+      local modeXp, modeCount = modeMobXp(entry)
+      rows[#rows + 1] = {
+        name = name,
+        observations = tonumber(entry.observations) or 0,
+        mean = meanMobXp(entry),
+        median = medianMobXp(entry),
+        mode = modeXp,
+        modeCount = modeCount,
+      }
+    end
+  end
+
+  table.sort(rows, function(a, b)
+    if a.mean == b.mean then
+      return boop.util.safeLower(a.name) < boop.util.safeLower(b.name)
+    end
+    return a.mean > b.mean
+  end)
+
+  local maxRows = tonumber(limit) or 10
+  if maxRows < 1 then maxRows = 1 end
+  boop.util.info(string.format("mob xp stats for %s:", area))
+  if #rows == 0 then
+    boop.util.info("  (no observed mob xp yet)")
+    return
+  end
+  for i = 1, math.min(#rows, maxRows) do
+    local row = rows[i]
+    boop.util.info(string.format(
+      "  %d. %s | seen %d | mean %s | median %s | mode %s (%dx)",
+      i,
+      row.name,
+      row.observations,
+      formatStatValue(row.mean, 1),
+      formatStatValue(row.median, 1),
+      formatStatValue(row.mode, 1),
+      tonumber(row.modeCount) or 0
+    ))
+  end
+end
+
 function boop.stats.command(raw)
   local text = boop.util.trim(raw or "")
   local first, rest = text:match("^(%S+)%s*(.-)$")
@@ -599,7 +848,22 @@ function boop.stats.command(raw)
     return
   end
 
-  boop.util.info("Usage: boop stats [session|trip|lifetime|areas [scope] [limit]|reset <session|trip|lifetime|all>]")
+  if cmd == "mobs" then
+    local targetArea, limit = arg:match("^(.-)%s+(%d+)$")
+    if targetArea and boop.util.trim(targetArea) ~= "" then
+      boop.stats.showMobs(targetArea, tonumber(limit))
+      return
+    end
+    local maybeNumber = tonumber(arg)
+    if maybeNumber then
+      boop.stats.showMobs(currentArea(), maybeNumber)
+      return
+    end
+    boop.stats.showMobs(arg ~= "" and arg or currentArea())
+    return
+  end
+
+  boop.util.info("Usage: boop stats [session|trip|lifetime|areas [scope] [limit]|mobs [area] [limit]|reset <session|trip|lifetime|all>]")
 end
 
 function boop.stats.startTrip()
