@@ -34,11 +34,16 @@ Current coverage:
   Confirms spec-based standard and shield commands across all by-spec profiles.
 - `boop_diag_spec.lua`
   Confirms diagnose pauses attacks and resumes them after the diagnose line plus prompt.
+- `boop_diag_timeout_spec.lua`
+  Confirms diagnose timeout resumes attacks if the expected confirmation never arrives.
+- `boop_event_transitions_spec.lua`
+  Confirms room and target gmcp transitions clear stale combat state and retarget correctly.
+- `boop_gag_spec.lua`
+  Confirms condensed gag summaries for attack and kill replay lines.
 
 Good candidates for future additions:
 
 - more class/spec-specific attack profiles
-- shield tracking from trigger events
-- queue/prequeue timing flows
-- gag summary behavior
-- gold retry failure paths
+- trigger-driven affliction updates
+- queue/prequeue timing race conditions
+- more text replay cases from live combat logs
