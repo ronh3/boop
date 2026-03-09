@@ -125,6 +125,21 @@ describe("boop stats", function()
     assert.stub(record_mob_xp_stub).was.called(4)
   end)
 
+  it("normalizes corpse-style kill names back to the living denizen name", function()
+    helper.setArea("Test Area")
+    boop.ui.setEnabled(true, true)
+
+    boop.stats.onTargetSet("42", "a vicious gnoll soldier")
+    boop.stats.onTargetRemoved("42", "the corpse of a vicious gnoll soldier")
+    boop.stats.onExperienceGain("35,535")
+
+    local entry = boop.stats.getMobXp("Test Area", "a vicious gnoll soldier")
+    assert.is_not_nil(entry)
+    assert.are.equal(35535, entry.total)
+    assert.is_nil(boop.stats.getMobXp("Test Area", "the corpse of a vicious gnoll soldier"))
+    assert.are.equal("a vicious gnoll soldier", boop.stats.lastKill.name)
+  end)
+
   it("buckets mob xp observations by configured party size", function()
     helper.setArea("Test Area")
     boop.ui.setEnabled(true, true)

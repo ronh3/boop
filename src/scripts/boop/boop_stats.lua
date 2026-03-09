@@ -37,6 +37,30 @@ local function currentClass()
   return "unknown"
 end
 
+local function normalizeTrackedMobName(name)
+  local value = boop.util.trim(tostring(name or ""))
+  if value == "" then
+    return ""
+  end
+
+  local patterns = {
+    "^the corpse of%s+",
+    "^corpse of%s+",
+    "^the remains of%s+",
+    "^remains of%s+",
+  }
+
+  for _, pattern in ipairs(patterns) do
+    local updated = value:gsub(pattern, "")
+    if updated ~= value then
+      value = boop.util.trim(updated)
+      break
+    end
+  end
+
+  return value
+end
+
 local function formatStatValue(value, decimals)
   local num = tonumber(value)
   if not num then
@@ -214,7 +238,7 @@ local function ensureTargetEntry(scope, area, partySize, name)
   local areaKey = tostring(area or "UNKNOWN")
   local sizeKey = tonumber(partySize) or 1
   if sizeKey < 1 then sizeKey = 1 end
-  local nameKey = boop.util.trim(tostring(name or ""))
+  local nameKey = normalizeTrackedMobName(name)
   if nameKey == "" then
     nameKey = "(unknown)"
   end
@@ -563,7 +587,7 @@ end
 
 local function ensureMobEntry(area, partySize, name)
   local mobs = ensureMobArea(area, partySize)
-  local key = tostring(name or "")
+  local key = normalizeTrackedMobName(name)
   mobs[key] = mobs[key] or {
     observations = 0,
     total = 0,
@@ -578,6 +602,108 @@ local function ensureMobEntry(area, partySize, name)
   entry.max = entry.max ~= nil and tonumber(entry.max) or nil
   entry.values = entry.values or {}
   return entry
+end
+
+local function mergeMobEntry(target, source)
+  if not source then
+    return target
+  end
+  target = target or {
+    observations = 0,
+    total = 0,
+    min = nil,
+    max = nil,
+    values = {},
+  }
+
+  target.observations = (tonumber(target.observations) or 0) + (tonumber(source.observations) or 0)
+  target.total = (tonumber(target.total) or 0) + (tonumber(source.total) or 0)
+
+  local sourceMin = source.min ~= nil and tonumber(source.min) or nil
+  local sourceMax = source.max ~= nil and tonumber(source.max) or nil
+  if sourceMin ~= nil and (target.min == nil or sourceMin < target.min) then
+    target.min = sourceMin
+  end
+  if sourceMax ~= nil and (target.max == nil or sourceMax > target.max) then
+    target.max = sourceMax
+  end
+
+  for xp, count in pairs(source.values or {}) do
+    target.values[tostring(xp)] = (tonumber(target.values[tostring(xp)]) or 0) + (tonumber(count) or 0)
+  end
+
+  return target
+end
+
+local function aggregatedMobEntries(area, partySize)
+  local areaMobs = boop.stats.mobXp and boop.stats.mobXp[area] and boop.stats.mobXp[area][partySize] or {}
+  local merged = {}
+  for rawName, entry in pairs(areaMobs or {}) do
+    local name = normalizeTrackedMobName(rawName)
+    if name ~= "" then
+      merged[name] = mergeMobEntry(merged[name], entry)
+    end
+  end
+  return merged
+end
+
+local function mergeTargetEntry(target, source)
+  if not source then
+    return target
+  end
+  target = target or {
+    kills = 0,
+    totalTtk = 0,
+    bestTtk = nil,
+    worstTtk = nil,
+    lastTtk = nil,
+    gold = 0,
+    rawExperience = 0,
+    bestGold = nil,
+    bestRawExperience = nil,
+  }
+
+  local sourceKills = tonumber(source.kills) or 0
+  target.kills = (tonumber(target.kills) or 0) + sourceKills
+  target.totalTtk = (tonumber(target.totalTtk) or 0) + (tonumber(source.totalTtk) or 0)
+  target.gold = (tonumber(target.gold) or 0) + (tonumber(source.gold) or 0)
+  target.rawExperience = (tonumber(target.rawExperience) or 0) + (tonumber(source.rawExperience) or 0)
+
+  local sourceBest = source.bestTtk ~= nil and tonumber(source.bestTtk) or nil
+  local sourceWorst = source.worstTtk ~= nil and tonumber(source.worstTtk) or nil
+  local sourceLast = source.lastTtk ~= nil and tonumber(source.lastTtk) or nil
+  local sourceBestGold = source.bestGold ~= nil and tonumber(source.bestGold) or nil
+  local sourceBestRaw = source.bestRawExperience ~= nil and tonumber(source.bestRawExperience) or nil
+
+  if sourceBest ~= nil and (target.bestTtk == nil or sourceBest < target.bestTtk) then
+    target.bestTtk = sourceBest
+  end
+  if sourceWorst ~= nil and (target.worstTtk == nil or sourceWorst > target.worstTtk) then
+    target.worstTtk = sourceWorst
+  end
+  if sourceLast ~= nil then
+    target.lastTtk = sourceLast
+  end
+  if sourceBestGold ~= nil and (target.bestGold == nil or sourceBestGold > target.bestGold) then
+    target.bestGold = sourceBestGold
+  end
+  if sourceBestRaw ~= nil and (target.bestRawExperience == nil or sourceBestRaw > target.bestRawExperience) then
+    target.bestRawExperience = sourceBestRaw
+  end
+
+  return target
+end
+
+local function aggregatedTargetEntries(scope, area, partySize)
+  local buckets = scope.targetStats and scope.targetStats[area] and scope.targetStats[area][partySize] or {}
+  local merged = {}
+  for rawName, entry in pairs(buckets or {}) do
+    local name = normalizeTrackedMobName(rawName)
+    if name ~= "" then
+      merged[name] = mergeTargetEntry(merged[name], entry)
+    end
+  end
+  return merged
 end
 
 local function sortedMobXpValues(entry)
@@ -803,7 +929,7 @@ findMobXpTarget = function(area)
   local active = boop.stats.activeTarget
   if active then
     local activeArea = boop.util.trim(active.area or area or "")
-    local activeName = boop.util.trim(active.name or "")
+    local activeName = normalizeTrackedMobName(active.name or "")
     if activeArea ~= "" and activeName ~= "" then
       return activeArea, activeName, currentPartySize()
     end
@@ -812,7 +938,7 @@ findMobXpTarget = function(area)
   local lastKill = boop.stats.lastKill
   if lastKill and nowSeconds() - (tonumber(lastKill.at) or 0) <= 5 then
     local killArea = boop.util.trim(lastKill.area or area or "")
-    local killName = boop.util.trim(lastKill.name or "")
+    local killName = normalizeTrackedMobName(lastKill.name or "")
     if killArea ~= "" and killName ~= "" then
       return killArea, killName, tonumber(lastKill.partySize) or currentPartySize()
     end
@@ -823,7 +949,7 @@ end
 
 local function observeMobXp(area, name, amount, partySize)
   local cleanArea = boop.util.trim(area or "")
-  local cleanName = boop.util.trim(name or "")
+  local cleanName = normalizeTrackedMobName(name)
   local gained = tonumber(amount)
   local size = tonumber(partySize) or currentPartySize()
   if size < 1 then size = 1 end
@@ -1029,7 +1155,7 @@ function boop.stats.onTargetRemoved(targetId, targetName)
   local finishedAt = nowSeconds()
   local elapsed = finishedAt - (tonumber(current.startedAt) or finishedAt)
   local area = current.area or currentArea()
-  local name = boop.util.trim(targetName or current.name or "")
+  local name = normalizeTrackedMobName(targetName or current.name or "")
   local partySize = currentPartySize()
   recordKill(elapsed, area)
   recordTargetKill(area, name, elapsed, partySize)
@@ -1565,21 +1691,13 @@ end
 
 function boop.stats.getMobXp(area, name, partySize)
   local cleanArea = tostring(area or "")
-  local cleanName = tostring(name or "")
+  local cleanName = normalizeTrackedMobName(name)
   local size = tonumber(partySize) or currentPartySize()
   if size < 1 then size = 1 end
   if cleanArea == "" or cleanName == "" then
     return nil
   end
-  local areaMobs = boop.stats.mobXp and boop.stats.mobXp[cleanArea]
-  if not areaMobs then
-    return nil
-  end
-  local sizeMobs = areaMobs[size]
-  if not sizeMobs then
-    return nil
-  end
-  return sizeMobs[cleanName]
+  return aggregatedMobEntries(cleanArea, size)[cleanName]
 end
 
 function boop.stats.formatMobXp(area, name, partySize)
@@ -1595,7 +1713,7 @@ function boop.stats.showMobs(areaName, limit)
   end
   local partySize = currentPartySize()
 
-  local areaMobs = boop.stats.mobXp and boop.stats.mobXp[area] and boop.stats.mobXp[area][partySize] or {}
+  local areaMobs = aggregatedMobEntries(area, partySize)
   local rows = {}
   for name, entry in pairs(areaMobs) do
     if (tonumber(entry.observations) or 0) > 0 then
@@ -1644,7 +1762,7 @@ function boop.stats.showTargets(scopeName, limit)
   local scope, label = scopeByName(scopeName)
   local area = currentArea()
   local partySize = currentPartySize()
-  local buckets = scope.targetStats and scope.targetStats[area] and scope.targetStats[area][partySize] or {}
+  local buckets = aggregatedTargetEntries(scope, area, partySize)
   local rows = {}
 
   for name, entry in pairs(buckets) do
