@@ -230,7 +230,7 @@ describe("boop stats", function()
     assert.is_true(messages[1]:find("session stats: 4 kills | 5 targets | 200 gold | 2.50% xp | 28376 xp", 1, true) ~= nil)
     assert.is_true(messages[2]:find("raw xp/kill 7094.0", 1, true) ~= nil)
     assert.is_true(messages[3]:find("851280.0 xp/hr", 1, true) ~= nil)
-    assert.is_true(messages[5]:find("Test Area | 4 kills | 120.0 kills/hr | 200 gold | 6000.0 gold/hr | 28376 xp | 851280.0 xp/hr | avg ttk 4.00s", 1, true) ~= nil)
+    assert.is_true(messages[6]:find("Test Area | 4 kills | 120.0 kills/hr | 200 gold | 6000.0 gold/hr | 28376 xp | 851280.0 xp/hr | avg ttk 4.00s", 1, true) ~= nil)
   end)
 
   it("shows ranked area performance with richer rate output", function()
@@ -257,7 +257,7 @@ describe("boop stats", function()
 
     assert.are.equal("session areas (sorted by goldhr):", messages[1])
     assert.is_true(messages[2]:find("Fast Area | 8 kills | 240.0 kills/hr | 800 gold | 24000.0 gold/hr | 40000 xp | 1200000.0 xp/hr | avg ttk 2.50s", 1, true) ~= nil)
-    assert.is_true(messages[3]:find("Slow Area | 6 kills | 36.0 kills/hr | 1200 gold | 7200.0 gold/hr | 70000 xp | 420000.0 xp/hr | avg ttk 10s", 1, true) ~= nil)
+    assert.is_true(messages[3]:find("Slow Area | 6 kills | 36.0 kills/hr | 1200 gold | 7200.0 gold/hr | 70000 xp | 420000.0 xp/hr | avg ttk 10.00s", 1, true) ~= nil)
   end)
 
   it("shows current-area mob xp summaries", function()
@@ -292,7 +292,7 @@ describe("boop stats", function()
     boop.stats.showTargets("session", 5)
 
     assert.are.equal("session target stats for Test Area (party size 1):", messages[1])
-    assert.is_true(messages[2]:find("a vicious gnoll soldier | kills 2 | avg ttk 0s | best 0s | worst 0s | avg gold 0.0 | avg raw xp 28500.0 | best raw xp 29000", 1, true) ~= nil)
+    assert.is_true(messages[2]:find("a vicious gnoll soldier | kills 2 | avg ttk 0s | best 0s | worst 0s | avg gold 0 | avg raw xp 28500 | best raw xp 29000", 1, true) ~= nil)
     assert.is_true(messages[2]:find("| xp mean 28500 | median 28500 | mode 28000 (1x)", 1, true) ~= nil)
   end)
 
@@ -413,7 +413,7 @@ describe("boop stats", function()
 
     boop.stats.showCrits("session")
 
-    assert.are.equal("session crits: 3 crits across 5 uses (60.0%)", messages[1])
+    assert.are.equal("session crits: 3 crits across 5 uses (60%)", messages[1])
     assert.are.equal("session crit tiers: 2x 1 | 4x 0 | 8x 1 | 16x 0 | 32x 1", messages[2])
   end)
 
@@ -505,10 +505,10 @@ describe("boop stats", function()
     boop.stats.showCompare("trip", "lasttrip")
 
     assert.are.equal("compare trip vs lasttrip: mode combo | class occultist | p1 | area Mhaldor || mode tempo | class occultist | p1 | area Mhaldor", messages[1])
-    assert.are.equal("kills: 10 vs 8 (+2 | +25.0%)", messages[2])
+    assert.are.equal("kills: 10 vs 8 (+2 | +25%)", messages[2])
     assert.are.equal("gold: 500 vs 440 (+60 | +13.6%)", messages[3])
     assert.are.equal("raw xp: 40000 vs 36000 (+4000 | +11.1%)", messages[4])
-    assert.are.equal("avg ttk: 3 vs 5 (-2 | -40.0%)", messages[5])
+    assert.are.equal("avg ttk: 3 vs 5 (-2 | -40%)", messages[5])
   end)
 
   it("starts and stops session and lifetime timing with boop enabled state", function()

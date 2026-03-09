@@ -351,13 +351,6 @@ function boop.gag.onAttackLine(spec, matchTable, rawLine)
   end
   local selfActor = isSelfActor(actor, rawLine)
 
-  if selfActor and not boop.config.gagOwnAttacks then
-    return
-  end
-  if (not selfActor) and not boop.config.gagOthersAttacks then
-    return
-  end
-
   local victim = boop.util.trim(resolveCapture(spec and spec.target, matchTable))
   if victim == "" then
     victim = findLikelyTarget(matchTable, actor)
@@ -370,6 +363,13 @@ function boop.gag.onAttackLine(spec, matchTable, rawLine)
 
   if boop.stats and boop.stats.onAttackLine then
     boop.stats.onAttackLine(actor, selfActor, ability, victim)
+  end
+
+  if selfActor and not boop.config.gagOwnAttacks then
+    return
+  end
+  if (not selfActor) and not boop.config.gagOthersAttacks then
+    return
   end
 
   if not boop.config then return end
