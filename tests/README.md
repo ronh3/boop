@@ -48,8 +48,10 @@ Current coverage:
   Confirms public config, with party size intentionally kept session-local, plus whitelist/blacklist and whitelist-tag edits through the DB hooks.
 - `boop_db_spec.lua`
   Confirms DB guard paths degrade to warnings instead of throwing when optional Mudlet sheets are missing in an older local profile DB.
+- `boop_ui_spec.lua`
+  Confirms the bare `boop` command shows a compact operations dashboard instead of dropping users into a low-context status line.
 - `boop_stats_spec.lua`
-  Confirms gold/xp accumulation, party-size-aware mob xp bucketing, per-target efficiency and profitability summaries, richer area rankings, trip comparison output, rage-efficiency summaries, per-ability damage/crit/kill summaries, crit/record rollups, reset behavior, whitelist rendering, and human-readable stats summaries.
+  Confirms gold/xp accumulation, party-size-aware mob xp bucketing, stats dashboard/help output, per-target efficiency and profitability summaries, richer area rankings, trip comparison output, rage-efficiency summaries, per-ability damage/crit/kill summaries, crit/record rollups, reset behavior, whitelist rendering, and human-readable stats summaries.
 
 Good candidates for future additions:
 

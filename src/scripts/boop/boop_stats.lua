@@ -1538,6 +1538,91 @@ local function aggregateCrits(scope)
   return totals
 end
 
+local function topAreaRow(scope)
+  local best = nil
+  for area, data in pairs(scope.areas or {}) do
+    local elapsed = elapsedFor(data)
+    local kills = tonumber(data.kills) or 0
+    local rawXp = tonumber(data.rawExperience) or 0
+    local killsPerHour = perHour(kills, elapsed)
+    local rawXpPerHour = perHour(rawXp, elapsed)
+    if kills > 0 or rawXp > 0 then
+      local row = {
+        area = area,
+        kills = kills,
+        killsPerHour = killsPerHour,
+        rawXpPerHour = rawXpPerHour,
+      }
+      if not best
+        or row.rawXpPerHour > best.rawXpPerHour
+        or (math.abs(row.rawXpPerHour - best.rawXpPerHour) < 0.000001 and row.killsPerHour > best.killsPerHour)
+      then
+        best = row
+      end
+    end
+  end
+  return best
+end
+
+local function topAbilityRow(scope)
+  local best = nil
+  for ability, entry in pairs(scope.abilities or {}) do
+    local uses = tonumber(entry.uses) or 0
+    local kills = tonumber(entry.kills) or 0
+    if uses > 0 then
+      local row = {
+        ability = ability,
+        kills = kills,
+        avgDamage = (tonumber(entry.hitsWithDamage) or 0) > 0 and ((tonumber(entry.totalDamage) or 0) / (tonumber(entry.hitsWithDamage) or 1)) or 0,
+        critRate = uses > 0 and ((tonumber(entry.crits) or 0) * 100 / uses) or 0,
+      }
+      if not best
+        or row.kills > best.kills
+        or (row.kills == best.kills and row.avgDamage > best.avgDamage)
+      then
+        best = row
+      end
+    end
+  end
+  return best
+end
+
+local function topTargetRow(scope, area, partySize)
+  local buckets = aggregatedTargetEntries(scope, area, partySize)
+  local best = nil
+  for name, entry in pairs(buckets or {}) do
+    local kills = tonumber(entry.kills) or 0
+    if kills > 0 then
+      local row = {
+        name = name,
+        kills = kills,
+        avgTtk = kills > 0 and ((tonumber(entry.totalTtk) or 0) / kills) or 0,
+        avgRawXp = kills > 0 and ((tonumber(entry.rawExperience) or 0) / kills) or 0,
+      }
+      if not best
+        or row.kills > best.kills
+        or (row.kills == best.kills and row.avgRawXp > best.avgRawXp)
+      then
+        best = row
+      end
+    end
+  end
+  return best
+end
+
+local function scopeSummaryLine(scope, label)
+  local elapsed = elapsedFor(scope)
+  return string.format(
+    "%s: %d kills | %d gold | %d xp | %s kills/hr | avg ttk %ss",
+    label,
+    tonumber(scope.kills) or 0,
+    tonumber(scope.gold) or 0,
+    tonumber(scope.rawExperience) or 0,
+    formatStatValue(perHour(scope.kills, elapsed), 1),
+    formatStatValue(avgTtk(scope), 2)
+  )
+end
+
 function boop.stats.showCrits(scopeName)
   local scope, label = scopeByName(scopeName)
   local totals = aggregateCrits(scope)
@@ -1945,14 +2030,96 @@ function boop.stats.showCompare(leftName, rightName)
   boop.util.info(compareLine("flees", leftScope.flees, rightScope.flees, 0))
 end
 
+function boop.stats.showDashboard()
+  local area = currentArea()
+  local partySize = currentPartySize()
+  local session = ensureScope(boop.stats.session)
+  local trip = ensureScope(boop.stats.trip)
+  local lifetime = ensureScope(boop.stats.lifetime)
+  local bestArea = topAreaRow(session)
+  local bestTarget = topTargetRow(session, area, partySize)
+  local bestAbility = topAbilityRow(session)
+  local tripState = trip.stopwatch and "running" or "idle"
+
+  boop.util.info("stats dashboard:")
+  boop.util.info("  " .. scopeSummaryLine(session, "session"))
+  boop.util.info("  " .. scopeSummaryLine(trip, "trip") .. " | " .. tripState)
+  boop.util.info("  " .. scopeSummaryLine(lifetime, "lifetime"))
+  boop.util.info(string.format("  area: %s | party size %d", area, partySize))
+  if bestArea then
+    boop.util.info(string.format(
+      "  best area: %s | %s kills/hr | %s xp/hr",
+      bestArea.area,
+      formatStatValue(bestArea.killsPerHour, 1),
+      formatStatValue(bestArea.rawXpPerHour, 1)
+    ))
+  else
+    boop.util.info("  best area: (none yet)")
+  end
+  if bestTarget then
+    boop.util.info(string.format(
+      "  top target: %s | kills %d | avg ttk %ss | avg raw xp %s",
+      bestTarget.name,
+      bestTarget.kills,
+      formatStatValue(bestTarget.avgTtk, 2),
+      formatStatValue(bestTarget.avgRawXp, 1)
+    ))
+  else
+    boop.util.info("  top target: (none yet)")
+  end
+  if bestAbility then
+    boop.util.info(string.format(
+      "  top ability: %s | kills %d | avg dmg %s | crit %s%%",
+      bestAbility.ability,
+      bestAbility.kills,
+      formatStatValue(bestAbility.avgDamage, 1),
+      formatStatValue(bestAbility.critRate, 1)
+    ))
+  else
+    boop.util.info("  top ability: (none yet)")
+  end
+  boop.util.info("  use: boop stats session | boop stats areas | boop stats targets | boop stats abilities | boop stats rage")
+end
+
+function boop.stats.showHelp()
+  boop.util.info("stats help:")
+  boop.util.info("  boop stats            -> dashboard")
+  boop.util.info("  boop stats session    -> session totals and rates")
+  boop.util.info("  boop stats areas      -> ranked area performance")
+  boop.util.info("  boop stats targets    -> target efficiency in current area")
+  boop.util.info("  boop stats abilities  -> attack usage and damage")
+  boop.util.info("  boop stats rage       -> rage-mode efficiency")
+  boop.util.info("  boop stats compare    -> compare trip vs lasttrip by default")
+  boop.util.info("  boop stats reset all  -> clear stored stats")
+end
+
 function boop.stats.command(raw)
   local text = boop.util.trim(raw or "")
   local first, rest = text:match("^(%S+)%s*(.-)$")
   local cmd = boop.util.safeLower(first or "")
   local arg = boop.util.trim(rest or "")
 
-  if cmd == "" or cmd == "show" or cmd == "session" or cmd == "trip" or cmd == "lifetime" then
-    boop.stats.show(cmd ~= "" and cmd or "session")
+  if cmd == "" then
+    boop.stats.showDashboard()
+    return
+  end
+
+  if cmd == "help" or cmd == "?" then
+    boop.stats.showHelp()
+    return
+  end
+
+  if cmd == "show" then
+    if arg == "" then
+      boop.stats.showDashboard()
+      return
+    end
+    boop.stats.show(arg)
+    return
+  end
+
+  if cmd == "session" or cmd == "trip" or cmd == "lifetime" or cmd == "lasttrip" or cmd == "last" then
+    boop.stats.show(cmd)
     return
   end
 
@@ -2051,7 +2218,7 @@ function boop.stats.command(raw)
     return
   end
 
-  boop.util.info("Usage: boop stats [session|trip|lifetime|lasttrip|areas [scope] [limit] [metric]|mobs [area] [limit]|targets [scope] [limit]|abilities [scope] [limit]|crits [scope]|rage [scope]|records [scope]|compare [left] [right]|reset <session|trip|lifetime|all>]")
+  boop.util.info("Usage: boop stats [help|session|trip|lifetime|lasttrip|areas [scope] [limit] [metric]|mobs [area] [limit]|targets [scope] [limit]|abilities [scope] [limit]|crits [scope]|rage [scope]|records [scope]|compare [left] [right]|reset <session|trip|lifetime|all>]")
 end
 
 function boop.stats.startTrip()

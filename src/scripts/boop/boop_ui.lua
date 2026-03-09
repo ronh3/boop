@@ -2160,6 +2160,7 @@ local HELP_TOPICS = {
       "boop get <key>",
       "boop set <key> <value>",
       "boop stats",
+      "boop stats help",
       "boop stats trip|session|lifetime",
       "boop stats lasttrip",
       "boop stats areas [scope] [limit] [metric]",
@@ -2178,6 +2179,7 @@ local HELP_TOPICS = {
       "boop set tempoSqueezeEtaSeconds <seconds>",
     },
     notes = {
+      "Use boop stats with no arguments for the dashboard.",
       "Use boop get to inspect all available config keys.",
     },
   },
@@ -2299,7 +2301,51 @@ function boop.ui.help(topic)
 end
 
 function boop.ui.home()
-  boop.ui.status("status")
+  local class = currentClass()
+  local targetingMode = tostring(boop.config.targetingMode or "whitelist")
+  local rageMode = tostring(boop.config.attackMode or "simple")
+  local enabled = boop.config.enabled and "on" or "off"
+  local denizenCount = boop.state and boop.state.denizens and #boop.state.denizens or 0
+  local targetId = boop.state and boop.state.currentTargetId or ""
+  local targetName = boop.state and boop.state.targetName or ""
+  local targetShown = targetId ~= "" and (targetId .. " | " .. (targetName ~= "" and targetName or "(unnamed)")) or "(none)"
+  local trip = boop.stats and boop.stats.trip or {}
+  local tripRunning = trip and trip.stopwatch and "running" or "idle"
+  local tripKills = tonumber(trip and trip.kills) or 0
+  local tripGold = tonumber(trip and trip.gold) or 0
+  local tripXp = tonumber(trip and trip.rawExperience) or 0
+
+  if cecho then
+    uiPrintHeader("boop")
+    uiPrintSection("state")
+    uiPrintRow(1, "Hunting", enabled, boop.config.enabled and "green" or "red")
+    uiPrintRow(2, "Class", tostring(class), "cyan")
+    uiPrintRow(3, "Targeting", targetingMode, "cyan")
+    uiPrintRow(4, "Ragemode", rageMode, "yellow")
+    uiPrintRow(5, "Target", targetShown, "cyan")
+    uiPrintRow(6, "Room denizens", tostring(denizenCount), "cyan")
+
+    uiPrintSection("trip snapshot")
+    uiPrintRow(7, "Trip state", tripRunning, tripRunning == "running" and "green" or "yellow")
+    uiPrintRow(8, "Trip kills", tostring(tripKills), "cyan")
+    uiPrintRow(9, "Trip gold", tostring(tripGold), "yellow")
+    uiPrintRow(10, "Trip raw xp", tostring(tripXp), "yellow")
+
+    uiPrintSection("quick actions")
+    uiPrintRow(11, "Status dashboard", "OPEN", "cyan", function() boop.ui.status("status") end, "Open status dashboard")
+    uiPrintRow(12, "Config", "OPEN", "cyan", function() boop.ui.config("home") end, "Open configuration")
+    uiPrintRow(13, "Stats", "OPEN", "cyan", function() boop.stats.command("") end, "Open stats dashboard")
+    uiPrintRow(14, "Help", "OPEN", "cyan", function() boop.ui.help("home") end, "Open help")
+    uiPrintFooter("Type: boop status | boop config | boop stats | boop help")
+    return
+  end
+
+  boop.util.echo("BOOP")
+  boop.util.echo("----------------------------------------")
+  boop.util.echo(string.format("State: %s | class: %s | targeting: %s | ragemode: %s", enabled, tostring(class), targetingMode, rageMode))
+  boop.util.echo("Target: " .. targetShown .. " | room denizens: " .. tostring(denizenCount))
+  boop.util.echo(string.format("Trip: %s | kills %d | gold %d | xp %d", tripRunning, tripKills, tripGold, tripXp))
+  boop.util.echo("Quick: boop status | boop config | boop stats | boop help")
 end
 
 local CONFIG_SECTIONS = {
