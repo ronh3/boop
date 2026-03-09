@@ -21,6 +21,60 @@ local function norm(value)
   return value:lower():gsub("^%s+", ""):gsub("%s+$", "")
 end
 
+local function resetDb()
+  if not boop or not boop.db or not db or not db.get_database then
+    return
+  end
+
+  local ok, handle = pcall(function()
+    return db:get_database("boop")
+  end)
+  if not ok or not handle then
+    local initOk = pcall(function()
+      boop.db.init()
+    end)
+    if not initOk then
+      boop.db.handle = nil
+      return
+    end
+    ok, handle = pcall(function()
+      return db:get_database("boop")
+    end)
+    if not ok or not handle then
+      boop.db.handle = nil
+      return
+    end
+  end
+
+  boop.db.handle = handle
+
+  for _, sheetName in ipairs({
+    "config",
+    "whitelist",
+    "blacklist",
+    "whitelist_tags",
+    "mob_xp",
+    "mob_xp_v2",
+    "stats",
+  }) do
+    local sheet = handle[sheetName]
+    if sheet then
+      local fetched, rows = pcall(function()
+        return db:fetch(sheet, nil)
+      end)
+      if fetched and rows then
+        for _, row in ipairs(rows) do
+          if row and row._row_id then
+            pcall(function()
+              db:delete(sheet, row._row_id)
+            end)
+          end
+        end
+      end
+    end
+  end
+end
+
 local function findCharstatIndex(name)
   local stats = gmcp.Char.Vitals.charstats or {}
   local prefix = tostring(name) .. ":"
@@ -39,6 +93,8 @@ end
 function M.reset()
   assert(boop, "boop package is not loaded")
   local desiredGroups = boop.skills and boop.skills.desiredGroups or nil
+
+  resetDb()
 
   gmcp = {
     Char = {
@@ -101,6 +157,7 @@ function M.reset()
   boop.skills.init()
 
   boop.handlers = {}
+  resetDb()
 
   return boop
 end
