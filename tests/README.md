@@ -46,6 +46,8 @@ Current coverage:
   Confirms rage readiness fallback, rage gain sampling, and rage affliction trigger ingestion.
 - `boop_persistence_spec.lua`
   Confirms public config, with party size intentionally kept session-local, plus whitelist/blacklist and whitelist-tag edits through the DB hooks.
+- `boop_db_spec.lua`
+  Confirms DB guard paths degrade to warnings instead of throwing when optional Mudlet sheets are missing in an older local profile DB.
 - `boop_stats_spec.lua`
   Confirms gold/xp accumulation, party-size-aware mob xp bucketing, per-target efficiency and profitability summaries, richer area rankings, trip comparison output, rage-efficiency summaries, per-ability damage/crit/kill summaries, crit/record rollups, reset behavior, whitelist rendering, and human-readable stats summaries.
 

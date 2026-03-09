@@ -38,6 +38,23 @@ local function warnDb(message)
   end
 end
 
+local function getMobXpSheetHandle()
+  if not boop.db.handle then
+    return nil, "boop DB handle unavailable"
+  end
+
+  local ok, sheetOrErr = pcall(function()
+    return boop.db.handle.mob_xp_v2
+  end)
+  if not ok then
+    return nil, tostring(sheetOrErr)
+  end
+  if not sheetOrErr then
+    return nil, "mob_xp_v2 handle missing"
+  end
+  return sheetOrErr, nil
+end
+
 function boop.db.ensureWhitelistTagsTable()
   if not db then
     return false, "Mudlet DB unavailable"
@@ -111,15 +128,16 @@ function boop.db.ensureMobXpTable()
   end
 
   local function verifySheet()
-    if not boop.db.handle.mob_xp_v2 then
-      return false, "mob_xp_v2 handle missing"
+    local dbtable, handleErr = getMobXpSheetHandle()
+    if not dbtable then
+      return false, handleErr
     end
     local ok, err = pcall(function()
-      db:fetch(boop.db.handle.mob_xp_v2, nil, {
-        boop.db.handle.mob_xp_v2.area,
-        boop.db.handle.mob_xp_v2.party_size,
-        boop.db.handle.mob_xp_v2.name,
-        boop.db.handle.mob_xp_v2.xp,
+      db:fetch(dbtable, nil, {
+        dbtable.area,
+        dbtable.party_size,
+        dbtable.name,
+        dbtable.xp,
       })
     end)
     if not ok then
@@ -410,16 +428,17 @@ function boop.db.loadStats()
   end
 
   local mobOk = boop.db.ensureMobXpTable()
-  if not mobOk or not boop.db.handle.mob_xp_v2 then
+  local mobTable = mobOk and select(1, getMobXpSheetHandle()) or nil
+  if not mobOk or not mobTable then
     return
   end
 
   local fetched, mobRowsOrErr = pcall(function()
-    return db:fetch(boop.db.handle.mob_xp_v2, nil, {
-      boop.db.handle.mob_xp_v2.area,
-      boop.db.handle.mob_xp_v2.party_size,
-      boop.db.handle.mob_xp_v2.name,
-      boop.db.handle.mob_xp_v2.xp,
+    return db:fetch(mobTable, nil, {
+      mobTable.area,
+      mobTable.party_size,
+      mobTable.name,
+      mobTable.xp,
     })
   end)
   if not fetched then
@@ -466,7 +485,11 @@ function boop.db.recordMobXpObservation(area, partySize, name, xp, delta)
     warnDb("boop: warning: cannot save mob xp observation (" .. tostring(err) .. ")")
     return
   end
-  if not boop.db.handle or not boop.db.handle.mob_xp_v2 then return end
+  local dbtable, tableErr = getMobXpSheetHandle()
+  if not dbtable then
+    warnDb("boop: warning: cannot access mob xp sheet (" .. tostring(tableErr) .. ")")
+    return
+  end
 
   local cleanArea = tostring(area or "")
   local size = tonumber(partySize) or 1
@@ -478,7 +501,6 @@ function boop.db.recordMobXpObservation(area, partySize, name, xp, delta)
     return
   end
 
-  local dbtable = boop.db.handle.mob_xp_v2
   local fetched, rowsOrErr = pcall(function()
     return db:fetch(dbtable, db:eq(dbtable.area, cleanArea))
   end)
@@ -529,9 +551,11 @@ function boop.db.clearMobXpStats()
     warnDb("boop: warning: cannot clear mob xp stats (" .. tostring(err) .. ")")
     return
   end
-  if not boop.db.handle or not boop.db.handle.mob_xp_v2 then return end
-
-  local dbtable = boop.db.handle.mob_xp_v2
+  local dbtable, tableErr = getMobXpSheetHandle()
+  if not dbtable then
+    warnDb("boop: warning: cannot access mob xp sheet for clear (" .. tostring(tableErr) .. ")")
+    return
+  end
   local fetched, rowsOrErr = pcall(function()
     return db:fetch(dbtable, nil)
   end)
