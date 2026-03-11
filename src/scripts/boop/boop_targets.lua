@@ -116,6 +116,48 @@ local function listContains(list, name)
   return false
 end
 
+local function normalizeBlacklistArea(area)
+  local raw = boop.util.safeLower(boop.util.trim(area or ""))
+  if raw == "" then
+    return boop.targets.getArea()
+  end
+  if raw == "global" or raw == "all" or raw == "*" then
+    return "GLOBAL"
+  end
+  return area
+end
+
+local function blacklistListForArea(area)
+  local resolved = normalizeBlacklistArea(area)
+  boop.lists = boop.lists or {}
+  if resolved == "GLOBAL" then
+    boop.lists.globalBlacklist = boop.lists.globalBlacklist or {}
+    return boop.lists.globalBlacklist, resolved
+  end
+  boop.lists.blacklist = boop.lists.blacklist or {}
+  boop.lists.blacklist[resolved] = boop.lists.blacklist[resolved] or {}
+  return boop.lists.blacklist[resolved], resolved
+end
+
+function boop.targets.isGloballyBlacklisted(name)
+  return listContains(boop.lists and boop.lists.globalBlacklist, name)
+end
+
+function boop.targets.isWhitelisted(area, name)
+  local resolvedArea = area or boop.targets.getArea()
+  local list = boop.lists and boop.lists.whitelist and boop.lists.whitelist[resolvedArea] or {}
+  return listContains(list, name)
+end
+
+function boop.targets.isBlacklisted(area, name)
+  if boop.targets.isGloballyBlacklisted(name) then
+    return true
+  end
+  local resolvedArea = area or boop.targets.getArea()
+  local list = boop.lists and boop.lists.blacklist and boop.lists.blacklist[resolvedArea] or {}
+  return listContains(list, name)
+end
+
 local function ensureLists()
   boop.lists = boop.lists or {}
   boop.lists.whitelist = boop.lists.whitelist or {}
@@ -346,7 +388,7 @@ function boop.targets.choose()
 
   if mode == "auto" then
     for _, denizen in ipairs(denizens) do
-      if not listContains(boop.lists.globalBlacklist, denizen.name) then
+      if not boop.targets.isGloballyBlacklisted(denizen.name) then
         return denizen.id
       end
     end
@@ -417,36 +459,38 @@ function boop.targets.shiftWhitelist(area, index, direction)
 end
 
 function boop.targets.addBlacklist(area, name)
-  area = area or boop.targets.getArea()
+  local list
+  list, area = blacklistListForArea(area)
   name = boop.util.trim(name or "")
   if name == "" then
     boop.util.info("Usage: boop blacklist add <name>")
+    boop.util.info("Usage: boop blacklist global add <name>")
     return false
   end
 
-  boop.lists.blacklist[area] = boop.lists.blacklist[area] or {}
-  if listContains(boop.lists.blacklist[area], name) then
+  if listContains(list, name) then
     boop.util.warn("Already blacklisted in " .. area .. ": " .. name)
     return false
   end
 
-  boop.lists.blacklist[area][#boop.lists.blacklist[area] + 1] = name
+  list[#list + 1] = name
 
   if boop.db and boop.db.saveList then
-    boop.db.saveList("blacklist", area, boop.lists.blacklist[area])
+    boop.db.saveList("blacklist", area, list)
   end
   boop.util.ok("Blacklisted in " .. area .. ": " .. name)
   return true
 end
 
 function boop.targets.removeBlacklist(area, name)
-  area = area or boop.targets.getArea()
+  local list
+  list, area = blacklistListForArea(area)
   name = boop.util.trim(name or "")
   if name == "" then
     boop.util.info("Usage: boop blacklist remove <name>")
+    boop.util.info("Usage: boop blacklist global remove <name>")
     return false
   end
-  local list = boop.lists.blacklist[area]
   if not list or #list == 0 then
     boop.util.warn("Blacklist is empty for " .. area)
     return false
@@ -467,8 +511,8 @@ function boop.targets.removeBlacklist(area, name)
 end
 
 function boop.targets.shiftBlacklist(area, index, direction)
-  area = area or boop.targets.getArea()
-  local list = boop.lists.blacklist[area]
+  local list
+  list, area = blacklistListForArea(area)
   if not list or #list == 0 then return false end
   local moved = shiftListEntry(list, index, direction)
   if moved and boop.db and boop.db.saveList then
@@ -742,8 +786,8 @@ function boop.targets.displayWhitelistTagSummary()
 end
 
 function boop.targets.displayBlacklist(area)
-  area = area or boop.targets.getArea()
-  local list = boop.lists.blacklist[area] or {}
+  local list
+  list, area = blacklistListForArea(area)
   if cecho and cechoLink then
     cecho("\n<green>boop<reset>: <white>Blacklist for " .. area .. ":")
     if #list == 0 then

@@ -1446,7 +1446,7 @@ function boop.stats.onRageExecuted(ability, info)
     end
     if outcome == "combo_conditional" then
       rage.comboConditional = rage.comboConditional + 1
-    elseif outcome == "combo_primer" then
+    elseif outcome == "combo_primer" or outcome == "combo_party_primer" then
       rage.comboPrimers = rage.comboPrimers + 1
     elseif outcome == "combo_fallback" or outcome == "combo_spend_overflow" or outcome == "hybrid_fallback" then
       rage.comboFallbacks = rage.comboFallbacks + 1

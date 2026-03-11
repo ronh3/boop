@@ -27,19 +27,19 @@ end
 function boop.ih.printLine(id, name, isDenizen, fullLine)
   local lineText = fullLine or (tostring(id) .. "  " .. tostring(name))
   local whitelisted = false
+  local globallyBlacklisted = false
   if isDenizen then
     local area = boop.targets and boop.targets.getArea and boop.targets.getArea() or "UNKNOWN"
-    local list = boop.lists and boop.lists.whitelist and boop.lists.whitelist[area] or {}
-    for _, v in ipairs(list) do
-      if v == name then
-        whitelisted = true
-        break
-      end
+    if boop.targets and boop.targets.isWhitelisted then
+      whitelisted = boop.targets.isWhitelisted(area, name)
+    end
+    if boop.targets and boop.targets.isGloballyBlacklisted then
+      globallyBlacklisted = boop.targets.isGloballyBlacklisted(name)
     end
   end
   if cechoLink and cecho then
     cecho("\n" .. lineText .. " ")
-    if isDenizen then
+    if isDenizen and not globallyBlacklisted then
       if whitelisted then
         cechoLink("<yellow>[-whitelist]<reset>", function()
           boop.targets.removeWhitelist(nil, name)
@@ -59,7 +59,7 @@ function boop.ih.printLine(id, name, isDenizen, fullLine)
     end
   elseif echoLink and echo then
     echo("\n" .. lineText .. " ")
-    if isDenizen then
+    if isDenizen and not globallyBlacklisted then
       if whitelisted then
         echoLink("[-whitelist]", function()
           boop.targets.removeWhitelist(nil, name)
@@ -78,7 +78,7 @@ function boop.ih.printLine(id, name, isDenizen, fullLine)
       end, "Add to blacklist", true)
     end
   else
-    if isDenizen then
+    if isDenizen and not globallyBlacklisted then
       boop.util.echo(lineText .. " [+whitelist] [+blacklist]")
     else
       boop.util.echo(lineText)

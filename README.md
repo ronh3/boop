@@ -36,6 +36,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop whitelist tag add <area> | <tag[,tag2,...]>`
 - `boop whitelist tag remove <area> | <tag[,tag2,...]>`
 - `boop blacklist` / `boop blacklist add <name>` / `boop blacklist remove <name>` (display is clickable: up/down/remove)
+- `boop blacklist global` / `boop blacklist global add <name>` / `boop blacklist global remove <name>` (all-area blacklist manager)
 - `boop aff` / `boop aff add <a/b>` / `boop aff remove <a/b>` / `boop aff clear`
 - `boop debug` / `boop debug attacks` / `boop debug skills` / `boop debug skills dump`
 - `boop trip start` / `boop trip stop`
@@ -49,6 +50,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Whitelist areas can have multiple tags (for example `continent-a`, `newbie`, `high-end`) for browse/filter workflows.
 - Whitelist tags are normalized to lowercase and `-` separators, so `Mid Level` becomes `mid-level`.
 - `boop ih` shows items too; only denizens get whitelist/blacklist buttons.
+- Denizens on the global blacklist do not show `ih` whitelist/blacklist action labels.
 - Auto gold pickup grabs newly dropped room items whose names contain `gold sovereign`.
 - In queueing mode, auto gold pickup is prepended to the next standard attack as `get sovereigns/<attack>`.
 - If no standard attack follows quickly, boop falls back to `queue add freestand get sovereigns` (also used in non-queueing mode to avoid balance-lock misses).
@@ -78,7 +80,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop combos` infers synergy from class rage profiles, including per-class affliction providers and conditional readiness.
 - `boop combos` with no args automatically uses `boop party` roster plus your current class.
 - `boop party` also highlights which party conditionals your class can help enable from your rage afflictions.
-- `boop ragemode combo` is conditional-first, primes missing conditional needs with your own aff rage attacks, then holds reserve rage and spends only overflow.
+- `boop ragemode combo` is conditional-first, can pool for a roster-enabled party aff primer (or self-primer when profile data supports it), then holds reserve rage and spends only overflow.
 - `boop ragemode hybrid` uses the same conditional/priming logic, but falls back to normal damage when reserve logic would otherwise hold.
 - `boop ragemode tempo` is aff-first, but can spend on damage when rolling rage gain predicts quick recovery (10s window).
 - Tune tempo behavior with `boop set tempoRageWindowSeconds <seconds>` and `boop set tempoSqueezeEtaSeconds <seconds>`.

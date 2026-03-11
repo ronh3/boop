@@ -70,6 +70,41 @@ describe("boop rage modes", function()
     assert.are.equal("fluctuate 42", actions.rage)
   end)
 
+  it("holds rage in combo mode when a rostered party class can enable the conditional", function()
+    helper.setClass("Occultist")
+    helper.setRage(25)
+    helper.learnSkills({
+      { name = "Lycantha", group = "Domination" },
+      { name = "fluctuate", group = "Attainment" },
+      { name = "harry", group = "Attainment" },
+    })
+    boop.config.partyRoster = "unnamable"
+    boop.config.attackMode = "combo"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("command hound at 42", actions.standard)
+    assert.are.equal("", actions.rage)
+  end)
+
+  it("uses a party-enabling affliction in combo mode when roster synergy exists", function()
+    helper.setClass("Occultist")
+    helper.setRage(32)
+    helper.learnSkills({
+      { name = "Lycantha", group = "Domination" },
+      { name = "fluctuate", group = "Attainment" },
+      { name = "temper", group = "Attainment" },
+      { name = "harry", group = "Attainment" },
+    })
+    boop.config.partyRoster = "unnamable"
+    boop.config.attackMode = "combo"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("command hound at 42", actions.standard)
+    assert.are.equal("temper 42", actions.rage)
+  end)
+
   it("suppresses rage actions in none mode", function()
     helper.setClass("Sentinel")
     helper.setRage(36)

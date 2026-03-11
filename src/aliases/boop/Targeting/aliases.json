@@ -14,6 +14,27 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Blacklist Global",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+blacklist\\s+global$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Blacklist Global Add",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+blacklist\\s+global\\s+add\\s+(.+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Blacklist Global Remove",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+blacklist\\s+global\\s+remove\\s+(.+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Blacklist Remove",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+blacklist\\s+remove\\s+(.+)$",

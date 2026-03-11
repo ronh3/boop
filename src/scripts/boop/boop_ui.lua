@@ -2048,6 +2048,9 @@ local HELP_TOPICS = {
       "boop blacklist",
       "boop blacklist add <name>",
       "boop blacklist remove <name>",
+      "boop blacklist global",
+      "boop blacklist global add <name>",
+      "boop blacklist global remove <name>",
       "boop whitelist tags <area>",
       "boop whitelist tag list",
       "boop whitelist tag add <area> | <tag[,tag2,...]>",
@@ -2056,7 +2059,7 @@ local HELP_TOPICS = {
       "boop ih",
     },
     notes = {
-      "Whitelist/blacklist displays support clickable management.",
+      "Whitelist/blacklist displays support clickable management, including a global blacklist list.",
       "Set retargetOnPriority OFF to keep current target until it dies/leaves.",
     },
   },

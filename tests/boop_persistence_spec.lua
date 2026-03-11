@@ -137,6 +137,18 @@ describe("boop config and list persistence paths", function()
     assert.are.same({ "snake" }, saved_lists[#saved_lists].list)
   end)
 
+  it("persists global blacklist edits through the public target commands", function()
+    assert.is_true(boop.targets.addBlacklist("GLOBAL", "rat"))
+    assert.is_true(boop.targets.addBlacklist("GLOBAL", "snake"))
+    assert.is_true(boop.targets.shiftBlacklist("GLOBAL", 2, "up"))
+    assert.is_true(boop.targets.removeBlacklist("GLOBAL", "rat"))
+
+    assert.are.same({ "snake" }, boop.lists.globalBlacklist)
+    assert.are.equal("blacklist", saved_lists[#saved_lists].kind)
+    assert.are.equal("GLOBAL", saved_lists[#saved_lists].area)
+    assert.are.same({ "snake" }, saved_lists[#saved_lists].list)
+  end)
+
   it("persists sorted deduplicated whitelist tag edits", function()
     helper.setWhitelist("Test Area", { "orc" })
 

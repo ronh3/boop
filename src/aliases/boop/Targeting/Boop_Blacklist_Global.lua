@@ -1,0 +1,1 @@
+boop.targets.displayBlacklist("GLOBAL")

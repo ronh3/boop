@@ -155,16 +155,52 @@ local function rosterClassKeys(selfClassKey)
   return classes
 end
 
+local function rosterPartyClassKeys(selfClassKey)
+  local selfKey = boop.util.safeLower(boop.util.trim(selfClassKey or ""))
+  local party = {}
+  for _, classKey in ipairs(rosterClassKeys(selfClassKey)) do
+    if classKey ~= selfKey then
+      party[#party + 1] = classKey
+    end
+  end
+  return party
+end
+
+local function classProfile(classKey)
+  local key = boop.util.safeLower(boop.util.trim(classKey or ""))
+  if key == "" then return nil end
+  return boop.attacks.registry[key]
+end
+
+local function classProvidesNeed(classKey, aff)
+  local key = normalizeAffName(aff or "")
+  if key == "" then return false end
+
+  local profile = classProfile(classKey)
+  local abilities = profile and profile.rage and profile.rage.abilities or {}
+  for _, ability in pairs(abilities) do
+    if normalizeAffName(ability.aff or "") == key then
+      return true
+    end
+  end
+  return false
+end
+
 local function rosterProvidersByAff(selfClassKey)
   local providers = {}
   local classes = rosterClassKeys(selfClassKey)
+  local selfKey = boop.util.safeLower(boop.util.trim(selfClassKey or ""))
   for _, classKey in ipairs(classes) do
     local classProfile = boop.attacks.registry[classKey]
     local rageProfile = classProfile and classProfile.rage
     local abilities = rageProfile and rageProfile.abilities or {}
     for _, ability in pairs(abilities) do
       local aff = normalizeAffName(ability.aff or "")
-      if aff ~= "" and abilityKnown(ability) then
+      local available = true
+      if classKey == selfKey then
+        available = abilityKnown(ability)
+      end
+      if aff ~= "" and available then
         providers[aff] = providers[aff] or {}
         providers[aff][classKey] = true
       end
@@ -287,6 +323,88 @@ local function findConditionalPrimer(profile, conditionalAbility, rage)
   return best
 end
 
+local function conditionalNeedMatchedByClass(ability, classKey)
+  if not ability or type(ability.needs) ~= "table" or #ability.needs == 0 then
+    return false
+  end
+
+  local mode = boop.util.safeLower(boop.util.trim(ability.needsMode or "any"))
+  local matched = 0
+  for _, need in ipairs(ability.needs) do
+    if classProvidesNeed(classKey, need) then
+      matched = matched + 1
+    end
+  end
+
+  if mode == "all" then
+    return matched == #ability.needs
+  end
+  return matched > 0
+end
+
+local function findPartyPrimer(profile, selfClassKey, rage)
+  if not profile or not profile.abilities then
+    return nil
+  end
+
+  local partyClasses = rosterPartyClassKeys(selfClassKey)
+  if #partyClasses == 0 then
+    return nil
+  end
+
+  local ownConditional = findByDesc(profile, "Conditional", nil)
+  local best = nil
+  local bestCost = nil
+  local bestMutual = false
+  local bestCoverage = 0
+  local bestAff = nil
+
+  for _, ability in pairs(profile.abilities) do
+    if ability.desc == "Gives Affliction" and abilityKnown(ability) and boop.attacks.rageReady(ability, rage) then
+      local aff = normalizeAffName(ability.aff or "")
+      if aff ~= "" and not (boop.afflictions and boop.afflictions.hasTarget and boop.afflictions.hasTarget(aff)) then
+        local coverage = 0
+        local mutual = false
+        for _, partyClass in ipairs(partyClasses) do
+          local partyProfile = classProfile(partyClass)
+          local abilities = partyProfile and partyProfile.rage and partyProfile.rage.abilities or {}
+          for _, partyAbility in pairs(abilities) do
+            if partyAbility.desc == "Conditional" and type(partyAbility.needs) == "table" then
+              for _, need in ipairs(partyAbility.needs) do
+                if normalizeAffName(need or "") == aff then
+                  coverage = coverage + 1
+                  if ownConditional and conditionalNeedMatchedByClass(ownConditional, partyClass) then
+                    mutual = true
+                  end
+                  break
+                end
+              end
+            end
+          end
+        end
+
+        if coverage > 0 then
+          local cost = tonumber(ability.rage) or 999
+          if not best
+            or (mutual and not bestMutual)
+            or (mutual == bestMutual and cost < bestCost)
+            or (mutual == bestMutual and cost == bestCost and coverage > bestCoverage)
+            or (mutual == bestMutual and cost == bestCost and coverage == bestCoverage and aff < bestAff)
+          then
+            best = ability
+            bestCost = cost
+            bestMutual = mutual
+            bestCoverage = coverage
+            bestAff = aff
+          end
+        end
+      end
+    end
+  end
+
+  return best
+end
+
 local function selectRageCombo(profile, rage, classKey, allowPriming, allowHold)
   local conditionalNow = findByDesc(profile, "Conditional", rage)
   if conditionalNow and boop.attacks.canUseConditional(conditionalNow) then
@@ -295,13 +413,27 @@ local function selectRageCombo(profile, rage, classKey, allowPriming, allowHold)
   end
 
   local conditionalReady = findByDesc(profile, "Conditional", nil)
-  if not conditionalReady then
-    traceComboDecision(classKey, "fallback simple (conditional unavailable)")
-    return selectDamageForHp(profile, rage), "combo_fallback"
+  local partyPrimerReady = nil
+  local partyPrimerAny = nil
+  if allowPriming then
+    partyPrimerReady = findPartyPrimer(profile, classKey, rage)
+    if partyPrimerReady then
+      traceComboDecision(classKey, "prime party combo with " .. tostring(partyPrimerReady.name or partyPrimerReady.skill or partyPrimerReady.aff or "aff"))
+      return partyPrimerReady, "combo_party_primer"
+    end
+    partyPrimerAny = findPartyPrimer(profile, classKey, nil)
   end
 
-  if not conditionalNeedsProviderSupport(classKey, conditionalReady) then
-    traceComboDecision(classKey, "fallback simple (no provider support)")
+  if not conditionalReady then
+    if partyPrimerAny then
+      if allowHold then
+        traceComboDecision(classKey, "hold rage for party primer")
+        return nil, "combo_hold"
+      end
+      traceComboDecision(classKey, "fallback simple (party primer unmet)")
+      return selectDamageForHp(profile, rage), "combo_fallback"
+    end
+    traceComboDecision(classKey, "fallback simple (conditional unavailable)")
     return selectDamageForHp(profile, rage), "combo_fallback"
   end
 
@@ -311,6 +443,32 @@ local function selectRageCombo(profile, rage, classKey, allowPriming, allowHold)
       traceComboDecision(classKey, "prime conditional with " .. tostring(primer.name or primer.skill or primer.aff or "aff"))
       return primer, "combo_primer"
     end
+  end
+
+  local selfPrimerAny = nil
+  if allowPriming then
+    selfPrimerAny = findConditionalPrimer(profile, conditionalReady, nil)
+    if selfPrimerAny then
+      if allowHold then
+        traceComboDecision(classKey, "hold rage for self primer")
+        return nil, "combo_hold"
+      end
+      traceComboDecision(classKey, "fallback simple (self primer unmet)")
+      return selectDamageForHp(profile, rage), "combo_fallback"
+    end
+    if partyPrimerAny then
+      if allowHold then
+        traceComboDecision(classKey, "hold rage for party primer")
+        return nil, "combo_hold"
+      end
+      traceComboDecision(classKey, "fallback simple (party primer unmet)")
+      return selectDamageForHp(profile, rage), "combo_fallback"
+    end
+  end
+
+  if not conditionalNeedsProviderSupport(classKey, conditionalReady) then
+    traceComboDecision(classKey, "fallback simple (no provider support)")
+    return selectDamageForHp(profile, rage), "combo_fallback"
   end
 
   local reserve = tonumber(conditionalReady.rage) or 0

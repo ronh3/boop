@@ -232,6 +232,13 @@ function M.setBlacklist(area, names)
   end
 end
 
+function M.setGlobalBlacklist(names)
+  boop.lists.globalBlacklist = {}
+  for _, name in ipairs(names or {}) do
+    table.insert(boop.lists.globalBlacklist, name)
+  end
+end
+
 function M.learnSkill(name, group)
   local key = norm(name)
   boop.skills.known[key] = true
