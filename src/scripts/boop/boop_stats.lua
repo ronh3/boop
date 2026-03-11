@@ -37,20 +37,20 @@ local function currentClass()
   return "unknown"
 end
 
+local CORPSE_NAME_PATTERNS = {
+  "^the corpse of%s+",
+  "^corpse of%s+",
+  "^the remains of%s+",
+  "^remains of%s+",
+}
+
 local function normalizeTrackedMobName(name)
   local value = boop.util.trim(tostring(name or ""))
   if value == "" then
     return ""
   end
 
-  local patterns = {
-    "^the corpse of%s+",
-    "^corpse of%s+",
-    "^the remains of%s+",
-    "^remains of%s+",
-  }
-
-  for _, pattern in ipairs(patterns) do
+  for _, pattern in ipairs(CORPSE_NAME_PATTERNS) do
     local updated = value:gsub(pattern, "")
     if updated ~= value then
       value = boop.util.trim(updated)
@@ -1776,10 +1776,15 @@ end
 
 function boop.stats.getMobXp(area, name, partySize)
   local cleanArea = tostring(area or "")
-  local cleanName = normalizeTrackedMobName(name)
+  local rawName = boop.util.trim(tostring(name or ""))
   local size = tonumber(partySize) or currentPartySize()
   if size < 1 then size = 1 end
-  if cleanArea == "" or cleanName == "" then
+  if cleanArea == "" or rawName == "" then
+    return nil
+  end
+
+  local cleanName = normalizeTrackedMobName(rawName)
+  if cleanName == "" or cleanName ~= rawName then
     return nil
   end
   return aggregatedMobEntries(cleanArea, size)[cleanName]

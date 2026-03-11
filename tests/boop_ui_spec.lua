@@ -3,6 +3,10 @@ local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper
 describe("boop ui home", function()
   local echo_stub
   local echoes
+  local saved_cecho
+  local saved_cecho_link
+  local saved_echo
+  local saved_echo_link
 
   before_each(function()
     helper.reset()
@@ -10,6 +14,15 @@ describe("boop ui home", function()
     echo_stub = stub(boop.util, "echo", function(msg)
       echoes[#echoes + 1] = msg
     end)
+
+    saved_cecho = _G.cecho
+    saved_cecho_link = _G.cechoLink
+    saved_echo = _G.echo
+    saved_echo_link = _G.echoLink
+    _G.cecho = nil
+    _G.cechoLink = nil
+    _G.echo = nil
+    _G.echoLink = nil
   end)
 
   after_each(function()
@@ -17,6 +30,10 @@ describe("boop ui home", function()
       echo_stub:revert()
       echo_stub = nil
     end
+    _G.cecho = saved_cecho
+    _G.cechoLink = saved_cecho_link
+    _G.echo = saved_echo
+    _G.echoLink = saved_echo_link
   end)
 
   it("shows a compact operations dashboard on bare boop", function()

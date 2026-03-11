@@ -251,6 +251,7 @@ describe("boop stats", function()
   it("shows a stats dashboard by default and offers guided drill-down commands", function()
     helper.setArea("Test Area")
     boop.ui.setEnabled(true, true)
+    boop.stats.session.activeSince = nil
     boop.stats.session.kills = 4
     boop.stats.session.gold = 200
     boop.stats.session.rawExperience = 28376
