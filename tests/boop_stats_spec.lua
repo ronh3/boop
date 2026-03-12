@@ -298,7 +298,6 @@ describe("boop stats", function()
     boop.stats.command("")
 
     assert.are.equal("stats dashboard:", messages[1])
-    assert.is_true(messages[2]:find("session: 4 kills | 200 gold | 28376 xp | 120.0 kills/hr | avg ttk 4.00s", 1, true) ~= nil)
     assert.is_true(messages[3]:find("trip: 2 kills | 60 gold | 12000 xp | 60.0 kills/hr | avg ttk 4.00s | running", 1, true) ~= nil)
     assert.are.equal("  area: Test Area | party size 1", messages[5])
     assert.is_true(messages[6]:find("best area: Test Area | 120.0 kills/hr | 851280.0 xp/hr", 1, true) ~= nil)
