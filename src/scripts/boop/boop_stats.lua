@@ -1619,7 +1619,7 @@ local function scopeSummaryLine(scope, label)
     tonumber(scope.gold) or 0,
     tonumber(scope.rawExperience) or 0,
     formatStatValue(perHour(scope.kills, elapsed), 1),
-    formatStatValue(avgTtk(scope), 2)
+    formatNumber(avgTtk(scope), 2)
   )
 end
 
@@ -2066,7 +2066,7 @@ function boop.stats.showDashboard()
       "  top target: %s | kills %d | avg ttk %ss | avg raw xp %s",
       bestTarget.name,
       bestTarget.kills,
-      formatStatValue(bestTarget.avgTtk, 2),
+      formatNumber(bestTarget.avgTtk, 2),
       formatStatValue(bestTarget.avgRawXp, 1)
     ))
   else
