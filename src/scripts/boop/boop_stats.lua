@@ -272,6 +272,7 @@ end
 
 local function eachScope(fn)
   fn(boop.stats.session)
+  fn(boop.stats.login)
   fn(boop.stats.trip)
   fn(boop.stats.lifetime)
 end
@@ -279,6 +280,9 @@ end
 local function eachActiveScope(fn)
   if boop.stats.session and boop.stats.session.activeSince then
     fn(boop.stats.session)
+  end
+  if boop.stats.login and boop.stats.login.activeSince then
+    fn(boop.stats.login)
   end
   if boop.stats.trip and boop.stats.trip.activeSince then
     fn(boop.stats.trip)
@@ -290,6 +294,7 @@ end
 
 local function hasActiveScopes()
   return (boop.stats.session and boop.stats.session.activeSince)
+    or (boop.stats.login and boop.stats.login.activeSince)
     or (boop.stats.trip and boop.stats.trip.activeSince)
     or (boop.stats.lifetime and boop.stats.lifetime.activeSince)
 end
@@ -499,6 +504,9 @@ local function scopeByName(name)
   if key == "" then key = "session" end
   if key == "lasttrip" or key == "last" then
     return boop.stats.lastTrip or newScope(nowSeconds()), "lasttrip"
+  end
+  if key == "login" then
+    return boop.stats.login, "login"
   end
   if key == "lifetime" or key == "life" then
     return boop.stats.lifetime, "lifetime"
@@ -976,6 +984,7 @@ end
 function boop.stats.init()
   local now = nowSeconds()
   boop.stats.session = newScope(now)
+  boop.stats.login = ensureScope(boop.stats.login, now)
   boop.stats.trip = ensureScope(boop.stats.trip, now)
   boop.stats.lifetime = ensureScope(boop.stats.lifetime, now)
   boop.stats.lastTrip = boop.stats.lastTrip or nil
@@ -989,13 +998,17 @@ function boop.stats.init()
   boop.stats.lastRageDecision = nil
   if boop.config and boop.config.enabled then
     scopeStart(boop.stats.session, now)
+    scopeStart(boop.stats.login, now)
     scopeStart(boop.stats.lifetime, now)
     startAreaTracking(boop.stats.session, currentArea(), now)
+    startAreaTracking(boop.stats.login, currentArea(), now)
     startAreaTracking(boop.stats.lifetime, currentArea(), now)
   else
     stopAreaTracking(boop.stats.session, now)
+    stopAreaTracking(boop.stats.login, now)
     stopAreaTracking(boop.stats.lifetime, now)
     scopeStop(boop.stats.session, now)
+    scopeStop(boop.stats.login, now)
     scopeStop(boop.stats.lifetime, now)
   end
   seedBaselinesFromStatus()
@@ -1176,6 +1189,9 @@ function boop.stats.onRoomChange()
   if boop.stats.session and boop.stats.session.activeSince then
     switchAreaTracking(boop.stats.session, currentArea(), now)
   end
+  if boop.stats.login and boop.stats.login.activeSince then
+    switchAreaTracking(boop.stats.login, currentArea(), now)
+  end
   if boop.stats.trip and boop.stats.trip.activeSince then
     switchAreaTracking(boop.stats.trip, currentArea(), now)
   end
@@ -1228,6 +1244,7 @@ function boop.stats.onEnabledChanged(enabled)
   local now = nowSeconds()
   local active = enabled and true or false
   boop.stats.session = ensureScope(boop.stats.session, now)
+  boop.stats.login = ensureScope(boop.stats.login, now)
   boop.stats.lifetime = ensureScope(boop.stats.lifetime, now)
 
   if active then
@@ -1235,13 +1252,17 @@ function boop.stats.onEnabledChanged(enabled)
       boop.stats.session = newScope(now)
       scopeStart(boop.stats.session, now)
     end
+    scopeStart(boop.stats.login, now)
     scopeStart(boop.stats.lifetime, now)
     startAreaTracking(boop.stats.session, currentArea(), now)
+    startAreaTracking(boop.stats.login, currentArea(), now)
     startAreaTracking(boop.stats.lifetime, currentArea(), now)
   else
     stopAreaTracking(boop.stats.session, now)
+    stopAreaTracking(boop.stats.login, now)
     stopAreaTracking(boop.stats.lifetime, now)
     scopeStop(boop.stats.session, now)
+    scopeStop(boop.stats.login, now)
     scopeStop(boop.stats.lifetime, now)
     boop.stats.activeTarget = nil
     boop.stats.pendingAttack = nil
@@ -1259,8 +1280,10 @@ function boop.stats.reset(scopeName)
   if key == "all" then
     local hadTripStopwatch = boop.stats.trip and boop.stats.trip.stopwatch
     boop.stats.session = resetScopeData(nil, now)
+    boop.stats.login = resetScopeData(nil, now)
     if boopActive then
       scopeStart(boop.stats.session, now)
+      scopeStart(boop.stats.login, now)
     end
     boop.stats.trip = resetScopeData(boop.stats.trip, now)
     if hadTripStopwatch then
@@ -1271,6 +1294,7 @@ function boop.stats.reset(scopeName)
     if boopActive then
       scopeStart(boop.stats.lifetime, now)
       startAreaTracking(boop.stats.session, currentArea(), now)
+      startAreaTracking(boop.stats.login, currentArea(), now)
       startAreaTracking(boop.stats.lifetime, currentArea(), now)
     end
     boop.stats.mobXp = {}
@@ -1319,6 +1343,19 @@ function boop.stats.reset(scopeName)
     return
   end
 
+  if key == "login" then
+    boop.stats.login = resetScopeData(nil, now)
+    if boopActive then
+      scopeStart(boop.stats.login, now)
+      startAreaTracking(boop.stats.login, currentArea(), now)
+    end
+    boop.stats.pendingAttack = nil
+    boop.stats.lastResolvedAttack = nil
+    seedBaselinesFromStatus()
+    boop.util.ok("stats reset: login")
+    return
+  end
+
   if key == "lifetime" or key == "life" then
     boop.stats.lifetime = resetScopeData(nil, now)
     if boopActive then
@@ -1337,7 +1374,7 @@ function boop.stats.reset(scopeName)
     return
   end
 
-  boop.util.info("Usage: boop stats reset <session|trip|lifetime|all>")
+  boop.util.info("Usage: boop stats reset <session|login|trip|lifetime|all>")
 end
 
 function boop.stats.show(scopeName)
@@ -2083,13 +2120,14 @@ function boop.stats.showDashboard()
   else
     boop.util.info("  top ability: (none yet)")
   end
-  boop.util.info("  use: boop stats session | boop stats areas | boop stats targets | boop stats abilities | boop stats rage")
+  boop.util.info("  use: boop stats session | boop stats login | boop stats areas | boop stats targets | boop stats abilities | boop stats rage")
 end
 
 function boop.stats.showHelp()
   boop.util.info("stats help:")
   boop.util.info("  boop stats            -> dashboard")
   boop.util.info("  boop stats session    -> session totals and rates")
+  boop.util.info("  boop stats login      -> current-login totals across boop toggles")
   boop.util.info("  boop stats areas      -> ranked area performance")
   boop.util.info("  boop stats targets    -> target efficiency in current area")
   boop.util.info("  boop stats abilities  -> attack usage and damage")
@@ -2123,7 +2161,7 @@ function boop.stats.command(raw)
     return
   end
 
-  if cmd == "session" or cmd == "trip" or cmd == "lifetime" or cmd == "lasttrip" or cmd == "last" then
+  if cmd == "session" or cmd == "login" or cmd == "trip" or cmd == "lifetime" or cmd == "lasttrip" or cmd == "last" then
     boop.stats.show(cmd)
     return
   end
@@ -2223,7 +2261,7 @@ function boop.stats.command(raw)
     return
   end
 
-  boop.util.info("Usage: boop stats [help|session|trip|lifetime|lasttrip|areas [scope] [limit] [metric]|mobs [area] [limit]|targets [scope] [limit]|abilities [scope] [limit]|crits [scope]|rage [scope]|records [scope]|compare [left] [right]|reset <session|trip|lifetime|all>]")
+  boop.util.info("Usage: boop stats [help|session|login|trip|lifetime|lasttrip|areas [scope] [limit] [metric]|mobs [area] [limit]|targets [scope] [limit]|abilities [scope] [limit]|crits [scope]|rage [scope]|records [scope]|compare [left] [right]|reset <session|login|trip|lifetime|all>]")
 end
 
 function boop.stats.startTrip()

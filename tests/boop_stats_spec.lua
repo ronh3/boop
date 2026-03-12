@@ -69,7 +69,7 @@ describe("boop stats", function()
     end
   end)
 
-  it("accumulates gold and experience deltas into session trip lifetime and area buckets", function()
+  it("accumulates gold and experience deltas into session login trip lifetime and area buckets", function()
     helper.setArea("Test Area")
     boop.ui.setEnabled(true, true)
     boop.stats.startTrip()
@@ -86,6 +86,8 @@ describe("boop stats", function()
 
     assert.are.equal(125, boop.stats.session.gold)
     assert.are.equal(1.5, boop.stats.session.experience)
+    assert.are.equal(125, boop.stats.login.gold)
+    assert.are.equal(1.5, boop.stats.login.experience)
     assert.are.equal(125, boop.stats.trip.areas["Test Area"].gold)
     assert.are.equal(1.5, boop.stats.trip.areas["Test Area"].experience)
     assert.are.equal(125, boop.stats.lifetime.gold)
@@ -100,6 +102,7 @@ describe("boop stats", function()
     boop.stats.onExperienceGain("28,376")
 
     assert.are.equal(28376, boop.stats.session.rawExperience)
+    assert.are.equal(28376, boop.stats.login.rawExperience)
     assert.are.equal(28376, boop.stats.trip.rawExperience)
     assert.are.equal(28376, boop.stats.lifetime.rawExperience)
     assert.are.equal(28376, boop.stats.session.areas["Test Area"].rawExperience)
@@ -248,12 +251,30 @@ describe("boop stats", function()
     assert.is_true(messages[6]:find("Test Area | 4 kills | 120.0 kills/hr | 200 gold | 6000.0 gold/hr | 28376 xp | 851280.0 xp/hr | avg ttk 4.00s", 1, true) ~= nil)
   end)
 
+  it("shows a human-readable summary for login scope", function()
+    boop.stats.login.gold = 300
+    boop.stats.login.experience = 3.5
+    boop.stats.login.rawExperience = 40000
+    boop.stats.login.kills = 5
+    boop.stats.login.targets = 6
+    boop.stats.login.totalTtk = 15
+    boop.stats.login.startedAt = 0
+    boop.stats.login.endedAt = 150
+    boop.stats.login.activeSeconds = 150
+
+    boop.stats.show("login")
+
+    assert.is_true(messages[1]:find("login stats: 5 kills | 6 targets | 300 gold | 3.50% xp | 40000 xp", 1, true) ~= nil)
+    assert.is_true(messages[2]:find("login efficiency: avg ttk 3.00s | gold/kill 60.0 | xp/kill 0.70% | raw xp/kill 8000.0", 1, true) ~= nil)
+  end)
+
   it("shows a concise stats help page", function()
     boop.stats.command("help")
 
     assert.are.equal("stats help:", messages[1])
     assert.are.equal("  boop stats            -> dashboard", messages[2])
-    assert.are.equal("  boop stats compare    -> compare trip vs lasttrip by default", messages[8])
+    assert.are.equal("  boop stats login      -> current-login totals across boop toggles", messages[4])
+    assert.are.equal("  boop stats compare    -> compare trip vs lasttrip by default", messages[9])
   end)
 
   it("shows ranked area performance with richer rate output", function()
@@ -534,7 +555,7 @@ describe("boop stats", function()
     assert.are.equal("avg ttk: 3 vs 5 (-2 | -40%)", messages[5])
   end)
 
-  it("starts and stops session and lifetime timing with boop enabled state", function()
+  it("starts and stops session login and lifetime timing with boop enabled state", function()
     local ticks = { 100, 140, 200, 260 }
     local idx = 0
     epoch_stub = stub(_G, "getEpoch", function()
@@ -547,8 +568,10 @@ describe("boop stats", function()
     boop.ui.setEnabled(true, true)
     boop.ui.setEnabled(false, true)
 
+    assert.are.equal(100, boop.stats.login.activeSeconds)
     assert.are.equal(100, boop.stats.lifetime.activeSeconds)
     assert.are.equal(60, boop.stats.session.activeSeconds)
+    assert.is_nil(boop.stats.login.activeSince)
     assert.is_nil(boop.stats.lifetime.activeSince)
     assert.is_nil(boop.stats.session.activeSince)
   end)
@@ -556,6 +579,7 @@ describe("boop stats", function()
   it("resets requested stat scopes without touching the others", function()
     boop.stats.session.gold = 50
     boop.stats.session.rawExperience = 100
+    boop.stats.login.gold = 65
     boop.stats.trip.gold = 60
     boop.stats.lifetime.gold = 70
 
@@ -563,7 +587,20 @@ describe("boop stats", function()
 
     assert.are.equal(0, boop.stats.session.gold)
     assert.are.equal(0, boop.stats.session.rawExperience)
+    assert.are.equal(65, boop.stats.login.gold)
     assert.are.equal(60, boop.stats.trip.gold)
+    assert.are.equal(70, boop.stats.lifetime.gold)
+  end)
+
+  it("resets login stats without touching lifetime", function()
+    boop.stats.login.gold = 65
+    boop.stats.login.rawExperience = 100
+    boop.stats.lifetime.gold = 70
+
+    boop.stats.reset("login")
+
+    assert.are.equal(0, boop.stats.login.gold)
+    assert.are.equal(0, boop.stats.login.rawExperience)
     assert.are.equal(70, boop.stats.lifetime.gold)
   end)
 
@@ -584,12 +621,14 @@ describe("boop stats", function()
     gmcp.Char.Status.level = "80"
     gmcp.Char.Status.xp = "60.0"
     boop.stats.session.gold = 50
+    boop.stats.login.gold = 55
     boop.stats.trip.gold = 60
     boop.stats.lifetime.gold = 70
 
     boop.stats.reset("all")
 
     assert.are.equal(0, boop.stats.session.gold)
+    assert.are.equal(0, boop.stats.login.gold)
     assert.are.equal(0, boop.stats.trip.gold)
     assert.are.equal(0, boop.stats.lifetime.gold)
     assert.are.equal(3000, boop.stats.lastGold)

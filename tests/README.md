@@ -51,7 +51,7 @@ Current coverage:
 - `boop_ui_spec.lua`
   Confirms the bare `boop` command shows a compact operations dashboard instead of dropping users into a low-context status line.
 - `boop_stats_spec.lua`
-  Confirms gold/xp accumulation, party-size-aware mob xp bucketing, stats help output, per-target efficiency and profitability summaries, richer area rankings, trip comparison output, rage-efficiency summaries, per-ability damage/crit/kill summaries, crit/record rollups, reset behavior, whitelist rendering, and human-readable stats summaries.
+  Confirms gold/xp accumulation across session/login/trip/lifetime scopes, party-size-aware mob xp bucketing, stats help output, per-target efficiency and profitability summaries, richer area rankings, trip comparison output, rage-efficiency summaries, per-ability damage/crit/kill summaries, crit/record rollups, reset behavior, whitelist rendering, and human-readable stats summaries.
 
 Good candidates for future additions:
 

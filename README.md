@@ -40,6 +40,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop aff` / `boop aff add <a/b>` / `boop aff remove <a/b>` / `boop aff clear`
 - `boop debug` / `boop debug attacks` / `boop debug skills` / `boop debug skills dump`
 - `boop trip start` / `boop trip stop`
+- `boop stats [session|login|trip|lifetime|lasttrip|areas|mobs|targets|abilities|crits|rage|records|compare|reset]`
 - `boop flee`
 
 ## Notes
@@ -84,6 +85,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop ragemode hybrid` uses the same conditional/priming logic, but falls back to normal damage when reserve logic would otherwise hold.
 - `boop ragemode tempo` is aff-first, but can spend on damage when rolling rage gain predicts quick recovery (10s window).
 - Tune tempo behavior with `boop set tempoRageWindowSeconds <seconds>` and `boop set tempoSqueezeEtaSeconds <seconds>`.
+- `boop stats login` shows current-login totals across boop on/off toggles; unlike `lifetime`, it is not persisted between logins.
 - `boop help` and `boop config` are streamlined into fewer top-level sections for faster navigation.
 - `boop targeting` and `boop ragemode` now show current value + usage when called without arguments, and clear errors for invalid values.
 - Targeting now supports `retargetOnPriority` (default `on`); set it `off` to keep your current target instead of swapping when higher-priority mobs enter.
