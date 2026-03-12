@@ -105,6 +105,78 @@ describe("boop rage modes", function()
     assert.are.equal("temper 42", actions.rage)
   end)
 
+  it("lets Unnamable pool for dread and then enables Occultist fluctuate on the next decision", function()
+    helper.setClass("Unnamable")
+    helper.setRage(23)
+    helper.learnSkills({
+      { name = "dread", group = "Attainment" },
+      { name = "shriek", group = "Attainment" },
+    })
+    boop.config.partyRoster = "occultist"
+    boop.config.attackMode = "combo"
+
+    local primerActions = boop.attacks.choose()
+
+    assert.are.equal("kill 42", primerActions.standard)
+    assert.are.equal("", primerActions.rage)
+
+    helper.setRage(24)
+    primerActions = boop.attacks.choose()
+
+    assert.are.equal("kill 42", primerActions.standard)
+    assert.are.equal("croon dread 42", primerActions.rage)
+
+    helper.addTargetAfflictions({ "fear" })
+    helper.setClass("Occultist")
+    helper.setRage(25)
+    helper.learnSkills({
+      { name = "Lycantha", group = "Domination" },
+      { name = "fluctuate", group = "Attainment" },
+    })
+    boop.config.partyRoster = "unnamable"
+
+    local spenderActions = boop.attacks.choose()
+
+    assert.are.equal("command hound at 42", spenderActions.standard)
+    assert.are.equal("fluctuate 42", spenderActions.rage)
+  end)
+
+  it("lets Occultist pool for temper and then enables Unnamable onslaught on the next decision", function()
+    helper.setClass("Occultist")
+    helper.setRage(31)
+    helper.learnSkills({
+      { name = "Lycantha", group = "Domination" },
+      { name = "temper", group = "Attainment" },
+      { name = "harry", group = "Attainment" },
+    })
+    boop.config.partyRoster = "unnamable"
+    boop.config.attackMode = "combo"
+
+    local primerActions = boop.attacks.choose()
+
+    assert.are.equal("command hound at 42", primerActions.standard)
+    assert.are.equal("", primerActions.rage)
+
+    helper.setRage(32)
+    primerActions = boop.attacks.choose()
+
+    assert.are.equal("command hound at 42", primerActions.standard)
+    assert.are.equal("temper 42", primerActions.rage)
+
+    helper.addTargetAfflictions({ "charm" })
+    helper.setClass("Unnamable")
+    helper.setRage(25)
+    helper.learnSkills({
+      { name = "onslaught", group = "Attainment" },
+    })
+    boop.config.partyRoster = "occultist"
+
+    local spenderActions = boop.attacks.choose()
+
+    assert.are.equal("kill 42", spenderActions.standard)
+    assert.are.equal("unnamable onslaught 42", spenderActions.rage)
+  end)
+
   it("suppresses rage actions in none mode", function()
     helper.setClass("Sentinel")
     helper.setRage(36)
