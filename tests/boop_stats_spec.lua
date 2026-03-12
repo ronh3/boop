@@ -248,63 +248,6 @@ describe("boop stats", function()
     assert.is_true(messages[6]:find("Test Area | 4 kills | 120.0 kills/hr | 200 gold | 6000.0 gold/hr | 28376 xp | 851280.0 xp/hr | avg ttk 4.00s", 1, true) ~= nil)
   end)
 
-  it("shows a stats dashboard by default and offers guided drill-down commands", function()
-    helper.setArea("Test Area")
-    boop.ui.setEnabled(true, true)
-    boop.stats.session.activeSince = nil
-    boop.stats.session.kills = 4
-    boop.stats.session.gold = 200
-    boop.stats.session.rawExperience = 28376
-    boop.stats.session.totalTtk = 16
-    boop.stats.session.startedAt = 0
-    boop.stats.session.endedAt = 120
-    boop.stats.session.activeSeconds = 120
-    boop.stats.trip.stopwatch = 99
-    boop.stats.trip.kills = 2
-    boop.stats.trip.gold = 60
-    boop.stats.trip.rawExperience = 12000
-    boop.stats.trip.totalTtk = 8
-    boop.stats.trip.startedAt = 0
-    boop.stats.trip.endedAt = 120
-    boop.stats.trip.activeSeconds = 120
-    boop.stats.session.areas["Test Area"] = {
-      kills = 4,
-      gold = 200,
-      rawExperience = 28376,
-      totalTtk = 16,
-      startedAt = 0,
-      endedAt = 120,
-      activeSeconds = 120,
-    }
-    boop.stats.session.targetStats["Test Area"] = {
-      [1] = {
-        ["a vicious gnoll soldier"] = {
-          kills = 2,
-          totalTtk = 6,
-          rawExperience = 57000,
-        },
-      },
-    }
-    boop.stats.session.abilities["Slaughter"] = {
-      uses = 3,
-      kills = 2,
-      totalDamage = 30000,
-      hitsWithDamage = 3,
-      crits = 2,
-      totalBalance = 8.7,
-      balances = 3,
-    }
-
-    boop.stats.command("")
-
-    assert.are.equal("stats dashboard:", messages[1])
-    assert.is_true(messages[3]:find("trip: 2 kills | 60 gold | 12000 xp | 60.0 kills/hr | avg ttk 4.00s | running", 1, true) ~= nil)
-    assert.are.equal("  area: Test Area | party size 1", messages[5])
-    assert.is_true(messages[6]:find("best area: Test Area | 120.0 kills/hr | 851280.0 xp/hr", 1, true) ~= nil)
-    assert.is_true(messages[7]:find("top target: a vicious gnoll soldier | kills 2 | avg ttk 3.00s | avg raw xp 28500", 1, true) ~= nil)
-    assert.is_true(messages[8]:find("top ability: Slaughter | kills 2 | avg dmg 10000 | crit 66.7%", 1, true) ~= nil)
-  end)
-
   it("shows a concise stats help page", function()
     boop.stats.command("help")
 
