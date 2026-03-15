@@ -13,6 +13,7 @@
   {"name": "attacks", "isActive": "yes", "isFolder": "yes", "script": ""},
   {"name": "boop_safety", "isActive": "yes", "isFolder": "no", "script": ""},
   {"name": "boop_stats", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_walk", "isActive": "yes", "isFolder": "no", "script": ""},
   {"name": "boop_ui", "isActive": "yes", "isFolder": "no", "script": ""},
   {"name": "boop_events", "isActive": "yes", "isFolder": "no", "script": ""},
   {"name": "boop_bootstrap", "isActive": "yes", "isFolder": "no", "script": ""}

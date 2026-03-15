@@ -53,5 +53,12 @@ function boop.state.init()
     boop.state.queueAliasDirty = true
   end
 
+  boop.state.walkActive = boop.state.walkActive or false
+  boop.state.walkOwned = boop.state.walkOwned or false
+  boop.state.walkRoomSettled = boop.state.walkRoomSettled or false
+  boop.state.walkMoveQueued = boop.state.walkMoveQueued or false
+  boop.state.walkArrivalRoom = boop.state.walkArrivalRoom or ""
+  boop.state.walkArrivalTimer = boop.state.walkArrivalTimer or nil
+
   boop.state.openerUsedByClass = boop.state.openerUsedByClass or {}
 end

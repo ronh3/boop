@@ -932,6 +932,41 @@ function boop.ui.traceCommand(sub, arg)
   boop.util.warn("trace: unknown option " .. tostring(sub))
 end
 
+function boop.ui.walkCommand(raw)
+  local text = boop.util.trim(raw or "")
+  local cmd = boop.util.safeLower(text)
+
+  if cmd == "" or cmd == "status" then
+    if boop.walk and boop.walk.status then
+      boop.walk.status()
+    end
+    return
+  end
+
+  if cmd == "start" or cmd == "on" then
+    if boop.walk and boop.walk.start then
+      boop.walk.start()
+    end
+    return
+  end
+
+  if cmd == "stop" or cmd == "off" then
+    if boop.walk and boop.walk.stop then
+      boop.walk.stop(false, false)
+    end
+    return
+  end
+
+  if cmd == "move" then
+    if boop.walk and boop.walk.move then
+      boop.walk.move()
+    end
+    return
+  end
+
+  boop.util.info("Usage: boop walk [status|start|stop|move]")
+end
+
 local function copyList(list)
   local out = {}
   for i, name in ipairs(list or {}) do
@@ -2027,6 +2062,8 @@ local HELP_TOPICS = {
       "boop on",
       "boop off",
       "boop status",
+      "boop walk",
+      "boop walk start",
       "boop config",
       "boop help <topic>",
     },
@@ -2176,6 +2213,7 @@ local HELP_TOPICS = {
       "boop stats compare [left] [right]",
       "boop stats reset session|login|trip|lifetime|all",
       "boop set partySize <n>",
+      "boop walk [status|start|stop|move]",
       "boop trip start",
       "boop trip stop",
       "boop set tempoRageWindowSeconds <seconds>",

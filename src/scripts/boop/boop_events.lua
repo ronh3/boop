@@ -169,6 +169,9 @@ function boop.onGoldGetSuccess()
   boop.state.goldGetPending = false
   boop.state.goldGetRetries = 0
   boop.trace.log("gold get success")
+  if not boop.state.goldPutPending and boop.walk and boop.walk.maybeAdvance then
+    boop.walk.maybeAdvance("gold get success")
+  end
 end
 
 function boop.onGoldPutSuccess()
@@ -177,6 +180,9 @@ function boop.onGoldPutSuccess()
   boop.state.goldPutPending = false
   boop.state.goldPutRetries = 0
   boop.trace.log("gold put success")
+  if boop.walk and boop.walk.maybeAdvance then
+    boop.walk.maybeAdvance("gold put success")
+  end
 end
 
 function boop.onGoldCommandFailure(line)
@@ -184,11 +190,20 @@ function boop.onGoldCommandFailure(line)
   local reason = boop.util.trim(line or "")
   if boop.state.goldGetPending then
     retryGoldGet(reason)
+    if not boop.state.goldGetPending and not boop.state.goldPutPending and boop.walk and boop.walk.maybeAdvance then
+      boop.walk.maybeAdvance("gold get failed closed")
+    end
     return
   end
   if boop.state.goldPutPending then
     retryGoldPut(reason)
+    if not boop.state.goldPutPending and boop.walk and boop.walk.maybeAdvance then
+      boop.walk.maybeAdvance("gold put failed closed")
+    end
     return
+  end
+  if boop.walk and boop.walk.maybeAdvance then
+    boop.walk.maybeAdvance("gold failure clear")
   end
 end
 
@@ -226,6 +241,8 @@ function boop.events.register()
   add("gmcp.Char.Skills.Groups", "boop.onSkillsGroups")
   add("gmcp.Char.Skills.List", "boop.onSkillsList")
   add("gmcp.Char.Skills.Info", "boop.onSkillsInfo")
+  add("demonwalker.arrived", "boop.onWalkArrived")
+  add("demonwalker.finished", "boop.onWalkFinished")
 end
 
 function boop.onRoomItemsList()
@@ -237,13 +254,15 @@ function boop.onRoomItemsList()
   -- Fallback for cases where item-add events are delayed/coalesced: if gold
   -- exists in the room list and we're not already processing a pickup, queue it.
   local goldItem = findRoomGoldItem(items)
-  if not goldItem then return end
-
-  boop.state = boop.state or {}
-  if boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending then
-    return
+  if goldItem then
+    boop.state = boop.state or {}
+    if not (boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending) then
+      autoGrabRoomItem(goldItem)
+    end
   end
-  autoGrabRoomItem(goldItem)
+  if boop.walk and boop.walk.onRoomSettled then
+    boop.walk.onRoomSettled("room items list")
+  end
 end
 
 function boop.onRoomItemsAdd()
@@ -333,6 +352,9 @@ function boop.onRoomInfo()
       vars.lastRoomDir = ""
       vars.fleeing = false
     end
+    if boop.walk and boop.walk.onRoomChange then
+      boop.walk.onRoomChange()
+    end
   else
     vars.movedRooms = false
   end
@@ -340,6 +362,18 @@ function boop.onRoomInfo()
   vars.room = gmcp.Room.Info.num
   if vars.movedRooms and vars.lastRoom ~= "" and boop.stats and boop.stats.onRoomChange then
     boop.stats.onRoomChange()
+  end
+end
+
+function boop.onWalkArrived()
+  if boop.walk and boop.walk.onArrived then
+    boop.walk.onArrived()
+  end
+end
+
+function boop.onWalkFinished()
+  if boop.walk and boop.walk.onFinished then
+    boop.walk.onFinished()
   end
 end
 
@@ -528,6 +562,9 @@ function boop.tick()
     end
     boop.state.attacking = false
     boop.trace.log("tick: no target")
+    if boop.walk and boop.walk.maybeAdvance then
+      boop.walk.maybeAdvance("tick no target")
+    end
     return
   end
 

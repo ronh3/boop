@@ -48,6 +48,8 @@ Current coverage:
   Confirms public config, with party size intentionally kept session-local, plus whitelist/blacklist and whitelist-tag edits through the DB hooks.
 - `boop_db_spec.lua`
   Confirms DB guard paths degrade to warnings instead of throwing when optional Mudlet sheets are missing in an older local profile DB.
+- `boop_walk_spec.lua`
+  Confirms the external `demonnicAutoWalker` integration only advances once a room is settled and clear under `boop`'s own targeting rules.
 - `boop_ui_spec.lua`
   Confirms the bare `boop` command shows a compact operations dashboard instead of dropping users into a low-context status line.
 - `boop_stats_spec.lua`
