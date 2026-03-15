@@ -108,4 +108,19 @@ describe("boop walk integration", function()
 
     assert.stub(raise_event_stub).was_called_with("demonwalker.move")
   end)
+
+  it("arms a fallback settle timer on room change even if demonwalker arrived is missed", function()
+    boop.state.walkActive = true
+    gmcp.Room.Info.num = 200
+
+    boop.walk.onRoomChange()
+
+    assert.is_false(boop.state.walkRoomSettled)
+    assert.is_function(scheduled[1])
+
+    scheduled[1]()
+
+    assert.is_true(boop.state.walkMoveQueued)
+    assert.stub(raise_event_stub).was_called_with("demonwalker.move")
+  end)
 end)

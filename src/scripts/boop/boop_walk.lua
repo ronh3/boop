@@ -23,6 +23,28 @@ local function cancelArrivalTimer()
   end
 end
 
+local function armArrivalFallback(reason)
+  local state = walkState()
+  cancelArrivalTimer()
+  state.walkMoveQueued = false
+  state.walkRoomSettled = false
+  state.walkArrivalRoom = currentRoomId()
+
+  local arrivalRoom = state.walkArrivalRoom
+  state.walkArrivalTimer = tempTimer(0.2, function()
+    local liveState = walkState()
+    liveState.walkArrivalTimer = nil
+    if not liveState.walkActive then
+      return
+    end
+    if arrivalRoom ~= "" and currentRoomId() ~= "" and currentRoomId() ~= arrivalRoom then
+      return
+    end
+    liveState.walkRoomSettled = true
+    boop.walk.maybeAdvance(reason or "arrival fallback")
+  end)
+end
+
 local function resetRuntimeFlags()
   local state = walkState()
   cancelArrivalTimer()
@@ -183,25 +205,7 @@ function boop.walk.onArrived()
   if not state.walkActive then
     return
   end
-
-  cancelArrivalTimer()
-  state.walkMoveQueued = false
-  state.walkRoomSettled = false
-  state.walkArrivalRoom = currentRoomId()
-
-  local arrivalRoom = state.walkArrivalRoom
-  state.walkArrivalTimer = tempTimer(0.2, function()
-    local liveState = walkState()
-    liveState.walkArrivalTimer = nil
-    if not liveState.walkActive then
-      return
-    end
-    if arrivalRoom ~= "" and currentRoomId() ~= "" and currentRoomId() ~= arrivalRoom then
-      return
-    end
-    liveState.walkRoomSettled = true
-    boop.walk.maybeAdvance("arrival fallback")
-  end)
+  armArrivalFallback("arrival fallback")
 end
 
 function boop.walk.onRoomSettled(reason)
@@ -219,9 +223,7 @@ function boop.walk.onRoomChange()
   if not state.walkActive then
     return
   end
-  cancelArrivalTimer()
-  state.walkRoomSettled = false
-  state.walkArrivalRoom = currentRoomId()
+  armArrivalFallback("room change fallback")
 end
 
 function boop.walk.maybeAdvance(reason)
