@@ -33,4 +33,25 @@ describe("boop attack selection", function()
     assert.are.equal("command hound at 42", actions.standard)
     assert.are.equal("ruin 42", actions.rage)
   end)
+
+  it("honors a preferred standard damage attack when it is available", function()
+    helper.setTargetHp("80%")
+    local key = boop.attacks.preferenceConfigKey("occultist", "dam", "")
+    boop.config[key] = "warp"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("warp 42", actions.standard)
+  end)
+
+  it("falls back to the normal standard damage order when the preferred attack is unavailable", function()
+    helper.setTargetHp("80%")
+    helper.setSkillKnown("Warp", false, "Occultism")
+    local key = boop.attacks.preferenceConfigKey("occultist", "dam", "")
+    boop.config[key] = "warp"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("command hound at 42", actions.standard)
+  end)
 end)

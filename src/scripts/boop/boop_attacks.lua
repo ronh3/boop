@@ -7,6 +7,139 @@ function boop.attacks.register(class, profile)
   boop.attacks.registry[key] = profile or {}
 end
 
+local function normalizedSpecKey(spec)
+  local key = boop.util.safeLower(boop.util.trim(spec or ""))
+  key = key:gsub("%s+", "_")
+  key = key:gsub("[^%w_%-]", "")
+  if key == "" then
+    key = "default"
+  end
+  return key
+end
+
+local function standardPreferenceKey(classKey, section, spec)
+  local cls = boop.util.safeLower(boop.util.trim(classKey or ""))
+  local sec = boop.util.safeLower(boop.util.trim(section or ""))
+  if cls == "" or sec == "" then
+    return ""
+  end
+  return string.format("attackPreference.%s.%s.%s", cls, normalizedSpecKey(spec), sec)
+end
+
+local function standardPreferenceValue(classKey, section)
+  local spec = boop.state and boop.state.spec or ""
+  local specKey = standardPreferenceKey(classKey, section, spec)
+  if specKey ~= "" and boop.config and boop.config[specKey] and boop.config[specKey] ~= "" then
+    return boop.config[specKey], specKey
+  end
+
+  local fallbackKey = standardPreferenceKey(classKey, section, "")
+  if fallbackKey ~= "" and boop.config and boop.config[fallbackKey] and boop.config[fallbackKey] ~= "" then
+    return boop.config[fallbackKey], fallbackKey
+  end
+
+  return "", specKey ~= "" and specKey or fallbackKey
+end
+
+function boop.attacks.preferenceConfigKey(classKey, section, spec)
+  return standardPreferenceKey(classKey, section, spec)
+end
+
+function boop.attacks.getStandardPreference(classKey, section)
+  local value = standardPreferenceValue(classKey, section)
+  return value
+end
+
+local function addEntryToken(tokens, raw)
+  local text = boop.util.safeLower(boop.util.trim(raw or ""))
+  if text == "" then return end
+  tokens[text] = true
+  for token in text:gmatch("[%w_%-]+") do
+    if token ~= "" then
+      tokens[token] = true
+    end
+  end
+end
+
+local function entryMatchesPreference(entry, preference)
+  local pref = boop.util.safeLower(boop.util.trim(preference or ""))
+  if pref == "" or type(entry) ~= "table" then
+    return false
+  end
+
+  local tokens = {}
+  addEntryToken(tokens, entry.name)
+  addEntryToken(tokens, entry.skill)
+  addEntryToken(tokens, entry.cmd)
+  return tokens[pref] == true
+end
+
+local function describeEntry(entry)
+  if type(entry) ~= "table" then
+    return tostring(entry or "")
+  end
+  local label = boop.util.trim(entry.name or entry.skill or entry.cmd or "")
+  local cmd = boop.util.trim(entry.cmd or "")
+  if label == "" then
+    label = cmd
+  end
+  if cmd ~= "" and label ~= cmd then
+    return string.format("%s -> %s", label, cmd)
+  end
+  return label
+end
+
+local function appendStandardOptions(entry, out, seen)
+  if type(entry) ~= "table" then
+    return
+  end
+
+  if entry.bySpec then
+    local spec = boop.state and boop.state.spec or ""
+    local specEntry = entry.bySpec[spec]
+    if not specEntry then
+      specEntry = entry.default or entry.bySpec.default
+    end
+    if specEntry then
+      appendStandardOptions(specEntry, out, seen)
+    end
+    return
+  end
+
+  if entry.cmd or entry.skill or entry.name then
+    local desc = describeEntry(entry)
+    local key = boop.util.safeLower(desc)
+    if desc ~= "" and not seen[key] then
+      seen[key] = true
+      out[#out + 1] = {
+        label = desc,
+        skill = entry.skill or entry.name or "",
+        command = entry.cmd or "",
+      }
+    end
+    return
+  end
+
+  for _, option in ipairs(entry) do
+    appendStandardOptions(option, out, seen)
+  end
+end
+
+function boop.attacks.standardOptions(classKey, section)
+  local cls = boop.util.safeLower(boop.util.trim(classKey or ""))
+  local sec = boop.util.safeLower(boop.util.trim(section or ""))
+  if cls == "" or sec == "" then
+    return {}
+  end
+
+  local profile = boop.attacks.registry[cls]
+  local standard = profile and profile.standard
+  local entry = standard and standard[sec]
+  local out, seen = {}, {}
+  appendStandardOptions(entry, out, seen)
+  return out
+end
+
 local function abilityKnown(ability)
   if not ability then return false end
   local name = ability.skill or ability.name
@@ -645,7 +778,7 @@ function boop.attacks.selectRage(profile, rage, classKey)
   return finalizeRageDecision(mode, "damage", selectDamageForHp(profile, rage))
 end
 
-local function standardCommand(entry)
+local function standardCommand(entry, preference)
   if type(entry) == "table" then
     if entry.bySpec then
       local spec = boop.state and boop.state.spec or ""
@@ -654,7 +787,7 @@ local function standardCommand(entry)
         specEntry = entry.default or entry.bySpec.default
       end
       if specEntry then
-        return standardCommand(specEntry)
+        return standardCommand(specEntry, preference)
       end
     end
     if entry.cmd or entry.skill or entry.name then
@@ -671,9 +804,20 @@ local function standardCommand(entry)
       if not ok then
         return ""
       end
-    end
+      end
       return cmd
     else
+      local pref = boop.util.safeLower(boop.util.trim(preference or ""))
+      if pref ~= "" then
+        for _, option in ipairs(entry) do
+          if entryMatchesPreference(option, pref) then
+            local cmd = standardCommand(option)
+            if cmd ~= "" then
+              return cmd
+            end
+          end
+        end
+      end
       for _, option in ipairs(entry) do
         local cmd = standardCommand(option)
         if cmd ~= "" then return cmd end
@@ -852,11 +996,11 @@ function boop.attacks.selectStandard(profile, classKey)
     and (type(boop.state.targetShield) ~= "table" or not boop.state.targetShield.attempted)
     and profile.shield
   then
-    local cmd = standardCommand(profile.shield)
+    local cmd = standardCommand(profile.shield, boop.attacks.getStandardPreference(classKey, "shield"))
     if cmd ~= "" then return cmd, true, false end
   end
   if profile.dam then
-    local cmd = standardCommand(profile.dam)
+    local cmd = standardCommand(profile.dam, boop.attacks.getStandardPreference(classKey, "dam"))
     if cmd ~= "" then
       if isTwoHandedSpec() and focusKnown() then
         cmd = prependFocusSpeed(cmd)

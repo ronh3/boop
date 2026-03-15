@@ -56,6 +56,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Prefer",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+prefer(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Walk",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+walk(?:\\s+(.+))?$",

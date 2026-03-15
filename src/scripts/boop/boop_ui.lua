@@ -967,6 +967,106 @@ function boop.ui.walkCommand(raw)
   boop.util.info("Usage: boop walk [status|start|stop|move]")
 end
 
+local function currentAttackPreferenceClass()
+  local classKey = boop.util.safeLower(currentClass())
+  if classKey == "" then
+    return ""
+  end
+  if boop.attacks and boop.attacks.registry and boop.attacks.registry[classKey] then
+    return classKey
+  end
+  return ""
+end
+
+function boop.ui.attackPreferenceCommand(raw)
+  local text = boop.util.trim(raw or "")
+  local textLower = boop.util.safeLower(text)
+  local classKey = currentAttackPreferenceClass()
+  local spec = boop.util.trim(boop.state and boop.state.spec or "")
+
+  if classKey == "" then
+    boop.util.warn("No active class profile is loaded yet")
+    return
+  end
+
+  local function showStatus()
+    local specShown = spec ~= "" and spec or "(default)"
+    local damPref = boop.attacks.getStandardPreference(classKey, "dam")
+    local shieldPref = boop.attacks.getStandardPreference(classKey, "shield")
+    boop.util.info(string.format("attack preferences: %s | spec: %s", classKey, specShown))
+    boop.util.echo("  damage: " .. (damPref ~= "" and damPref or "(default)"))
+    for _, option in ipairs(boop.attacks.standardOptions(classKey, "dam")) do
+      boop.util.echo("    - " .. option.label)
+    end
+    boop.util.echo("  shield: " .. (shieldPref ~= "" and shieldPref or "(default)"))
+    for _, option in ipairs(boop.attacks.standardOptions(classKey, "shield")) do
+      boop.util.echo("    - " .. option.label)
+    end
+    boop.util.info("Usage: boop prefer <dam|shield> <option> | boop prefer clear <dam|shield>")
+  end
+
+  if text == "" or textLower == "status" or textLower == "show" then
+    showStatus()
+    return
+  end
+
+  local clearSection = textLower:match("^clear%s+(%S+)$")
+  if clearSection then
+    local section = boop.util.safeLower(boop.util.trim(clearSection))
+    if section ~= "dam" and section ~= "shield" then
+      boop.util.warn("clear expects dam or shield")
+      return
+    end
+    local key = boop.attacks.preferenceConfigKey(classKey, section, spec)
+    if key ~= "" then
+      boop.config[key] = nil
+      if boop.db and boop.db.deleteConfig then
+        boop.db.deleteConfig(key)
+      end
+    end
+    boop.util.ok(string.format("%s preference cleared for %s (%s)", section, classKey, spec ~= "" and spec or "default"))
+    return
+  end
+
+  local section, choice = text:match("^(%S+)%s+(.+)$")
+  section = boop.util.safeLower(boop.util.trim(section or ""))
+  choice = boop.util.trim(choice or "")
+  if (section ~= "dam" and section ~= "shield") or choice == "" then
+    boop.util.warn("Usage: boop prefer <dam|shield> <option>")
+    boop.util.info("Use: boop prefer")
+    return
+  end
+
+  local options = boop.attacks.standardOptions(classKey, section)
+  local known = false
+  for _, option in ipairs(options) do
+    local label = boop.util.safeLower(option.label)
+    local skill = boop.util.safeLower(option.skill)
+    local command = boop.util.safeLower(option.command)
+    local wanted = boop.util.safeLower(choice)
+    if label:find(wanted, 1, true) or skill == wanted or command:find(wanted, 1, true) then
+      known = true
+      break
+    end
+  end
+  if not known then
+    boop.util.warn(string.format("Unknown %s preference `%s` for %s", section, choice, classKey))
+    showStatus()
+    return
+  end
+
+  local key = boop.attacks.preferenceConfigKey(classKey, section, spec)
+  if key == "" then
+    boop.util.warn("Unable to save attack preference")
+    return
+  end
+  boop.config[key] = choice
+  if boop.db and boop.db.saveConfig then
+    boop.db.saveConfig(key, choice)
+  end
+  boop.util.ok(string.format("%s preference: %s (%s)", section, choice, spec ~= "" and spec or "default"))
+end
+
 local function copyList(list)
   local out = {}
   for i, name in ipairs(list or {}) do
@@ -2064,6 +2164,7 @@ local HELP_TOPICS = {
       "boop status",
       "boop walk",
       "boop walk start",
+      "boop prefer",
       "boop config",
       "boop help <topic>",
     },
@@ -2214,6 +2315,9 @@ local HELP_TOPICS = {
       "boop stats reset session|login|trip|lifetime|all",
       "boop set partySize <n>",
       "boop walk [status|start|stop|move]",
+      "boop prefer [status|show]",
+      "boop prefer <dam|shield> <option>",
+      "boop prefer clear <dam|shield>",
       "boop trip start",
       "boop trip stop",
       "boop set tempoRageWindowSeconds <seconds>",
