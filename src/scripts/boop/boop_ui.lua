@@ -25,6 +25,21 @@ local function currentClass()
   return boop.state.class or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class) or "unknown"
 end
 
+local function assistLeader()
+  return boop.util.trim(boop.config.assistLeader or "")
+end
+
+local function assistStatusText()
+  local leader = assistLeader()
+  if boop.config.assistEnabled and leader ~= "" then
+    return "ON -> " .. leader
+  end
+  if leader ~= "" then
+    return "OFF -> " .. leader
+  end
+  return "OFF"
+end
+
 local UI_RULE_WIDTH = 56
 local UI_LABEL_COL_WIDTH = 40
 
@@ -110,6 +125,7 @@ local function renderStatusDashboard()
   local targetName = boop.state and boop.state.targetName or ""
   local targetShown = targetId ~= "" and targetId or "(none)"
   local targetNameShown = targetName ~= "" and targetName or "(none)"
+  local assistShown = assistStatusText()
 
   if cecho then
     local row = 1
@@ -123,6 +139,8 @@ local function renderStatusDashboard()
     uiPrintRow(row, "Party size", tostring(partySize), "cyan")
     row = row + 1
     uiPrintRow(row, "Party members", tostring(partyCount), "cyan")
+    row = row + 1
+    uiPrintRow(row, "Assist", assistShown, boop.config.assistEnabled and "green" or "yellow")
     row = row + 1
     uiPrintRow(row, "Targeting mode", tostring(boop.config.targetingMode or "whitelist"), "cyan")
     row = row + 1
@@ -175,6 +193,7 @@ local function renderStatusDashboard()
   boop.util.echo("  class: " .. tostring(class))
   boop.util.echo("  partySize: " .. tostring(partySize))
   boop.util.echo("  partyMembers: " .. tostring(partyCount))
+  boop.util.echo("  assist: " .. assistShown)
   boop.util.echo("  targetingMode: " .. tostring(boop.config.targetingMode))
   boop.util.echo("  currentTargetId: " .. tostring(targetShown))
   boop.util.echo("  currentTargetName: " .. tostring(targetNameShown))
@@ -676,6 +695,10 @@ local function canonConfigKey(raw)
     groupsize = "partySize",
     party = "partyRoster",
     partyroster = "partyRoster",
+    assist = "assistEnabled",
+    assistenabled = "assistEnabled",
+    assistleader = "assistLeader",
+    leader = "assistLeader",
     tempowindow = "tempoRageWindowSeconds",
     temporagewindow = "tempoRageWindowSeconds",
     temporagewindowseconds = "tempoRageWindowSeconds",
@@ -717,6 +740,8 @@ function boop.ui.listConfigValues()
     "diagTimeoutSeconds",
     "partySize",
     "partyRoster",
+    "assistEnabled",
+    "assistLeader",
   }
   boop.util.info("config keys:")
   for _, key in ipairs(keys) do
@@ -904,6 +929,34 @@ function boop.ui.setConfigValue(key, value)
     boop.ui.party(value or "")
     return
   end
+
+  if canonical == "assistEnabled" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.warn("assist expects on/off")
+      return
+    end
+    if parsed and assistLeader() == "" then
+      boop.util.warn("assist needs a leader; use: boop assist <name>")
+      return
+    end
+    saveConfigValue("assistEnabled", parsed)
+    boop.util.ok("assist: " .. (parsed and "on" or "off"))
+    return
+  end
+
+  if canonical == "assistLeader" then
+    local leader = boop.util.trim(value or "")
+    saveConfigValue("assistLeader", leader)
+    if leader == "" then
+      saveConfigValue("assistEnabled", false)
+      boop.util.ok("assist leader cleared")
+    else
+      saveConfigValue("assistEnabled", true)
+      boop.util.ok("assist leader: " .. leader)
+    end
+    return
+  end
 end
 
 function boop.ui.traceCommand(sub, arg)
@@ -965,6 +1018,52 @@ function boop.ui.walkCommand(raw)
   end
 
   boop.util.info("Usage: boop walk [status|start|stop|move]")
+end
+
+function boop.ui.assistCommand(raw)
+  local text = boop.util.trim(raw or "")
+  local cmd = boop.util.safeLower(text)
+  local leader = assistLeader()
+
+  if cmd == "" or cmd == "status" or cmd == "show" then
+    boop.util.info("assist: " .. assistStatusText())
+    boop.util.info("Usage: boop assist <leader> | boop assist on|off|clear")
+    return
+  end
+
+  if cmd == "help" then
+    boop.util.echo("Usage: boop assist <leader> | boop assist on|off|clear")
+    boop.util.echo("Example: boop assist Nikolais")
+    boop.util.echo("Assist mode prepends `assist <leader>/` before each attack.")
+    return
+  end
+
+  if cmd == "off" or cmd == "disable" then
+    saveConfigValue("assistEnabled", false)
+    boop.util.ok("assist: off")
+    return
+  end
+
+  if cmd == "clear" or cmd == "none" then
+    saveConfigValue("assistEnabled", false)
+    saveConfigValue("assistLeader", "")
+    boop.util.ok("assist cleared")
+    return
+  end
+
+  if cmd == "on" or cmd == "enable" then
+    if leader == "" then
+      boop.util.warn("assist needs a leader; use: boop assist <name>")
+      return
+    end
+    saveConfigValue("assistEnabled", true)
+    boop.util.ok("assist: on -> " .. leader)
+    return
+  end
+
+  saveConfigValue("assistLeader", text)
+  saveConfigValue("assistEnabled", true)
+  boop.util.ok("assist leader: " .. text)
 end
 
 local function currentAttackPreferenceClass()
@@ -2164,6 +2263,7 @@ local HELP_TOPICS = {
       "boop status",
       "boop walk",
       "boop walk start",
+      "boop assist <leader>",
       "boop prefer",
       "boop config",
       "boop help <topic>",
@@ -2209,6 +2309,8 @@ local HELP_TOPICS = {
       "boop ragemode",
       "boop ragemode <number>",
       "boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>",
+      "boop assist <leader>",
+      "boop assist on|off|clear",
       "boop set tempoRageWindowSeconds <seconds>",
       "boop set tempoSqueezeEtaSeconds <seconds>",
       "diag",
@@ -2459,6 +2561,7 @@ function boop.ui.home()
   local tripKills = tonumber(trip and trip.kills) or 0
   local tripGold = tonumber(trip and trip.gold) or 0
   local tripXp = tonumber(trip and trip.rawExperience) or 0
+  local assistShown = assistStatusText()
 
   if cecho then
     uiPrintHeader("boop")
@@ -2467,27 +2570,28 @@ function boop.ui.home()
     uiPrintRow(2, "Class", tostring(class), "cyan")
     uiPrintRow(3, "Targeting", targetingMode, "cyan")
     uiPrintRow(4, "Ragemode", rageMode, "yellow")
-    uiPrintRow(5, "Target", targetShown, "cyan")
-    uiPrintRow(6, "Room denizens", tostring(denizenCount), "cyan")
+    uiPrintRow(5, "Assist", assistShown, boop.config.assistEnabled and "green" or "yellow")
+    uiPrintRow(6, "Target", targetShown, "cyan")
+    uiPrintRow(7, "Room denizens", tostring(denizenCount), "cyan")
 
     uiPrintSection("trip snapshot")
-    uiPrintRow(7, "Trip state", tripRunning, tripRunning == "running" and "green" or "yellow")
-    uiPrintRow(8, "Trip kills", tostring(tripKills), "cyan")
-    uiPrintRow(9, "Trip gold", tostring(tripGold), "yellow")
-    uiPrintRow(10, "Trip raw xp", tostring(tripXp), "yellow")
+    uiPrintRow(8, "Trip state", tripRunning, tripRunning == "running" and "green" or "yellow")
+    uiPrintRow(9, "Trip kills", tostring(tripKills), "cyan")
+    uiPrintRow(10, "Trip gold", tostring(tripGold), "yellow")
+    uiPrintRow(11, "Trip raw xp", tostring(tripXp), "yellow")
 
     uiPrintSection("quick actions")
-    uiPrintRow(11, "Status dashboard", "OPEN", "cyan", function() boop.ui.status("status") end, "Open status dashboard")
-    uiPrintRow(12, "Config", "OPEN", "cyan", function() boop.ui.config("home") end, "Open configuration")
-    uiPrintRow(13, "Stats", "OPEN", "cyan", function() boop.stats.command("") end, "Open stats dashboard")
-    uiPrintRow(14, "Help", "OPEN", "cyan", function() boop.ui.help("home") end, "Open help")
+    uiPrintRow(12, "Status dashboard", "OPEN", "cyan", function() boop.ui.status("status") end, "Open status dashboard")
+    uiPrintRow(13, "Config", "OPEN", "cyan", function() boop.ui.config("home") end, "Open configuration")
+    uiPrintRow(14, "Stats", "OPEN", "cyan", function() boop.stats.command("") end, "Open stats dashboard")
+    uiPrintRow(15, "Help", "OPEN", "cyan", function() boop.ui.help("home") end, "Open help")
     uiPrintFooter("Type: boop status | boop config | boop stats | boop help")
     return
   end
 
   boop.util.echo("BOOP")
   boop.util.echo("----------------------------------------")
-  boop.util.echo(string.format("State: %s | class: %s | targeting: %s | ragemode: %s", enabled, tostring(class), targetingMode, rageMode))
+  boop.util.echo(string.format("State: %s | class: %s | targeting: %s | ragemode: %s | assist: %s", enabled, tostring(class), targetingMode, rageMode, assistShown))
   boop.util.echo("Target: " .. targetShown .. " | room denizens: " .. tostring(denizenCount))
   boop.util.echo(string.format("Trip: %s | kills %d | gold %d | xp %d", tripRunning, tripKills, tripGold, tripXp))
   boop.util.echo("Quick: boop status | boop config | boop stats | boop help")
@@ -2640,6 +2744,9 @@ local function configRenderCombatSection()
     uiPrintRow(9, string.format("Tempo squeeze ETA (%.2fs)", tempoEta), "SET", "yellow", function()
       boop.ui.config("9")
     end, "Prepare boop set tempoSqueezeEtaSeconds command")
+    uiPrintRow(10, "Assist leader", assistStatusText(), boop.config.assistEnabled and "green" or "yellow", function()
+      boop.ui.config("10")
+    end, "Prepare boop assist command")
     uiPrintFooter("Type: boop config <number> to change | boop config back | boop config home")
     return
   end
@@ -2658,6 +2765,7 @@ local function configRenderCombatSection()
   boop.util.echo(string.format("[7] Diag timeout              [ %.2fs ]", diagTimeout))
   boop.util.echo(string.format("[8] Tempo window              [ %.1fs ]", tempoWindow))
   boop.util.echo(string.format("[9] Tempo squeeze ETA         [ %.2fs ]", tempoEta))
+  boop.util.echo("[10] Assist leader            [ " .. assistStatusText() .. " ]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config <number> to change | boop config back | boop config home")
 end
@@ -2826,6 +2934,9 @@ local function configApplySectionOption(sectionKey, option)
       return true
     elseif n == 9 then
       uiSetCommandLine("boop set tempoSqueezeEtaSeconds ")
+      return true
+    elseif n == 10 then
+      uiSetCommandLine("boop assist ")
       return true
     end
     return false

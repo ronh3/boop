@@ -8,6 +8,8 @@ Current coverage:
   Confirms target choice behavior for whitelist priority and `retargetOnPriority`.
 - `boop_attacks_spec.lua`
   Confirms opener and shieldbreak attack selection, plus preferred standard attack overrides and fallback when a preferred option is unavailable.
+- `boop_assist_spec.lua`
+  Confirms assist-mode leader configuration and attack prefixing for direct, queued, and rage actions.
 - `boop_openers_contract_spec.lua`
   Confirms `openerAt100` behavior for all profiles that define one.
 - `boop_tick_spec.lua`

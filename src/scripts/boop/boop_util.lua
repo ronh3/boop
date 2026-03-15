@@ -158,8 +158,33 @@ local function markUnnamableMaulUsed(action)
   end
 end
 
+local function assistLeader()
+  if not boop or not boop.config then
+    return ""
+  end
+  return boop.util.trim(boop.config.assistLeader or "")
+end
+
+local function assistEnabled()
+  return not not (boop and boop.config and boop.config.assistEnabled and assistLeader() ~= "")
+end
+
+local function prependAssist(action)
+  local leader = assistLeader()
+  if not assistEnabled() or leader == "" or not action or action == "" then
+    return action
+  end
+
+  local normalized = boop.util.safeLower(boop.util.trim(action))
+  if boop.util.starts(normalized, "assist ") then
+    return action
+  end
+  return "assist " .. leader .. "/" .. action
+end
+
 function boop.executeAction(action, forceQueue)
   if not action or action == "" then return end
+  action = prependAssist(action)
 
   if boop.config.useQueueing or forceQueue then
     boop.state = boop.state or {}
@@ -216,6 +241,7 @@ end
 
 function boop.executeRageAction(action)
   if not action or action == "" then return end
+  action = prependAssist(action)
   local parts = boop.util.split(action, boop.lists.separator or "/")
   for _, part in ipairs(parts) do
     local trimmed = boop.util.trim(part)

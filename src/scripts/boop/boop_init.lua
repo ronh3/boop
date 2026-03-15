@@ -27,6 +27,8 @@ boop.defaults = {
   diagTimeoutSeconds = 8,
   partySize = 1,
   partyRoster = "",
+  assistEnabled = false,
+  assistLeader = "",
 }
 
 boop.config = boop.config or {}
