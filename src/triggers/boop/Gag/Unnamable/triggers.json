@@ -15,6 +15,10 @@
       {
         "pattern": "^You lash out with power and will, your only task to crush the light from the wretched (.+)\\.$",
         "type": "regex"
+      },
+      {
+        "pattern": "^You lash out with power and will, your only task to crush the light from your wretched target, (.+)\\.$",
+        "type": "regex"
       }
     ],
     "script": ""

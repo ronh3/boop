@@ -79,6 +79,24 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("Bal: 2.5s", 1, true) ~= nil)
   end)
 
+  it("captures the alternate Unnamable destroy attack wording", function()
+    boop.gag.onAttackLine({
+      ability = "Destroy",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "You lash out with power and will, your only task to crush the light from your wretched target, a ghost bat.",
+      "a ghost bat",
+    }, "You lash out with power and will, your only task to crush the light from your wretched target, a ghost bat.")
+    boop.gag.onDamageLine("2,222", "psychic", "Damage line")
+    boop.gag.onBalanceUsed("1.9", "Balance line")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("Destroy", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a ghost bat", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("2222 psychic", 1, true) ~= nil)
+  end)
+
   it("condenses a kill and experience line into one kill summary", function()
     boop.gag.onSlainLine("a test denizen", "Slain line")
     boop.gag.onExperienceLine("456", "Experience line")
