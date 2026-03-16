@@ -119,6 +119,14 @@
       {
         "pattern": "^You have slain (.+)\\.$",
         "type": "regex"
+      },
+      {
+        "pattern": "^(.+) has been slain by (.+), retrieving the corpse\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^(.+) has been slain by (.+)\\.$",
+        "type": "regex"
       }
     ],
     "script": ""

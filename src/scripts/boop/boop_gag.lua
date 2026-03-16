@@ -494,9 +494,23 @@ function boop.gag.onBalanceUsed(seconds, _rawLine)
   flushPendingAttack()
 end
 
-function boop.gag.onSlainLine(target, _rawLine)
-  if boop.stats and boop.stats.onKillLine then
+function boop.gag.onSlainLine(target, rawLine, killer)
+  local actor = boop.util.trim(killer or "")
+  local selfActor = true
+  if actor ~= "" then
+    selfActor = isSelfActor(actor, rawLine)
+  elseif boop.util.trim(rawLine or "") ~= "" then
+    selfActor = isSelfActor("you", rawLine)
+  end
+
+  if selfActor and boop.stats and boop.stats.onKillObserved then
+    boop.stats.onKillObserved(target or "")
+  end
+  if selfActor and boop.stats and boop.stats.onKillLine then
     boop.stats.onKillLine(target or "")
+  end
+  if not selfActor then
+    return
   end
   if not boop.config or not boop.config.gagOwnAttacks then
     return

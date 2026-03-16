@@ -128,6 +128,23 @@ describe("boop stats", function()
     assert.stub(record_mob_xp_stub).was.called(4)
   end)
 
+  it("uses slain-by-self text as a fallback for mob xp attribution", function()
+    helper.setArea("Test Area")
+    boop.ui.setEnabled(true, true)
+
+    boop.gag.onSlainLine(
+      "a rockhide basilisk",
+      "A rockhide basilisk has been slain by TestCharacter.",
+      "TestCharacter"
+    )
+    boop.stats.onExperienceGain("52,956")
+
+    local entry = boop.stats.getMobXp("Test Area", "a rockhide basilisk")
+    assert.is_not_nil(entry)
+    assert.are.equal(52956, entry.total)
+    assert.are.equal("a rockhide basilisk", boop.stats.lastKill.name)
+  end)
+
   it("normalizes corpse-style kill names back to the living denizen name", function()
     helper.setArea("Test Area")
     boop.ui.setEnabled(true, true)

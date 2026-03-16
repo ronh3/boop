@@ -88,4 +88,10 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("a test denizen", 1, true) ~= nil)
     assert.is_true(outputs[1]:find("456xp", 1, true) ~= nil)
   end)
+
+  it("ignores generic slain-by lines for other players", function()
+    boop.gag.onSlainLine("a test denizen", "A test denizen has been slain by SomeoneElse.", "SomeoneElse")
+
+    assert.are.equal(0, #outputs)
+  end)
 end)

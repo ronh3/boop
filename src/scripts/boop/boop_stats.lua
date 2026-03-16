@@ -1106,6 +1106,39 @@ function boop.stats.onKillLine(target)
   recordAbilityKill(resolved.ability)
 end
 
+function boop.stats.onKillObserved(target, area)
+  local victim = normalizeTrackedMobName(target)
+  if victim == "" then
+    return
+  end
+
+  local resolvedArea = boop.util.trim(area or currentArea())
+  if resolvedArea == "" then
+    resolvedArea = currentArea()
+  end
+
+  local observedAt = nowSeconds()
+  local current = boop.stats.activeTarget
+  local ttk = nil
+  local observedId = ""
+  if current and normalizeTrackedMobName(current.name or "") == victim then
+    observedId = boop.util.trim(tostring(current.id or ""))
+    ttk = observedAt - (tonumber(current.startedAt) or observedAt)
+    if ttk < 0 then
+      ttk = 0
+    end
+  end
+
+  boop.stats.lastKill = {
+    id = observedId,
+    name = victim,
+    area = resolvedArea,
+    partySize = currentPartySize(),
+    ttk = ttk,
+    at = observedAt,
+  }
+end
+
 function boop.stats.onCharStatus()
   if not gmcp or not gmcp.Char or not gmcp.Char.Status then return end
   local area = currentArea()
