@@ -69,6 +69,7 @@ describe("boop gold handling", function()
       { id = "42", name = "a vicious gnoll soldier", attrib = "m" },
     })
     boop.config.useQueueing = true
+    boop.config.goldPack = "pack"
     boop.state.currentTargetId = "42"
     boop.state.targetName = "a vicious gnoll soldier"
 
@@ -86,5 +87,7 @@ describe("boop gold handling", function()
     assert.is_function(scheduled[1])
     scheduled[1]()
     assert.is_false(boop.state.goldSettlePending)
+    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
+    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
   end)
 end)

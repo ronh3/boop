@@ -67,6 +67,15 @@ local function armGoldSettleWindow(reason)
     boop.trace.log("gold settle expired")
     local targetId = boop.targets and boop.targets.choose and boop.targets.choose() or ""
     if targetId == "" then
+      if not (boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending) then
+        boop.trace.log("gold settle expired: probing get sovereigns")
+        if boop.config.useQueueing then
+          queueGoldCommands()
+        else
+          queueGoldCommands()
+        end
+        return
+      end
       if boop.walk and boop.walk.maybeAdvance then
         boop.walk.maybeAdvance("gold settle expired")
       elseif boop.tick then
