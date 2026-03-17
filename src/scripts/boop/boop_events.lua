@@ -556,6 +556,10 @@ function boop.prequeueStandard()
   if not boop.config.enabled then return end
   if not boop.config.prequeueEnabled then return end
   if boop.state.diagHold then return end
+  if boop.state.goldSettlePending or boop.state.goldProbeNeeded or boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending then
+    boop.trace.log("prequeue: blocked by gold handling")
+    return
+  end
   if boop.state.prequeuedStandard then return end
   if gmcp and gmcp.Char and gmcp.Char.Vitals then
     if gmcp.Char.Vitals.bal == "1" and gmcp.Char.Vitals.eq == "1" then
@@ -625,6 +629,17 @@ end
 function boop.tick()
   if not boop.config.enabled then return end
   if boop.state.diagHold then return end
+  if boop.state.goldSettlePending then
+    boop.trace.log("tick: waiting for gold settle")
+    return
+  end
+  if boop.state.goldGetPending or boop.state.goldPutPending or boop.state.autoGrabGoldPending then
+    boop.trace.log("tick: blocked by gold handling")
+    return
+  end
+  if consumeGoldProbe("tick pre-target") then
+    return
+  end
 
   if boop.safety and boop.safety.shouldFlee and boop.safety.shouldFlee() then
     boop.safety.flee()
@@ -633,16 +648,6 @@ function boop.tick()
 
   local targetId = boop.targets.choose()
   if not targetId or targetId == "" then
-    if boop.state.goldSettlePending then
-      boop.trace.log("tick: waiting for gold settle")
-      return
-    end
-    if consumeGoldProbe("tick no target") then
-      return
-    end
-    if boop.config.useQueueing and boop.state.autoGrabGoldPending then
-      flushPendingGold("tick no target")
-    end
     boop.state.attacking = false
     if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
       boop.trace.log("tick: waiting for leader target call")

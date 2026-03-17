@@ -82,4 +82,15 @@ describe("boop prequeue", function()
     assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
     assert.is_true(boop.state.prequeuedStandard)
   end)
+
+  it("does not prequeue attacks while gold handling is pending", function()
+    gmcp.Char.Vitals.bal = "0"
+    gmcp.Char.Vitals.eq = "0"
+    boop.state.goldGetPending = true
+
+    boop.prequeueStandard()
+
+    assert.stub(send_stub).was_not_called()
+    assert.is_false(boop.state.prequeuedStandard)
+  end)
 end)

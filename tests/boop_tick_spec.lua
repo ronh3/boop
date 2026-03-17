@@ -59,4 +59,12 @@ describe("boop tick", function()
     assert.stub(send_stub).was_called_with("command hound at 42", false)
     assert.stub(send_stub).was_called_with("harry 42", false)
   end)
+
+  it("does not send attacks while gold handling is pending", function()
+    boop.state.goldGetPending = true
+
+    boop.tick()
+
+    assert.stub(send_stub).was_not_called()
+  end)
 end)
