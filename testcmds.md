@@ -96,6 +96,7 @@ local original = {
 
 local lines = {}
 local pending = ""
+local STRIPPABLE_EXACT_TAGS = {}
 
 local STRIPPABLE_TAGS = {
   reset = true,
@@ -153,9 +154,27 @@ local STRIPPABLE_TAGS = {
   tan = true,
 }
 
+if boop and boop.theme and type(boop.theme.tags) == "function" then
+  local ok, themeTags = pcall(boop.theme.tags)
+  if ok and type(themeTags) == "table" then
+    for _, value in pairs(themeTags) do
+      local text = tostring(value or "")
+      if text:match("^<[^>]+>$") then
+        STRIPPABLE_EXACT_TAGS[text] = true
+      end
+    end
+  end
+end
+
 local function stripMarkup(text)
   text = tostring(text or "")
   text = text:gsub("\27%[[0-9;]*m", "")
+  text = text:gsub("<[^>]+>", function(fullTag)
+    if STRIPPABLE_EXACT_TAGS[fullTag] then
+      return ""
+    end
+    return fullTag
+  end)
   text = text:gsub("<([^>]+)>", function(tag)
     local key = tostring(tag or ""):lower()
     if STRIPPABLE_TAGS[key] then
