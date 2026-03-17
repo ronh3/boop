@@ -1680,6 +1680,54 @@ local function topTargetRow(scope, area, partySize)
   return best
 end
 
+local function topTargetAnyArea(scope, partySize)
+  local merged = {}
+  local sizeKey = tonumber(partySize) or currentPartySize()
+  for areaName, bySize in pairs(scope.targetStats or {}) do
+    local areaBuckets = bySize and bySize[sizeKey] or {}
+    for rawName, entry in pairs(areaBuckets or {}) do
+      local name = normalizeTrackedMobName(rawName)
+      if name ~= "" then
+        merged[name] = mergeTargetEntry(merged[name], entry)
+      end
+    end
+  end
+
+  local best = nil
+  for name, entry in pairs(merged) do
+    local kills = tonumber(entry.kills) or 0
+    if kills > 0 then
+      local row = {
+        name = name,
+        kills = kills,
+        avgTtk = kills > 0 and ((tonumber(entry.totalTtk) or 0) / kills) or 0,
+        avgRawXp = kills > 0 and ((tonumber(entry.rawExperience) or 0) / kills) or 0,
+      }
+      if not best
+        or row.kills > best.kills
+        or (row.kills == best.kills and row.avgRawXp > best.avgRawXp)
+      then
+        best = row
+      end
+    end
+  end
+  return best
+end
+
+local function scopeHasActivity(scope)
+  scope = ensureScope(scope)
+  if (tonumber(scope.kills) or 0) > 0 then return true end
+  if (tonumber(scope.gold) or 0) > 0 then return true end
+  if (tonumber(scope.rawExperience) or 0) > 0 then return true end
+  if (tonumber(scope.targets) or 0) > 0 then return true end
+  for _, data in pairs(scope.areas or {}) do
+    if (tonumber(data.kills) or 0) > 0 or (tonumber(data.rawExperience) or 0) > 0 or (tonumber(data.gold) or 0) > 0 then
+      return true
+    end
+  end
+  return false
+end
+
 local function scopeSummaryLine(scope, label)
   local elapsed = elapsedFor(scope)
   return string.format(
@@ -2121,60 +2169,108 @@ function boop.stats.showDashboard()
   local session = ensureScope(boop.stats.session)
   local trip = ensureScope(boop.stats.trip)
   local lifetime = ensureScope(boop.stats.lifetime)
-  local bestArea = topAreaRow(session)
-  local bestTarget = topTargetRow(session, area, partySize)
-  local bestAbility = topAbilityRow(session)
+  local lastTrip = ensureScope(boop.stats.lastTrip)
+  local focusScope = session
+  local focusLabel = "session"
+  if not scopeHasActivity(focusScope) and scopeHasActivity(trip) then
+    focusScope = trip
+    focusLabel = "trip"
+  end
+  if not scopeHasActivity(focusScope) and scopeHasActivity(lifetime) then
+    focusScope = lifetime
+    focusLabel = "lifetime"
+  end
+  local bestArea = topAreaRow(focusScope)
+  local bestTarget = (area ~= "" and area ~= "UNKNOWN") and topTargetRow(focusScope, area, partySize) or nil
+  if not bestTarget then
+    bestTarget = topTargetAnyArea(focusScope, partySize)
+  end
+  local bestAbility = topAbilityRow(focusScope)
   local tripState = trip.stopwatch and "running" or "idle"
-  local compareBits = compareSummaryBits(trip, ensureScope(boop.stats.lastTrip))
+  local compareBits = compareSummaryBits(trip, lastTrip)
+  local hasTripCompare = scopeHasActivity(trip) or scopeHasActivity(lastTrip)
+  local shownArea = area
+  if shownArea == "" or shownArea == "UNKNOWN" then
+    shownArea = "(unknown)"
+  end
 
   boop.util.info("stats dashboard:")
-  boop.util.info("  " .. scopeSummaryLine(session, "session"))
-  boop.util.info("  " .. scopeSummaryLine(trip, "trip") .. " | " .. tripState)
+  boop.util.info(string.format("  hunt: %s | area %s | party size %d", tripState, shownArea, partySize))
+  if scopeHasActivity(session) then
+    boop.util.info("  " .. scopeSummaryLine(session, "session"))
+  else
+    boop.util.info("  session: no activity yet")
+  end
+  if scopeHasActivity(trip) then
+    boop.util.info("  " .. scopeSummaryLine(trip, "trip") .. " | " .. tripState)
+  else
+    boop.util.info("  trip: no activity yet")
+  end
   boop.util.info("  " .. scopeSummaryLine(lifetime, "lifetime"))
-  boop.util.info(string.format("  area: %s | party size %d", area, partySize))
   if bestArea then
     boop.util.info(string.format(
-      "  best area: %s | %s kills/hr | %s xp/hr",
+      "  best %s area: %s | %s kills/hr | %s xp/hr",
+      focusLabel,
       bestArea.area,
       formatStatValue(bestArea.killsPerHour, 1),
       formatStatValue(bestArea.rawXpPerHour, 1)
     ))
   else
-    boop.util.info("  best area: (none yet)")
+    boop.util.info(string.format("  best %s area: (none yet)", focusLabel))
   end
   if bestTarget then
     boop.util.info(string.format(
-      "  top target: %s | kills %d | avg ttk %ss | avg raw xp %s",
+      "  top %s target: %s | kills %d | avg ttk %ss | avg raw xp %s",
+      focusLabel,
       bestTarget.name,
       bestTarget.kills,
       formatNumber(bestTarget.avgTtk, 2),
       formatStatValue(bestTarget.avgRawXp, 1)
     ))
   else
-    boop.util.info("  top target: (none yet)")
+    boop.util.info(string.format("  top %s target: (none yet)", focusLabel))
   end
   if bestAbility then
     boop.util.info(string.format(
-      "  top ability: %s | kills %d | avg dmg %s | crit %s%%",
+      "  top %s ability: %s | kills %d | avg dmg %s | crit %s%%",
+      focusLabel,
       bestAbility.ability,
       bestAbility.kills,
       formatStatValue(bestAbility.avgDamage, 1),
       formatStatValue(bestAbility.critRate, 1)
     ))
   else
-    boop.util.info("  top ability: (none yet)")
+    boop.util.info(string.format("  top %s ability: (none yet)", focusLabel))
   end
-  boop.util.info("  compare trip vs lasttrip:")
-  boop.util.info("    " .. compareBits[1])
-  boop.util.info("    " .. compareBits[3])
-  boop.util.info("    " .. compareBits[4])
-  boop.util.info("    " .. compareBits[7])
+  if hasTripCompare then
+    boop.util.info("  compare trip vs lasttrip:")
+    boop.util.info("    " .. compareBits[1])
+    boop.util.info("    " .. compareBits[3])
+    boop.util.info("    " .. compareBits[4])
+    boop.util.info("    " .. compareBits[7])
+  else
+    boop.util.info("  trip compare: (no completed trips yet)")
+  end
   boop.util.info("  next views:")
-  boop.util.info("    boop stats compare trip lasttrip")
-  boop.util.info("    boop stats areas trip 5 xp")
-  boop.util.info("    boop stats targets trip 5")
-  boop.util.info("    boop stats abilities trip 5")
-  boop.util.info("    boop stats rage trip")
+  if scopeHasActivity(trip) then
+    boop.util.info("    boop stats compare trip lasttrip")
+    boop.util.info("    boop stats areas trip 5 xp")
+    boop.util.info("    boop stats targets trip 5")
+    boop.util.info("    boop stats abilities trip 5")
+    boop.util.info("    boop stats rage trip")
+  elseif focusLabel == "lifetime" then
+    boop.util.info("    boop stats lifetime")
+    boop.util.info("    boop stats areas lifetime 5 xp")
+    boop.util.info("    boop stats abilities lifetime 5")
+    boop.util.info("    boop stats crits lifetime")
+    boop.util.info("    boop trip start")
+  else
+    boop.util.info("    boop on")
+    boop.util.info("    boop trip start")
+    boop.util.info("    boop stats lifetime")
+    boop.util.info("    boop stats areas lifetime 5 xp")
+    boop.util.info("    boop stats abilities lifetime 5")
+  end
 end
 
 function boop.stats.showHelp()

@@ -361,11 +361,12 @@ describe("boop stats", function()
     boop.stats.command("")
 
     assert.are.equal("stats dashboard:", messages[1])
-    assert.is_true(messages[2]:find("session: 12 kills | 650 gold | 54000 xp", 1, true) ~= nil)
-    assert.is_true(messages[5]:find("area: Mhaldor | party size 1", 1, true) ~= nil)
-    assert.is_true(messages[6]:find("best area: Mhaldor | 120.0 kills/hr | 540000.0 xp/hr", 1, true) ~= nil)
-    assert.is_true(messages[7]:find("top target: a vicious gnoll soldier | kills 5 | avg ttk 3s | avg raw xp 4800", 1, true) ~= nil)
-    assert.is_true(messages[8]:find("top ability: warp | kills 5 | avg dmg 120.0 | crit 25.0%", 1, true) ~= nil)
+    assert.are.equal("  hunt: idle | area Mhaldor | party size 1", messages[2])
+    assert.is_true(messages[3]:find("session: 12 kills | 650 gold | 54000 xp", 1, true) ~= nil)
+    assert.is_true(messages[4]:find("trip: 10 kills | 500 gold | 40000 xp", 1, true) ~= nil)
+    assert.is_true(messages[6]:find("best session area: Mhaldor | 120.0 kills/hr | 540000.0 xp/hr", 1, true) ~= nil)
+    assert.is_true(messages[7]:find("top session target: a vicious gnoll soldier | kills 5 | avg ttk 3.00s | avg raw xp 4800", 1, true) ~= nil)
+    assert.is_true(messages[8]:find("top session ability: warp | kills 5 | avg dmg 120.0 | crit 25.0%", 1, true) ~= nil)
     assert.are.equal("  compare trip vs lasttrip:", messages[9])
     assert.are.equal("    kills: 10 vs 8 (+2 | +25%)", messages[10])
     assert.are.equal("    raw xp: 40000 vs 36000 (+4000 | +11.1%)", messages[11])
@@ -374,6 +375,49 @@ describe("boop stats", function()
     assert.are.equal("  next views:", messages[14])
     assert.are.equal("    boop stats compare trip lasttrip", messages[15])
     assert.are.equal("    boop stats areas trip 5 xp", messages[16])
+  end)
+
+  it("falls back to lifetime guidance when session and trip are empty", function()
+    helper.setArea("UNKNOWN")
+    boop.stats.lifetime.kills = 828
+    boop.stats.lifetime.gold = 142435
+    boop.stats.lifetime.rawExperience = 55761361
+    boop.stats.lifetime.totalTtk = 8677.44
+    boop.stats.lifetime.startedAt = 0
+    boop.stats.lifetime.endedAt = 21220
+    boop.stats.lifetime.activeSeconds = 21220
+    boop.stats.lifetime.areas["Manara Burrow"] = {
+      kills = 300,
+      gold = 40000,
+      rawExperience = 12000000,
+      totalTtk = 2400,
+      startedAt = 0,
+      endedAt = 3600,
+      activeSeconds = 3600,
+    }
+    boop.stats.lifetime.abilities["slaughter"] = {
+      uses = 900,
+      kills = 260,
+      hitsWithDamage = 900,
+      totalDamage = 130500,
+      crits = 91,
+    }
+
+    boop.stats.command("")
+
+    assert.are.equal("stats dashboard:", messages[1])
+    assert.are.equal("  hunt: idle | area (unknown) | party size 1", messages[2])
+    assert.are.equal("  session: no activity yet", messages[3])
+    assert.are.equal("  trip: no activity yet", messages[4])
+    assert.is_true(messages[5]:find("lifetime: 828 kills | 142435 gold | 55761361 xp", 1, true) ~= nil)
+    assert.is_true(messages[6]:find("best lifetime area: Manara Burrow | 300.0 kills/hr | 12000000.0 xp/hr", 1, true) ~= nil)
+    assert.are.equal("  top lifetime target: (none yet)", messages[7])
+    assert.is_true(messages[8]:find("top lifetime ability: slaughter | kills 260 | avg dmg 145.0 | crit 10.1%", 1, true) ~= nil)
+    assert.are.equal("  trip compare: (no completed trips yet)", messages[9])
+    assert.are.equal("  next views:", messages[10])
+    assert.are.equal("    boop stats lifetime", messages[11])
+    assert.are.equal("    boop stats areas lifetime 5 xp", messages[12])
+    assert.are.equal("    boop stats abilities lifetime 5", messages[13])
   end)
 
   it("shows ranked area performance with richer rate output", function()
