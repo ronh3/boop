@@ -48,6 +48,8 @@ Current coverage:
   Confirms skill GMCP ingestion, direct skill lookups, and learned/not-learned handling.
 - `boop_rage_ingestion_spec.lua`
   Confirms rage readiness fallback, rage gain sampling, rage affliction trigger ingestion, and optional suppression of party affliction callouts.
+- `boop_trace_spec.lua`
+  Confirms `boop trace` captures compact GMCP room, item, and gold-related item events for debugging live hunting flow.
 - `boop_persistence_spec.lua`
   Confirms public config, including rage affliction callout settings, with party size intentionally kept session-local, plus whitelist/blacklist and whitelist-tag edits through the DB hooks.
 - `boop_db_spec.lua`

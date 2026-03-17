@@ -30,6 +30,52 @@ local function findRoomGoldItem(items)
   return nil
 end
 
+local function traceRoomInfo(info, moved, previousRoom)
+  if not boop.trace or not boop.trace.log then return end
+  if type(info) ~= "table" then return end
+
+  local room = tostring(info.num or "")
+  local area = tostring(info.area or "UNKNOWN")
+  local exits = 0
+  if type(info.exits) == "table" then
+    for _ in pairs(info.exits) do
+      exits = exits + 1
+    end
+  end
+
+  local prefix = "gmcp room info"
+  if moved then
+    prefix = string.format("%s: %s -> %s", prefix, tostring(previousRoom or ""), room)
+  else
+    prefix = string.format("%s: %s", prefix, room)
+  end
+
+  boop.trace.log(string.format("%s | area=%s | exits=%d | moved=%s", prefix, area, exits, moved and "yes" or "no"))
+end
+
+local function traceRoomItemsList(items, goldItem)
+  if not boop.trace or not boop.trace.log then return end
+  local count = type(items) == "table" and #items or 0
+  if goldItem then
+    boop.trace.log(string.format(
+      "gmcp room items list: count=%d | gold=yes | gold=%s (%s)",
+      count,
+      tostring(goldItem.name or "?"),
+      tostring(goldItem.id or "?")
+    ))
+    return
+  end
+  boop.trace.log(string.format("gmcp room items list: count=%d | gold=no", count))
+end
+
+local function traceRoomItemEvent(kind, item)
+  if not boop.trace or not boop.trace.log then return end
+  local name = item and item.name or "?"
+  local id = item and item.id or "?"
+  local gold = isGoldItem(item) and "yes" or "no"
+  boop.trace.log(string.format("gmcp room item %s: %s (%s) | gold=%s", tostring(kind or "?"), tostring(name), tostring(id), gold))
+end
+
 function boop.clearGoldQueueIntent()
   boop.state = boop.state or {}
   boop.state.goldGetPending = false
@@ -254,6 +300,7 @@ function boop.onRoomItemsList()
   -- Fallback for cases where item-add events are delayed/coalesced: if gold
   -- exists in the room list and we're not already processing a pickup, queue it.
   local goldItem = findRoomGoldItem(items)
+  traceRoomItemsList(items, goldItem)
   if goldItem then
     boop.state = boop.state or {}
     if not (boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending) then
@@ -269,6 +316,7 @@ function boop.onRoomItemsAdd()
   if not gmcp or not gmcp.Char or not gmcp.Char.Items or not gmcp.Char.Items.Add then return end
   if gmcp.Char.Items.Add.location ~= "room" then return end
   local item = gmcp.Char.Items.Add.item
+  traceRoomItemEvent("add", item)
   boop.targets.addRoomItem(item)
   autoGrabRoomItem(item)
 end
@@ -279,6 +327,7 @@ function boop.onRoomItemsRemove()
   local removed = gmcp.Char.Items.Remove.item
   local removedId = tostring((removed and removed.id) or "")
   local removedName = removed and removed.name or ""
+  traceRoomItemEvent("remove", removed)
   boop.targets.removeRoomItem(removed)
 
   if removedId ~= "" and boop.targets and boop.targets.clearTargetCall and tostring(boop.state.calledTargetId or "") == removedId then
@@ -334,6 +383,7 @@ end
 function boop.onRoomInfo()
   if not gmcp or not gmcp.Room or not gmcp.Room.Info then return end
   local vars = boop.state
+  local previousRoom = vars.room
 
   if vars.room ~= gmcp.Room.Info.num then
     vars.movedRooms = true
@@ -366,6 +416,7 @@ function boop.onRoomInfo()
   end
 
   vars.room = gmcp.Room.Info.num
+  traceRoomInfo(gmcp.Room.Info, vars.movedRooms, previousRoom)
   if vars.movedRooms and vars.lastRoom ~= "" and boop.stats and boop.stats.onRoomChange then
     boop.stats.onRoomChange()
   end
