@@ -3209,9 +3209,6 @@ end
 local function configSectionById(id)
   local n = tonumber(id)
   if not n then return nil end
-  if n == 5 then
-    return configSectionByKey("debug")
-  end
   for _, section in ipairs(CONFIG_SECTIONS) do
     if section.id == n then
       return section
@@ -3478,7 +3475,7 @@ local function configRenderCombatSection()
     uiPrintRow(11, "Rage aff calls", boolText(not not boop.config.rageAffCalloutsEnabled), boolColor(not not boop.config.rageAffCalloutsEnabled), function()
       boop.ui.config("11")
     end, "Toggle party affliction callouts")
-    uiPrintFooter("Type: boop config <number> to change | boop config back | boop config home")
+    uiPrintFooter("Type: boop config combat <number> | boop config back | boop config home")
     return
   end
   local tempoWindow = tonumber(boop.config.tempoRageWindowSeconds) or 10
@@ -3499,7 +3496,7 @@ local function configRenderCombatSection()
   boop.util.echo("[10] Assist leader            [ " .. assistStatusText() .. " ]")
   boop.util.echo("[11] Rage aff calls          [ " .. boolText(not not boop.config.rageAffCalloutsEnabled) .. " ]")
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Type: boop config <number> to change | boop config back | boop config home")
+  boop.util.echo("Type: boop config combat <number> | boop config back | boop config home")
 end
 
 local function configRenderTargetingSection()
@@ -3532,7 +3529,7 @@ local function configRenderTargetingSection()
     uiPrintRow(8, "Blacklist manager", "OPEN", "green", function()
       boop.ui.config("8")
     end, "Open blacklist manager")
-    uiPrintFooter("Type: boop config <number> to change | boop config back | boop config home")
+    uiPrintFooter("Type: boop config targeting <number> | boop config back | boop config home")
     return
   end
   boop.util.echo("CONFIGURATION > Targeting")
@@ -3546,7 +3543,7 @@ local function configRenderTargetingSection()
   boop.util.echo("[7] Whitelist browse          [ OPEN ]")
   boop.util.echo("[8] Blacklist manager         [ OPEN ]")
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Type: boop config <number> to change | boop config back | boop config home")
+  boop.util.echo("Type: boop config targeting <number> | boop config back | boop config home")
 end
 
 local function configRenderLootSection()
@@ -3568,7 +3565,7 @@ local function configRenderLootSection()
     uiPrintRow(4, "Gold pack test", "RUN", "yellow", function()
       boop.ui.config("4")
     end, "Queue look in pack")
-    uiPrintFooter("Type: boop config <number> to change | boop config back | boop config home")
+    uiPrintFooter("Type: boop config loot <number> | boop config back | boop config home")
     return
   end
   boop.util.echo("CONFIGURATION > Loot")
@@ -3578,7 +3575,7 @@ local function configRenderLootSection()
   boop.util.echo("[3] Clear gold pack           [ OFF ]")
   boop.util.echo("[4] Gold pack test            [ RUN ]")
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Type: boop config <number> to change | boop config back | boop config home")
+  boop.util.echo("Type: boop config loot <number> | boop config back | boop config home")
 end
 
 local function configRenderDebugSection()
@@ -3604,7 +3601,7 @@ local function configRenderDebugSection()
     uiPrintRow(6, "Gag others attacks", boolText(not not boop.config.gagOthersAttacks), boolColor(not not boop.config.gagOthersAttacks), function()
       boop.ui.config("6")
     end, "Toggle gagging other players' attack lines")
-    uiPrintFooter("Type: boop config <number> to change | boop config back | boop config home")
+    uiPrintFooter("Type: boop config debug <number> | boop config back | boop config home")
     return
   end
   boop.util.echo("CONFIGURATION > Debug")
@@ -3616,7 +3613,7 @@ local function configRenderDebugSection()
   boop.util.echo("[5] Gag own attacks           [ " .. boolText(not not boop.config.gagOwnAttacks) .. " ]")
   boop.util.echo("[6] Gag others attacks        [ " .. boolText(not not boop.config.gagOthersAttacks) .. " ]")
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Type: boop config <number> to change | boop config back | boop config home")
+  boop.util.echo("Type: boop config debug <number> | boop config back | boop config home")
 end
 
 local function configRenderSection(key)
@@ -3817,7 +3814,7 @@ function boop.ui.config(arg)
     return
   end
 
-  local sectionPart, optionPart = raw:match("^%s*([%a_%-]+)%s+(%d+)%s*$")
+  local sectionPart, optionPart = raw:match("^%s*([%w_%-]+)%s+(%d+)%s*$")
   if sectionPart and optionPart then
     local requestedExplicit = configResolveSection(sectionPart)
     if requestedExplicit and configApplySectionOption(requestedExplicit.key, optionPart) then
@@ -3827,17 +3824,20 @@ function boop.ui.config(arg)
   end
 
   if current ~= "home" then
+    local requestedByName = configResolveSection(token)
+    if requestedByName then
+      configRenderSection(requestedByName.key)
+      return
+    end
+    if tonumber(token) and configHomeRoute(token) then
+      return
+    end
     if configApplySectionOption(current, token) then
       configRenderSection(current)
       return
     end
-    local requestedByName = configResolveSection(token)
-    if requestedByName and not tonumber(token) then
-      configRenderSection(requestedByName.key)
-      return
-    end
     boop.util.echo("Unknown option for " .. tostring(current) .. ": " .. tostring(arg))
-    boop.util.echo("Use: boop config <number> | boop config back | boop config home")
+    boop.util.echo("Use: boop config " .. tostring(current) .. " <number> | boop config back | boop config home")
     configRenderSection(current)
     return
   end

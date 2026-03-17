@@ -10,6 +10,7 @@ describe("boop ui home", function()
   local saved_cecho_link
   local saved_echo
   local saved_echo_link
+  local rage_menu_stub
 
   before_each(function()
     helper.reset()
@@ -45,6 +46,10 @@ describe("boop ui home", function()
     if ok_stub then ok_stub:revert() ok_stub = nil end
     if warn_stub then warn_stub:revert() warn_stub = nil end
     if info_stub then info_stub:revert() info_stub = nil end
+    if rage_menu_stub then
+      rage_menu_stub:revert()
+      rage_menu_stub = nil
+    end
     _G.cecho = saved_cecho
     _G.cechoLink = saved_cecho_link
     _G.echo = saved_echo
@@ -129,6 +134,31 @@ describe("boop ui home", function()
     assert.is_true(joined:find("[5] Party dashboard          [ leader-call | leader Leader | size 3 ]", 1, true) ~= nil)
     assert.is_true(joined:find("[7] Appearance               [ theme default ]", 1, true) ~= nil)
     assert.is_true(joined:find("Type: boop config party | boop config theme | boop config control", 1, true) ~= nil)
+  end)
+
+  it("treats bare numeric config commands as root navigation after entering a section", function()
+    boop.ui.config("1")
+
+    assert.are.equal("combat", boop.ui.configScreen)
+
+    echoes = {}
+    boop.ui.config("2")
+
+    local joined = table.concat(echoes, "\n")
+    assert.are.equal("targeting", boop.ui.configScreen)
+    assert.is_true(joined:find("CONFIGURATION > Targeting", 1, true) ~= nil)
+  end)
+
+  it("still supports explicit section option syntax", function()
+    local called = 0
+    rage_menu_stub = stub(boop.ui, "showRageModeMenu", function()
+      called = called + 1
+    end)
+
+    boop.ui.config("1 2")
+
+    assert.are.equal(1, called)
+    assert.are.equal("combat", boop.ui.configScreen)
   end)
 
   it("shows a consolidated party dashboard and separate roster manager", function()
