@@ -2079,13 +2079,29 @@ local function compareLine(name, left, right, decimals)
   return string.format("%s: %s vs %s (%s%s)", name, formatStatValue(left, decimals), formatStatValue(right, decimals), deltaText, percentText)
 end
 
+local function compareSummaryBits(leftScope, rightScope)
+  leftScope = ensureScope(leftScope)
+  rightScope = ensureScope(rightScope)
+  local leftElapsed = elapsedFor(leftScope)
+  local rightElapsed = elapsedFor(rightScope)
+  return {
+    compareLine("kills", leftScope.kills, rightScope.kills, 0),
+    compareLine("gold", leftScope.gold, rightScope.gold, 0),
+    compareLine("raw xp", leftScope.rawExperience or 0, rightScope.rawExperience or 0, 0),
+    compareLine("avg ttk", avgTtk(leftScope), avgTtk(rightScope), 2),
+    compareLine("kills/hr", perHour(leftScope.kills, leftElapsed), perHour(rightScope.kills, rightElapsed), 1),
+    compareLine("gold/hr", perHour(leftScope.gold, leftElapsed), perHour(rightScope.gold, rightElapsed), 1),
+    compareLine("xp/hr", perHour(leftScope.rawExperience or 0, leftElapsed), perHour(rightScope.rawExperience or 0, rightElapsed), 1),
+    compareLine("retargets", leftScope.retargets, rightScope.retargets, 0),
+    compareLine("flees", leftScope.flees, rightScope.flees, 0),
+  }
+end
+
 function boop.stats.showCompare(leftName, rightName)
   local leftScope, leftLabel = scopeByName(leftName)
   local rightScope, rightLabel = scopeByName(rightName)
   leftScope = ensureScope(leftScope)
   rightScope = ensureScope(rightScope)
-  local leftElapsed = elapsedFor(leftScope)
-  local rightElapsed = elapsedFor(rightScope)
 
   boop.util.info(string.format(
     "compare %s vs %s: %s || %s",
@@ -2094,15 +2110,9 @@ function boop.stats.showCompare(leftName, rightName)
     formatScopeMeta(leftScope),
     formatScopeMeta(rightScope)
   ))
-  boop.util.info(compareLine("kills", leftScope.kills, rightScope.kills, 0))
-  boop.util.info(compareLine("gold", leftScope.gold, rightScope.gold, 0))
-  boop.util.info(compareLine("raw xp", leftScope.rawExperience or 0, rightScope.rawExperience or 0, 0))
-  boop.util.info(compareLine("avg ttk", avgTtk(leftScope), avgTtk(rightScope), 2))
-  boop.util.info(compareLine("kills/hr", perHour(leftScope.kills, leftElapsed), perHour(rightScope.kills, rightElapsed), 1))
-  boop.util.info(compareLine("gold/hr", perHour(leftScope.gold, leftElapsed), perHour(rightScope.gold, rightElapsed), 1))
-  boop.util.info(compareLine("xp/hr", perHour(leftScope.rawExperience or 0, leftElapsed), perHour(rightScope.rawExperience or 0, rightElapsed), 1))
-  boop.util.info(compareLine("retargets", leftScope.retargets, rightScope.retargets, 0))
-  boop.util.info(compareLine("flees", leftScope.flees, rightScope.flees, 0))
+  for _, line in ipairs(compareSummaryBits(leftScope, rightScope)) do
+    boop.util.info(line)
+  end
 end
 
 function boop.stats.showDashboard()
@@ -2115,6 +2125,7 @@ function boop.stats.showDashboard()
   local bestTarget = topTargetRow(session, area, partySize)
   local bestAbility = topAbilityRow(session)
   local tripState = trip.stopwatch and "running" or "idle"
+  local compareBits = compareSummaryBits(trip, ensureScope(boop.stats.lastTrip))
 
   boop.util.info("stats dashboard:")
   boop.util.info("  " .. scopeSummaryLine(session, "session"))
@@ -2153,7 +2164,17 @@ function boop.stats.showDashboard()
   else
     boop.util.info("  top ability: (none yet)")
   end
-  boop.util.info("  use: boop stats session | boop stats login | boop stats areas | boop stats targets | boop stats abilities | boop stats rage")
+  boop.util.info("  compare trip vs lasttrip:")
+  boop.util.info("    " .. compareBits[1])
+  boop.util.info("    " .. compareBits[3])
+  boop.util.info("    " .. compareBits[4])
+  boop.util.info("    " .. compareBits[7])
+  boop.util.info("  next views:")
+  boop.util.info("    boop stats compare trip lasttrip")
+  boop.util.info("    boop stats areas trip 5 xp")
+  boop.util.info("    boop stats targets trip 5")
+  boop.util.info("    boop stats abilities trip 5")
+  boop.util.info("    boop stats rage trip")
 end
 
 function boop.stats.showHelp()

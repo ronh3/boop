@@ -294,6 +294,88 @@ describe("boop stats", function()
     assert.are.equal("  boop stats compare    -> compare trip vs lasttrip by default", messages[9])
   end)
 
+  it("shows a summary-first dashboard with optimization next views", function()
+    helper.setArea("Mhaldor")
+    boop.config.partySize = 1
+
+    boop.stats.session.kills = 12
+    boop.stats.session.gold = 650
+    boop.stats.session.rawExperience = 54000
+    boop.stats.session.totalTtk = 36
+    boop.stats.session.startedAt = 0
+    boop.stats.session.endedAt = 360
+    boop.stats.session.activeSeconds = 360
+    boop.stats.session.areas["Mhaldor"] = {
+      kills = 12,
+      gold = 650,
+      rawExperience = 54000,
+      totalTtk = 36,
+      startedAt = 0,
+      endedAt = 360,
+      activeSeconds = 360,
+    }
+    boop.stats.session.targetStats["Mhaldor"] = {
+      [1] = {
+        ["a vicious gnoll soldier"] = {
+          kills = 5,
+          totalTtk = 15,
+          rawExperience = 24000,
+        },
+      },
+    }
+    boop.stats.session.abilities["warp"] = {
+      uses = 8,
+      kills = 5,
+      hitsWithDamage = 8,
+      totalDamage = 960,
+      crits = 2,
+    }
+
+    boop.stats.trip.meta = { attackMode = "combo", class = "occultist", partySize = 1, area = "Mhaldor" }
+    boop.stats.trip.kills = 10
+    boop.stats.trip.gold = 500
+    boop.stats.trip.rawExperience = 40000
+    boop.stats.trip.totalTtk = 30
+    boop.stats.trip.startedAt = 0
+    boop.stats.trip.endedAt = 300
+    boop.stats.trip.activeSeconds = 300
+
+    boop.stats.lastTrip = {
+      meta = { attackMode = "tempo", class = "occultist", partySize = 1, area = "Mhaldor" },
+      kills = 8,
+      gold = 440,
+      rawExperience = 36000,
+      totalTtk = 40,
+      retargets = 3,
+      flees = 1,
+      startedAt = 0,
+      endedAt = 400,
+      activeSeconds = 400,
+      areas = {},
+      abilities = {},
+      targetStats = {},
+      rage = {},
+      records = {},
+    }
+
+    boop.stats.command("")
+
+    assert.are.equal("stats dashboard:", messages[1])
+    assert.is_true(messages[2]:find("session: 12 kills | 650 gold | 54000 xp", 1, true) ~= nil)
+    assert.is_true(messages[5]:find("area: Mhaldor | party size 1", 1, true) ~= nil)
+    assert.is_true(messages[6]:find("best area: Mhaldor | 120.0 kills/hr | 540000.0 xp/hr", 1, true) ~= nil)
+    assert.is_true(messages[7]:find("top target: a vicious gnoll soldier | kills 5 | avg ttk 3s | avg raw xp 4800", 1, true) ~= nil)
+    assert.is_true(messages[8]:find("top ability: warp | kills 5 | avg dmg 120.0 | crit 25.0%", 1, true) ~= nil)
+    assert.are.equal("  compare trip vs lasttrip:", messages[9])
+    assert.are.equal("    kills: 10 vs 8 (+2 | +25%)", messages[10])
+    assert.are.equal("    raw xp: 40000 vs 36000 (+4000 | +11.1%)", messages[11])
+    assert.are.equal("    avg ttk: 3 vs 5 (-2 | -40%)", messages[12])
+    assert.are.equal("    xp/hr: 480000 vs 324000 (+156000 | +48.1%)", messages[13])
+    assert.are.equal("  next views:", messages[14])
+    assert.are.equal("    boop stats compare trip lasttrip", messages[15])
+    assert.are.equal("    boop stats areas trip 5 xp", messages[16])
+  end)
+
   it("shows ranked area performance with richer rate output", function()
     boop.stats.session.areas["Fast Area"] = {
       kills = 8,
