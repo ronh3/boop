@@ -1,6 +1,7 @@
 [
   {"name": "boop_init", "isActive": "yes", "isFolder": "no", "script": ""},
   {"name": "boop_util", "isActive": "yes", "isFolder": "no", "script": ""},
+  {"name": "boop_theme", "isActive": "yes", "isFolder": "no", "script": ""},
   {"name": "boop_skills", "isActive": "yes", "isFolder": "no", "script": ""},
   {"name": "boop_db", "isActive": "yes", "isFolder": "no", "script": ""},
   {"name": "boop_state", "isActive": "yes", "isFolder": "no", "script": ""},

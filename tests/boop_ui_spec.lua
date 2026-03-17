@@ -2,6 +2,9 @@ local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper
 
 describe("boop ui home", function()
   local echo_stub
+  local ok_stub
+  local warn_stub
+  local info_stub
   local echoes
   local saved_cecho
   local saved_cecho_link
@@ -13,6 +16,15 @@ describe("boop ui home", function()
     echoes = {}
     echo_stub = stub(boop.util, "echo", function(msg)
       echoes[#echoes + 1] = msg
+    end)
+    ok_stub = stub(boop.util, "ok", function(msg)
+      echoes[#echoes + 1] = "[OK] " .. msg
+    end)
+    warn_stub = stub(boop.util, "warn", function(msg)
+      echoes[#echoes + 1] = "[WARN] " .. msg
+    end)
+    info_stub = stub(boop.util, "info", function(msg)
+      echoes[#echoes + 1] = "[INFO] " .. msg
     end)
 
     saved_cecho = _G.cecho
@@ -30,6 +42,9 @@ describe("boop ui home", function()
       echo_stub:revert()
       echo_stub = nil
     end
+    if ok_stub then ok_stub:revert() ok_stub = nil end
+    if warn_stub then warn_stub:revert() warn_stub = nil end
+    if info_stub then info_stub:revert() info_stub = nil end
     _G.cecho = saved_cecho
     _G.cechoLink = saved_cecho_link
     _G.echo = saved_echo
@@ -53,9 +68,27 @@ describe("boop ui home", function()
     boop.ui.home()
 
     assert.are.equal("BOOP", echoes[1])
-    assert.is_true(echoes[3]:find("State: on | class: occultist | targeting: whitelist | ragemode: simple", 1, true) ~= nil)
-    assert.is_true(echoes[4]:find("Target: 42 | a vicious gnoll soldier | room denizens: 2", 1, true) ~= nil)
-    assert.is_true(echoes[5]:find("Trip: running | kills 3 | gold 125 | xp 28376", 1, true) ~= nil)
-    assert.are.equal("Quick: boop status | boop config | boop stats | boop help", echoes[6])
+    assert.is_true(echoes[3]:find("State: on | mode: solo | blocker: engaged target | next: let boop attack", 1, true) ~= nil)
+    assert.is_true(echoes[4]:find("Class: occultist | targeting: whitelist | ragemode: simple", 1, true) ~= nil)
+    assert.is_true(echoes[5]:find("Target: 42 | a vicious gnoll soldier | room denizens: 2", 1, true) ~= nil)
+    assert.is_true(echoes[6]:find("Trip: running | kills 3 | gold 125 | xp 28376", 1, true) ~= nil)
+    assert.are.equal("Quick: boop mode | boop walk | boop theme | boop stats | boop help", echoes[7])
+  end)
+
+  it("switches operating modes with one command", function()
+    boop.ui.assistCommand("Leader")
+    boop.ui.modeCommand("leader-call")
+
+    assert.is_true(boop.config.assistEnabled)
+    assert.is_true(boop.config.targetCall)
+    assert.are.equal("Leader", boop.config.assistLeader)
+    assert.are.equal("[OK] mode: leader-call -> Leader", echoes[#echoes])
+  end)
+
+  it("sets and reports the active theme", function()
+    boop.ui.themeCommand("ocean")
+
+    assert.are.equal("ocean", boop.config.uiTheme)
+    assert.are.equal("[OK] theme: ocean", echoes[#echoes])
   end)
 end)

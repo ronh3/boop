@@ -29,6 +29,36 @@ local function assistLeader()
   return boop.util.trim(boop.config.assistLeader or "")
 end
 
+local function themeTags()
+  if boop.theme and boop.theme.tags then
+    return boop.theme.tags()
+  end
+  return {
+    accent = "<cyan>",
+    border = "<grey>",
+    text = "<white>",
+    muted = "<light_grey>",
+    ok = "<green>",
+    warn = "<yellow>",
+    err = "<red>",
+    info = "<cyan>",
+    dim = "<dark_grey>",
+    reset = "<reset>",
+  }
+end
+
+local function semanticTag(name)
+  local theme = themeTags()
+  local key = tostring(name or "")
+  if theme[key] then
+    return theme[key]
+  end
+  if key ~= "" then
+    return "<" .. key .. ">"
+  end
+  return theme.text
+end
+
 local function assistStatusText()
   local leader = assistLeader()
   if boop.config.assistEnabled and leader ~= "" then
@@ -105,6 +135,71 @@ function boop.ui.statusLine(context)
   return msg
 end
 
+local function activeThemeLabel()
+  if not boop.theme or not boop.theme.resolve_name then
+    return "default"
+  end
+  return tostring(boop.theme.resolve_name() or "default")
+end
+
+local function operatingModeLabel()
+  local mode = "solo"
+  if boop.config.targetCall then
+    mode = "leader-call"
+  elseif boop.config.assistEnabled and assistLeader() ~= "" then
+    mode = "assist"
+  end
+  if boop.walk and boop.walk.isActive and boop.walk.isActive() then
+    mode = mode .. " + walk"
+  end
+  return mode
+end
+
+local function currentBlocker()
+  if not boop.config.enabled then
+    return "boop disabled", "boop on"
+  end
+  if boop.state and boop.state.diagHold then
+    return "diagnose pause active", "wait for diag or use boop diag"
+  end
+  if boop.state and boop.state.fleeing then
+    return "flee in progress", "let flee resolve"
+  end
+  if boop.state and (boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending) then
+    return "loot handling pending", "wait for gold queue"
+  end
+  if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
+    return "waiting for leader target call", "wait for pt target line"
+  end
+  if boop.walk and boop.walk.isActive and boop.walk.isActive() and boop.walk.blockedReason then
+    local reason = boop.walk.blockedReason()
+    if reason and reason ~= "" and reason ~= "walk is not active" then
+      if reason == "room has not settled yet" then
+        return reason, "wait for room gmcp"
+      end
+      if reason == "room still has a valid target" or reason == "current target still set" then
+        return "engaged target", "let boop clear the room"
+      end
+      if reason == "move already queued" then
+        return reason, "wait for movement"
+      end
+      return reason, "boop walk status"
+    end
+  end
+  local targetId = tostring(boop.state and boop.state.currentTargetId or "")
+  if targetId ~= "" then
+    return "engaged target", "let boop attack"
+  end
+  local denizenCount = boop.state and boop.state.denizens and #boop.state.denizens or 0
+  if denizenCount <= 0 then
+    if boop.walk and boop.walk.isActive and boop.walk.isActive() then
+      return "room clear", "autowalk should advance"
+    end
+    return "room clear", "boop walk start"
+  end
+  return "ready", "let boop attack"
+end
+
 local function renderStatusDashboard()
   local class = currentClass()
   local lead = tonumber(boop.config.attackLeadSeconds) or 0
@@ -127,6 +222,10 @@ local function renderStatusDashboard()
   local targetNameShown = targetName ~= "" and targetName or "(none)"
   local assistShown = assistStatusText()
   local calledTargetShown = tostring((boop.state and boop.state.calledTargetId) or "")
+  local modeShown = operatingModeLabel()
+  local themeShown = activeThemeLabel()
+  local blocker, nextAction = currentBlocker()
+  local walkShown = (boop.walk and boop.walk.isActive and boop.walk.isActive()) and "ACTIVE" or "IDLE"
   if calledTargetShown == "" then calledTargetShown = "(none)" end
 
   if cecho then
@@ -137,6 +236,12 @@ local function renderStatusDashboard()
     uiPrintRow(row, "Enabled", boolText(boop.config.enabled), boolColor(boop.config.enabled))
     row = row + 1
     uiPrintRow(row, "Class", tostring(class), "cyan")
+    row = row + 1
+    uiPrintRow(row, "Operating mode", modeShown, "yellow")
+    row = row + 1
+    uiPrintRow(row, "Theme", themeShown, "cyan")
+    row = row + 1
+    uiPrintRow(row, "Walk", walkShown, walkShown == "ACTIVE" and "green" or "yellow")
     row = row + 1
     uiPrintRow(row, "Party size", tostring(partySize), "cyan")
     row = row + 1
@@ -155,6 +260,10 @@ local function renderStatusDashboard()
     uiPrintRow(row, "Current target name", tostring(targetNameShown), "cyan")
     row = row + 1
     uiPrintRow(row, "Room denizens", tostring(denizenCount), "cyan")
+    row = row + 1
+    uiPrintRow(row, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
+    row = row + 1
+    uiPrintRow(row, "Next action", nextAction, "cyan")
     row = row + 1
 
     uiPrintSection("queueing")
@@ -199,6 +308,9 @@ local function renderStatusDashboard()
   boop.util.echo("Status > boop")
   boop.util.echo("  enabled: " .. tostring(boop.config.enabled))
   boop.util.echo("  class: " .. tostring(class))
+  boop.util.echo("  mode: " .. tostring(modeShown))
+  boop.util.echo("  theme: " .. tostring(themeShown))
+  boop.util.echo("  walk: " .. tostring(walkShown))
   boop.util.echo("  partySize: " .. tostring(partySize))
   boop.util.echo("  partyMembers: " .. tostring(partyCount))
   boop.util.echo("  assist: " .. assistShown)
@@ -208,6 +320,8 @@ local function renderStatusDashboard()
   boop.util.echo("  currentTargetId: " .. tostring(targetShown))
   boop.util.echo("  currentTargetName: " .. tostring(targetNameShown))
   boop.util.echo("  roomDenizens: " .. tostring(denizenCount))
+  boop.util.echo("  blocker: " .. tostring(blocker))
+  boop.util.echo("  nextAction: " .. tostring(nextAction))
   boop.util.echo("  useQueueing: " .. tostring(boop.config.useQueueing))
   boop.util.echo("  prequeueEnabled: " .. tostring(boop.config.prequeueEnabled))
   boop.util.echo(string.format("  attackLeadSeconds: %.2f", lead))
@@ -262,8 +376,9 @@ end
 
 uiPrintHeader = function(title)
   if cecho then
-    cecho("\n<white>" .. string.upper(tostring(title or "")) .. "<reset>")
-    cecho("\n<grey>" .. uiRule() .. "<reset>")
+    local theme = themeTags()
+    cecho("\n" .. theme.accent .. string.upper(tostring(title or "")) .. theme.reset)
+    cecho("\n" .. theme.border .. uiRule() .. theme.reset)
   else
     boop.util.echo(tostring(title) .. " | class: " .. tostring(currentClass()))
   end
@@ -271,7 +386,8 @@ end
 
 uiPrintSection = function(title)
   if cecho then
-    cecho("\n\n<cyan>" .. string.upper(tostring(title or "")) .. "<reset>")
+    local theme = themeTags()
+    cecho("\n\n" .. theme.info .. string.upper(tostring(title or "")) .. theme.reset)
   else
     boop.util.echo(tostring(title) .. ":")
   end
@@ -279,12 +395,14 @@ end
 
 uiPrintRow = function(index, label, buttonText, buttonColor, onClick, hint, labelWidth)
   if cecho then
+    local theme = themeTags()
     local width = tonumber(labelWidth) or UI_LABEL_COL_WIDTH
     local prefix = uiIndexPrefix(index)
     local leftRaw = prefix .. tostring(label or "")
     local left = uiPadRight(leftRaw, width)
-    cecho("\n<white>" .. left .. "  <reset>")
-    local coloredButton = "<" .. tostring(buttonColor or "white") .. ">" .. uiButtonLabel(buttonText or "") .. "<reset>"
+    cecho("\n" .. theme.text .. left .. "  " .. theme.reset)
+    local colorTag = semanticTag(tostring(buttonColor or "text"))
+    local coloredButton = colorTag .. uiButtonLabel(buttonText or "") .. theme.reset
     if cechoLink and onClick then
       cechoLink(coloredButton, onClick, hint or "", true)
     else
@@ -300,8 +418,9 @@ end
 
 uiPrintFooter = function(text)
   if cecho then
-    cecho("\n<grey>" .. uiRule() .. "<reset>")
-    cecho("\n<white>" .. tostring(text or "") .. "<reset>")
+    local theme = themeTags()
+    cecho("\n" .. theme.border .. uiRule() .. theme.reset)
+    cecho("\n" .. theme.muted .. tostring(text or "") .. theme.reset)
     cecho("\n")
   else
     boop.util.echo(text or "")
@@ -710,6 +829,8 @@ local function canonConfigKey(raw)
     assistenabled = "assistEnabled",
     assistleader = "assistLeader",
     leader = "assistLeader",
+    theme = "uiTheme",
+    uitheme = "uiTheme",
     targetcall = "targetCall",
     leadertargetcall = "targetCall",
     affcalls = "rageAffCalloutsEnabled",
@@ -761,6 +882,7 @@ function boop.ui.listConfigValues()
     "rageAffCalloutsEnabled",
     "assistEnabled",
     "assistLeader",
+    "uiTheme",
   }
   boop.util.info("config keys:")
   for _, key in ipairs(keys) do
@@ -995,6 +1117,11 @@ function boop.ui.setConfigValue(key, value)
     return
   end
 
+  if canonical == "uiTheme" then
+    boop.ui.themeCommand(value)
+    return
+  end
+
   if canonical == "rageAffCalloutsEnabled" then
     local parsed = parseBool(value)
     if parsed == nil then
@@ -1066,6 +1193,94 @@ function boop.ui.walkCommand(raw)
   end
 
   boop.util.info("Usage: boop walk [status|start|stop|move]")
+end
+
+function boop.ui.modeCommand(raw)
+  local text = boop.util.trim(raw or "")
+  local cmd = boop.util.safeLower(text)
+
+  if cmd == "" or cmd == "status" or cmd == "show" then
+    local blocker, nextAction = currentBlocker()
+    boop.util.info("mode: " .. operatingModeLabel())
+    boop.util.info("blocker: " .. blocker)
+    boop.util.info("next: " .. nextAction)
+    boop.util.info("Usage: boop mode solo|assist|leader-call")
+    return
+  end
+
+  if cmd == "solo" then
+    saveConfigValue("targetCall", false)
+    if boop.targets and boop.targets.clearTargetCall then
+      boop.targets.clearTargetCall("mode solo")
+    end
+    saveConfigValue("assistEnabled", false)
+    boop.util.ok("mode: solo")
+    return
+  end
+
+  if cmd == "assist" then
+    local leader = assistLeader()
+    if leader == "" then
+      boop.util.warn("assist mode needs a leader; use: boop assist <name>")
+      return
+    end
+    saveConfigValue("assistEnabled", true)
+    saveConfigValue("targetCall", false)
+    if boop.targets and boop.targets.clearTargetCall then
+      boop.targets.clearTargetCall("mode assist")
+    end
+    boop.util.ok("mode: assist -> " .. leader)
+    return
+  end
+
+  if cmd == "leader-call" or cmd == "leadercall" or cmd == "lead" then
+    local leader = assistLeader()
+    if leader == "" then
+      boop.util.warn("leader-call mode needs a leader; use: boop assist <name>")
+      return
+    end
+    saveConfigValue("assistEnabled", true)
+    saveConfigValue("targetCall", true)
+    boop.util.ok("mode: leader-call -> " .. leader)
+    return
+  end
+
+  boop.util.warn("Usage: boop mode solo|assist|leader-call")
+end
+
+function boop.ui.themeCommand(raw)
+  local text = boop.util.trim(raw or "")
+  local cmd = boop.util.safeLower(text)
+
+  if cmd == "" or cmd == "status" or cmd == "show" then
+    boop.util.info("theme: " .. activeThemeLabel())
+    boop.util.info("Usage: boop theme <name|auto|list>")
+    return
+  end
+
+  if cmd == "list" then
+    boop.util.info("themes:")
+    for _, name in ipairs((boop.theme and boop.theme.names and boop.theme.names()) or {}) do
+      boop.util.echo("  " .. name)
+    end
+    boop.util.echo("  auto")
+    return
+  end
+
+  if cmd == "auto" then
+    saveConfigValue("uiTheme", "")
+    boop.util.ok("theme: auto (" .. activeThemeLabel() .. ")")
+    return
+  end
+
+  if not (boop.theme and boop.theme.exists and boop.theme.exists(cmd)) then
+    boop.util.warn("unknown theme: " .. cmd)
+    boop.util.info("Use: boop theme list")
+    return
+  end
+
+  saveConfigValue("uiTheme", cmd)
+  boop.util.ok("theme: " .. cmd)
 end
 
 function boop.ui.assistCommand(raw)
@@ -2356,6 +2571,8 @@ local HELP_TOPICS = {
     aliases = { "start", "gettingstarted", "intro", "basics", "general", "main", "home", "config" },
     commands = {
       "boop",
+      "boop mode",
+      "boop theme",
       "boop on",
       "boop off",
       "boop status",
@@ -2370,6 +2587,7 @@ local HELP_TOPICS = {
     notes = {
       "Use boop config for guided setting changes.",
       "Use boop get/boop set for direct key/value control.",
+      "Use boop mode to switch between solo, assist, and leader-call hunting.",
     },
   },
   {
@@ -2410,6 +2628,7 @@ local HELP_TOPICS = {
       "boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>",
       "boop targetcall on|off",
       "boop affcalls on|off",
+      "boop mode solo|assist|leader-call",
       "boop assist <leader>",
       "boop assist on|off|clear",
       "boop set tempoRageWindowSeconds <seconds>",
@@ -2517,6 +2736,7 @@ local HELP_TOPICS = {
       "boop stats compare [left] [right]",
       "boop stats reset session|login|trip|lifetime|all",
       "boop set partySize <n>",
+      "boop theme <name|auto|list>",
       "boop walk [status|start|stop|move]",
       "boop prefer [status|show]",
       "boop prefer <dam|shield> <option>",
@@ -2664,40 +2884,52 @@ function boop.ui.home()
   local tripXp = tonumber(trip and trip.rawExperience) or 0
   local assistShown = assistStatusText()
   local targetCallShown = boop.config.targetCall and "ON" or "OFF"
+  local modeShown = operatingModeLabel()
+  local themeShown = activeThemeLabel()
+  local blocker, nextAction = currentBlocker()
+  local walkShown = (boop.walk and boop.walk.isActive and boop.walk.isActive()) and "ON" or "OFF"
 
   if cecho then
     uiPrintHeader("boop")
-    uiPrintSection("state")
+    uiPrintSection("operations")
     uiPrintRow(1, "Hunting", enabled, boop.config.enabled and "green" or "red")
-    uiPrintRow(2, "Class", tostring(class), "cyan")
-    uiPrintRow(3, "Targeting", targetingMode, "cyan")
-    uiPrintRow(4, "Ragemode", rageMode, "yellow")
-    uiPrintRow(5, "Assist", assistShown, boop.config.assistEnabled and "green" or "yellow")
-    uiPrintRow(6, "Leader target gate", targetCallShown, boop.config.targetCall and "green" or "yellow")
-    uiPrintRow(7, "Target", targetShown, "cyan")
-    uiPrintRow(8, "Room denizens", tostring(denizenCount), "cyan")
+    uiPrintRow(2, "Mode", modeShown, "yellow")
+    uiPrintRow(3, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
+    uiPrintRow(4, "Next action", nextAction, "cyan")
+    uiPrintRow(5, "Walk", walkShown, walkShown == "ON" and "green" or "yellow")
+    uiPrintRow(6, "Theme", themeShown, "cyan")
+
+    uiPrintSection("combat state")
+    uiPrintRow(7, "Class", tostring(class), "cyan")
+    uiPrintRow(8, "Targeting", targetingMode, "cyan")
+    uiPrintRow(9, "Ragemode", rageMode, "yellow")
+    uiPrintRow(10, "Assist", assistShown, boop.config.assistEnabled and "green" or "yellow")
+    uiPrintRow(11, "Leader target gate", targetCallShown, boop.config.targetCall and "green" or "yellow")
+    uiPrintRow(12, "Target", targetShown, "cyan")
+    uiPrintRow(13, "Room denizens", tostring(denizenCount), "cyan")
 
     uiPrintSection("trip snapshot")
-    uiPrintRow(9, "Trip state", tripRunning, tripRunning == "running" and "green" or "yellow")
-    uiPrintRow(10, "Trip kills", tostring(tripKills), "cyan")
-    uiPrintRow(11, "Trip gold", tostring(tripGold), "yellow")
-    uiPrintRow(12, "Trip raw xp", tostring(tripXp), "yellow")
+    uiPrintRow(14, "Trip state", tripRunning, tripRunning == "running" and "green" or "yellow")
+    uiPrintRow(15, "Trip kills", tostring(tripKills), "cyan")
+    uiPrintRow(16, "Trip gold", tostring(tripGold), "yellow")
+    uiPrintRow(17, "Trip raw xp", tostring(tripXp), "yellow")
 
     uiPrintSection("quick actions")
-    uiPrintRow(13, "Status dashboard", "OPEN", "cyan", function() boop.ui.status("status") end, "Open status dashboard")
-    uiPrintRow(14, "Config", "OPEN", "cyan", function() boop.ui.config("home") end, "Open configuration")
-    uiPrintRow(15, "Stats", "OPEN", "cyan", function() boop.stats.command("") end, "Open stats dashboard")
-    uiPrintRow(16, "Help", "OPEN", "cyan", function() boop.ui.help("home") end, "Open help")
-    uiPrintFooter("Type: boop status | boop config | boop stats | boop help")
+    uiPrintRow(18, "Mode controls", "OPEN", "cyan", function() boop.ui.modeCommand("") end, "Show operating mode summary")
+    uiPrintRow(19, "Status dashboard", "OPEN", "cyan", function() boop.ui.status("status") end, "Open status dashboard")
+    uiPrintRow(20, "Stats", "OPEN", "cyan", function() boop.stats.command("") end, "Open stats dashboard")
+    uiPrintRow(21, "Theme controls", "OPEN", "cyan", function() boop.ui.themeCommand("") end, "Show theme summary")
+    uiPrintFooter("Type: boop mode | boop walk | boop theme | boop stats | boop help")
     return
   end
 
   boop.util.echo("BOOP")
   boop.util.echo("----------------------------------------")
-  boop.util.echo(string.format("State: %s | class: %s | targeting: %s | ragemode: %s | assist: %s | targetcall: %s", enabled, tostring(class), targetingMode, rageMode, assistShown, targetCallShown))
+  boop.util.echo(string.format("State: %s | mode: %s | blocker: %s | next: %s", enabled, modeShown, blocker, nextAction))
+  boop.util.echo(string.format("Class: %s | targeting: %s | ragemode: %s | assist: %s | targetcall: %s | walk: %s | theme: %s", tostring(class), targetingMode, rageMode, assistShown, targetCallShown, walkShown, themeShown))
   boop.util.echo("Target: " .. targetShown .. " | room denizens: " .. tostring(denizenCount))
   boop.util.echo(string.format("Trip: %s | kills %d | gold %d | xp %d", tripRunning, tripKills, tripGold, tripXp))
-  boop.util.echo("Quick: boop status | boop config | boop stats | boop help")
+  boop.util.echo("Quick: boop mode | boop walk | boop theme | boop stats | boop help")
 end
 
 local CONFIG_SECTIONS = {

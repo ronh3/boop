@@ -30,6 +30,7 @@ boop.defaults = {
   rageAffCalloutsEnabled = true,
   assistEnabled = false,
   assistLeader = "",
+  uiTheme = "",
 }
 
 boop.config = boop.config or {}

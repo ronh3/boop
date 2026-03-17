@@ -21,6 +21,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Mode",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+mode(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Combos",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+combos(?:\\s+(.+))?$",
@@ -80,6 +87,13 @@
     "name": "Boop Targetcall",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+targetcall(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Theme",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+theme(?:\\s+(.+))?$",
     "script": "",
     "isFolder": "no"
   },

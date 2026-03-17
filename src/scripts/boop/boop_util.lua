@@ -31,17 +31,22 @@ end
 function boop.util.echo(msg)
   msg = msg or ""
   if cecho then
-    cecho("\n<green>boop<reset>: " .. msg)
+    local theme = boop.theme and boop.theme.tags and boop.theme.tags() or nil
+    local accent = theme and theme.accent or "<green>"
+    local text = theme and theme.text or "<white>"
+    local border = theme and theme.border or "<grey>"
+    local reset = theme and theme.reset or "<reset>"
+    cecho("\n" .. accent .. "boop" .. reset .. " " .. border .. "::" .. reset .. " " .. text .. msg .. reset)
   else
     echo("\nboop: " .. msg)
   end
 end
 
 local FEEDBACK_STYLE = {
-  INFO = { tagColor = "cyan", textColor = "white" },
-  OK = { tagColor = "green", textColor = "white" },
-  WARN = { tagColor = "yellow", textColor = "white" },
-  ERR = { tagColor = "red", textColor = "white" },
+  INFO = { themeKey = "info", textKey = "text", fallbackTag = "cyan", fallbackText = "white" },
+  OK = { themeKey = "ok", textKey = "text", fallbackTag = "green", fallbackText = "white" },
+  WARN = { themeKey = "warn", textKey = "text", fallbackTag = "yellow", fallbackText = "white" },
+  ERR = { themeKey = "err", textKey = "text", fallbackTag = "red", fallbackText = "white" },
 }
 
 function boop.util.feedback(kind, msg)
@@ -49,8 +54,16 @@ function boop.util.feedback(kind, msg)
   local style = FEEDBACK_STYLE[k] or FEEDBACK_STYLE.INFO
   msg = tostring(msg or "")
   if cecho then
-    cecho(string.format("\n<green>boop<reset> <%s>[%s]<reset> <%s>%s<reset>",
-      style.tagColor, k, style.textColor, msg))
+    local theme = boop.theme and boop.theme.tags and boop.theme.tags() or nil
+    local accent = theme and theme.accent or "<green>"
+    local border = theme and theme.border or "<grey>"
+    local tagColor = theme and theme[style.themeKey] or ("<" .. style.fallbackTag .. ">")
+    local textColor = theme and theme[style.textKey] or ("<" .. style.fallbackText .. ">")
+    local reset = theme and theme.reset or "<reset>"
+    cecho(string.format("\n%sboop%s %s[%s%s%s]%s %s%s%s",
+      accent, reset,
+      border, tagColor, k, border, reset,
+      textColor, msg, reset))
   else
     echo(string.format("\nboop [%s]: %s", k, msg))
   end

@@ -106,6 +106,10 @@ local function blockedReason()
   return nil
 end
 
+function boop.walk.blockedReason()
+  return blockedReason()
+end
+
 function boop.walk.isAvailable()
   return available()
 end
