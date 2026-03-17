@@ -1412,6 +1412,8 @@ end
 
 local canRenderDashboardRich
 local formatScopeMeta
+local statsLabelWidth
+local renderRichRows
 
 function boop.stats.show(scopeName)
   local scope, label = scopeByName(scopeName)
@@ -2492,7 +2494,7 @@ local function statsCommandAction(cmd)
   end
 end
 
-local function statsLabelWidth(rows, minWidth, maxWidth)
+statsLabelWidth = function(rows, minWidth, maxWidth)
   if boop.ui and type(boop.ui.computeLabelWidth) == "function" then
     return boop.ui.computeLabelWidth(rows, minWidth or 10, maxWidth or 140)
   end
@@ -2513,7 +2515,7 @@ local function statsLabelWidth(rows, minWidth, maxWidth)
   return width
 end
 
-local function renderRichRows(printRow, rows, minWidth, maxWidth)
+renderRichRows = function(printRow, rows, minWidth, maxWidth)
   local width = statsLabelWidth(rows, minWidth, maxWidth)
   for _, row in ipairs(rows or {}) do
     printRow(row.index, row.label, row.value, row.color, row.onClick, row.hint, width)

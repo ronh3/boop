@@ -825,6 +825,41 @@ describe("boop stats", function()
     assert.is_nil(boop.stats.trip.stopwatch)
   end)
 
+  it("renders detailed stats views cleanly while the rich view is enabled", function()
+    saved_cecho = _G.cecho
+    saved_cecho_link = _G.cechoLink
+    _G.cecho = function(_) end
+    _G.cechoLink = nil
+
+    helper.setArea("Test Area")
+    boop.stats.session.areas["Test Area"] = {
+      kills = 3,
+      gold = 120,
+      rawExperience = 9000,
+      totalTtk = 18,
+      startedAt = 0,
+      activeSince = 0,
+      activeSeconds = 90,
+    }
+    boop.stats.session.abilities["warp"] = {
+      uses = 4,
+      kills = 2,
+      hitsWithDamage = 4,
+      totalDamage = 800,
+      maxDamage = 260,
+      crits = 1,
+      critTiers = { ["2xCRIT"] = 1 },
+      balances = 4,
+      totalBalance = 8.4,
+    }
+
+    assert.has_no.errors(function()
+      boop.stats.showAreas("session", 3)
+      boop.stats.showAbilities("session", 3)
+      boop.stats.showCompare("trip", "lasttrip")
+    end)
+  end)
+
   it("shows mob xp summaries in plain whitelist output", function()
     helper.setArea("Test Area")
     helper.setWhitelist("Test Area", { "a vicious gnoll soldier" })
