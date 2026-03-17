@@ -240,6 +240,24 @@ describe("boop ui home", function()
     assert.are.equal("debug", boop.ui.configScreen)
   end)
 
+  it("shows a cleaner debug snapshot", function()
+    helper.setClass("Unnamable")
+    helper.setDenizens({
+      { id = "42", name = "a ghost bat" },
+    })
+
+    echoes = {}
+    boop.ui.debug()
+
+    local joined = table.concat(echoes, "\n")
+    assert.are.equal("DEBUG SNAPSHOT", echoes[1])
+    assert.is_true(joined:find("Runtime: enabled off | mode whitelist | class Unnamable", 1, true) ~= nil)
+    assert.is_true(joined:find("Flow: blocker boop disabled | next boop on", 1, true) ~= nil)
+    assert.is_true(joined:find("Combat: eq/bal 1/1 | rage 0 | denizens 1", 1, true) ~= nil)
+    assert.is_true(joined:find("Target: (none)", 1, true) ~= nil)
+    assert.is_true(joined:find("Quick: boop config debug | boop trace show | boop debug attacks", 1, true) ~= nil)
+  end)
+
   it("shows a consolidated party dashboard and separate roster manager", function()
     helper.setClass("occultist")
     boop.ui.setEnabled(true, true)

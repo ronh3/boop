@@ -3905,12 +3905,48 @@ function boop.ui.debug()
   local eq = gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.eq or "?"
   local bal = gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.bal or "?"
   local rage = boop.attacks and boop.attacks.getRage and boop.attacks.getRage() or 0
-  local msg = string.format(
-    "enabled:%s | mode:%s | class:%s | eq:%s bal:%s | denizens:%s | target:%s (%s) | rage:%s",
-    enabled, mode, class, tostring(eq), tostring(bal),
-    tostring(denizenCount), tostring(currentTargetId), tostring(currentTargetName), tostring(rage)
-  )
-  boop.util.echo("debug | " .. msg)
+  local blocker, nextAction = currentBlocker()
+  local traceCount = boop.state and boop.state.traceBuffer and #boop.state.traceBuffer or 0
+  local targetShown = "(none)"
+  if currentTargetId ~= "" and currentTargetName ~= "" then
+    targetShown = currentTargetId .. " | " .. currentTargetName
+  elseif currentTargetId ~= "" then
+    targetShown = currentTargetId
+  elseif currentTargetName ~= "" then
+    targetShown = currentTargetName
+  end
+
+  if cecho then
+    uiPrintHeader("boop > debug snapshot")
+    uiPrintSection("runtime")
+    uiPrintRow(1, "Enabled", enabled, enabled == "on" and "green" or "yellow")
+    uiPrintRow(2, "Mode", tostring(mode), "cyan")
+    uiPrintRow(3, "Class", tostring(class), "cyan")
+    uiPrintRow(4, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
+    uiPrintRow(5, "Next action", nextAction, "cyan")
+
+    uiPrintSection("combat state")
+    uiPrintRow(6, "Eq / Bal", string.format("%s / %s", tostring(eq), tostring(bal)), "cyan")
+    uiPrintRow(7, "Rage", tostring(rage), "yellow")
+    uiPrintRow(8, "Denizens", tostring(denizenCount), "cyan")
+    uiPrintRow(9, "Target", targetShown, "cyan")
+
+    uiPrintSection("diagnostics")
+    uiPrintRow(10, "Trace entries", tostring(traceCount), "cyan")
+    uiPrintRow(11, "Gag own", boolText(not not boop.config.gagOwnAttacks), boolColor(not not boop.config.gagOwnAttacks))
+    uiPrintRow(12, "Gag others", boolText(not not boop.config.gagOthersAttacks), boolColor(not not boop.config.gagOthersAttacks))
+    uiPrintFooter("Type: boop config debug | boop trace show | boop debug attacks")
+    return
+  end
+
+  boop.util.echo("DEBUG SNAPSHOT")
+  boop.util.echo("----------------------------------------")
+  boop.util.echo(string.format("Runtime: enabled %s | mode %s | class %s", enabled, tostring(mode), tostring(class)))
+  boop.util.echo(string.format("Flow: blocker %s | next %s", blocker, nextAction))
+  boop.util.echo(string.format("Combat: eq/bal %s/%s | rage %s | denizens %s", tostring(eq), tostring(bal), tostring(rage), tostring(denizenCount)))
+  boop.util.echo("Target: " .. targetShown)
+  boop.util.echo(string.format("Diagnostics: trace %d | gag own %s | gag others %s", traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks)))
+  boop.util.echo("Quick: boop config debug | boop trace show | boop debug attacks")
 end
 
 local function skillStatus(name)
