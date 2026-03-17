@@ -269,6 +269,32 @@ describe("boop ui home", function()
     assert.is_true(joined:find("Quick: boop config home | boop config debug | boop trace show | boop debug attacks", 1, true) ~= nil)
   end)
 
+  it("shows a rewritten help home with guided entry points", function()
+    echoes = {}
+
+    boop.ui.help("")
+
+    local joined = table.concat(echoes, "\n")
+    assert.are.equal("HELP", echoes[1])
+    assert.is_true(joined:find("Start: boop | boop control | boop config | boop party | boop stats", 1, true) ~= nil)
+    assert.is_true(joined:find("[1] Start Here -> Core entrypoints and the fastest way to get oriented.", 1, true) ~= nil)
+    assert.is_true(joined:find("[4] Party & Leader -> Assist, leader target calls, roster management, and movement coordination.", 1, true) ~= nil)
+    assert.is_true(joined:find("Type: boop help home", 1, true) ~= nil)
+  end)
+
+  it("shows a rewritten help topic with summary and notes", function()
+    echoes = {}
+
+    boop.ui.help("stats")
+
+    local joined = table.concat(echoes, "\n")
+    assert.are.equal("HELP > Stats & Optimization", echoes[1])
+    assert.is_true(joined:find("Trip, session, lifetime, area, ability, target, and rage analytics.", 1, true) ~= nil)
+    assert.is_true(joined:find("  boop stats compare [left] [right]", 1, true) ~= nil)
+    assert.is_true(joined:find("Notes:", 1, true) ~= nil)
+    assert.is_true(joined:find("Type: boop help home | boop help back", 1, true) ~= nil)
+  end)
+
   it("makes rich footer command breadcrumbs clickable", function()
     local callbacks = {}
     local cmdline = {}
