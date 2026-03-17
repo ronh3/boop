@@ -69,7 +69,7 @@ describe("boop event-driven state transitions", function()
     assert.is_function(scheduled_callback)
     assert.stub(kill_timer_stub).was_called_with(77)
     assert.stub(send_stub).was_called_with("queue clear", false)
-    assert.stub(send_gmcp_stub).was_called_with([[IRE.Target.Set "43"]])
+    assert.stub(send_stub).was_called_with("settarget 43", false)
 
     scheduled_callback()
 

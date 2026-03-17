@@ -71,7 +71,7 @@ describe("boop leader target call mode", function()
   it("attacks the called target once the leader target call arrives", function()
     boop.targets.onPartyTargetCall("Person", "43", [[(Party): Person says, "Target: 43."]])
 
-    assert.stub(send_gmcp_stub).was_called_with([[IRE.Target.Set "43"]])
+    assert.stub(send_stub).was_called_with("settarget 43", false)
     assert.stub(send_stub).was_called_with("warp 43", false)
   end)
 

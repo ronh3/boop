@@ -55,7 +55,6 @@ describe("boop tick", function()
   it("targets the denizen and sends standard plus rage actions", function()
     boop.tick()
 
-    assert.stub(send_gmcp_stub).was_called_with([[IRE.Target.Set "42"]])
     assert.stub(send_stub).was_called_with("settarget 42", false)
     assert.stub(send_stub).was_called_with("command hound at 42", false)
     assert.stub(send_stub).was_called_with("harry 42", false)

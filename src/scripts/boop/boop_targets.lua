@@ -133,9 +133,6 @@ function boop.targets.setTarget(id)
     boop.stats.onTargetSet(boop.state.currentTargetId, boop.state.targetName or "")
   end
 
-  if gmcp and gmcp.IRE and gmcp.IRE.Target then
-    sendGMCP([[IRE.Target.Set "]] .. boop.state.currentTargetId .. [["]])
-  end
   if changed and send then
     send("settarget " .. boop.state.currentTargetId, false)
   end

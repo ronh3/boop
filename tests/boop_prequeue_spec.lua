@@ -77,7 +77,6 @@ describe("boop prequeue", function()
 
     boop.prequeueStandard()
 
-    assert.stub(send_gmcp_stub).was_called_with([[IRE.Target.Set "42"]])
     assert.stub(send_stub).was_called_with("settarget 42", false)
     assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK command hound at 42", false)
     assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
