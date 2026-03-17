@@ -54,6 +54,8 @@ local function clearGoldSettleWindow()
   boop.state.goldSettlePending = false
 end
 
+local queueGoldCommands
+
 local function consumeGoldProbe(reason)
   boop.state = boop.state or {}
   if not boop.state.goldProbeNeeded then
@@ -105,7 +107,7 @@ function boop.markGoldQueueIntent(pack)
   boop.state.goldPackTarget = target
 end
 
-local function queueGoldCommands()
+queueGoldCommands = function()
   local pack = boop.util.trim(boop.config.goldPack or "")
   boop.markGoldQueueIntent(pack)
   send("queue add freestand get sovereigns", false)
