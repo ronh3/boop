@@ -4,15 +4,18 @@ describe("boop gold handling", function()
   local send_stub
   local timer_stub
   local kill_timer_stub
+  local scheduled
 
   before_each(function()
     helper.reset()
+    scheduled = {}
     boop.config.enabled = true
     boop.config.autoGrabGold = true
 
     send_stub = stub(_G, "send", function(_, _) end)
-    timer_stub = stub(_G, "tempTimer", function(_, _)
-      return 1
+    timer_stub = stub(_G, "tempTimer", function(_, callback)
+      scheduled[#scheduled + 1] = callback
+      return #scheduled
     end)
     kill_timer_stub = stub(_G, "killTimer", function(_) end)
   end)
@@ -59,5 +62,29 @@ describe("boop gold handling", function()
     assert.is_false(boop.state.goldDropped)
     assert.is_true(boop.state.goldGetPending)
     assert.is_true(boop.state.goldPutPending)
+  end)
+
+  it("holds briefly after target removal so late party-kill gold can arrive", function()
+    helper.setDenizens({
+      { id = "42", name = "a vicious gnoll soldier", attrib = "m" },
+    })
+    boop.config.useQueueing = true
+    boop.state.currentTargetId = "42"
+    boop.state.targetName = "a vicious gnoll soldier"
+
+    gmcp.Char.Items.Remove = {
+      location = "room",
+      item = { id = "42", name = "a vicious gnoll soldier" },
+    }
+
+    boop.onRoomItemsRemove()
+
+    assert.is_true(boop.state.goldSettlePending)
+    boop.tick()
+    assert.stub(send_stub).was_not_called()
+
+    assert.is_function(scheduled[1])
+    scheduled[1]()
+    assert.is_false(boop.state.goldSettlePending)
   end)
 end)
