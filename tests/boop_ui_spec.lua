@@ -158,6 +158,7 @@ describe("boop ui home", function()
     assert.is_true(joined:find("[4] Diagnostics              [ trace OFF | gag own OFF | gag others OFF ]", 1, true) ~= nil)
     assert.is_true(joined:find("[5] Party dashboard          [ leader-call | leader Leader | size 3 ]", 1, true) ~= nil)
     assert.is_true(joined:find("[7] Appearance               [ theme default ]", 1, true) ~= nil)
+    assert.is_true(joined:find("Type: boop config home", 1, true) ~= nil)
     assert.is_true(joined:find("Type: boop config party | boop config theme | boop config control", 1, true) ~= nil)
   end)
 
@@ -198,7 +199,7 @@ describe("boop ui home", function()
     assert.is_true(joined:find("Hunting: ON | rage simple | blocker: engaged target", 1, true) ~= nil)
     assert.is_true(joined:find("Target: 42 | a vicious gnoll soldier | next: let boop attack", 1, true) ~= nil)
     assert.is_true(joined:find("[1] Toggle hunting", 1, true) ~= nil)
-    assert.is_true(joined:find("Type: boop config combat <number> | boop config back | boop config home", 1, true) ~= nil)
+    assert.is_true(joined:find("Type: boop config home | boop config combat <number> | boop config back", 1, true) ~= nil)
   end)
 
   it("shows a targeting subsection with live target context", function()
@@ -217,7 +218,7 @@ describe("boop ui home", function()
     assert.is_true(joined:find("Mode: whitelist | order: order | blocker: ready", 1, true) ~= nil)
     assert.is_true(joined:find("Called target: 43 | room denizens: 2 | next: let boop attack", 1, true) ~= nil)
     assert.is_true(joined:find("[6] Whitelist manager         [ OPEN ]", 1, true) ~= nil)
-    assert.is_true(joined:find("Type: boop config targeting <number> | boop config back | boop config home", 1, true) ~= nil)
+    assert.is_true(joined:find("Type: boop config home | boop config targeting <number> | boop config back", 1, true) ~= nil)
   end)
 
   it("keeps rich debug section callbacks scoped to debug actions", function()
@@ -265,7 +266,7 @@ describe("boop ui home", function()
     assert.is_true(joined:find("Flow: blocker boop disabled | next boop on", 1, true) ~= nil)
     assert.is_true(joined:find("Combat: eq/bal 1/1 | rage 0 | denizens 1", 1, true) ~= nil)
     assert.is_true(joined:find("Target: (none)", 1, true) ~= nil)
-    assert.is_true(joined:find("Quick: boop config debug | boop trace show | boop debug attacks", 1, true) ~= nil)
+    assert.is_true(joined:find("Quick: boop config home | boop config debug | boop trace show | boop debug attacks", 1, true) ~= nil)
   end)
 
   it("makes rich footer command breadcrumbs clickable", function()
@@ -283,15 +284,17 @@ describe("boop ui home", function()
       cmdline[#cmdline + 1] = "<clear>"
     end)
 
-    boop.ui.printFooter("Type: boop config debug <number> | boop trace show | boop debug attacks")
+    boop.ui.printFooter("Type: boop config home | boop config debug <number> | boop trace show | boop debug attacks")
 
-    assert.are.equal(3, #callbacks)
+    assert.are.equal(4, #callbacks)
 
     callbacks[1]()
     callbacks[2]()
     callbacks[3]()
+    callbacks[4]()
 
     assert.are.same({
+      "<clear>", "boop config home",
       "<clear>", "boop config debug",
       "<clear>", "boop trace show",
       "<clear>", "boop debug attacks",

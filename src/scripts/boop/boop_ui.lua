@@ -3478,7 +3478,7 @@ local function configRenderHome()
     uiPrintRow(14, "Stats dashboard", "OPEN", "cyan", function()
       boop.stats.command("")
     end, "Open the stats dashboard")
-    uiPrintFooter("Type: boop config <number> | boop config <name> | boop config party | boop config theme")
+    uiPrintFooter("Type: boop config home | boop config <number> | boop config <name> | boop config party | boop config theme")
     return
   end
 
@@ -3497,6 +3497,7 @@ local function configRenderHome()
   boop.util.echo("[8] Control center           [ OPEN ]")
   boop.util.echo("[9] Stats dashboard          [ OPEN ]")
   boop.util.echo("----------------------------------------")
+  boop.util.echo("Type: boop config home")
   boop.util.echo("Type: boop config <number>  (example: boop config 1)")
   boop.util.echo("Type: boop config <name>    (example: boop config hunting)")
   boop.util.echo("Type: boop config party | boop config theme | boop config control")
@@ -3555,7 +3556,7 @@ local function configRenderCombatSection()
     uiPrintRow(16, "Rage aff calls", boolText(not not boop.config.rageAffCalloutsEnabled), boolColor(not not boop.config.rageAffCalloutsEnabled), function()
       boop.ui.config("combat 11")
     end, "Toggle party affliction callouts")
-    uiPrintFooter("Type: boop config combat <number> | boop config back | boop config home")
+    uiPrintFooter("Type: boop config home | boop config combat <number> | boop config back")
     return
   end
   boop.util.echo("CONFIGURATION > Hunting")
@@ -3574,7 +3575,7 @@ local function configRenderCombatSection()
   boop.util.echo("[10] Assist leader            [ " .. assistStatusText() .. " ]")
   boop.util.echo("[11] Rage aff calls           [ " .. boolText(not not boop.config.rageAffCalloutsEnabled) .. " ]")
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Type: boop config combat <number> | boop config back | boop config home")
+  boop.util.echo("Type: boop config home | boop config combat <number> | boop config back")
 end
 
 local function configRenderTargetingSection()
@@ -3620,7 +3621,7 @@ local function configRenderTargetingSection()
     uiPrintRow(13, "Blacklist manager", "OPEN", "green", function()
       boop.ui.config("targeting 8")
     end, "Open blacklist manager")
-    uiPrintFooter("Type: boop config targeting <number> | boop config back | boop config home")
+    uiPrintFooter("Type: boop config home | boop config targeting <number> | boop config back")
     return
   end
   boop.util.echo("CONFIGURATION > Targeting")
@@ -3636,7 +3637,7 @@ local function configRenderTargetingSection()
   boop.util.echo("[7] Whitelist browse          [ OPEN ]")
   boop.util.echo("[8] Blacklist manager         [ OPEN ]")
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Type: boop config targeting <number> | boop config back | boop config home")
+  boop.util.echo("Type: boop config home | boop config targeting <number> | boop config back")
 end
 
 local function configRenderLootSection()
@@ -3664,7 +3665,7 @@ local function configRenderLootSection()
     uiPrintRow(7, "Gold pack test", "RUN", "yellow", function()
       boop.ui.config("loot 4")
     end, "Queue look in pack")
-    uiPrintFooter("Type: boop config loot <number> | boop config back | boop config home")
+    uiPrintFooter("Type: boop config home | boop config loot <number> | boop config back")
     return
   end
   boop.util.echo("CONFIGURATION > Loot")
@@ -3675,7 +3676,7 @@ local function configRenderLootSection()
   boop.util.echo("[3] Clear gold pack           [ OFF ]")
   boop.util.echo("[4] Gold pack test            [ RUN ]")
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Type: boop config loot <number> | boop config back | boop config home")
+  boop.util.echo("Type: boop config home | boop config loot <number> | boop config back")
 end
 
 local function configRenderDebugSection()
@@ -3708,7 +3709,7 @@ local function configRenderDebugSection()
     uiPrintRow(10, "Toggle gag others attacks", boolText(not not boop.config.gagOthersAttacks), boolColor(not not boop.config.gagOthersAttacks), function()
       boop.ui.config("debug 6")
     end, "Toggle gagging other players' attack lines")
-    uiPrintFooter("Type: boop config debug <number> | boop config back | boop config home")
+    uiPrintFooter("Type: boop config home | boop config debug <number> | boop config back")
     return
   end
   boop.util.echo("CONFIGURATION > Debug")
@@ -3721,7 +3722,7 @@ local function configRenderDebugSection()
   boop.util.echo("[5] Gag own attacks           [ " .. boolText(not not boop.config.gagOwnAttacks) .. " ]")
   boop.util.echo("[6] Gag others attacks        [ " .. boolText(not not boop.config.gagOthersAttacks) .. " ]")
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Type: boop config debug <number> | boop config back | boop config home")
+  boop.util.echo("Type: boop config home | boop config debug <number> | boop config back")
 end
 
 local function configRenderSection(key)
@@ -4004,7 +4005,7 @@ function boop.ui.debug()
     uiPrintRow(10, "Trace entries", tostring(traceCount), "cyan")
     uiPrintRow(11, "Gag own", boolText(not not boop.config.gagOwnAttacks), boolColor(not not boop.config.gagOwnAttacks))
     uiPrintRow(12, "Gag others", boolText(not not boop.config.gagOthersAttacks), boolColor(not not boop.config.gagOthersAttacks))
-    uiPrintFooter("Type: boop config debug | boop trace show | boop debug attacks")
+    uiPrintFooter("Type: boop config home | boop config debug | boop trace show | boop debug attacks")
     return
   end
 
@@ -4015,7 +4016,7 @@ function boop.ui.debug()
   boop.util.echo(string.format("Combat: eq/bal %s/%s | rage %s | denizens %s", tostring(eq), tostring(bal), tostring(rage), tostring(denizenCount)))
   boop.util.echo("Target: " .. targetShown)
   boop.util.echo(string.format("Diagnostics: trace %d | gag own %s | gag others %s", traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks)))
-  boop.util.echo("Quick: boop config debug | boop trace show | boop debug attacks")
+  boop.util.echo("Quick: boop config home | boop config debug | boop trace show | boop debug attacks")
 end
 
 local function skillStatus(name)
