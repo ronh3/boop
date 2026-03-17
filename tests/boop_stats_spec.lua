@@ -295,6 +295,11 @@ describe("boop stats", function()
   end)
 
   it("shows a summary-first dashboard with optimization next views", function()
+    saved_cecho = _G.cecho
+    saved_cecho_link = _G.cechoLink
+    _G.cecho = nil
+    _G.cechoLink = nil
+
     helper.setArea("Mhaldor")
     boop.config.partySize = 1
 
@@ -378,6 +383,11 @@ describe("boop stats", function()
   end)
 
   it("falls back to lifetime guidance when session and trip are empty", function()
+    saved_cecho = _G.cecho
+    saved_cecho_link = _G.cechoLink
+    _G.cecho = nil
+    _G.cechoLink = nil
+
     helper.setArea("UNKNOWN")
     boop.stats.lifetime.kills = 828
     boop.stats.lifetime.gold = 142435

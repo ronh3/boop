@@ -1741,6 +1741,18 @@ local function scopeSummaryLine(scope, label)
   )
 end
 
+local function scopeSummaryValue(scope)
+  local elapsed = elapsedFor(scope)
+  return string.format(
+    "%d kills | %d gold | %d xp | %s kills/hr | ttk %ss",
+    tonumber(scope.kills) or 0,
+    tonumber(scope.gold) or 0,
+    tonumber(scope.rawExperience) or 0,
+    formatStatValue(perHour(scope.kills, elapsed), 1),
+    formatNumber(avgTtk(scope), 2)
+  )
+end
+
 function boop.stats.showCrits(scopeName)
   local scope, label = scopeByName(scopeName)
   local totals = aggregateCrits(scope)
@@ -2163,6 +2175,98 @@ function boop.stats.showCompare(leftName, rightName)
   end
 end
 
+local function canRenderDashboardRich()
+  return cecho
+    and type(uiPrintHeader) == "function"
+    and type(uiPrintSection) == "function"
+    and type(uiPrintRow) == "function"
+    and type(uiPrintFooter) == "function"
+end
+
+local function statsCommandAction(cmd)
+  return function()
+    boop.stats.command(cmd)
+  end
+end
+
+local function showDashboardRich(context)
+  if not canRenderDashboardRich() then
+    return false
+  end
+
+  local session = context.session
+  local trip = context.trip
+  local lifetime = context.lifetime
+  local bestArea = context.bestArea
+  local bestTarget = context.bestTarget
+  local bestAbility = context.bestAbility
+  local focusLabel = context.focusLabel
+  local tripState = context.tripState
+  local shownArea = context.shownArea
+  local partySize = context.partySize
+  local compareBits = context.compareBits
+  local hasTripCompare = context.hasTripCompare
+
+  uiPrintHeader("boop stats")
+  uiPrintSection("overview")
+  uiPrintRow(1, "Focus", string.upper(focusLabel), "yellow")
+  uiPrintRow(2, "Hunt", string.format("%s | %s | party %d", tripState, shownArea, partySize), tripState == "running" and "green" or "yellow")
+  uiPrintRow(3, "Session", scopeHasActivity(session) and scopeSummaryValue(session) or "No activity yet", scopeHasActivity(session) and "cyan" or "yellow")
+  uiPrintRow(4, "Trip", scopeHasActivity(trip) and (scopeSummaryValue(trip) .. " | " .. tripState) or "No activity yet", scopeHasActivity(trip) and "cyan" or "yellow")
+  uiPrintRow(5, "Lifetime", scopeSummaryValue(lifetime), "cyan")
+
+  uiPrintSection("leaders")
+  if bestArea then
+    uiPrintRow(6, "Best " .. focusLabel .. " area", string.format("%s | %s k/hr | %s xp/hr", bestArea.area, formatStatValue(bestArea.killsPerHour, 1), formatStatValue(bestArea.rawXpPerHour, 1)), "green")
+  else
+    uiPrintRow(6, "Best " .. focusLabel .. " area", "No data yet", "yellow")
+  end
+  if bestTarget then
+    uiPrintRow(7, "Top " .. focusLabel .. " target", string.format("%s | %d kills | %ss | %s xp", bestTarget.name, bestTarget.kills, formatNumber(bestTarget.avgTtk, 2), formatStatValue(bestTarget.avgRawXp, 1)), "cyan")
+  else
+    uiPrintRow(7, "Top " .. focusLabel .. " target", "No data yet", "yellow")
+  end
+  if bestAbility then
+    uiPrintRow(8, "Top " .. focusLabel .. " ability", string.format("%s | %d kills | %s dmg | %s%% crit", bestAbility.ability, bestAbility.kills, formatStatValue(bestAbility.avgDamage, 1), formatStatValue(bestAbility.critRate, 1)), "cyan")
+  else
+    uiPrintRow(8, "Top " .. focusLabel .. " ability", "No data yet", "yellow")
+  end
+
+  uiPrintSection("trip compare")
+  if hasTripCompare then
+    uiPrintRow(9, "Kills", compareBits[1], "cyan")
+    uiPrintRow(10, "Raw xp", compareBits[3], "cyan")
+    uiPrintRow(11, "Avg ttk", compareBits[4], "cyan")
+    uiPrintRow(12, "Xp/hr", compareBits[7], "cyan")
+  else
+    uiPrintRow(9, "Trips", "No completed trips yet", "yellow")
+  end
+
+  uiPrintSection("next views")
+  if scopeHasActivity(trip) then
+    uiPrintRow(13, "Trip vs last trip", "OPEN", "cyan", statsCommandAction("compare trip lasttrip"), "Compare current trip against the previous completed trip")
+    uiPrintRow(14, "Area rankings", "OPEN", "cyan", statsCommandAction("areas trip 5 xp"), "Show trip area rankings sorted by xp/hr")
+    uiPrintRow(15, "Target breakdown", "OPEN", "cyan", statsCommandAction("targets trip 5"), "Show trip target efficiency")
+    uiPrintRow(16, "Ability breakdown", "OPEN", "cyan", statsCommandAction("abilities trip 5"), "Show trip ability performance")
+    uiPrintRow(17, "Rage report", "OPEN", "cyan", statsCommandAction("rage trip"), "Show trip rage usage summary")
+  elseif focusLabel == "lifetime" then
+    uiPrintRow(13, "Lifetime summary", "OPEN", "cyan", statsCommandAction("lifetime"), "Show full lifetime summary")
+    uiPrintRow(14, "Lifetime areas", "OPEN", "cyan", statsCommandAction("areas lifetime 5 xp"), "Show top lifetime areas")
+    uiPrintRow(15, "Lifetime abilities", "OPEN", "cyan", statsCommandAction("abilities lifetime 5"), "Show top lifetime abilities")
+    uiPrintRow(16, "Lifetime crits", "OPEN", "cyan", statsCommandAction("crits lifetime"), "Show lifetime crit summary")
+    uiPrintRow(17, "Start a trip", "RUN", "green", function() boop.stats.startTrip() end, "Begin a new explicit trip timer")
+  else
+    uiPrintRow(13, "Enable boop", "RUN", "green", function() boop.ui.setEnabled(true) end, "Enable hunting and start a session")
+    uiPrintRow(14, "Start a trip", "RUN", "green", function() boop.stats.startTrip() end, "Begin a new explicit trip timer")
+    uiPrintRow(15, "Lifetime summary", "OPEN", "cyan", statsCommandAction("lifetime"), "Show lifetime totals")
+    uiPrintRow(16, "Lifetime areas", "OPEN", "cyan", statsCommandAction("areas lifetime 5 xp"), "Show lifetime area rankings")
+    uiPrintRow(17, "Lifetime abilities", "OPEN", "cyan", statsCommandAction("abilities lifetime 5"), "Show lifetime ability performance")
+  end
+
+  uiPrintFooter("Type: boop stats areas | boop stats targets | boop stats abilities | boop stats compare")
+  return true
+end
+
 function boop.stats.showDashboard()
   local area = currentArea()
   local partySize = currentPartySize()
@@ -2192,6 +2296,23 @@ function boop.stats.showDashboard()
   local shownArea = area
   if shownArea == "" or shownArea == "UNKNOWN" then
     shownArea = "(unknown)"
+  end
+
+  if showDashboardRich({
+    session = session,
+    trip = trip,
+    lifetime = lifetime,
+    bestArea = bestArea,
+    bestTarget = bestTarget,
+    bestAbility = bestAbility,
+    focusLabel = focusLabel,
+    tripState = tripState,
+    shownArea = shownArea,
+    partySize = partySize,
+    compareBits = compareBits,
+    hasTripCompare = hasTripCompare,
+  }) then
+    return
   end
 
   boop.util.info("stats dashboard:")
