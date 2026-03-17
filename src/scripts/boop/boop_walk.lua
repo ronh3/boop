@@ -58,7 +58,6 @@ end
 local function available()
   return type(demonwalker) == "table"
     and type(demonwalker.init) == "function"
-    and type(raiseEvent) == "function"
 end
 
 local function attached()

@@ -23,15 +23,15 @@ local function targetCallEnabled()
   return not not (boop.config and boop.config.targetCall and boop.config.targetingMode ~= "manual")
 end
 
-local function sameSpeaker(a, b)
-  return sameName(a, b)
-end
-
 local function sameName(a, b)
   local na = normalizeName(a)
   local nb = normalizeName(b)
   if na == "" or nb == "" then return false end
   return na == nb
+end
+
+local function sameSpeaker(a, b)
+  return sameName(a, b)
 end
 
 function boop.targets.getArea()
