@@ -27,9 +27,6 @@ function boop.state.init()
   boop.state.rageTimers = boop.state.rageTimers or {}
 
   boop.state.goldDropped = boop.state.goldDropped or false
-  boop.state.goldSettlePending = boop.state.goldSettlePending or false
-  boop.state.goldSettleTimer = boop.state.goldSettleTimer or nil
-  boop.state.goldProbeNeeded = boop.state.goldProbeNeeded or false
   boop.state.shardsDropped = boop.state.shardsDropped or false
   boop.state.autoGrabGoldPending = boop.state.autoGrabGoldPending or false
   boop.state.autoGrabGoldTimer = boop.state.autoGrabGoldTimer or nil

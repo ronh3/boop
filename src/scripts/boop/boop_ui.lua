@@ -236,9 +236,6 @@ local function currentBlocker()
   if boop.state and boop.state.fleeing then
     return "flee in progress", "let flee resolve"
   end
-  if boop.state and boop.state.goldSettlePending then
-    return "waiting for loot settle", "wait for room loot line"
-  end
   if boop.state and (boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending) then
     return "loot handling pending", "wait for gold queue"
   end

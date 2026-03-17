@@ -109,16 +109,6 @@ describe("boop walk integration", function()
     assert.stub(raise_event_stub).was_called_with("demonwalker.move")
   end)
 
-  it("waits for loot to settle before advancing", function()
-    boop.state.walkActive = true
-    boop.state.walkRoomSettled = true
-    boop.state.goldSettlePending = true
-
-    local moved, reason = boop.walk.maybeAdvance("test loot settle")
-    assert.is_false(moved)
-    assert.are.equal("waiting for loot settle", reason)
-  end)
-
   it("arms a fallback settle timer on room change even if demonwalker arrived is missed", function()
     boop.state.walkActive = true
     gmcp.Room.Info.num = 200

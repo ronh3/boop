@@ -4,11 +4,9 @@ describe("boop gold handling", function()
   local send_stub
   local timer_stub
   local kill_timer_stub
-  local scheduled
 
   before_each(function()
     helper.reset()
-    scheduled = {}
     boop.config.enabled = true
     boop.config.autoGrabGold = true
 
@@ -62,49 +60,5 @@ describe("boop gold handling", function()
     assert.is_false(boop.state.goldDropped)
     assert.is_true(boop.state.goldGetPending)
     assert.is_true(boop.state.goldPutPending)
-  end)
-
-  it("holds briefly after target removal so late party-kill gold can arrive", function()
-    helper.setDenizens({
-      { id = "42", name = "a vicious gnoll soldier", attrib = "m" },
-    })
-    boop.config.useQueueing = true
-    boop.config.goldPack = "pack"
-    boop.state.currentTargetId = "42"
-    boop.state.targetName = "a vicious gnoll soldier"
-
-    gmcp.Char.Items.Remove = {
-      location = "room",
-      item = { id = "42", name = "a vicious gnoll soldier" },
-    }
-
-    boop.onRoomItemsRemove()
-
-    assert.is_true(boop.state.goldSettlePending)
-    boop.tick()
-    assert.stub(send_stub).was_not_called()
-
-    assert.is_function(scheduled[1])
-    scheduled[1]()
-    assert.is_false(boop.state.goldSettlePending)
-    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
-    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
-  end)
-
-  it("still probes for sovereigns on a later no-target tick if settle expiry saw a stale target", function()
-    helper.setDenizens({
-      { id = "42", name = "a vicious gnoll soldier", attrib = "m" },
-    })
-    boop.config.useQueueing = true
-    boop.state.goldProbeNeeded = true
-
-    boop.tick()
-    assert.stub(send_stub).was_not_called()
-
-    helper.setDenizens({})
-    boop.tick()
-
-    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
-    assert.is_false(boop.state.goldProbeNeeded)
   end)
 end)

@@ -93,9 +93,6 @@ local function blockedReason()
   if state.fleeing then
     return "flee is active"
   end
-  if state.goldSettlePending then
-    return "waiting for loot settle"
-  end
   if state.autoGrabGoldPending or state.goldGetPending or state.goldPutPending then
     return "loot handling is still pending"
   end

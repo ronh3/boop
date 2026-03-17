@@ -32,69 +32,11 @@ end
 
 function boop.clearGoldQueueIntent()
   boop.state = boop.state or {}
-  if boop.state.goldSettleTimer then
-    killTimer(boop.state.goldSettleTimer)
-    boop.state.goldSettleTimer = nil
-  end
-  boop.state.goldSettlePending = false
-  boop.state.goldProbeNeeded = false
   boop.state.goldGetPending = false
   boop.state.goldPutPending = false
   boop.state.goldGetRetries = 0
   boop.state.goldPutRetries = 0
   boop.state.goldPackTarget = ""
-end
-
-local function clearGoldSettleWindow()
-  boop.state = boop.state or {}
-  if boop.state.goldSettleTimer then
-    killTimer(boop.state.goldSettleTimer)
-    boop.state.goldSettleTimer = nil
-  end
-  boop.state.goldSettlePending = false
-end
-
-local queueGoldCommands
-
-local function consumeGoldProbe(reason)
-  boop.state = boop.state or {}
-  if not boop.state.goldProbeNeeded then
-    return false
-  end
-  if boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending then
-    return false
-  end
-  boop.state.goldProbeNeeded = false
-  boop.trace.log("gold probe: " .. tostring(reason or "unspecified"))
-  queueGoldCommands()
-  return true
-end
-
-local function armGoldSettleWindow(reason)
-  if not boop.config.enabled then return end
-  if not boop.config.autoGrabGold then return end
-
-  boop.state = boop.state or {}
-  clearGoldSettleWindow()
-  boop.state.goldSettlePending = true
-  boop.state.goldProbeNeeded = true
-  boop.trace.log("gold settle watch: " .. tostring(reason or "target removed"))
-  boop.state.goldSettleTimer = tempTimer(0.4, function()
-    boop.state.goldSettleTimer = nil
-    boop.state.goldSettlePending = false
-    boop.trace.log("gold settle expired")
-    local targetId = boop.targets and boop.targets.choose and boop.targets.choose() or ""
-    if targetId == "" then
-      if consumeGoldProbe("settle expired") then
-        return
-      end
-      if boop.walk and boop.walk.maybeAdvance then
-        boop.walk.maybeAdvance("gold settle expired")
-      elseif boop.tick then
-        boop.tick()
-      end
-    end
-  end)
 end
 
 function boop.markGoldQueueIntent(pack)
@@ -107,7 +49,7 @@ function boop.markGoldQueueIntent(pack)
   boop.state.goldPackTarget = target
 end
 
-queueGoldCommands = function()
+local function queueGoldCommands()
   local pack = boop.util.trim(boop.config.goldPack or "")
   boop.markGoldQueueIntent(pack)
   send("queue add freestand get sovereigns", false)
@@ -127,8 +69,6 @@ local function onGoldDetected(source)
   if not boop.config.autoGrabGold then return end
 
   boop.state = boop.state or {}
-  clearGoldSettleWindow()
-  boop.state.goldProbeNeeded = false
   boop.trace.log("gold drop detected" .. (source and (": " .. source) or ""))
 
   if boop.config.useQueueing then
@@ -358,8 +298,6 @@ function boop.onRoomItemsRemove()
   if boop.stats and boop.stats.onTargetRemoved then
     boop.stats.onTargetRemoved(removedId, removedName)
   end
-  armGoldSettleWindow("current target removed")
-
   boop.state.currentTargetId = ""
   boop.state.targetName = ""
   boop.state.prequeuedStandard = false
@@ -558,10 +496,6 @@ function boop.prequeueStandard()
   if not boop.config.enabled then return end
   if not boop.config.prequeueEnabled then return end
   if boop.state.diagHold then return end
-  if boop.state.goldSettlePending or boop.state.goldProbeNeeded or boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending then
-    boop.trace.log("prequeue: blocked by gold handling")
-    return
-  end
   if boop.state.prequeuedStandard then return end
   if gmcp and gmcp.Char and gmcp.Char.Vitals then
     if gmcp.Char.Vitals.bal == "1" and gmcp.Char.Vitals.eq == "1" then
@@ -575,13 +509,6 @@ function boop.prequeueStandard()
 
   local targetId = boop.targets.choose()
   if not targetId or targetId == "" then
-    if boop.state.goldSettlePending then
-      boop.trace.log("prequeue: waiting for gold settle")
-      return
-    end
-    if consumeGoldProbe("prequeue no target") then
-      return
-    end
     if boop.config.useQueueing and boop.state.autoGrabGoldPending then
       flushPendingGold("prequeue no target")
     end
@@ -631,17 +558,6 @@ end
 function boop.tick()
   if not boop.config.enabled then return end
   if boop.state.diagHold then return end
-  if boop.state.goldSettlePending then
-    boop.trace.log("tick: waiting for gold settle")
-    return
-  end
-  if boop.state.goldGetPending or boop.state.goldPutPending or boop.state.autoGrabGoldPending then
-    boop.trace.log("tick: blocked by gold handling")
-    return
-  end
-  if consumeGoldProbe("tick pre-target") then
-    return
-  end
 
   if boop.safety and boop.safety.shouldFlee and boop.safety.shouldFlee() then
     boop.safety.flee()
