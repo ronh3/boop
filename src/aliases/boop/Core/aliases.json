@@ -70,6 +70,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Ops",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+(?:ops|operations)(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Party",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+party(?:\\s+(.+))?$",

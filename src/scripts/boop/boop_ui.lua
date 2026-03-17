@@ -70,6 +70,21 @@ local function assistStatusText()
   return "OFF"
 end
 
+local function partyRosterMembers()
+  local raw = boop.util.trim(boop.config.partyRoster or "")
+  local out = {}
+  if raw == "" then
+    return out
+  end
+  for part in raw:gmatch("([^,]+)") do
+    local v = boop.util.trim(part)
+    if v ~= "" then
+      out[#out + 1] = v
+    end
+  end
+  return out
+end
+
 local UI_RULE_WIDTH = 56
 local UI_LABEL_COL_WIDTH = 40
 
@@ -198,6 +213,13 @@ local function currentBlocker()
     return "room clear", "boop walk start"
   end
   return "ready", "let boop attack"
+end
+
+local function walkStatusLabel()
+  if boop.walk and boop.walk.isActive and boop.walk.isActive() then
+    return "ON"
+  end
+  return "OFF"
 end
 
 local function renderStatusDashboard()
@@ -1281,6 +1303,99 @@ function boop.ui.themeCommand(raw)
 
   saveConfigValue("uiTheme", cmd)
   boop.util.ok("theme: " .. cmd)
+end
+
+function boop.ui.opsCommand(raw)
+  local text = boop.util.trim(raw or "")
+  local cmd = boop.util.safeLower(text)
+  local roster = partyRosterMembers()
+  local rosterShown = #roster > 0 and table.concat(roster, ", ") or "(none)"
+  local leader = assistLeader()
+  local assistShown = assistStatusText()
+  local walkShown = walkStatusLabel()
+  local blocker, nextAction = currentBlocker()
+  local calledTarget = tostring((boop.state and boop.state.calledTargetId) or "")
+  if calledTarget == "" then calledTarget = "(none)" end
+
+  if cmd ~= "" and cmd ~= "status" and cmd ~= "show" then
+    local head, tail = text:match("^(%S+)%s*(.-)%s*$")
+    local lowered = boop.util.safeLower(head or "")
+    if lowered == "mode" then
+      boop.ui.modeCommand(tail or "")
+      return
+    end
+    if lowered == "walk" then
+      boop.ui.walkCommand(tail or "")
+      return
+    end
+    if lowered == "assist" or lowered == "leader" then
+      boop.ui.assistCommand(tail or "")
+      return
+    end
+    if lowered == "targetcall" then
+      boop.ui.targetCallCommand(tail or "")
+      return
+    end
+    if lowered == "size" or lowered == "partysize" then
+      boop.ui.setConfigValue("partySize", tail or "")
+      return
+    end
+    if lowered == "party" or lowered == "roster" then
+      boop.ui.party(tail or "")
+      return
+    end
+    boop.util.info("Usage: boop ops [status|mode ...|walk ...|assist ...|targetcall ...|size <n>|party ...]")
+    return
+  end
+
+  if cecho then
+    uiPrintHeader("boop > party ops")
+    uiPrintSection("coordination")
+    uiPrintRow(1, "Mode", operatingModeLabel(), "yellow", function() boop.ui.modeCommand("") end, "Show mode help")
+    uiPrintRow(2, "Leader", leader ~= "" and leader or "(unset)", leader ~= "" and "cyan" or "yellow", function()
+      uiSetCommandLine("boop assist ")
+    end, "Prepare assist leader command")
+    uiPrintRow(3, "Assist", assistShown, boop.config.assistEnabled and "green" or "yellow", function()
+      boop.ui.modeCommand(boop.config.assistEnabled and "solo" or "assist")
+    end, "Toggle assist mode")
+    uiPrintRow(4, "Leader target gate", boop.config.targetCall and "ON" or "OFF", boop.config.targetCall and "green" or "yellow", function()
+      boop.ui.targetCallCommand(boop.config.targetCall and "off" or "on")
+    end, "Toggle leader target gating")
+    uiPrintRow(5, "Called target id", calledTarget, "cyan")
+    uiPrintRow(6, "Party size", tostring(tonumber(boop.config.partySize) or 1), "cyan", function()
+      uiSetCommandLine("boop set partySize ")
+    end, "Prepare party size command")
+
+    uiPrintSection("movement")
+    uiPrintRow(7, "Walk", walkShown, walkShown == "ON" and "green" or "yellow", function()
+      boop.ui.walkCommand(walkShown == "ON" and "stop" or "start")
+    end, "Start or stop autowalk")
+    uiPrintRow(8, "Blocker", blocker, blocker == "ready" and "green" or "yellow", function()
+      boop.ui.walkCommand("status")
+    end, "Show walk status")
+    uiPrintRow(9, "Next action", nextAction, "cyan")
+
+    uiPrintSection("party data")
+    uiPrintRow(10, "Roster entries", tostring(#roster), "cyan", function()
+      boop.ui.party("")
+    end, "Open party roster screen")
+    uiPrintRow(11, "Roster", rosterShown, "cyan", function()
+      boop.ui.party("")
+    end, "Open party roster screen")
+    uiPrintRow(12, "Combos", "OPEN", "cyan", function()
+      boop.ui.combos("party")
+    end, "Open combo synergy dashboard")
+    uiPrintFooter("Type: boop ops mode <mode> | boop ops walk <cmd> | boop ops assist <leader> | boop ops size <n>")
+    return
+  end
+
+  boop.util.echo("PARTY OPS")
+  boop.util.echo("----------------------------------------")
+  boop.util.echo(string.format("Mode: %s | leader: %s | assist: %s | targetcall: %s", operatingModeLabel(), leader ~= "" and leader or "(unset)", assistShown, boop.config.targetCall and "ON" or "OFF"))
+  boop.util.echo(string.format("Walk: %s | blocker: %s | next: %s", walkShown, blocker, nextAction))
+  boop.util.echo(string.format("Party size: %d | called target: %s", tonumber(boop.config.partySize) or 1, calledTarget))
+  boop.util.echo("Roster: " .. rosterShown)
+  boop.util.echo("Quick: boop mode | boop walk | boop assist <leader> | boop targetcall on|off | boop party")
 end
 
 function boop.ui.assistCommand(raw)
@@ -2571,6 +2686,7 @@ local HELP_TOPICS = {
     aliases = { "start", "gettingstarted", "intro", "basics", "general", "main", "home", "config" },
     commands = {
       "boop",
+      "boop ops",
       "boop mode",
       "boop theme",
       "boop on",
@@ -2629,6 +2745,7 @@ local HELP_TOPICS = {
       "boop targetcall on|off",
       "boop affcalls on|off",
       "boop mode solo|assist|leader-call",
+      "boop ops",
       "boop assist <leader>",
       "boop assist on|off|clear",
       "boop set tempoRageWindowSeconds <seconds>",
@@ -2686,6 +2803,7 @@ local HELP_TOPICS = {
       "boop party",
       "boop party <class...>",
       "boop party clear",
+      "boop ops",
       "boop combos",
       "boop combos <class...>",
       "boop combos list",
@@ -2915,11 +3033,11 @@ function boop.ui.home()
     uiPrintRow(17, "Trip raw xp", tostring(tripXp), "yellow")
 
     uiPrintSection("quick actions")
-    uiPrintRow(18, "Mode controls", "OPEN", "cyan", function() boop.ui.modeCommand("") end, "Show operating mode summary")
-    uiPrintRow(19, "Status dashboard", "OPEN", "cyan", function() boop.ui.status("status") end, "Open status dashboard")
+    uiPrintRow(18, "Party operations", "OPEN", "cyan", function() boop.ui.opsCommand("") end, "Open party operations dashboard")
+    uiPrintRow(19, "Mode controls", "OPEN", "cyan", function() boop.ui.modeCommand("") end, "Show operating mode summary")
     uiPrintRow(20, "Stats", "OPEN", "cyan", function() boop.stats.command("") end, "Open stats dashboard")
     uiPrintRow(21, "Theme controls", "OPEN", "cyan", function() boop.ui.themeCommand("") end, "Show theme summary")
-    uiPrintFooter("Type: boop mode | boop walk | boop theme | boop stats | boop help")
+    uiPrintFooter("Type: boop ops | boop mode | boop theme | boop stats | boop help")
     return
   end
 
@@ -2929,7 +3047,7 @@ function boop.ui.home()
   boop.util.echo(string.format("Class: %s | targeting: %s | ragemode: %s | assist: %s | targetcall: %s | walk: %s | theme: %s", tostring(class), targetingMode, rageMode, assistShown, targetCallShown, walkShown, themeShown))
   boop.util.echo("Target: " .. targetShown .. " | room denizens: " .. tostring(denizenCount))
   boop.util.echo(string.format("Trip: %s | kills %d | gold %d | xp %d", tripRunning, tripKills, tripGold, tripXp))
-  boop.util.echo("Quick: boop mode | boop walk | boop theme | boop stats | boop help")
+  boop.util.echo("Quick: boop ops | boop mode | boop theme | boop stats | boop help")
 end
 
 local CONFIG_SECTIONS = {
