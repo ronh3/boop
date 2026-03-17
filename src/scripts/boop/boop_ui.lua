@@ -398,11 +398,119 @@ end
 
 function boop.ui.controlCommand(raw)
   local cmd = boop.util.safeLower(boop.util.trim(raw or ""))
-  if cmd == "status" then
+  if cmd == "status" or cmd == "show" then
     boop.ui.status("status")
     return
   end
-  boop.ui.home()
+  if cmd == "config" or cmd == "settings" then
+    boop.ui.config("")
+    return
+  end
+  if cmd == "combat" or cmd == "hunting" or cmd == "queueing" then
+    boop.ui.config("combat")
+    return
+  end
+  if cmd == "targeting" or cmd == "targets" then
+    boop.ui.config("targeting")
+    return
+  end
+  if cmd == "loot" or cmd == "gold" then
+    boop.ui.config("loot")
+    return
+  end
+  if cmd == "debug" or cmd == "diagnostics" then
+    boop.ui.config("debug")
+    return
+  end
+  if cmd == "party" then
+    boop.ui.partyCommand("")
+    return
+  end
+  if cmd == "roster" then
+    boop.ui.rosterCommand("")
+    return
+  end
+  if cmd == "stats" then
+    boop.stats.command("")
+    return
+  end
+  if cmd == "theme" then
+    boop.ui.themeCommand("")
+    return
+  end
+  if cmd == "mode" then
+    boop.ui.modeCommand("")
+    return
+  end
+
+  local class = currentClass()
+  local targetingMode = tostring(boop.config.targetingMode or "whitelist")
+  local rageMode = tostring(boop.config.attackMode or "simple")
+  local enabled = boop.config.enabled and "on" or "off"
+  local denizenCount = boop.state and boop.state.denizens and #boop.state.denizens or 0
+  local targetId = boop.state and boop.state.currentTargetId or ""
+  local targetName = boop.state and boop.state.targetName or ""
+  local targetShown = targetId ~= "" and (targetId .. " | " .. (targetName ~= "" and targetName or "(unnamed)")) or "(none)"
+  local trip = boop.stats and boop.stats.trip or {}
+  local tripRunning = trip and trip.stopwatch and "running" or "idle"
+  local tripKills = tonumber(trip and trip.kills) or 0
+  local tripGold = tonumber(trip and trip.gold) or 0
+  local tripXp = tonumber(trip and trip.rawExperience) or 0
+  local assistShown = assistStatusText()
+  local targetCallShown = boop.config.targetCall and "ON" or "OFF"
+  local modeShown = operatingModeLabel()
+  local themeShown = activeThemeLabel()
+  local blocker, nextAction = currentBlocker()
+  local walkShown = (boop.walk and boop.walk.isActive and boop.walk.isActive()) and "ON" or "OFF"
+  local queueShown = boolText(not not boop.config.useQueueing)
+  local prequeueShown = boolText(not not boop.config.prequeueEnabled)
+  local partySize = tostring(tonumber(boop.config.partySize) or 1)
+  local leadShown = string.format("%.2fs", tonumber(boop.config.attackLeadSeconds) or 0)
+
+  if cecho then
+    uiPrintHeader("boop > control")
+    uiPrintSection("overview")
+    uiPrintRow(1, "Hunting", enabled, boop.config.enabled and "green" or "red", function()
+      boop.ui.setEnabled(not boop.config.enabled)
+    end, "Toggle hunting on or off")
+    uiPrintRow(2, "Mode", modeShown, "yellow", function() boop.ui.modeCommand("") end, "Show operating mode controls")
+    uiPrintRow(3, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
+    uiPrintRow(4, "Next action", nextAction, "cyan")
+    uiPrintRow(5, "Trip", string.format("%s | %d kills | %d gold | %d xp", tripRunning, tripKills, tripGold, tripXp), tripRunning == "running" and "green" or "yellow")
+
+    uiPrintSection("combat controls")
+    uiPrintRow(6, "Class", tostring(class), "cyan")
+    uiPrintRow(7, "Targeting", targetingMode, "cyan", function() boop.ui.config("targeting") end, "Open targeting controls")
+    uiPrintRow(8, "Ragemode", rageMode, "yellow", function() boop.ui.config("combat") end, "Open hunting controls")
+    uiPrintRow(9, "Queueing", queueShown, boop.config.useQueueing and "green" or "yellow", function() boop.ui.config("combat") end, "Open queueing controls")
+    uiPrintRow(10, "Prequeue", prequeueShown .. " | lead " .. leadShown, boop.config.prequeueEnabled and "green" or "yellow", function() boop.ui.config("combat") end, "Open prequeue controls")
+    uiPrintRow(11, "Target", targetShown, "cyan")
+    uiPrintRow(12, "Room denizens", tostring(denizenCount), "cyan")
+
+    uiPrintSection("party & movement")
+    uiPrintRow(13, "Assist", assistShown, boop.config.assistEnabled and "green" or "yellow", function() boop.ui.partyCommand("") end, "Open party coordination")
+    uiPrintRow(14, "Leader target gate", targetCallShown, boop.config.targetCall and "green" or "yellow", function() boop.ui.partyCommand("") end, "Open party coordination")
+    uiPrintRow(15, "Party size", partySize, "cyan", function() boop.ui.partyCommand("") end, "Open party coordination")
+    uiPrintRow(16, "Walk", walkShown, walkShown == "ON" and "green" or "yellow", function() boop.ui.walkCommand("") end, "Open walk controls")
+    uiPrintRow(17, "Theme", themeShown, "cyan", function() boop.ui.themeCommand("") end, "Open theme controls")
+
+    uiPrintSection("navigation")
+    uiPrintRow(18, "Party dashboard", "OPEN", "cyan", function() boop.ui.partyCommand("") end, "Open party coordination dashboard")
+    uiPrintRow(19, "Roster manager", "OPEN", "cyan", function() boop.ui.rosterCommand("") end, "Open stored party roster")
+    uiPrintRow(20, "Configuration", "OPEN", "cyan", function() boop.ui.config("") end, "Open full configuration")
+    uiPrintRow(21, "Stats dashboard", "OPEN", "cyan", function() boop.stats.command("") end, "Open stats dashboard")
+    uiPrintFooter("Type: boop control config | boop control party | boop control roster | boop control stats")
+    return
+  end
+
+  boop.util.echo("CONTROL CENTER")
+  boop.util.echo("----------------------------------------")
+  boop.util.echo(string.format("State: %s | mode: %s | blocker: %s | next: %s", enabled, modeShown, blocker, nextAction))
+  boop.util.echo(string.format("Combat: class %s | targeting %s | ragemode %s | queue %s | prequeue %s", tostring(class), targetingMode, rageMode, queueShown, prequeueShown))
+  boop.util.echo(string.format("Party: assist %s | targetcall %s | size %s | walk %s | theme %s", assistShown, targetCallShown, partySize, walkShown, themeShown))
+  boop.util.echo("Target: " .. targetShown .. " | room denizens: " .. tostring(denizenCount))
+  boop.util.echo(string.format("Trip: %s | kills %d | gold %d | xp %d", tripRunning, tripKills, tripGold, tripXp))
+  boop.util.echo("Quick: boop config | boop party | boop roster | boop stats | boop theme")
 end
 
 uiPrintHeader = function(title)

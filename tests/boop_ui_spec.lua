@@ -75,6 +75,35 @@ describe("boop ui home", function()
     assert.are.equal("Quick: boop control | boop party | boop roster | boop mode | boop stats", echoes[7])
   end)
 
+  it("shows a dedicated control center dashboard", function()
+    helper.setClass("occultist")
+    helper.setArea("Test Area")
+    helper.setTarget("42", "a vicious gnoll soldier", "100%")
+    boop.state.denizens = {
+      { id = "42", name = "a vicious gnoll soldier" },
+      { id = "43", name = "a lesser gnoll" },
+    }
+    boop.ui.setEnabled(true, true)
+    boop.ui.assistCommand("Leader")
+    boop.ui.modeCommand("leader-call")
+    boop.ui.setConfigValue("partySize", "3")
+    boop.stats.trip.stopwatch = 88
+    boop.stats.trip.kills = 3
+    boop.stats.trip.gold = 125
+    boop.stats.trip.rawExperience = 28376
+
+    echoes = {}
+    boop.ui.controlCommand("")
+
+    assert.are.equal("CONTROL CENTER", echoes[1])
+    assert.is_true(echoes[3]:find("State: on | mode: leader%-call | blocker: engaged target | next: let boop attack") ~= nil)
+    assert.is_true(echoes[4]:find("Combat: class occultist | targeting whitelist | ragemode simple | queue ON | prequeue ON", 1, true) ~= nil)
+    assert.is_true(echoes[5]:find("Party: assist ON -> Leader | targetcall ON | size 3 | walk OFF | theme default", 1, true) ~= nil)
+    assert.is_true(echoes[6]:find("Target: 42 | a vicious gnoll soldier | room denizens: 2", 1, true) ~= nil)
+    assert.is_true(echoes[7]:find("Trip: running | kills 3 | gold 125 | xp 28376", 1, true) ~= nil)
+    assert.are.equal("Quick: boop config | boop party | boop roster | boop stats | boop theme", echoes[8])
+  end)
+
   it("shows a consolidated party dashboard and separate roster manager", function()
     helper.setClass("occultist")
     boop.ui.setEnabled(true, true)
