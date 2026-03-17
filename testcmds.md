@@ -36,7 +36,11 @@ cecho("\n<cyan>Running boop help test sweep (" .. #commands .. " commands)...<re
 for i, cmd in ipairs(commands) do
   tempTimer((i - 1) * 0.35, function()
     cecho(string.format("\n<yellow>[%02d/%02d]<reset> %s\n", i, #commands, cmd))
-    send(cmd, false)
+    if type(expandAlias) == "function" then
+      expandAlias(cmd)
+    else
+      send(cmd, false)
+    end
   end)
 end
 ```
