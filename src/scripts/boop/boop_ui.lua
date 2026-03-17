@@ -1519,6 +1519,11 @@ function boop.ui.partyCommand(raw)
   local blocker, nextAction = currentBlocker()
   local calledTarget = tostring((boop.state and boop.state.calledTargetId) or "")
   if calledTarget == "" then calledTarget = "(none)" end
+  local targetCallShown = boop.config.targetCall and "ON" or "OFF"
+  local affCallsShown = boop.config.rageAffCalloutsEnabled and "ON" or "OFF"
+  local leaderShown = leader ~= "" and leader or "(unset)"
+  local partySizeShown = tostring(tonumber(boop.config.partySize) or 1)
+  local rosterSummary = string.format("%d | %s", #roster, rosterShown)
 
   if cmd ~= "" and cmd ~= "status" and cmd ~= "show" then
     local head, tail = text:match("^(%S+)%s*(.-)%s*$")
@@ -1539,6 +1544,10 @@ function boop.ui.partyCommand(raw)
       boop.ui.targetCallCommand(tail or "")
       return
     end
+    if lowered == "affcalls" or lowered == "affcall" then
+      boop.ui.affCallCommand(tail or "")
+      return
+    end
     if lowered == "size" or lowered == "partysize" then
       boop.ui.setConfigValue("partySize", tail or "")
       return
@@ -1547,26 +1556,31 @@ function boop.ui.partyCommand(raw)
       boop.ui.rosterCommand(tail or "")
       return
     end
-    boop.util.info("Usage: boop party [status|mode ...|walk ...|assist ...|targetcall ...|size <n>|roster ...]")
+    if lowered == "combos" or lowered == "combo" then
+      boop.ui.combos(tail ~= "" and tail or "party")
+      return
+    end
+    boop.util.info("Usage: boop party [status|mode ...|walk ...|assist ...|targetcall ...|affcalls ...|size <n>|roster ...|combos]")
     return
   end
 
   if cecho then
     uiPrintHeader("boop > party")
-    uiPrintSection("coordination")
+
+    uiPrintSection("overview")
     uiPrintRow(1, "Mode", operatingModeLabel(), "yellow", function() boop.ui.modeCommand("") end, "Show mode help")
-    uiPrintRow(2, "Leader", leader ~= "" and leader or "(unset)", leader ~= "" and "cyan" or "yellow", function()
+    uiPrintRow(2, "Leader", leaderShown, leader ~= "" and "cyan" or "yellow", function()
       uiSetCommandLine("boop assist ")
     end, "Prepare assist leader command")
     uiPrintRow(3, "Assist", assistShown, boop.config.assistEnabled and "green" or "yellow", function()
       boop.ui.modeCommand(boop.config.assistEnabled and "solo" or "assist")
     end, "Toggle assist mode")
-    uiPrintRow(4, "Leader target gate", boop.config.targetCall and "ON" or "OFF", boop.config.targetCall and "green" or "yellow", function()
+    uiPrintRow(4, "Leader target gate", targetCallShown, boop.config.targetCall and "green" or "yellow", function()
       boop.ui.targetCallCommand(boop.config.targetCall and "off" or "on")
     end, "Toggle leader target gating")
-    uiPrintRow(5, "Called target id", calledTarget, "cyan")
-    uiPrintRow(6, "Party size", tostring(tonumber(boop.config.partySize) or 1), "cyan", function()
-      uiSetCommandLine("boop set partySize ")
+    uiPrintRow(5, "Called target", calledTarget, "cyan")
+    uiPrintRow(6, "Party size", partySizeShown, "cyan", function()
+      uiSetCommandLine("boop party size ")
     end, "Prepare party size command")
 
     uiPrintSection("movement")
@@ -1577,28 +1591,39 @@ function boop.ui.partyCommand(raw)
       boop.ui.walkCommand("status")
     end, "Show walk status")
     uiPrintRow(9, "Next action", nextAction, "cyan")
+    uiPrintRow(10, "Force move", "MOVE", "yellow", function()
+      boop.ui.walkCommand("move")
+    end, "Ask the external walker to advance once")
 
     uiPrintSection("party data")
-    uiPrintRow(10, "Roster entries", tostring(#roster), "cyan", function()
+    uiPrintRow(11, "Rage aff calls", affCallsShown, boop.config.rageAffCalloutsEnabled and "green" or "yellow", function()
+      boop.ui.affCallCommand(boop.config.rageAffCalloutsEnabled and "off" or "on")
+    end, "Toggle battlerage affliction party callouts")
+    uiPrintRow(12, "Roster", rosterSummary, "cyan", function()
       boop.ui.rosterCommand("")
     end, "Open party roster screen")
-    uiPrintRow(11, "Roster", rosterShown, "cyan", function()
-      boop.ui.rosterCommand("")
-    end, "Open party roster screen")
-    uiPrintRow(12, "Combos", "OPEN", "cyan", function()
+    uiPrintRow(13, "Combos", "OPEN", "cyan", function()
       boop.ui.combos("party")
     end, "Open combo synergy dashboard")
-    uiPrintFooter("Type: boop party mode <mode> | boop party walk <cmd> | boop party assist <leader> | boop party size <n> | boop roster")
+    uiPrintRow(14, "Config hub", "OPEN", "cyan", function()
+      boop.ui.config("party")
+    end, "Open the broader config hub near party controls")
+    uiPrintRow(15, "Control center", "OPEN", "cyan", function()
+      boop.ui.controlCommand("")
+    end, "Open the live control center")
+    uiPrintFooter("Type: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop party walk <cmd> | boop roster | boop combos")
     return
   end
 
   boop.util.echo("PARTY")
   boop.util.echo("----------------------------------------")
-  boop.util.echo(string.format("Mode: %s | leader: %s | assist: %s | targetcall: %s", operatingModeLabel(), leader ~= "" and leader or "(unset)", assistShown, boop.config.targetCall and "ON" or "OFF"))
-  boop.util.echo(string.format("Walk: %s | blocker: %s | next: %s", walkShown, blocker, nextAction))
-  boop.util.echo(string.format("Party size: %d | called target: %s", tonumber(boop.config.partySize) or 1, calledTarget))
+  boop.util.echo(string.format("Coordination: mode %s | leader %s | assist %s", operatingModeLabel(), leaderShown, assistShown))
+  boop.util.echo(string.format("Target gate: %s | called target: %s | aff calls: %s", targetCallShown, calledTarget, affCallsShown))
+  boop.util.echo(string.format("Movement: walk %s | blocker %s", walkShown, blocker))
+  boop.util.echo("Next: " .. nextAction)
+  boop.util.echo(string.format("Party size: %s | roster entries: %d", partySizeShown, #roster))
   boop.util.echo("Roster: " .. rosterShown)
-  boop.util.echo("Quick: boop mode | boop walk | boop assist <leader> | boop targetcall on|off | boop roster")
+  boop.util.echo("Quick: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop party walk | boop roster | boop combos")
 end
 
 function boop.ui.assistCommand(raw)
