@@ -14,6 +14,8 @@ describe("boop ui home", function()
   local debug_stub
   local trace_show_stub
   local trace_clear_stub
+  local append_cmd_stub
+  local clear_cmd_stub
 
   before_each(function()
     helper.reset()
@@ -64,6 +66,14 @@ describe("boop ui home", function()
     if trace_clear_stub then
       trace_clear_stub:revert()
       trace_clear_stub = nil
+    end
+    if append_cmd_stub then
+      append_cmd_stub:revert()
+      append_cmd_stub = nil
+    end
+    if clear_cmd_stub then
+      clear_cmd_stub:revert()
+      clear_cmd_stub = nil
     end
     _G.cecho = saved_cecho
     _G.cechoLink = saved_cecho_link
@@ -256,6 +266,36 @@ describe("boop ui home", function()
     assert.is_true(joined:find("Combat: eq/bal 1/1 | rage 0 | denizens 1", 1, true) ~= nil)
     assert.is_true(joined:find("Target: (none)", 1, true) ~= nil)
     assert.is_true(joined:find("Quick: boop config debug | boop trace show | boop debug attacks", 1, true) ~= nil)
+  end)
+
+  it("makes rich footer command breadcrumbs clickable", function()
+    local callbacks = {}
+    local cmdline = {}
+
+    _G.cecho = function(_) end
+    _G.cechoLink = function(_, cb, _, _)
+      callbacks[#callbacks + 1] = cb
+    end
+    append_cmd_stub = stub(_G, "appendCmdLine", function(text)
+      cmdline[#cmdline + 1] = text
+    end)
+    clear_cmd_stub = stub(_G, "clearCmdLine", function()
+      cmdline[#cmdline + 1] = "<clear>"
+    end)
+
+    boop.ui.printFooter("Type: boop config debug <number> | boop trace show | boop debug attacks")
+
+    assert.are.equal(3, #callbacks)
+
+    callbacks[1]()
+    callbacks[2]()
+    callbacks[3]()
+
+    assert.are.same({
+      "<clear>", "boop config debug",
+      "<clear>", "boop trace show",
+      "<clear>", "boop debug attacks",
+    }, cmdline)
   end)
 
   it("shows a consolidated party dashboard and separate roster manager", function()

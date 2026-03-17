@@ -111,6 +111,55 @@ local function uiButtonLabel(value)
   return "[ " .. boop.util.trim(tostring(value or "")) .. " ]"
 end
 
+local function footerSeedCommand(text)
+  local trimmed = boop.util.trim(tostring(text or ""))
+  if trimmed == "" then
+    return ""
+  end
+  local boopStart = trimmed:find("boop ", 1, true)
+  if not boopStart then
+    return ""
+  end
+  local command = boop.util.trim(trimmed:sub(boopStart))
+  if command == "" then
+    return ""
+  end
+  command = command:gsub("%s*<[^>]+>", "")
+  command = command:gsub("%s+$", "")
+  return boop.util.trim(command)
+end
+
+local function footerClickableParts(text)
+  local raw = tostring(text or "")
+  local parts = {}
+  local segments = {}
+  for segment in raw:gmatch("([^|]+)") do
+    segments[#segments + 1] = segment
+  end
+  if #segments == 0 and raw ~= "" then
+    segments[1] = raw
+  end
+
+  for i, segment in ipairs(segments) do
+    local piece = tostring(segment or "")
+    local seed = footerSeedCommand(piece)
+    local boopStart = piece:find("boop ", 1, true)
+    local prefix = ""
+    local commandText = boop.util.trim(piece)
+    if boopStart and boopStart > 1 then
+      prefix = piece:sub(1, boopStart - 1)
+      commandText = boop.util.trim(piece:sub(boopStart))
+    end
+    parts[#parts + 1] = {
+      prefix = prefix,
+      command = commandText,
+      seed = seed,
+      separator = (i < #segments) and " | " or "",
+    }
+  end
+  return parts
+end
+
 local function uiComputeLabelWidth(rows, minWidth, maxWidth)
   local width = tonumber(minWidth) or UI_LABEL_COL_WIDTH
   local hardMax = tonumber(maxWidth) or 140
@@ -559,7 +608,27 @@ uiPrintFooter = function(text)
   if cecho then
     local theme = themeTags()
     cecho("\n" .. theme.border .. uiRule() .. theme.reset)
-    cecho("\n" .. theme.muted .. tostring(text or "") .. theme.reset)
+    cecho("\n")
+    local parts = footerClickableParts(text)
+    if cechoLink and #parts > 0 then
+      for _, part in ipairs(parts) do
+        if part.prefix ~= "" then
+          cecho(theme.muted .. part.prefix .. theme.reset)
+        end
+        if part.seed ~= "" then
+          cechoLink(theme.info .. part.command .. theme.reset, function()
+            uiSetCommandLine(part.seed)
+          end, "Prepare command: " .. part.seed, true)
+        else
+          cecho(theme.muted .. part.command .. theme.reset)
+        end
+        if part.separator ~= "" then
+          cecho(theme.muted .. part.separator .. theme.reset)
+        end
+      end
+    else
+      cecho(theme.muted .. tostring(text or "") .. theme.reset)
+    end
     cecho("\n")
   else
     boop.util.echo(text or "")
