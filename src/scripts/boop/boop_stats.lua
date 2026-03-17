@@ -1410,6 +1410,8 @@ function boop.stats.reset(scopeName)
   boop.util.info("Usage: boop stats reset <session|login|trip|lifetime|all>")
 end
 
+local canRenderDashboardRich
+
 function boop.stats.show(scopeName)
   local scope, label = scopeByName(scopeName)
   local elapsed = elapsedFor(scope)
@@ -1417,6 +1419,32 @@ function boop.stats.show(scopeName)
   local goldPerKill = scope.kills > 0 and (scope.gold / scope.kills) or 0
   local xpPerKill = scope.kills > 0 and (scope.experience / scope.kills) or 0
   local rawXpPerKill = scope.kills > 0 and ((scope.rawExperience or 0) / scope.kills) or 0
+
+  if canRenderDashboardRich() then
+    local printHeader = boop.ui.printHeader
+    local printSection = boop.ui.printSection
+    local printRow = boop.ui.printRow
+    local printFooter = boop.ui.printFooter
+
+    printHeader("boop stats > " .. label)
+    printSection("summary")
+    printRow(1, "Meta", formatScopeMeta(scope), "cyan")
+    printRow(2, "Totals", string.format("%d kills | %d targets | %d gold | %s%% xp | %d raw xp",
+      scope.kills, scope.targets, scope.gold, formatNumber(scope.experience, 2), tonumber(scope.rawExperience) or 0), "cyan")
+    printRow(3, "Efficiency", string.format("ttk %ss | gold/kill %s | xp/kill %s%% | raw xp/kill %s",
+      formatNumber(avg, 2), formatNumber(goldPerKill, 1), formatNumber(xpPerKill, 2), formatNumber(rawXpPerKill, 1)), "yellow")
+    printRow(4, "Rates", string.format("%s kills/hr | %s targets/hr | %s rooms/hr | %s gold/hr | %s%% xp/hr | %s xp/hr",
+      formatNumber(perHour(scope.kills, elapsed), 1),
+      formatNumber(perHour(scope.targets, elapsed), 1),
+      formatNumber(perHour(scope.roomMoves, elapsed), 1),
+      formatNumber(perHour(scope.gold, elapsed), 1),
+      formatNumber(perHour(scope.experience, elapsed), 2),
+      formatNumber(perHour(scope.rawExperience or 0, elapsed), 1)), "cyan")
+    printRow(5, "Friction", string.format("%d retargets | %d abandoned | %d room moves | %d flees",
+      scope.retargets, scope.abandoned, scope.roomMoves, scope.flees), "yellow")
+    printFooter("Type: boop stats areas " .. label .. " | boop stats targets " .. label .. " | boop stats abilities " .. label)
+    return
+  end
 
   boop.util.info(string.format(
     "%s stats: %d kills | %d targets | %d gold | %s%% xp | %d xp",
@@ -1557,6 +1585,28 @@ function boop.stats.showRage(scopeName)
   local scope, label = scopeByName(scopeName)
   local rage = ensureRageStats(scope)
   local avgCost = rage.uses > 0 and (rage.totalCost / rage.uses) or 0
+  if canRenderDashboardRich() then
+    local printHeader = boop.ui.printHeader
+    local printSection = boop.ui.printSection
+    local printRow = boop.ui.printRow
+    local printFooter = boop.ui.printFooter
+    local modeBits = topCounts(rage.byMode, 5)
+    local abilityBits = topCounts(rage.byAbility, 5)
+
+    printHeader("boop stats > rage")
+    printSection(label)
+    printRow(1, "Usage", string.format("%d decisions | %d uses | %d rage spent | avg cost %s",
+      rage.decisions, rage.uses, rage.totalCost, formatStatValue(avgCost, 1)), "cyan")
+    printRow(2, "Outcome", string.format("%d holds | %d suppressed | %d shieldbreaks",
+      rage.holds, rage.suppressed, rage.shieldbreaks), "yellow")
+    printRow(3, "Flow", string.format("cond %d | prime %d | fallback %d | tempo aff %d | squeeze %d | tempo fallback %d",
+      rage.comboConditional, rage.comboPrimers, rage.comboFallbacks, rage.tempoAffs, rage.tempoSqueezes, rage.tempoFallbacks), "cyan")
+    printRow(4, "Modes", #modeBits > 0 and table.concat(modeBits, " | ") or "(none)", "yellow")
+    printRow(5, "Abilities", #abilityBits > 0 and table.concat(abilityBits, " | ") or "(none)", "cyan")
+    printFooter("Type: boop stats rage " .. label)
+    return
+  end
+
   boop.util.info(string.format(
     "%s rage: %d decisions | %d uses | %d rage spent | avg cost %s | holds %d | suppressed %d | shieldbreaks %d",
     label,
@@ -1757,6 +1807,25 @@ function boop.stats.showCrits(scopeName)
   local scope, label = scopeByName(scopeName)
   local totals = aggregateCrits(scope)
   local rate = totals.uses > 0 and (totals.crits * 100 / totals.uses) or 0
+  if canRenderDashboardRich() then
+    local printHeader = boop.ui.printHeader
+    local printSection = boop.ui.printSection
+    local printRow = boop.ui.printRow
+    local printFooter = boop.ui.printFooter
+
+    printHeader("boop stats > crits")
+    printSection(label)
+    printRow(1, "Summary", string.format("%d crits across %d uses (%s%%)",
+      totals.crits, totals.uses, formatStatValue(rate, 1)), "cyan")
+    printRow(2, "2x", tostring(tonumber(totals.tiers["2xCRIT"]) or 0), "yellow")
+    printRow(3, "4x", tostring(tonumber(totals.tiers["4xCRIT"]) or 0), "yellow")
+    printRow(4, "8x", tostring(tonumber(totals.tiers["8xCRIT"]) or 0), "yellow")
+    printRow(5, "16x", tostring(tonumber(totals.tiers["16xCRIT"]) or 0), "yellow")
+    printRow(6, "32x", tostring(tonumber(totals.tiers["32xCRIT"]) or 0), "yellow")
+    printFooter("Type: boop stats crits " .. label)
+    return
+  end
+
   boop.util.info(string.format(
     "%s crits: %d crits across %d uses (%s%%)",
     label,
@@ -1781,6 +1850,51 @@ function boop.stats.showRecords(scopeName)
   local bestHit = records.bestHit
   local fastest = records.fastestKill
   local slowest = records.slowestKill
+
+  if canRenderDashboardRich() then
+    local printHeader = boop.ui.printHeader
+    local printSection = boop.ui.printSection
+    local printRow = boop.ui.printRow
+    local printFooter = boop.ui.printFooter
+
+    printHeader("boop stats > records")
+    printSection(label)
+    if bestHit then
+      local critText = boop.util.trim(bestHit.critTier or "")
+      if critText ~= "" then
+        critText = " | " .. critText
+      end
+      printRow(1, "Best hit", string.format("%s dmg | %s -> %s | %s | p%d%s",
+        formatStatValue(bestHit.damage, 1),
+        tostring(bestHit.ability or "Attack"),
+        tostring(bestHit.target or "(unknown)"),
+        tostring(bestHit.area or "UNKNOWN"),
+        tonumber(bestHit.partySize) or 1,
+        critText), "cyan")
+    else
+      printRow(1, "Best hit", "(none)", "yellow")
+    end
+    if fastest then
+      printRow(2, "Fastest kill", string.format("%ss | %s | %s | p%d",
+        formatStatValue(fastest.ttk, 2),
+        tostring(fastest.target or "(unknown)"),
+        tostring(fastest.area or "UNKNOWN"),
+        tonumber(fastest.partySize) or 1), "green")
+    else
+      printRow(2, "Fastest kill", "(none)", "yellow")
+    end
+    if slowest then
+      printRow(3, "Slowest kill", string.format("%ss | %s | %s | p%d",
+        formatStatValue(slowest.ttk, 2),
+        tostring(slowest.target or "(unknown)"),
+        tostring(slowest.area or "UNKNOWN"),
+        tonumber(slowest.partySize) or 1), "yellow")
+    else
+      printRow(3, "Slowest kill", "(none)", "yellow")
+    end
+    printFooter("Type: boop stats records " .. label)
+    return
+  end
 
   boop.util.info(string.format("%s records:", label))
   if bestHit then
@@ -1882,6 +1996,33 @@ function boop.stats.showAreas(scopeName, limit, sortKey)
 
   local maxRows = tonumber(limit) or 5
   if maxRows < 1 then maxRows = 1 end
+  if canRenderDashboardRich() then
+    local printHeader = boop.ui.printHeader
+    local printSection = boop.ui.printSection
+    local printRow = boop.ui.printRow
+    local printFooter = boop.ui.printFooter
+
+    printHeader("boop stats > areas")
+    printSection(string.format("%s | sorted by %s", label, sortMode))
+    if #rows == 0 then
+      printRow(1, "Areas", "No activity yet", "yellow")
+    else
+      for i = 1, math.min(#rows, maxRows) do
+        local row = rows[i]
+        printRow(i, row.area, string.format("%d kills | %s k/hr | %d gold | %s g/hr | %d xp | %s xp/hr | ttk %ss",
+          row.kills,
+          formatNumber(row.killsPerHour, 1),
+          row.gold,
+          formatNumber(row.goldPerHour, 1),
+          row.rawExperience,
+          formatNumber(row.rawXpPerHour, 1),
+          formatNumber(row.avgTtk, 2)), "cyan")
+      end
+    end
+    printFooter("Type: boop stats areas " .. label .. " " .. tostring(maxRows) .. " xp")
+    return
+  end
+
   boop.util.info(string.format("%s areas (sorted by %s):", label, sortMode))
   if #rows == 0 then
     boop.util.info("  (no area activity yet)")
@@ -1958,6 +2099,31 @@ function boop.stats.showMobs(areaName, limit)
 
   local maxRows = tonumber(limit) or 10
   if maxRows < 1 then maxRows = 1 end
+  if canRenderDashboardRich() then
+    local printHeader = boop.ui.printHeader
+    local printSection = boop.ui.printSection
+    local printRow = boop.ui.printRow
+    local printFooter = boop.ui.printFooter
+
+    printHeader("boop stats > mobs")
+    printSection(string.format("%s | party %d", area, partySize))
+    if #rows == 0 then
+      printRow(1, "Observed mobs", "No observed mob xp yet", "yellow")
+    else
+      for i = 1, math.min(#rows, maxRows) do
+        local row = rows[i]
+        printRow(i, row.name, string.format("seen %d | mean %s | median %s | mode %s (%dx)",
+          row.observations,
+          formatStatValue(row.mean, 1),
+          formatStatValue(row.median, 1),
+          formatStatValue(row.mode, 1),
+          tonumber(row.modeCount) or 0), "cyan")
+      end
+    end
+    printFooter("Type: boop stats mobs \"" .. area .. "\" " .. tostring(maxRows))
+    return
+  end
+
   boop.util.info(string.format("mob xp stats for %s (party size %d):", area, partySize))
   if #rows == 0 then
     boop.util.info("  (no observed mob xp yet)")
@@ -2020,6 +2186,43 @@ function boop.stats.showTargets(scopeName, limit)
 
   local maxRows = tonumber(limit) or 10
   if maxRows < 1 then maxRows = 1 end
+  if canRenderDashboardRich() then
+    local printHeader = boop.ui.printHeader
+    local printSection = boop.ui.printSection
+    local printRow = boop.ui.printRow
+    local printFooter = boop.ui.printFooter
+
+    printHeader("boop stats > targets")
+    printSection(string.format("%s | %s | party %d", label, area, partySize))
+    if #rows == 0 then
+      printRow(1, "Targets", "No recorded target kills yet", "yellow")
+    else
+      for i = 1, math.min(#rows, maxRows) do
+        local row = rows[i]
+        local value = string.format("kills %d | ttk %ss | best %ss | worst %ss",
+          row.kills,
+          formatStatValue(row.avgTtk, 2),
+          formatStatValue(row.bestTtk, 2),
+          formatStatValue(row.worstTtk, 2))
+        if row.gold > 0 or row.rawExperience > 0 then
+          value = value .. string.format(" | avg gold %s | avg xp %s",
+            formatStatValue(row.kills > 0 and (row.gold / row.kills) or 0, 1),
+            formatStatValue(row.kills > 0 and (row.rawExperience / row.kills) or 0, 1))
+        end
+        if row.meanXp > 0 then
+          value = value .. string.format(" | mean %s | median %s | mode %s (%dx)",
+            formatStatValue(row.meanXp, 1),
+            formatStatValue(row.medianXp, 1),
+            formatStatValue(row.modeXp, 1),
+            tonumber(row.modeCount) or 0)
+        end
+        printRow(i, row.name, value, "cyan")
+      end
+    end
+    printFooter("Type: boop stats targets " .. label .. " " .. tostring(maxRows))
+    return
+  end
+
   boop.util.info(string.format("%s target stats for %s (party size %d):", label, area, partySize))
   if #rows == 0 then
     boop.util.info("  (no recorded target kills yet)")
@@ -2105,6 +2308,34 @@ function boop.stats.showAbilities(scopeName, limit)
 
   local maxRows = tonumber(limit) or 10
   if maxRows < 1 then maxRows = 1 end
+  if canRenderDashboardRich() then
+    local printHeader = boop.ui.printHeader
+    local printSection = boop.ui.printSection
+    local printRow = boop.ui.printRow
+    local printFooter = boop.ui.printFooter
+
+    printHeader("boop stats > abilities")
+    printSection(label)
+    if #rows == 0 then
+      printRow(1, "Abilities", "No recorded ability usage yet", "yellow")
+    else
+      for i = 1, math.min(#rows, maxRows) do
+        local row = rows[i]
+        local critText = row.bestCrit ~= "" and (" | best crit " .. row.bestCrit) or ""
+        printRow(i, row.ability, string.format("uses %d | kills %d | avg %s | max %s | crit %s%% | bal %ss%s",
+          row.uses,
+          row.kills,
+          formatStatValue(row.avgDamage, 1),
+          formatStatValue(row.maxDamage, 1),
+          formatStatValue(row.critRate, 1),
+          formatStatValue(row.avgBalance, 2),
+          critText), "cyan")
+      end
+    end
+    printFooter("Type: boop stats abilities " .. label .. " " .. tostring(maxRows))
+    return
+  end
+
   boop.util.info(string.format("%s ability stats:", label))
   if #rows == 0 then
     boop.util.info("  (no recorded ability usage yet)")
@@ -2162,6 +2393,24 @@ function boop.stats.showCompare(leftName, rightName)
   local rightScope, rightLabel = scopeByName(rightName)
   leftScope = ensureScope(leftScope)
   rightScope = ensureScope(rightScope)
+  local bits = compareSummaryBits(leftScope, rightScope)
+
+  if canRenderDashboardRich() then
+    local printHeader = boop.ui.printHeader
+    local printSection = boop.ui.printSection
+    local printRow = boop.ui.printRow
+    local printFooter = boop.ui.printFooter
+
+    printHeader("boop stats > compare")
+    printSection(string.format("%s vs %s", leftLabel, rightLabel))
+    printRow(1, leftLabel, formatScopeMeta(leftScope), "cyan")
+    printRow(2, rightLabel, formatScopeMeta(rightScope), "cyan")
+    for i, line in ipairs(bits) do
+      printRow(i + 2, ({ "Kills", "Gold", "Raw xp", "Avg ttk", "Kills/hr", "Gold/hr", "Xp/hr", "Retargets", "Flees" })[i] or ("Metric " .. i), line, "yellow")
+    end
+    printFooter("Type: boop stats compare " .. leftLabel .. " " .. rightLabel)
+    return
+  end
 
   boop.util.info(string.format(
     "compare %s vs %s: %s || %s",
@@ -2170,12 +2419,12 @@ function boop.stats.showCompare(leftName, rightName)
     formatScopeMeta(leftScope),
     formatScopeMeta(rightScope)
   ))
-  for _, line in ipairs(compareSummaryBits(leftScope, rightScope)) do
+  for _, line in ipairs(bits) do
     boop.util.info(line)
   end
 end
 
-local function canRenderDashboardRich()
+canRenderDashboardRich = function()
   return cecho
     and boop.ui
     and type(boop.ui.printHeader) == "function"
