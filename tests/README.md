@@ -45,9 +45,9 @@ Current coverage:
 - `boop_skills_spec.lua`
   Confirms skill GMCP ingestion, direct skill lookups, and learned/not-learned handling.
 - `boop_rage_ingestion_spec.lua`
-  Confirms rage readiness fallback, rage gain sampling, and rage affliction trigger ingestion.
+  Confirms rage readiness fallback, rage gain sampling, rage affliction trigger ingestion, and optional suppression of party affliction callouts.
 - `boop_persistence_spec.lua`
-  Confirms public config, with party size intentionally kept session-local, plus whitelist/blacklist and whitelist-tag edits through the DB hooks.
+  Confirms public config, including rage affliction callout settings, with party size intentionally kept session-local, plus whitelist/blacklist and whitelist-tag edits through the DB hooks.
 - `boop_db_spec.lua`
   Confirms DB guard paths degrade to warnings instead of throwing when optional Mudlet sheets are missing in an older local profile DB.
 - `boop_walk_spec.lua`

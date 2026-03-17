@@ -27,6 +27,7 @@ boop.defaults = {
   diagTimeoutSeconds = 8,
   partySize = 1,
   partyRoster = "",
+  rageAffCalloutsEnabled = true,
   assistEnabled = false,
   assistLeader = "",
 }

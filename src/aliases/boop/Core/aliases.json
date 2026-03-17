@@ -7,6 +7,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Affcalls",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+affcalls(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Assist",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+assist(?:\\s+(.+))?$",

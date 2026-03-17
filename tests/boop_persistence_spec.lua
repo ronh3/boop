@@ -74,17 +74,20 @@ describe("boop config and list persistence paths", function()
     end
   end)
 
-  it("persists canonicalized targeting and gold-pack edits, but keeps party size session-local", function()
+  it("persists canonicalized targeting, gold-pack, and rage aff callout edits, but keeps party size session-local", function()
     boop.ui.setTargetingMode("wl", true)
     boop.ui.setGoldPack("pack")
+    boop.ui.affCallCommand("off")
     boop.ui.setConfigValue("partySize", "3")
 
     assert.are.equal("whitelist", boop.config.targetingMode)
     assert.are.equal("pack", boop.config.goldPack)
+    assert.is_false(boop.config.rageAffCalloutsEnabled)
     assert.are.equal(3, boop.config.partySize)
     assert.are.same({ key = "targetingMode", value = "whitelist" }, saved_configs[1])
     assert.are.same({ key = "goldPack", value = "pack" }, saved_configs[2])
-    assert.are.same({ delete = "partySize" }, saved_configs[3])
+    assert.are.same({ key = "rageAffCalloutsEnabled", value = false }, saved_configs[3])
+    assert.are.same({ delete = "partySize" }, saved_configs[4])
     assert.stub(save_config_stub).was_not.called_with("partySize", 3)
   end)
 

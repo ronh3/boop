@@ -211,6 +211,9 @@ local function shouldTrackTarget(targetName)
 end
 
 local function sendAffCallout(mode, aff)
+  if boop.config and boop.config.rageAffCalloutsEnabled == false then
+    return
+  end
   local key = boop.util.safeLower(boop.util.trim(aff or ""))
   if key == "stunned" then
     key = "stun"

@@ -101,6 +101,22 @@ describe("boop rage ingestion", function()
     assert.stub(send_stub).was_called_with("pt 42: stun down", false)
   end)
 
+  it("can suppress rage affliction party callouts while still tracking the affliction state", function()
+    helper.setTarget("42", "a test denizen", "80%")
+    boop.config.enabled = true
+    boop.config.rageAffCalloutsEnabled = false
+
+    boop.rage.onAfflictionTrigger({
+      mode = "add",
+      affs = { "Stunned" },
+      target = { kind = "match", index = 2 },
+      source = "test add",
+    }, { "line", "a test denizen" }, "add line")
+
+    assert.is_true(boop.afflictions.hasTarget("stun"))
+    assert.stub(send_stub).was_not_called()
+  end)
+
   it("ignores rage affliction triggers for other targets", function()
     helper.setTarget("42", "a test denizen", "80%")
     boop.config.enabled = true

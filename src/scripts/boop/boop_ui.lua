@@ -168,6 +168,8 @@ local function renderStatusDashboard()
     row = row + 1
     uiPrintRow(row, "Tempo squeeze ETA", string.format("%.2fs", tempoEta), "yellow")
     row = row + 1
+    uiPrintRow(row, "Rage aff calls", boolText(not not boop.config.rageAffCalloutsEnabled), boolColor(not not boop.config.rageAffCalloutsEnabled))
+    row = row + 1
     uiPrintRow(row, "Auto gold", boolText(not not boop.config.autoGrabGold), boolColor(not not boop.config.autoGrabGold))
     row = row + 1
     uiPrintRow(row, "Gold pack", tostring(shownPack), "cyan")
@@ -205,6 +207,7 @@ local function renderStatusDashboard()
   boop.util.echo("  attackMode: " .. tostring(boop.config.attackMode))
   boop.util.echo(string.format("  tempoRageWindowSeconds: %.2f", tempoWindow))
   boop.util.echo(string.format("  tempoSqueezeEtaSeconds: %.2f", tempoEta))
+  boop.util.echo("  rageAffCalloutsEnabled: " .. tostring(boop.config.rageAffCalloutsEnabled))
   boop.util.echo("  autoGrabGold: " .. tostring(boop.config.autoGrabGold))
   boop.util.echo("  goldPack: " .. tostring(shownPack))
   boop.util.echo("  whitelistPriorityOrder: " .. tostring(boop.config.whitelistPriorityOrder))
@@ -699,6 +702,10 @@ local function canonConfigKey(raw)
     assistenabled = "assistEnabled",
     assistleader = "assistLeader",
     leader = "assistLeader",
+    affcalls = "rageAffCalloutsEnabled",
+    rageaffcalls = "rageAffCalloutsEnabled",
+    rageaffcallouts = "rageAffCalloutsEnabled",
+    partyaffcalls = "rageAffCalloutsEnabled",
     tempowindow = "tempoRageWindowSeconds",
     temporagewindow = "tempoRageWindowSeconds",
     temporagewindowseconds = "tempoRageWindowSeconds",
@@ -740,6 +747,7 @@ function boop.ui.listConfigValues()
     "diagTimeoutSeconds",
     "partySize",
     "partyRoster",
+    "rageAffCalloutsEnabled",
     "assistEnabled",
     "assistLeader",
   }
@@ -957,6 +965,17 @@ function boop.ui.setConfigValue(key, value)
     end
     return
   end
+
+  if canonical == "rageAffCalloutsEnabled" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.warn("affcalls expects on/off")
+      return
+    end
+    saveConfigValue("rageAffCalloutsEnabled", parsed)
+    boop.util.ok("rage affliction callouts: " .. (parsed and "on" or "off"))
+    return
+  end
 end
 
 function boop.ui.traceCommand(sub, arg)
@@ -1064,6 +1083,26 @@ function boop.ui.assistCommand(raw)
   saveConfigValue("assistLeader", text)
   saveConfigValue("assistEnabled", true)
   boop.util.ok("assist leader: " .. text)
+end
+
+function boop.ui.affCallCommand(raw)
+  local text = boop.util.trim(raw or "")
+  local cmd = boop.util.safeLower(text)
+
+  if cmd == "" or cmd == "status" or cmd == "show" then
+    boop.util.info("rage affliction callouts: " .. (boop.config.rageAffCalloutsEnabled and "on" or "off"))
+    boop.util.info("Usage: boop affcalls on|off")
+    return
+  end
+
+  local parsed = parseBool(cmd)
+  if parsed == nil then
+    boop.util.warn("Usage: boop affcalls on|off")
+    return
+  end
+
+  saveConfigValue("rageAffCalloutsEnabled", parsed)
+  boop.util.ok("rage affliction callouts: " .. (parsed and "on" or "off"))
 end
 
 local function currentAttackPreferenceClass()
@@ -2309,6 +2348,7 @@ local HELP_TOPICS = {
       "boop ragemode",
       "boop ragemode <number>",
       "boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>",
+      "boop affcalls on|off",
       "boop assist <leader>",
       "boop assist on|off|clear",
       "boop set tempoRageWindowSeconds <seconds>",
@@ -2747,6 +2787,9 @@ local function configRenderCombatSection()
     uiPrintRow(10, "Assist leader", assistStatusText(), boop.config.assistEnabled and "green" or "yellow", function()
       boop.ui.config("10")
     end, "Prepare boop assist command")
+    uiPrintRow(11, "Rage aff calls", boolText(not not boop.config.rageAffCalloutsEnabled), boolColor(not not boop.config.rageAffCalloutsEnabled), function()
+      boop.ui.config("11")
+    end, "Toggle party affliction callouts")
     uiPrintFooter("Type: boop config <number> to change | boop config back | boop config home")
     return
   end
@@ -2766,6 +2809,7 @@ local function configRenderCombatSection()
   boop.util.echo(string.format("[8] Tempo window              [ %.1fs ]", tempoWindow))
   boop.util.echo(string.format("[9] Tempo squeeze ETA         [ %.2fs ]", tempoEta))
   boop.util.echo("[10] Assist leader            [ " .. assistStatusText() .. " ]")
+  boop.util.echo("[11] Rage aff calls          [ " .. boolText(not not boop.config.rageAffCalloutsEnabled) .. " ]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config <number> to change | boop config back | boop config home")
 end
@@ -2937,6 +2981,9 @@ local function configApplySectionOption(sectionKey, option)
       return true
     elseif n == 10 then
       uiSetCommandLine("boop assist ")
+      return true
+    elseif n == 11 then
+      boop.ui.toggleConfigBool("rageAffCalloutsEnabled", true)
       return true
     end
     return false
