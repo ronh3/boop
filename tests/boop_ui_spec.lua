@@ -77,6 +77,7 @@ describe("boop ui home", function()
 
   it("shows a consolidated party operations dashboard", function()
     helper.setClass("occultist")
+    boop.ui.setEnabled(true, true)
     boop.ui.assistCommand("Leader")
     boop.ui.modeCommand("leader-call")
     boop.ui.setConfigValue("partySize", "3")
