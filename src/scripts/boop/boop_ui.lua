@@ -3272,27 +3272,168 @@ local function configSetScreen(key)
   return screen
 end
 
+local function configHuntingSummary()
+  return string.format(
+    "%s | rage %s | queue %s | prequeue %s",
+    boop.config.enabled and "on" or "off",
+    tostring(boop.config.attackMode or "simple"),
+    boolText(not not boop.config.useQueueing),
+    boolText(not not boop.config.prequeueEnabled)
+  )
+end
+
+local function configTargetingSummary()
+  return string.format(
+    "%s | order %s | retarget %s",
+    tostring(boop.config.targetingMode or "whitelist"),
+    tostring(boop.config.targetOrder or "order"),
+    boolText(not not boop.config.retargetOnPriority)
+  )
+end
+
+local function configLootSummary()
+  local pack = boop.util.trim(boop.config.goldPack or "")
+  if pack == "" then
+    pack = "(off)"
+  end
+  return string.format(
+    "autogold %s | pack %s",
+    boolText(not not boop.config.autoGrabGold),
+    pack
+  )
+end
+
+local function configDebugSummary()
+  return string.format(
+    "trace %s | gag own %s | gag others %s",
+    boolText(not not boop.config.traceEnabled),
+    boolText(not not boop.config.gagOwnAttacks),
+    boolText(not not boop.config.gagOthersAttacks)
+  )
+end
+
+local function configPartySummary()
+  local leader = assistLeader()
+  if leader == "" then
+    leader = "(none)"
+  end
+  return string.format(
+    "%s | leader %s | size %s",
+    operatingModeLabel(),
+    leader,
+    tostring(tonumber(boop.config.partySize) or 1)
+  )
+end
+
+local function configThemeSummary()
+  return "theme " .. activeThemeLabel()
+end
+
+local function configHomeRoute(token)
+  local key = boop.util.safeLower(boop.util.trim(token or ""))
+  if key == "" then
+    return false
+  end
+  if key == "5" or key == "party" or key == "assist" or key == "leader" then
+    boop.ui.partyCommand("")
+    return true
+  end
+  if key == "6" or key == "roster" then
+    boop.ui.rosterCommand("")
+    return true
+  end
+  if key == "7" or key == "theme" or key == "appearance" then
+    boop.ui.themeCommand("")
+    return true
+  end
+  if key == "8" or key == "control" or key == "controls" or key == "center" or key == "dashboard" then
+    boop.ui.controlCommand("")
+    return true
+  end
+  if key == "9" or key == "stats" then
+    boop.stats.command("")
+    return true
+  end
+  if key == "mode" then
+    boop.ui.modeCommand("")
+    return true
+  end
+  return false
+end
+
 local function configRenderHome()
   configSetScreen("home")
+  local blocker, nextAction = currentBlocker()
+  local targetId = boop.state and boop.state.currentTargetId or ""
+  local targetName = boop.state and boop.state.targetName or ""
+  local targetShown = targetId ~= "" and (targetId .. " | " .. (targetName ~= "" and targetName or "(unnamed)")) or "(none)"
+
   if cecho then
     uiPrintHeader("configuration")
-    for _, section in ipairs(CONFIG_SECTIONS) do
-      local sec = section
-      uiPrintRow(sec.id, sec.label, "OPEN", "cyan", function()
-        boop.ui.config(sec.key)
-      end, "Open " .. sec.label .. " settings")
-    end
-    uiPrintFooter("Type: boop config <number> | boop config <name>")
+
+    uiPrintSection("overview")
+    uiPrintRow(1, "Hunting", configHuntingSummary(), boop.config.enabled and "green" or "yellow", function()
+      boop.ui.config("combat")
+    end, "Open hunting settings")
+    uiPrintRow(2, "Targeting", configTargetingSummary(), "cyan", function()
+      boop.ui.config("targeting")
+    end, "Open targeting settings")
+    uiPrintRow(3, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
+    uiPrintRow(4, "Next action", nextAction, "cyan")
+    uiPrintRow(5, "Target", targetShown, "cyan")
+
+    uiPrintSection("settings")
+    uiPrintRow(6, "Hunting settings", "OPEN", "cyan", function()
+      boop.ui.config("combat")
+    end, "Open hunting settings")
+    uiPrintRow(7, "Targeting settings", "OPEN", "cyan", function()
+      boop.ui.config("targeting")
+    end, "Open targeting settings")
+    uiPrintRow(8, "Loot settings", configLootSummary(), "yellow", function()
+      boop.ui.config("loot")
+    end, "Open loot settings")
+    uiPrintRow(9, "Diagnostics", configDebugSummary(), "yellow", function()
+      boop.ui.config("debug")
+    end, "Open diagnostics settings")
+
+    uiPrintSection("related controls")
+    uiPrintRow(10, "Party dashboard", configPartySummary(), "cyan", function()
+      boop.ui.partyCommand("")
+    end, "Open party coordination")
+    uiPrintRow(11, "Roster manager", tostring(#partyRosterMembers()) .. " entries", "cyan", function()
+      boop.ui.rosterCommand("")
+    end, "Open saved party roster")
+    uiPrintRow(12, "Appearance", configThemeSummary(), "cyan", function()
+      boop.ui.themeCommand("")
+    end, "Open theme controls")
+    uiPrintRow(13, "Control center", "OPEN", "cyan", function()
+      boop.ui.controlCommand("")
+    end, "Open the control center dashboard")
+    uiPrintRow(14, "Stats dashboard", "OPEN", "cyan", function()
+      boop.stats.command("")
+    end, "Open the stats dashboard")
+    uiPrintFooter("Type: boop config <number> | boop config <name> | boop config party | boop config theme")
     return
   end
+
   boop.util.echo("CONFIGURATION")
   boop.util.echo("----------------------------------------")
-  for _, section in ipairs(CONFIG_SECTIONS) do
-    boop.util.echo(string.format("[%d] %s", section.id, section.label))
-  end
+  boop.util.echo(string.format("Hunting: %s", configHuntingSummary()))
+  boop.util.echo(string.format("Targeting: %s | blocker: %s", configTargetingSummary(), blocker))
+  boop.util.echo("Target: " .. targetShown .. " | next: " .. nextAction)
+  boop.util.echo(string.format("[1] Hunting settings         [ OPEN ]"))
+  boop.util.echo(string.format("[2] Targeting settings       [ OPEN ]"))
+  boop.util.echo(string.format("[3] Loot settings            [ %s ]", configLootSummary()))
+  boop.util.echo(string.format("[4] Diagnostics              [ %s ]", configDebugSummary()))
+  boop.util.echo(string.format("[5] Party dashboard          [ %s ]", configPartySummary()))
+  boop.util.echo(string.format("[6] Roster manager           [ %d entries ]", #partyRosterMembers()))
+  boop.util.echo(string.format("[7] Appearance               [ %s ]", configThemeSummary()))
+  boop.util.echo("[8] Control center           [ OPEN ]")
+  boop.util.echo("[9] Stats dashboard          [ OPEN ]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config <number>  (example: boop config 1)")
   boop.util.echo("Type: boop config <name>    (example: boop config hunting)")
+  boop.util.echo("Type: boop config party | boop config theme | boop config control")
 end
 
 local function configRenderCombatSection()
@@ -3669,6 +3810,10 @@ function boop.ui.config(arg)
 
   if token == "back" then
     configRenderHome()
+    return
+  end
+
+  if current == "home" and configHomeRoute(token) then
     return
   end
 

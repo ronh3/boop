@@ -97,11 +97,38 @@ describe("boop ui home", function()
 
     assert.are.equal("CONTROL CENTER", echoes[1])
     assert.is_true(echoes[3]:find("State: on | mode: leader%-call | blocker: engaged target | next: let boop attack") ~= nil)
-    assert.is_true(echoes[4]:find("Combat: class occultist | targeting whitelist | ragemode simple | queue ON | prequeue ON", 1, true) ~= nil)
+    assert.is_true(echoes[4]:find("Combat: class occultist | targeting whitelist | ragemode simple | queue OFF | prequeue ON", 1, true) ~= nil)
     assert.is_true(echoes[5]:find("Party: assist ON -> Leader | targetcall ON | size 3 | walk OFF | theme default", 1, true) ~= nil)
     assert.is_true(echoes[6]:find("Target: 42 | a vicious gnoll soldier | room denizens: 2", 1, true) ~= nil)
     assert.is_true(echoes[7]:find("Trip: running | kills 3 | gold 125 | xp 28376", 1, true) ~= nil)
     assert.are.equal("Quick: boop config | boop party | boop roster | boop stats | boop theme", echoes[8])
+  end)
+
+  it("shows a cleaner configuration hub", function()
+    helper.setClass("occultist")
+    helper.setTarget("42", "a vicious gnoll soldier", "100%")
+    boop.state.denizens = {
+      { id = "42", name = "a vicious gnoll soldier" },
+      { id = "43", name = "a lesser gnoll" },
+    }
+    boop.ui.setEnabled(true, true)
+    boop.ui.assistCommand("Leader")
+    boop.ui.modeCommand("leader-call")
+    boop.ui.setConfigValue("partySize", "3")
+
+    echoes = {}
+    boop.ui.config("")
+
+    local joined = table.concat(echoes, "\n")
+
+    assert.are.equal("CONFIGURATION", echoes[1])
+    assert.is_true(joined:find("Hunting: on | rage simple | queue OFF | prequeue ON", 1, true) ~= nil)
+    assert.is_true(joined:find("Targeting: whitelist | order order | retarget ON | blocker: engaged target", 1, true) ~= nil)
+    assert.is_true(joined:find("Target: 42 | a vicious gnoll soldier | next: let boop attack", 1, true) ~= nil)
+    assert.is_true(joined:find("[4] Diagnostics              [ trace OFF | gag own OFF | gag others OFF ]", 1, true) ~= nil)
+    assert.is_true(joined:find("[5] Party dashboard          [ leader-call | leader Leader | size 3 ]", 1, true) ~= nil)
+    assert.is_true(joined:find("[7] Appearance               [ theme default ]", 1, true) ~= nil)
+    assert.is_true(joined:find("Type: boop config party | boop config theme | boop config control", 1, true) ~= nil)
   end)
 
   it("shows a consolidated party dashboard and separate roster manager", function()
