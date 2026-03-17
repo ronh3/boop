@@ -11,6 +11,9 @@ describe("boop ui home", function()
   local saved_echo
   local saved_echo_link
   local rage_menu_stub
+  local debug_stub
+  local trace_show_stub
+  local trace_clear_stub
 
   before_each(function()
     helper.reset()
@@ -49,6 +52,18 @@ describe("boop ui home", function()
     if rage_menu_stub then
       rage_menu_stub:revert()
       rage_menu_stub = nil
+    end
+    if debug_stub then
+      debug_stub:revert()
+      debug_stub = nil
+    end
+    if trace_show_stub then
+      trace_show_stub:revert()
+      trace_show_stub = nil
+    end
+    if trace_clear_stub then
+      trace_clear_stub:revert()
+      trace_clear_stub = nil
     end
     _G.cecho = saved_cecho
     _G.cechoLink = saved_cecho_link
@@ -193,6 +208,36 @@ describe("boop ui home", function()
     assert.is_true(joined:find("Called target: 43 | room denizens: 2 | next: let boop attack", 1, true) ~= nil)
     assert.is_true(joined:find("[6] Whitelist manager         [ OPEN ]", 1, true) ~= nil)
     assert.is_true(joined:find("Type: boop config targeting <number> | boop config back | boop config home", 1, true) ~= nil)
+  end)
+
+  it("keeps rich debug section callbacks scoped to debug actions", function()
+    local callbacks = {}
+    local debug_calls = 0
+    local trace_show_calls = 0
+
+    _G.cecho = function(_) end
+    _G.cechoLink = function(_, cb, _, _)
+      callbacks[#callbacks + 1] = cb
+    end
+
+    debug_stub = stub(boop.ui, "debug", function()
+      debug_calls = debug_calls + 1
+    end)
+    trace_show_stub = stub(boop.trace, "show", function()
+      trace_show_calls = trace_show_calls + 1
+    end)
+
+    boop.ui.config("debug")
+
+    assert.is_true(type(callbacks[2]) == "function")
+    assert.is_true(type(callbacks[3]) == "function")
+
+    callbacks[2]()
+    callbacks[3]()
+
+    assert.are.equal(1, debug_calls)
+    assert.are.equal(1, trace_show_calls)
+    assert.are.equal("debug", boop.ui.configScreen)
   end)
 
   it("shows a consolidated party dashboard and separate roster manager", function()
