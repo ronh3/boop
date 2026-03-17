@@ -55,7 +55,7 @@ Current coverage:
 - `boop_walk_spec.lua`
   Confirms the external `demonnicAutoWalker` integration only advances once a room is settled and clear under `boop`'s own targeting rules.
 - `boop_ui_spec.lua`
-  Confirms the bare `boop` command shows an operations dashboard with mode/blocker guidance, plus the new mode, theme, and party-operations dashboards.
+  Confirms the bare `boop` command shows the main control dashboard with mode/blocker guidance, plus the mode, theme, party dashboard, and roster manager views.
 - `boop_stats_spec.lua`
   Confirms gold/xp accumulation across session/login/trip/lifetime scopes, party-size-aware mob xp bucketing, stats help output, per-target efficiency and profitability summaries, richer area rankings, trip comparison output, rage-efficiency summaries, per-ability damage/crit/kill summaries, crit/record rollups, reset behavior, whitelist rendering, and human-readable stats summaries.
 

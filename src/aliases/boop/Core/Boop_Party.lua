@@ -1,1 +1,1 @@
-boop.ui.party(matches[2] or "")
+boop.ui.partyCommand(matches[2] or "")

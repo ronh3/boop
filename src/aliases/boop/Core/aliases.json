@@ -42,6 +42,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Control",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+(?:control|controls|center|dashboard)(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Gag",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+gag(?:\\s+(.+))?$",
@@ -80,6 +87,13 @@
     "name": "Boop Party",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+party(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Roster",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+roster(?:\\s+(.+))?$",
     "script": "",
     "isFolder": "no"
   },

@@ -396,6 +396,15 @@ function boop.ui.status(context)
   boop.util.echo(msg)
 end
 
+function boop.ui.controlCommand(raw)
+  local cmd = boop.util.safeLower(boop.util.trim(raw or ""))
+  if cmd == "status" then
+    boop.ui.status("status")
+    return
+  end
+  boop.ui.home()
+end
+
 uiPrintHeader = function(title)
   if cecho then
     local theme = themeTags()
@@ -1094,7 +1103,7 @@ function boop.ui.setConfigValue(key, value)
   end
 
   if canonical == "partyRoster" then
-    boop.ui.party(value or "")
+    boop.ui.rosterCommand(value or "")
     return
   end
 
@@ -1311,6 +1320,10 @@ function boop.ui.themeCommand(raw)
 end
 
 function boop.ui.opsCommand(raw)
+  boop.ui.partyCommand(raw)
+end
+
+function boop.ui.partyCommand(raw)
   local text = boop.util.trim(raw or "")
   local cmd = boop.util.safeLower(text)
   local roster = partyRosterMembers()
@@ -1345,16 +1358,16 @@ function boop.ui.opsCommand(raw)
       boop.ui.setConfigValue("partySize", tail or "")
       return
     end
-    if lowered == "party" or lowered == "roster" then
-      boop.ui.party(tail or "")
+    if lowered == "roster" then
+      boop.ui.rosterCommand(tail or "")
       return
     end
-    boop.util.info("Usage: boop ops [status|mode ...|walk ...|assist ...|targetcall ...|size <n>|party ...]")
+    boop.util.info("Usage: boop party [status|mode ...|walk ...|assist ...|targetcall ...|size <n>|roster ...]")
     return
   end
 
   if cecho then
-    uiPrintHeader("boop > party ops")
+    uiPrintHeader("boop > party")
     uiPrintSection("coordination")
     uiPrintRow(1, "Mode", operatingModeLabel(), "yellow", function() boop.ui.modeCommand("") end, "Show mode help")
     uiPrintRow(2, "Leader", leader ~= "" and leader or "(unset)", leader ~= "" and "cyan" or "yellow", function()
@@ -1382,25 +1395,25 @@ function boop.ui.opsCommand(raw)
 
     uiPrintSection("party data")
     uiPrintRow(10, "Roster entries", tostring(#roster), "cyan", function()
-      boop.ui.party("")
+      boop.ui.rosterCommand("")
     end, "Open party roster screen")
     uiPrintRow(11, "Roster", rosterShown, "cyan", function()
-      boop.ui.party("")
+      boop.ui.rosterCommand("")
     end, "Open party roster screen")
     uiPrintRow(12, "Combos", "OPEN", "cyan", function()
       boop.ui.combos("party")
     end, "Open combo synergy dashboard")
-    uiPrintFooter("Type: boop ops mode <mode> | boop ops walk <cmd> | boop ops assist <leader> | boop ops size <n>")
+    uiPrintFooter("Type: boop party mode <mode> | boop party walk <cmd> | boop party assist <leader> | boop party size <n> | boop roster")
     return
   end
 
-  boop.util.echo("PARTY OPS")
+  boop.util.echo("PARTY")
   boop.util.echo("----------------------------------------")
   boop.util.echo(string.format("Mode: %s | leader: %s | assist: %s | targetcall: %s", operatingModeLabel(), leader ~= "" and leader or "(unset)", assistShown, boop.config.targetCall and "ON" or "OFF"))
   boop.util.echo(string.format("Walk: %s | blocker: %s | next: %s", walkShown, blocker, nextAction))
   boop.util.echo(string.format("Party size: %d | called target: %s", tonumber(boop.config.partySize) or 1, calledTarget))
   boop.util.echo("Roster: " .. rosterShown)
-  boop.util.echo("Quick: boop mode | boop walk | boop assist <leader> | boop targetcall on|off | boop party")
+  boop.util.echo("Quick: boop mode | boop walk | boop assist <leader> | boop targetcall on|off | boop roster")
 end
 
 function boop.ui.assistCommand(raw)
@@ -2490,7 +2503,7 @@ function boop.ui.combos(rawArgs)
   if lowered == "help" then
     boop.util.echo("Usage: boop combos [class...]")
     boop.util.echo("Example: boop combos unnamable occultist bluedragon")
-    boop.util.echo("Tip: no args uses boop party roster + your class.")
+    boop.util.echo("Tip: no args uses boop roster + your class.")
     boop.util.echo("Tip: use commas or quotes for multi-word classes.")
     boop.util.echo("Example: boop combos \"air elemental lady\", runewarden, serpent")
     boop.util.echo("Use: boop combos list")
@@ -2524,14 +2537,14 @@ function boop.ui.combos(rawArgs)
     comboEchoUnresolved(unresolved, usingPartyRoster and "party roster" or "class")
     boop.util.echo("Use: boop combos list")
     if usingPartyRoster then
-      boop.util.echo("Tip: reset roster with: boop party clear")
+      boop.util.echo("Tip: reset roster with: boop roster clear")
     end
     return
   end
 
   if #selected == 0 then
     if usingPartyRoster then
-      boop.util.echo("No party classes configured. Set with: boop party <class...>")
+      boop.util.echo("No party classes configured. Set with: boop roster <class...>")
       return
     end
     boop.util.echo("No valid classes found. Use: boop combos list")
@@ -2542,19 +2555,19 @@ function boop.ui.combos(rawArgs)
   local selfRows = comboBuildSelfEnableRows(selfClass, selected, classData)
   local footer = "Inferred from boop rage aff/needs data. Use: boop combos list"
   if usingPartyRoster then
-    footer = "Using boop party roster + your class. Set with: boop party <class...>"
+    footer = "Using boop roster + your class. Set with: boop roster <class...>"
   end
   comboRenderDashboard(selected, classData, comboRows, selfRows, footer)
 end
 
-function boop.ui.party(rawArgs)
+function boop.ui.rosterCommand(rawArgs)
   local aliases, classKeys = comboBuildAliasMap()
   local raw = boop.util.trim(rawArgs or "")
   local lowered = boop.util.safeLower(raw)
 
   if lowered == "help" then
-    boop.util.echo("Usage: boop party <class...> | boop party | boop party clear")
-    boop.util.echo("Example: boop party depthswalker occultist silverdragon")
+    boop.util.echo("Usage: boop roster <class...> | boop roster | boop roster clear")
+    boop.util.echo("Example: boop roster depthswalker occultist silverdragon")
     boop.util.echo("Note: your own class is auto-included and does not need to be listed.")
     return
   end
@@ -2562,7 +2575,7 @@ function boop.ui.party(rawArgs)
   if lowered == "clear" or lowered == "off" or lowered == "none" then
     saveConfigValue("partyRoster", "")
     boop.util.echo("party roster cleared")
-    boop.ui.party("")
+    boop.ui.rosterCommand("")
     return
   end
 
@@ -2570,7 +2583,7 @@ function boop.ui.party(rawArgs)
   if raw ~= "" and lowered ~= "show" and lowered ~= "status" then
     local tokens = comboTokenizeArgs(raw)
     if #tokens == 0 then
-      boop.util.echo("No classes provided. Use: boop party <class...>")
+      boop.util.echo("No classes provided. Use: boop roster <class...>")
       return
     end
 
@@ -2603,7 +2616,7 @@ function boop.ui.party(rawArgs)
   local effective, resolvedSelfClass, members, unresolvedMembers = comboBuildEffectiveParty(aliases, classKeys)
   if #unresolvedMembers > 0 then
     comboEchoUnresolved(unresolvedMembers, "stored party")
-    boop.util.echo("Tip: set a clean roster with boop party <class...> or boop party clear")
+    boop.util.echo("Tip: set a clean roster with boop roster <class...> or boop roster clear")
   end
 
   local classData = {}
@@ -2613,7 +2626,7 @@ function boop.ui.party(rawArgs)
   local selfRows = comboBuildSelfEnableRows(resolvedSelfClass, effective, classData)
 
   if cecho then
-    uiPrintHeader("boop > party")
+    uiPrintHeader("boop > roster")
     uiPrintSection("roster")
     local rosterRows = {}
     rosterRows[#rosterRows + 1] = {
@@ -2655,11 +2668,11 @@ function boop.ui.party(rawArgs)
         uiPrintRow(i, row.label, row.status, row.color, nil, row.detail, selfWidth)
       end
     end
-    uiPrintFooter("Type: boop party <class...> | boop party clear | boop combos")
+    uiPrintFooter("Type: boop roster <class...> | boop roster clear | boop combos")
     return
   end
 
-  boop.util.echo("BOOP > PARTY")
+  boop.util.echo("BOOP > ROSTER")
   boop.util.echo("----------------------------------------")
   boop.util.echo("ROSTER")
   boop.util.echo("You: " .. ((resolvedSelfClass ~= "" and comboPrettyClass(resolvedSelfClass)) or "(unknown)"))
@@ -2681,7 +2694,11 @@ function boop.ui.party(rawArgs)
     end
   end
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Use: boop party <class...> | boop party clear | boop combos")
+  boop.util.echo("Use: boop roster <class...> | boop roster clear | boop combos")
+end
+
+function boop.ui.party(rawArgs)
+  boop.ui.partyCommand(rawArgs)
 end
 
 local HELP_TOPICS = {
@@ -2691,7 +2708,9 @@ local HELP_TOPICS = {
     aliases = { "start", "gettingstarted", "intro", "basics", "general", "main", "home", "config" },
     commands = {
       "boop",
-      "boop ops",
+      "boop control",
+      "boop party",
+      "boop roster",
       "boop mode",
       "boop theme",
       "boop on",
@@ -2750,7 +2769,7 @@ local HELP_TOPICS = {
       "boop targetcall on|off",
       "boop affcalls on|off",
       "boop mode solo|assist|leader-call",
-      "boop ops",
+      "boop party",
       "boop assist <leader>",
       "boop assist on|off|clear",
       "boop set tempoRageWindowSeconds <seconds>",
@@ -2805,16 +2824,17 @@ local HELP_TOPICS = {
     title = "Party & Combos",
     aliases = { "party", "combos", "combo" },
     commands = {
+      "boop control",
       "boop party",
-      "boop party <class...>",
-      "boop party clear",
-      "boop ops",
+      "boop roster",
+      "boop roster <class...>",
+      "boop roster clear",
       "boop combos",
       "boop combos <class...>",
       "boop combos list",
     },
     notes = {
-      "No-arg mode uses boop party roster + your own class.",
+      "No-arg mode uses boop roster + your own class.",
       "Shows conditional rage synergies inferred from boop attack profiles.",
       "Use quotes for multi-word classes: \"air elemental lady\".",
     },
@@ -3038,11 +3058,11 @@ function boop.ui.home()
     uiPrintRow(17, "Trip raw xp", tostring(tripXp), "yellow")
 
     uiPrintSection("quick actions")
-    uiPrintRow(18, "Party operations", "OPEN", "cyan", function() boop.ui.opsCommand("") end, "Open party operations dashboard")
+    uiPrintRow(18, "Party", "OPEN", "cyan", function() boop.ui.partyCommand("") end, "Open party coordination dashboard")
     uiPrintRow(19, "Mode controls", "OPEN", "cyan", function() boop.ui.modeCommand("") end, "Show operating mode summary")
     uiPrintRow(20, "Stats", "OPEN", "cyan", function() boop.stats.command("") end, "Open stats dashboard")
     uiPrintRow(21, "Theme controls", "OPEN", "cyan", function() boop.ui.themeCommand("") end, "Show theme summary")
-    uiPrintFooter("Type: boop ops | boop mode | boop theme | boop stats | boop help")
+    uiPrintFooter("Type: boop control | boop party | boop roster | boop mode | boop stats")
     return
   end
 
@@ -3052,7 +3072,7 @@ function boop.ui.home()
   boop.util.echo(string.format("Class: %s | targeting: %s | ragemode: %s | assist: %s | targetcall: %s | walk: %s | theme: %s", tostring(class), targetingMode, rageMode, assistShown, targetCallShown, walkShown, themeShown))
   boop.util.echo("Target: " .. targetShown .. " | room denizens: " .. tostring(denizenCount))
   boop.util.echo(string.format("Trip: %s | kills %d | gold %d | xp %d", tripRunning, tripKills, tripGold, tripXp))
-  boop.util.echo("Quick: boop ops | boop mode | boop theme | boop stats | boop help")
+  boop.util.echo("Quick: boop control | boop party | boop roster | boop mode | boop stats")
 end
 
 local CONFIG_SECTIONS = {

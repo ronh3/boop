@@ -7,16 +7,18 @@ Standalone Mudlet package for Achaea auto hunting.
 - Class profiles: broad Foxhunt-derived profile coverage is included; some standards are intentionally simplified and marked for later refinement.
 - IH integration: `ih` output is re-rendered with clickable whitelist/blacklist buttons for denizens.
 - Skill gating uses GMCP `Char.Skills.*` info for standard/rage abilities.
-- Targeting uses denizen IDs (IRE.Target.Set by id), not names.
+- Targeting uses denizen IDs (`settarget <id>`), not names.
 
 ## Commands
 - `boop` (current settings/status dashboard)
+- `boop control` / `boop controls` / `boop center` (main control-center dashboard)
 - `bh` (toggle on/off)
 - `boop on` / `boop off`
 - `boop help` / `boop help <number|topic|home>` (examples: `boop help 2`, `boop help targeting`)
 - `boop status` (current settings/status dashboard)
 - `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow)
-- `boop party` / `boop party <class...>` / `boop party clear` (save party class roster; your own class is auto-included)
+- `boop party` (party coordination dashboard)
+- `boop roster` / `boop roster <class...>` / `boop roster clear` (save party class roster; your own class is auto-included)
 - `boop combos` / `boop combos <class...>` / `boop combos list` (party combo inference from rage afflictions + conditional needs)
 - `boop autogold` / `boop autogold on` / `boop autogold off`
 - `boop pack` / `boop pack <container>` / `boop pack off` / `boop pack test` (auto-stash container for sovereigns)

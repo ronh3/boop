@@ -72,22 +72,22 @@ describe("boop ui home", function()
     assert.is_true(echoes[4]:find("Class: occultist | targeting: whitelist | ragemode: simple", 1, true) ~= nil)
     assert.is_true(echoes[5]:find("Target: 42 | a vicious gnoll soldier | room denizens: 2", 1, true) ~= nil)
     assert.is_true(echoes[6]:find("Trip: running | kills 3 | gold 125 | xp 28376", 1, true) ~= nil)
-    assert.are.equal("Quick: boop ops | boop mode | boop theme | boop stats | boop help", echoes[7])
+    assert.are.equal("Quick: boop control | boop party | boop roster | boop mode | boop stats", echoes[7])
   end)
 
-  it("shows a consolidated party operations dashboard", function()
+  it("shows a consolidated party dashboard and separate roster manager", function()
     helper.setClass("occultist")
     boop.ui.setEnabled(true, true)
     boop.ui.assistCommand("Leader")
     boop.ui.modeCommand("leader-call")
     boop.ui.setConfigValue("partySize", "3")
-    boop.ui.party("occultist infernal")
+    boop.ui.rosterCommand("occultist infernal")
     boop.state.calledTargetId = "43"
 
     echoes = {}
-    boop.ui.opsCommand("")
+    boop.ui.partyCommand("")
 
-    assert.are.equal("PARTY OPS", echoes[1])
+    assert.are.equal("PARTY", echoes[1])
     assert.is_true(echoes[3]:find("Mode: leader-call | leader: Leader | assist: ON -> Leader | targetcall: ON", 1, true) ~= nil)
     assert.is_true(echoes[4]:find("Walk: OFF | blocker: waiting for leader target call | next: wait for pt target line", 1, true) ~= nil)
     assert.is_true(echoes[5]:find("Party size: 3 | called target: 43", 1, true) ~= nil)
