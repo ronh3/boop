@@ -2879,6 +2879,13 @@ function boop.ui.party(rawArgs)
   boop.ui.partyCommand(rawArgs)
 end
 
+local function helpCommand(command, description)
+  return {
+    command = tostring(command or ""),
+    description = tostring(description or ""),
+  }
+end
+
 local HELP_TOPICS = {
   {
     key = "start",
@@ -2886,15 +2893,15 @@ local HELP_TOPICS = {
     summary = "Core entrypoints and the fastest way to get oriented.",
     aliases = { "start", "gettingstarted", "intro", "basics", "general", "main", "home" },
     commands = {
-      "boop",
-      "boop control",
-      "boop on",
-      "boop off",
-      "boop status",
-      "boop config",
-      "boop config home",
-      "boop party",
-      "boop help <topic>",
+      helpCommand("boop", "Open the main boop dashboard with the most important live state and next actions."),
+      helpCommand("boop control", "Open the control center for live hunting, navigation, and operational state."),
+      helpCommand("boop on", "Enable boop hunting and start the active session timer."),
+      helpCommand("boop off", "Disable boop hunting and stop the active session timer."),
+      helpCommand("boop status", "Show the current state, target, queue, party, and movement status."),
+      helpCommand("boop config", "Open the guided settings hub."),
+      helpCommand("boop config home", "Jump back to the root of the config hub from any config screen."),
+      helpCommand("boop party", "Open the party coordination dashboard for leader, assist, walk, and roster state."),
+      helpCommand("boop help <topic>", "Open help for a specific workflow or feature area."),
     },
     notes = {
       "Start with `boop`, then move to `boop control` for live operations or `boop config` for settings.",
@@ -2907,15 +2914,15 @@ local HELP_TOPICS = {
     summary = "Navigation between dashboards and the guided settings surfaces.",
     aliases = { "control", "controls", "config", "settings", "dashboard" },
     commands = {
-      "boop control",
-      "boop config",
-      "boop config home",
-      "boop config combat",
-      "boop config targeting",
-      "boop config loot",
-      "boop config debug",
-      "boop get",
-      "boop set <key> <value>",
+      helpCommand("boop control", "Open the live control center dashboard."),
+      helpCommand("boop config", "Open the main settings hub with summaries and links to each config area."),
+      helpCommand("boop config home", "Return to the top-level config hub."),
+      helpCommand("boop config combat", "Open hunting and queueing settings."),
+      helpCommand("boop config targeting", "Open targeting mode, order, and list-management settings."),
+      helpCommand("boop config loot", "Open sovereign pickup and gold-pack settings."),
+      helpCommand("boop config debug", "Open trace, gag, and debug settings."),
+      helpCommand("boop get", "List or inspect raw config keys and values."),
+      helpCommand("boop set <key> <value>", "Set a raw config value directly without using the guided screens."),
     },
     notes = {
       "Use `boop control` for live state and `boop config` for guided settings changes.",
@@ -2928,20 +2935,20 @@ local HELP_TOPICS = {
     summary = "Targeting modes, rage modes, queueing, and target list management.",
     aliases = { "hunting", "combat", "targeting", "targets", "whitelist", "blacklist", "rage", "ragemode", "attackmode", "queue", "queueing", "prequeue", "diag", "diagnose", "ih" },
     commands = {
-      "boop config combat",
-      "boop config targeting",
-      "boop ragemode",
-      "boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>",
-      "boop prequeue [on|off]",
-      "boop lead <seconds>",
-      "boop targeting <manual|whitelist|blacklist|auto>",
-      "boop whitelist",
-      "boop whitelist browse [tag]",
-      "boop blacklist",
-      "boop ih",
-      "boop diag",
-      "boop prefer",
-      "boop prefer <dam|shield> <option>",
+      helpCommand("boop config combat", "Open the hunting settings screen for toggles like queueing, prequeue, and rage mode."),
+      helpCommand("boop config targeting", "Open the targeting settings screen for mode, order, and retarget behavior."),
+      helpCommand("boop ragemode", "Show the rage-mode menu and current selection."),
+      helpCommand("boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>", "Set how boop chooses battlerage attacks."),
+      helpCommand("boop prequeue [on|off]", "Enable or disable standard-attack prequeueing."),
+      helpCommand("boop lead <seconds>", "Set how early boop should prequeue before balance comes back."),
+      helpCommand("boop targeting <manual|whitelist|blacklist|auto>", "Set the top-level target-selection mode."),
+      helpCommand("boop whitelist", "Open or print the current area whitelist."),
+      helpCommand("boop whitelist browse [tag]", "Browse whitelist entries, optionally filtered by tag."),
+      helpCommand("boop blacklist", "Open or print the current area blacklist."),
+      helpCommand("boop ih", "Show the immediate hunting view for current-room target decisions."),
+      helpCommand("boop diag", "Queue diagnose and temporarily pause attacking until diagnose completes or times out."),
+      helpCommand("boop prefer", "Show configurable attack-preference options for your current class/spec."),
+      helpCommand("boop prefer <dam|shield> <option>", "Prefer a specific standard damage or shield attack when multiple valid options exist."),
     },
     notes = {
       "Use the config subsections when you want guided toggles; use the direct commands when you already know what you want.",
@@ -2955,19 +2962,19 @@ local HELP_TOPICS = {
     summary = "Assist, leader target calls, roster management, and movement coordination.",
     aliases = { "party", "leader", "assist", "targetcall", "walk", "roster", "combos", "combo" },
     commands = {
-      "boop party",
-      "boop mode solo|assist|leader-call",
-      "boop assist <leader>",
-      "boop assist on|off|clear",
-      "boop targetcall on|off",
-      "boop affcalls on|off",
-      "boop walk [status|start|stop|move]",
-      "boop roster",
-      "boop roster <class...>",
-      "boop roster clear",
-      "boop combos",
-      "boop combos <class...>",
-      "boop combos list",
+      helpCommand("boop party", "Open the party dashboard with leader, assist, walk, target-call, and roster state."),
+      helpCommand("boop mode solo|assist|leader-call", "Switch between solo hunting, assist mode, and leader-called target mode."),
+      helpCommand("boop assist <leader>", "Set the assist leader boop should follow for assist-mode attacks."),
+      helpCommand("boop assist on|off|clear", "Enable, disable, or clear assist mode without changing other party settings."),
+      helpCommand("boop targetcall on|off", "Require a leader-called target before boop starts attacking."),
+      helpCommand("boop affcalls on|off", "Enable or suppress battlerage affliction party callouts."),
+      helpCommand("boop walk [status|start|stop|move]", "Inspect or control external autowalker integration."),
+      helpCommand("boop roster", "Show the stored party roster and your combo-relevant party composition."),
+      helpCommand("boop roster <class...>", "Set the party roster classes used for combo and conditional help."),
+      helpCommand("boop roster clear", "Clear the stored party roster."),
+      helpCommand("boop combos", "Show combo/conditional information using your current roster and class."),
+      helpCommand("boop combos <class...>", "Inspect combo and conditional relationships for an explicit set of classes."),
+      helpCommand("boop combos list", "List known class names supported by the combo helper."),
     },
     notes = {
       "Use `boop party` as the coordination dashboard; it consolidates leader, assist, walk, target-call, and roster state.",
@@ -2981,20 +2988,20 @@ local HELP_TOPICS = {
     summary = "Trip, session, lifetime, area, ability, target, and rage analytics.",
     aliases = { "stats", "trip", "records", "areas", "targets", "abilities", "crits", "compare" },
     commands = {
-      "boop stats",
-      "boop stats help",
-      "boop stats session|login|trip|lifetime",
-      "boop stats lasttrip",
-      "boop stats compare [left] [right]",
-      "boop stats areas [scope] [limit] [metric]",
-      "boop stats targets [scope] [limit]",
-      "boop stats abilities [scope] [limit]",
-      "boop stats crits [scope]",
-      "boop stats rage [scope]",
-      "boop stats records [scope]",
-      "boop trip start",
-      "boop trip stop",
-      "boop stats reset session|login|trip|lifetime|all",
+      helpCommand("boop stats", "Open the main stats dashboard with current summaries and drill-down suggestions."),
+      helpCommand("boop stats help", "Show the dedicated stats command overview."),
+      helpCommand("boop stats session|login|trip|lifetime", "Show totals and efficiency for a specific stats scope."),
+      helpCommand("boop stats lasttrip", "Show the snapshot of the most recently completed trip."),
+      helpCommand("boop stats compare [left] [right]", "Compare two scopes, defaulting to trip versus lasttrip."),
+      helpCommand("boop stats areas [scope] [limit] [metric]", "Rank or inspect hunting areas by the chosen metric."),
+      helpCommand("boop stats targets [scope] [limit]", "Inspect per-target kill efficiency and profitability."),
+      helpCommand("boop stats abilities [scope] [limit]", "Inspect per-ability usage, damage, crits, and kills."),
+      helpCommand("boop stats crits [scope]", "Show crit distributions and crit-rate summaries."),
+      helpCommand("boop stats rage [scope]", "Show rage-usage and rage-mode behavior summaries."),
+      helpCommand("boop stats records [scope]", "Show best-hit, fastest-kill, and similar record values."),
+      helpCommand("boop trip start", "Start an explicit trip timer and trip bucket for a hunt."),
+      helpCommand("boop trip stop", "Stop the current trip and show its final summary."),
+      helpCommand("boop stats reset session|login|trip|lifetime|all", "Reset one or more stats scopes."),
     },
     notes = {
       "Start with `boop stats` for the dashboard, then drill into the specific view that answers your optimization question.",
@@ -3007,18 +3014,18 @@ local HELP_TOPICS = {
     summary = "Trace, gagging, debug tools, imports, and direct configuration.",
     aliases = { "diagnostics", "debug", "trace", "gag", "advanced", "set", "get", "import", "foxhunt" },
     commands = {
-      "boop config debug",
-      "boop debug",
-      "boop debug attacks",
-      "boop debug skills",
-      "boop debug skills dump",
-      "boop trace on|off|show [n]|clear",
-      "boop gag on|off|own|others|all",
-      "boop get",
-      "boop set <key> <value>",
-      "boop import foxhunt [merge|overwrite|dryrun]",
-      "boop pack test",
-      "boop theme <name|auto|list>",
+      helpCommand("boop config debug", "Open the guided diagnostics and debug settings screen."),
+      helpCommand("boop debug", "Show the debug snapshot for current runtime state."),
+      helpCommand("boop debug attacks", "Show the currently loaded attack profile and attack options."),
+      helpCommand("boop debug skills", "Show current skill knowledge and skill-state summaries."),
+      helpCommand("boop debug skills dump", "Dump the raw skill tables boop is using."),
+      helpCommand("boop trace on|off|show [n]|clear", "Control or inspect the boop trace buffer used for decision-flow debugging."),
+      helpCommand("boop gag on|off|own|others|all", "Control attack-line gagging behavior."),
+      helpCommand("boop get", "Inspect raw config values."),
+      helpCommand("boop set <key> <value>", "Set raw config values directly."),
+      helpCommand("boop import foxhunt [merge|overwrite|dryrun]", "Import whitelist and blacklist data from Foxhunt."),
+      helpCommand("boop pack test", "Queue a look-in command for the current configured gold pack."),
+      helpCommand("boop theme <name|auto|list>", "Inspect or change the active UI theme."),
     },
     notes = {
       "Use trace when you need decision-flow debugging; use the debug snapshot when you need current-state debugging.",
@@ -3107,7 +3114,8 @@ local function helpRenderTopic(topic)
       uiPrintRow(1, topic.summary, "INFO", "cyan")
     end
     local rows = {}
-    for i, cmd in ipairs(topic.commands or {}) do
+    for i, entry in ipairs(topic.commands or {}) do
+      local cmd = type(entry) == "table" and entry.command or tostring(entry or "")
       rows[#rows + 1] = { index = i, label = cmd }
     end
     for i, note in ipairs(topic.notes or {}) do
@@ -3116,11 +3124,13 @@ local function helpRenderTopic(topic)
     local labelWidth = uiComputeLabelWidth(rows, UI_LABEL_COL_WIDTH, 140)
 
     uiPrintSection("commands")
-    for i, cmd in ipairs(topic.commands or {}) do
-      local value = cmd
+    for i, entry in ipairs(topic.commands or {}) do
+      local value = type(entry) == "table" and entry.command or tostring(entry or "")
+      local description = type(entry) == "table" and entry.description or ""
+      local hint = description ~= "" and (description .. " | Click to seed this command.") or ("Copy command: " .. value)
       uiPrintRow(i, value, "COPY", "yellow", function()
         uiSetCommandLine(value)
-      end, "Copy command: " .. value, labelWidth)
+      end, hint, labelWidth)
     end
     if topic.notes and #topic.notes > 0 then
       uiPrintSection("notes")
@@ -3138,8 +3148,13 @@ local function helpRenderTopic(topic)
     boop.util.echo(topic.summary)
     boop.util.echo("")
   end
-  for _, cmd in ipairs(topic.commands or {}) do
+  for _, entry in ipairs(topic.commands or {}) do
+    local cmd = type(entry) == "table" and entry.command or tostring(entry or "")
+    local description = type(entry) == "table" and entry.description or ""
     boop.util.echo("  " .. cmd)
+    if description ~= "" then
+      boop.util.echo("    " .. description)
+    end
   end
   if topic.notes and #topic.notes > 0 then
     boop.util.echo("Notes:")

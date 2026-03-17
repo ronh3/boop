@@ -291,8 +291,25 @@ describe("boop ui home", function()
     assert.are.equal("HELP > Stats & Optimization", echoes[1])
     assert.is_true(joined:find("Trip, session, lifetime, area, ability, target, and rage analytics.", 1, true) ~= nil)
     assert.is_true(joined:find("  boop stats compare [left] [right]", 1, true) ~= nil)
+    assert.is_true(joined:find("    Compare two scopes, defaulting to trip versus lasttrip.", 1, true) ~= nil)
     assert.is_true(joined:find("Notes:", 1, true) ~= nil)
     assert.is_true(joined:find("Type: boop help home | boop help back", 1, true) ~= nil)
+  end)
+
+  it("adds rich hover descriptions to help command rows", function()
+    local hints = {}
+
+    _G.cecho = function(_) end
+    _G.cechoLink = function(_, _, hint, _)
+      hints[#hints + 1] = hint
+    end
+
+    boop.ui.help("party")
+
+    local joined = table.concat(hints, "\n")
+    assert.is_true(joined:find("Open the party dashboard with leader, assist, walk, target%-call, and roster state%.") ~= nil)
+    assert.is_true(joined:find("Require a leader%-called target before boop starts attacking%.") ~= nil)
+    assert.is_true(joined:find("Inspect or control external autowalker integration%.") ~= nil)
   end)
 
   it("makes rich footer command breadcrumbs clickable", function()
