@@ -78,11 +78,42 @@ end
 
 function boop.clearGoldQueueIntent()
   boop.state = boop.state or {}
+  if boop.state.goldPendingTimer then
+    killTimer(boop.state.goldPendingTimer)
+    boop.state.goldPendingTimer = nil
+  end
   boop.state.goldGetPending = false
   boop.state.goldPutPending = false
   boop.state.goldGetRetries = 0
   boop.state.goldPutRetries = 0
   boop.state.goldPackTarget = ""
+end
+
+local function stopGoldPendingTimeout()
+  boop.state = boop.state or {}
+  if boop.state.goldPendingTimer then
+    killTimer(boop.state.goldPendingTimer)
+    boop.state.goldPendingTimer = nil
+  end
+end
+
+local function armGoldPendingTimeout()
+  boop.state = boop.state or {}
+  stopGoldPendingTimeout()
+  boop.state.goldPendingTimer = tempTimer(4, function()
+    boop.state.goldPendingTimer = nil
+    if not (boop.state.goldGetPending or boop.state.goldPutPending) then
+      return
+    end
+    boop.trace.log("gold pending timeout: clearing stale state")
+    boop.util.warn("auto gold: clearing stale pending state")
+    boop.clearGoldQueueIntent()
+    if boop.walk and boop.walk.maybeAdvance then
+      boop.walk.maybeAdvance("gold timeout clear")
+    elseif boop.tick then
+      boop.tick()
+    end
+  end)
 end
 
 function boop.markGoldQueueIntent(pack)
@@ -93,6 +124,7 @@ function boop.markGoldQueueIntent(pack)
   boop.state.goldGetRetries = 0
   boop.state.goldPutRetries = 0
   boop.state.goldPackTarget = target
+  armGoldPendingTimeout()
 end
 
 local function queueGoldCommands()
@@ -181,9 +213,13 @@ local function retryGoldGet(reason)
     boop.trace.log("gold get failed; giving up: " .. tostring(reason))
     boop.util.err("auto gold: unable to get sovereigns; check room loot/line timing")
     boop.state.goldGetPending = false
+    boop.state.goldPutPending = false
+    boop.state.goldPackTarget = ""
+    stopGoldPendingTimeout()
     return
   end
   boop.state.goldGetRetries = retries + 1
+  armGoldPendingTimeout()
   send("queue add freestand get sovereigns", false)
   boop.trace.log("gold get retry " .. tostring(boop.state.goldGetRetries) .. ": " .. tostring(reason))
 end
@@ -202,9 +238,11 @@ local function retryGoldPut(reason)
     boop.trace.log("gold put failed for pack " .. pack .. "; giving up: " .. tostring(reason))
     boop.util.err("auto gold: unable to put sovereigns in " .. pack .. "; use `boop pack test`")
     boop.state.goldPutPending = false
+    stopGoldPendingTimeout()
     return
   end
   boop.state.goldPutRetries = retries + 1
+  armGoldPendingTimeout()
   send("queue add freestand put sovereigns in " .. pack, false)
   boop.trace.log("gold put retry " .. tostring(boop.state.goldPutRetries) .. " for " .. pack .. ": " .. tostring(reason))
 end
@@ -214,6 +252,9 @@ function boop.onGoldGetSuccess()
   if not boop.state.goldGetPending then return end
   boop.state.goldGetPending = false
   boop.state.goldGetRetries = 0
+  if not boop.state.goldPutPending then
+    stopGoldPendingTimeout()
+  end
   boop.trace.log("gold get success")
   if not boop.state.goldPutPending and boop.walk and boop.walk.maybeAdvance then
     boop.walk.maybeAdvance("gold get success")
@@ -225,6 +266,7 @@ function boop.onGoldPutSuccess()
   if not boop.state.goldPutPending then return end
   boop.state.goldPutPending = false
   boop.state.goldPutRetries = 0
+  stopGoldPendingTimeout()
   boop.trace.log("gold put success")
   if boop.walk and boop.walk.maybeAdvance then
     boop.walk.maybeAdvance("gold put success")
@@ -547,6 +589,7 @@ function boop.prequeueStandard()
   if not boop.config.enabled then return end
   if not boop.config.prequeueEnabled then return end
   if boop.state.diagHold then return end
+  if boop.state.goldGetPending or boop.state.goldPutPending then return end
   if boop.state.prequeuedStandard then return end
   if gmcp and gmcp.Char and gmcp.Char.Vitals then
     if gmcp.Char.Vitals.bal == "1" and gmcp.Char.Vitals.eq == "1" then
@@ -609,6 +652,7 @@ end
 function boop.tick()
   if not boop.config.enabled then return end
   if boop.state.diagHold then return end
+  if boop.state.goldGetPending or boop.state.goldPutPending then return end
 
   if boop.safety and boop.safety.shouldFlee and boop.safety.shouldFlee() then
     boop.safety.flee()

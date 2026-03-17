@@ -201,6 +201,10 @@ function boop.executeAction(action, forceQueue)
 
   if boop.config.useQueueing or forceQueue then
     boop.state = boop.state or {}
+    if boop.config.useQueueing and (boop.state.goldGetPending or boop.state.goldPutPending) and not boop.state.autoGrabGoldPending then
+      boop.trace.log("std queue blocked: gold pending")
+      return
+    end
     local queuedAction = action
     if boop.config.useQueueing then
       local pendingGold = boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending
