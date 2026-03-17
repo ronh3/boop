@@ -34,6 +34,17 @@ local function sameSpeaker(a, b)
   return sameName(a, b)
 end
 
+local function findDenizenById(denizens, id)
+  local targetId = tostring(id or "")
+  if targetId == "" then return nil end
+  for _, denizen in ipairs(denizens or {}) do
+    if tostring(denizen.id or "") == targetId then
+      return denizen
+    end
+  end
+  return nil
+end
+
 function boop.targets.getArea()
   if gmcp and gmcp.Room and gmcp.Room.Info then
     return gmcp.Room.Info.area
@@ -377,17 +388,6 @@ local function sortedDenizens(order)
     denizens = rev
   end
   return denizens
-end
-
-local function findDenizenById(denizens, id)
-  local targetId = tostring(id or "")
-  if targetId == "" then return nil end
-  for _, denizen in ipairs(denizens or {}) do
-    if tostring(denizen.id or "") == targetId then
-      return denizen
-    end
-  end
-  return nil
 end
 
 local function currentTargetEligible(mode, area, denizens)
