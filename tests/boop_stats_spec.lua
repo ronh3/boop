@@ -788,6 +788,43 @@ describe("boop stats", function()
     assert.are.equal(8060, boop.stats.lastXp)
   end)
 
+  it("stops a trip cleanly while the rich stats view is enabled", function()
+    saved_cecho = _G.cecho
+    saved_cecho_link = _G.cechoLink
+    _G.cecho = function(_) end
+    _G.cechoLink = nil
+
+    helper.setArea("Test Area")
+    helper.setClass("Occultist")
+    boop.stats.trip.meta = { attackMode = "combo", class = "occultist", partySize = 1, area = "Test Area" }
+    boop.stats.trip.kills = 2
+    boop.stats.trip.gold = 457
+    boop.stats.trip.rawExperience = 185473
+    boop.stats.trip.totalTtk = 40.84
+    boop.stats.trip.targets = 2
+    boop.stats.trip.roomMoves = 3
+    boop.stats.trip.stopwatch = 99
+    boop.stats.trip.startedAt = 10
+    boop.stats.trip.activeSince = 10
+    boop.stats.trip.activeSeconds = 120
+    boop.stats.trip.areas["Test Area"] = {
+      kills = 2,
+      gold = 457,
+      rawExperience = 185473,
+      totalTtk = 40.84,
+      startedAt = 10,
+      activeSince = 10,
+      activeSeconds = 120,
+    }
+
+    assert.has_no.errors(function()
+      boop.stats.stopTrip()
+    end)
+    assert.is_not_nil(boop.stats.lastTrip)
+    assert.are.equal(2, boop.stats.lastTrip.kills)
+    assert.is_nil(boop.stats.trip.stopwatch)
+  end)
+
   it("shows mob xp summaries in plain whitelist output", function()
     helper.setArea("Test Area")
     helper.setWhitelist("Test Area", { "a vicious gnoll soldier" })

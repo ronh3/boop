@@ -1411,6 +1411,7 @@ function boop.stats.reset(scopeName)
 end
 
 local canRenderDashboardRich
+local formatScopeMeta
 
 function boop.stats.show(scopeName)
   local scope, label = scopeByName(scopeName)
@@ -1472,7 +1473,7 @@ function boop.stats.show(scopeName)
   ))
 end
 
-local function formatScopeMeta(scope)
+formatScopeMeta = function(scope)
   local meta = scope and scope.meta or {}
   return string.format(
     "mode %s | class %s | p%d | area %s",
