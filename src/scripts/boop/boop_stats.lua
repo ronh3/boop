@@ -2177,10 +2177,11 @@ end
 
 local function canRenderDashboardRich()
   return cecho
-    and type(uiPrintHeader) == "function"
-    and type(uiPrintSection) == "function"
-    and type(uiPrintRow) == "function"
-    and type(uiPrintFooter) == "function"
+    and boop.ui
+    and type(boop.ui.printHeader) == "function"
+    and type(boop.ui.printSection) == "function"
+    and type(boop.ui.printRow) == "function"
+    and type(boop.ui.printFooter) == "function"
 end
 
 local function statsCommandAction(cmd)
@@ -2207,63 +2208,68 @@ local function showDashboardRich(context)
   local compareBits = context.compareBits
   local hasTripCompare = context.hasTripCompare
 
-  uiPrintHeader("boop stats")
-  uiPrintSection("overview")
-  uiPrintRow(1, "Focus", string.upper(focusLabel), "yellow")
-  uiPrintRow(2, "Hunt", string.format("%s | %s | party %d", tripState, shownArea, partySize), tripState == "running" and "green" or "yellow")
-  uiPrintRow(3, "Session", scopeHasActivity(session) and scopeSummaryValue(session) or "No activity yet", scopeHasActivity(session) and "cyan" or "yellow")
-  uiPrintRow(4, "Trip", scopeHasActivity(trip) and (scopeSummaryValue(trip) .. " | " .. tripState) or "No activity yet", scopeHasActivity(trip) and "cyan" or "yellow")
-  uiPrintRow(5, "Lifetime", scopeSummaryValue(lifetime), "cyan")
+  local printHeader = boop.ui.printHeader
+  local printSection = boop.ui.printSection
+  local printRow = boop.ui.printRow
+  local printFooter = boop.ui.printFooter
 
-  uiPrintSection("leaders")
+  printHeader("boop stats")
+  printSection("overview")
+  printRow(1, "Focus", string.upper(focusLabel), "yellow")
+  printRow(2, "Hunt", string.format("%s | %s | party %d", tripState, shownArea, partySize), tripState == "running" and "green" or "yellow")
+  printRow(3, "Session", scopeHasActivity(session) and scopeSummaryValue(session) or "No activity yet", scopeHasActivity(session) and "cyan" or "yellow")
+  printRow(4, "Trip", scopeHasActivity(trip) and (scopeSummaryValue(trip) .. " | " .. tripState) or "No activity yet", scopeHasActivity(trip) and "cyan" or "yellow")
+  printRow(5, "Lifetime", scopeSummaryValue(lifetime), "cyan")
+
+  printSection("leaders")
   if bestArea then
-    uiPrintRow(6, "Best " .. focusLabel .. " area", string.format("%s | %s k/hr | %s xp/hr", bestArea.area, formatStatValue(bestArea.killsPerHour, 1), formatStatValue(bestArea.rawXpPerHour, 1)), "green")
+    printRow(6, "Best " .. focusLabel .. " area", string.format("%s | %s k/hr | %s xp/hr", bestArea.area, formatStatValue(bestArea.killsPerHour, 1), formatStatValue(bestArea.rawXpPerHour, 1)), "green")
   else
-    uiPrintRow(6, "Best " .. focusLabel .. " area", "No data yet", "yellow")
+    printRow(6, "Best " .. focusLabel .. " area", "No data yet", "yellow")
   end
   if bestTarget then
-    uiPrintRow(7, "Top " .. focusLabel .. " target", string.format("%s | %d kills | %ss | %s xp", bestTarget.name, bestTarget.kills, formatNumber(bestTarget.avgTtk, 2), formatStatValue(bestTarget.avgRawXp, 1)), "cyan")
+    printRow(7, "Top " .. focusLabel .. " target", string.format("%s | %d kills | %ss | %s xp", bestTarget.name, bestTarget.kills, formatNumber(bestTarget.avgTtk, 2), formatStatValue(bestTarget.avgRawXp, 1)), "cyan")
   else
-    uiPrintRow(7, "Top " .. focusLabel .. " target", "No data yet", "yellow")
+    printRow(7, "Top " .. focusLabel .. " target", "No data yet", "yellow")
   end
   if bestAbility then
-    uiPrintRow(8, "Top " .. focusLabel .. " ability", string.format("%s | %d kills | %s dmg | %s%% crit", bestAbility.ability, bestAbility.kills, formatStatValue(bestAbility.avgDamage, 1), formatStatValue(bestAbility.critRate, 1)), "cyan")
+    printRow(8, "Top " .. focusLabel .. " ability", string.format("%s | %d kills | %s dmg | %s%% crit", bestAbility.ability, bestAbility.kills, formatStatValue(bestAbility.avgDamage, 1), formatStatValue(bestAbility.critRate, 1)), "cyan")
   else
-    uiPrintRow(8, "Top " .. focusLabel .. " ability", "No data yet", "yellow")
+    printRow(8, "Top " .. focusLabel .. " ability", "No data yet", "yellow")
   end
 
-  uiPrintSection("trip compare")
+  printSection("trip compare")
   if hasTripCompare then
-    uiPrintRow(9, "Kills", compareBits[1], "cyan")
-    uiPrintRow(10, "Raw xp", compareBits[3], "cyan")
-    uiPrintRow(11, "Avg ttk", compareBits[4], "cyan")
-    uiPrintRow(12, "Xp/hr", compareBits[7], "cyan")
+    printRow(9, "Kills", compareBits[1], "cyan")
+    printRow(10, "Raw xp", compareBits[3], "cyan")
+    printRow(11, "Avg ttk", compareBits[4], "cyan")
+    printRow(12, "Xp/hr", compareBits[7], "cyan")
   else
-    uiPrintRow(9, "Trips", "No completed trips yet", "yellow")
+    printRow(9, "Trips", "No completed trips yet", "yellow")
   end
 
-  uiPrintSection("next views")
+  printSection("next views")
   if scopeHasActivity(trip) then
-    uiPrintRow(13, "Trip vs last trip", "OPEN", "cyan", statsCommandAction("compare trip lasttrip"), "Compare current trip against the previous completed trip")
-    uiPrintRow(14, "Area rankings", "OPEN", "cyan", statsCommandAction("areas trip 5 xp"), "Show trip area rankings sorted by xp/hr")
-    uiPrintRow(15, "Target breakdown", "OPEN", "cyan", statsCommandAction("targets trip 5"), "Show trip target efficiency")
-    uiPrintRow(16, "Ability breakdown", "OPEN", "cyan", statsCommandAction("abilities trip 5"), "Show trip ability performance")
-    uiPrintRow(17, "Rage report", "OPEN", "cyan", statsCommandAction("rage trip"), "Show trip rage usage summary")
+    printRow(13, "Trip vs last trip", "OPEN", "cyan", statsCommandAction("compare trip lasttrip"), "Compare current trip against the previous completed trip")
+    printRow(14, "Area rankings", "OPEN", "cyan", statsCommandAction("areas trip 5 xp"), "Show trip area rankings sorted by xp/hr")
+    printRow(15, "Target breakdown", "OPEN", "cyan", statsCommandAction("targets trip 5"), "Show trip target efficiency")
+    printRow(16, "Ability breakdown", "OPEN", "cyan", statsCommandAction("abilities trip 5"), "Show trip ability performance")
+    printRow(17, "Rage report", "OPEN", "cyan", statsCommandAction("rage trip"), "Show trip rage usage summary")
   elseif focusLabel == "lifetime" then
-    uiPrintRow(13, "Lifetime summary", "OPEN", "cyan", statsCommandAction("lifetime"), "Show full lifetime summary")
-    uiPrintRow(14, "Lifetime areas", "OPEN", "cyan", statsCommandAction("areas lifetime 5 xp"), "Show top lifetime areas")
-    uiPrintRow(15, "Lifetime abilities", "OPEN", "cyan", statsCommandAction("abilities lifetime 5"), "Show top lifetime abilities")
-    uiPrintRow(16, "Lifetime crits", "OPEN", "cyan", statsCommandAction("crits lifetime"), "Show lifetime crit summary")
-    uiPrintRow(17, "Start a trip", "RUN", "green", function() boop.stats.startTrip() end, "Begin a new explicit trip timer")
+    printRow(13, "Lifetime summary", "OPEN", "cyan", statsCommandAction("lifetime"), "Show full lifetime summary")
+    printRow(14, "Lifetime areas", "OPEN", "cyan", statsCommandAction("areas lifetime 5 xp"), "Show top lifetime areas")
+    printRow(15, "Lifetime abilities", "OPEN", "cyan", statsCommandAction("abilities lifetime 5"), "Show top lifetime abilities")
+    printRow(16, "Lifetime crits", "OPEN", "cyan", statsCommandAction("crits lifetime"), "Show lifetime crit summary")
+    printRow(17, "Start a trip", "RUN", "green", function() boop.stats.startTrip() end, "Begin a new explicit trip timer")
   else
-    uiPrintRow(13, "Enable boop", "RUN", "green", function() boop.ui.setEnabled(true) end, "Enable hunting and start a session")
-    uiPrintRow(14, "Start a trip", "RUN", "green", function() boop.stats.startTrip() end, "Begin a new explicit trip timer")
-    uiPrintRow(15, "Lifetime summary", "OPEN", "cyan", statsCommandAction("lifetime"), "Show lifetime totals")
-    uiPrintRow(16, "Lifetime areas", "OPEN", "cyan", statsCommandAction("areas lifetime 5 xp"), "Show lifetime area rankings")
-    uiPrintRow(17, "Lifetime abilities", "OPEN", "cyan", statsCommandAction("abilities lifetime 5"), "Show lifetime ability performance")
+    printRow(13, "Enable boop", "RUN", "green", function() boop.ui.setEnabled(true) end, "Enable hunting and start a session")
+    printRow(14, "Start a trip", "RUN", "green", function() boop.stats.startTrip() end, "Begin a new explicit trip timer")
+    printRow(15, "Lifetime summary", "OPEN", "cyan", statsCommandAction("lifetime"), "Show lifetime totals")
+    printRow(16, "Lifetime areas", "OPEN", "cyan", statsCommandAction("areas lifetime 5 xp"), "Show lifetime area rankings")
+    printRow(17, "Lifetime abilities", "OPEN", "cyan", statsCommandAction("abilities lifetime 5"), "Show lifetime ability performance")
   end
 
-  uiPrintFooter("Type: boop stats areas | boop stats targets | boop stats abilities | boop stats compare")
+  printFooter("Type: boop stats areas | boop stats targets | boop stats abilities | boop stats compare")
   return true
 end
 

@@ -1,8 +1,8 @@
 {
        "package": "boop Hunter",
-      "title": "boop Hunter 0.1.175",
+      "title": "boop Hunter 0.1.176",
        "description": "Standalone hunting system for Achaea.",
-      "version": "0.1.175",
+      "version": "0.1.176",
        "author": "Nikolais",
        "icon": "",
        "dependencies": "",

@@ -449,6 +449,11 @@ uiPrintFooter = function(text)
   end
 end
 
+boop.ui.printHeader = uiPrintHeader
+boop.ui.printSection = uiPrintSection
+boop.ui.printRow = uiPrintRow
+boop.ui.printFooter = uiPrintFooter
+
 local function cycleTargetingMode(step, noRefresh)
   local order = { "manual", "whitelist", "blacklist", "auto" }
   local current = boop.util.safeLower(boop.config.targetingMode or "whitelist")
