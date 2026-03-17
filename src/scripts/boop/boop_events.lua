@@ -281,6 +281,10 @@ function boop.onRoomItemsRemove()
   local removedName = removed and removed.name or ""
   boop.targets.removeRoomItem(removed)
 
+  if removedId ~= "" and boop.targets and boop.targets.clearTargetCall and tostring(boop.state.calledTargetId or "") == removedId then
+    boop.targets.clearTargetCall("called target removed")
+  end
+
   if removedId == "" then
     return
   end
@@ -336,6 +340,9 @@ function boop.onRoomInfo()
     vars.movedRooms = true
     vars.lastRoom = vars.room
     boop.clearGoldQueueIntent()
+    if boop.targets and boop.targets.clearTargetCall then
+      boop.targets.clearTargetCall("room changed")
+    end
     if boop.targets and boop.targets.clearTargetShield then
       boop.targets.clearTargetShield("room changed")
     end
@@ -506,6 +513,9 @@ function boop.prequeueStandard()
     if boop.config.useQueueing and boop.state.autoGrabGoldPending then
       flushPendingGold("prequeue no target")
     end
+    if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
+      return
+    end
     return
   end
 
@@ -561,6 +571,10 @@ function boop.tick()
       flushPendingGold("tick no target")
     end
     boop.state.attacking = false
+    if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
+      boop.trace.log("tick: waiting for leader target call")
+      return
+    end
     boop.trace.log("tick: no target")
     if boop.walk and boop.walk.maybeAdvance then
       boop.walk.maybeAdvance("tick no target")

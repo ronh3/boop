@@ -85,6 +85,9 @@ local function blockedReason()
   if state.walkMoveQueued then
     return "move already queued"
   end
+  if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
+    return "waiting for leader target call"
+  end
   if state.diagHold then
     return "diag pause is active"
   end

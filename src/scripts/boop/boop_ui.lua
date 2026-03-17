@@ -126,6 +126,8 @@ local function renderStatusDashboard()
   local targetShown = targetId ~= "" and targetId or "(none)"
   local targetNameShown = targetName ~= "" and targetName or "(none)"
   local assistShown = assistStatusText()
+  local calledTargetShown = tostring((boop.state and boop.state.calledTargetId) or "")
+  if calledTargetShown == "" then calledTargetShown = "(none)" end
 
   if cecho then
     local row = 1
@@ -143,6 +145,10 @@ local function renderStatusDashboard()
     uiPrintRow(row, "Assist", assistShown, boop.config.assistEnabled and "green" or "yellow")
     row = row + 1
     uiPrintRow(row, "Targeting mode", tostring(boop.config.targetingMode or "whitelist"), "cyan")
+    row = row + 1
+    uiPrintRow(row, "Leader target gate", boolText(not not boop.config.targetCall), boolColor(not not boop.config.targetCall))
+    row = row + 1
+    uiPrintRow(row, "Called target id", calledTargetShown, "cyan")
     row = row + 1
     uiPrintRow(row, "Current target id", tostring(targetShown), "cyan")
     row = row + 1
@@ -197,6 +203,8 @@ local function renderStatusDashboard()
   boop.util.echo("  partyMembers: " .. tostring(partyCount))
   boop.util.echo("  assist: " .. assistShown)
   boop.util.echo("  targetingMode: " .. tostring(boop.config.targetingMode))
+  boop.util.echo("  targetCall: " .. tostring(boop.config.targetCall))
+  boop.util.echo("  calledTargetId: " .. tostring(calledTargetShown))
   boop.util.echo("  currentTargetId: " .. tostring(targetShown))
   boop.util.echo("  currentTargetName: " .. tostring(targetNameShown))
   boop.util.echo("  roomDenizens: " .. tostring(denizenCount))
@@ -702,6 +710,8 @@ local function canonConfigKey(raw)
     assistenabled = "assistEnabled",
     assistleader = "assistLeader",
     leader = "assistLeader",
+    targetcall = "targetCall",
+    leadertargetcall = "targetCall",
     affcalls = "rageAffCalloutsEnabled",
     rageaffcalls = "rageAffCalloutsEnabled",
     rageaffcallouts = "rageAffCalloutsEnabled",
@@ -747,6 +757,7 @@ function boop.ui.listConfigValues()
     "diagTimeoutSeconds",
     "partySize",
     "partyRoster",
+    "targetCall",
     "rageAffCalloutsEnabled",
     "assistEnabled",
     "assistLeader",
@@ -938,6 +949,24 @@ function boop.ui.setConfigValue(key, value)
     return
   end
 
+  if canonical == "targetCall" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.warn("targetCall expects on/off")
+      return
+    end
+    if parsed and assistLeader() == "" then
+      boop.util.warn("target call mode needs a leader; use: boop assist <name>")
+      return
+    end
+    saveConfigValue("targetCall", parsed)
+    if not parsed and boop.targets and boop.targets.clearTargetCall then
+      boop.targets.clearTargetCall("target call disabled")
+    end
+    boop.util.ok("leader target call gate: " .. (parsed and "on" or "off"))
+    return
+  end
+
   if canonical == "assistEnabled" then
     local parsed = parseBool(value)
     if parsed == nil then
@@ -1103,6 +1132,36 @@ function boop.ui.affCallCommand(raw)
 
   saveConfigValue("rageAffCalloutsEnabled", parsed)
   boop.util.ok("rage affliction callouts: " .. (parsed and "on" or "off"))
+end
+
+function boop.ui.targetCallCommand(raw)
+  local text = boop.util.trim(raw or "")
+  local cmd = boop.util.safeLower(text)
+
+  if cmd == "" or cmd == "status" or cmd == "show" then
+    local calledId = tostring((boop.state and boop.state.calledTargetId) or "")
+    if calledId == "" then calledId = "(none)" end
+    boop.util.info("leader target call gate: " .. (boop.config.targetCall and "on" or "off"))
+    boop.util.info("called target id: " .. calledId)
+    boop.util.info("Usage: boop targetcall on|off")
+    return
+  end
+
+  local parsed = parseBool(cmd)
+  if parsed == nil then
+    boop.util.warn("Usage: boop targetcall on|off")
+    return
+  end
+  if parsed and assistLeader() == "" then
+    boop.util.warn("target call mode needs a leader; use: boop assist <name>")
+    return
+  end
+
+  saveConfigValue("targetCall", parsed)
+  if not parsed and boop.targets and boop.targets.clearTargetCall then
+    boop.targets.clearTargetCall("target call disabled")
+  end
+  boop.util.ok("leader target call gate: " .. (parsed and "on" or "off"))
 end
 
 local function currentAttackPreferenceClass()
@@ -2302,6 +2361,7 @@ local HELP_TOPICS = {
       "boop status",
       "boop walk",
       "boop walk start",
+      "boop targetcall on|off",
       "boop assist <leader>",
       "boop prefer",
       "boop config",
@@ -2348,6 +2408,7 @@ local HELP_TOPICS = {
       "boop ragemode",
       "boop ragemode <number>",
       "boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>",
+      "boop targetcall on|off",
       "boop affcalls on|off",
       "boop assist <leader>",
       "boop assist on|off|clear",
@@ -2602,6 +2663,7 @@ function boop.ui.home()
   local tripGold = tonumber(trip and trip.gold) or 0
   local tripXp = tonumber(trip and trip.rawExperience) or 0
   local assistShown = assistStatusText()
+  local targetCallShown = boop.config.targetCall and "ON" or "OFF"
 
   if cecho then
     uiPrintHeader("boop")
@@ -2611,27 +2673,28 @@ function boop.ui.home()
     uiPrintRow(3, "Targeting", targetingMode, "cyan")
     uiPrintRow(4, "Ragemode", rageMode, "yellow")
     uiPrintRow(5, "Assist", assistShown, boop.config.assistEnabled and "green" or "yellow")
-    uiPrintRow(6, "Target", targetShown, "cyan")
-    uiPrintRow(7, "Room denizens", tostring(denizenCount), "cyan")
+    uiPrintRow(6, "Leader target gate", targetCallShown, boop.config.targetCall and "green" or "yellow")
+    uiPrintRow(7, "Target", targetShown, "cyan")
+    uiPrintRow(8, "Room denizens", tostring(denizenCount), "cyan")
 
     uiPrintSection("trip snapshot")
-    uiPrintRow(8, "Trip state", tripRunning, tripRunning == "running" and "green" or "yellow")
-    uiPrintRow(9, "Trip kills", tostring(tripKills), "cyan")
-    uiPrintRow(10, "Trip gold", tostring(tripGold), "yellow")
-    uiPrintRow(11, "Trip raw xp", tostring(tripXp), "yellow")
+    uiPrintRow(9, "Trip state", tripRunning, tripRunning == "running" and "green" or "yellow")
+    uiPrintRow(10, "Trip kills", tostring(tripKills), "cyan")
+    uiPrintRow(11, "Trip gold", tostring(tripGold), "yellow")
+    uiPrintRow(12, "Trip raw xp", tostring(tripXp), "yellow")
 
     uiPrintSection("quick actions")
-    uiPrintRow(12, "Status dashboard", "OPEN", "cyan", function() boop.ui.status("status") end, "Open status dashboard")
-    uiPrintRow(13, "Config", "OPEN", "cyan", function() boop.ui.config("home") end, "Open configuration")
-    uiPrintRow(14, "Stats", "OPEN", "cyan", function() boop.stats.command("") end, "Open stats dashboard")
-    uiPrintRow(15, "Help", "OPEN", "cyan", function() boop.ui.help("home") end, "Open help")
+    uiPrintRow(13, "Status dashboard", "OPEN", "cyan", function() boop.ui.status("status") end, "Open status dashboard")
+    uiPrintRow(14, "Config", "OPEN", "cyan", function() boop.ui.config("home") end, "Open configuration")
+    uiPrintRow(15, "Stats", "OPEN", "cyan", function() boop.stats.command("") end, "Open stats dashboard")
+    uiPrintRow(16, "Help", "OPEN", "cyan", function() boop.ui.help("home") end, "Open help")
     uiPrintFooter("Type: boop status | boop config | boop stats | boop help")
     return
   end
 
   boop.util.echo("BOOP")
   boop.util.echo("----------------------------------------")
-  boop.util.echo(string.format("State: %s | class: %s | targeting: %s | ragemode: %s | assist: %s", enabled, tostring(class), targetingMode, rageMode, assistShown))
+  boop.util.echo(string.format("State: %s | class: %s | targeting: %s | ragemode: %s | assist: %s | targetcall: %s", enabled, tostring(class), targetingMode, rageMode, assistShown, targetCallShown))
   boop.util.echo("Target: " .. targetShown .. " | room denizens: " .. tostring(denizenCount))
   boop.util.echo(string.format("Trip: %s | kills %d | gold %d | xp %d", tripRunning, tripKills, tripGold, tripXp))
   boop.util.echo("Quick: boop status | boop config | boop stats | boop help")
@@ -2831,15 +2894,18 @@ local function configRenderTargetingSection()
     uiPrintRow(4, "Retarget on higher priority", boolText(not not boop.config.retargetOnPriority), boolColor(not not boop.config.retargetOnPriority), function()
       boop.ui.config("4")
     end, "Toggle retargeting when higher-priority mobs enter")
-    uiPrintSection("list managers")
-    uiPrintRow(5, "Whitelist manager", "OPEN", "green", function()
+    uiPrintRow(5, "Leader target gate", boolText(not not boop.config.targetCall), boolColor(not not boop.config.targetCall), function()
       boop.ui.config("5")
-    end, "Open whitelist manager")
-    uiPrintRow(6, "Whitelist browse", "OPEN", "green", function()
+    end, "Toggle waiting for leader target calls")
+    uiPrintSection("list managers")
+    uiPrintRow(6, "Whitelist manager", "OPEN", "green", function()
       boop.ui.config("6")
-    end, "Open whitelist area browser")
-    uiPrintRow(7, "Blacklist manager", "OPEN", "green", function()
+    end, "Open whitelist manager")
+    uiPrintRow(7, "Whitelist browse", "OPEN", "green", function()
       boop.ui.config("7")
+    end, "Open whitelist area browser")
+    uiPrintRow(8, "Blacklist manager", "OPEN", "green", function()
+      boop.ui.config("8")
     end, "Open blacklist manager")
     uiPrintFooter("Type: boop config <number> to change | boop config back | boop config home")
     return
@@ -2850,9 +2916,10 @@ local function configRenderTargetingSection()
   boop.util.echo("[2] Whitelist priority order  [ " .. boolText(not not boop.config.whitelistPriorityOrder) .. " ]")
   boop.util.echo("[3] Target order              [ " .. tostring(boop.config.targetOrder or "order") .. " ]")
   boop.util.echo("[4] Retarget on priority      [ " .. boolText(not not boop.config.retargetOnPriority) .. " ]")
-  boop.util.echo("[5] Whitelist manager         [ OPEN ]")
-  boop.util.echo("[6] Whitelist browse          [ OPEN ]")
-  boop.util.echo("[7] Blacklist manager         [ OPEN ]")
+  boop.util.echo("[5] Leader target gate        [ " .. boolText(not not boop.config.targetCall) .. " ]")
+  boop.util.echo("[6] Whitelist manager         [ OPEN ]")
+  boop.util.echo("[7] Whitelist browse          [ OPEN ]")
+  boop.util.echo("[8] Blacklist manager         [ OPEN ]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config <number> to change | boop config back | boop config home")
 end
@@ -3003,12 +3070,15 @@ local function configApplySectionOption(sectionKey, option)
       boop.ui.toggleConfigBool("retargetOnPriority", true)
       return true
     elseif n == 5 then
-      boop.targets.displayWhitelist()
+      boop.ui.targetCallCommand(boop.config.targetCall and "off" or "on")
       return true
     elseif n == 6 then
-      boop.targets.displayWhitelistBrowse()
+      boop.targets.displayWhitelist()
       return true
     elseif n == 7 then
+      boop.targets.displayWhitelistBrowse()
+      return true
+    elseif n == 8 then
       boop.targets.displayBlacklist()
       return true
     end

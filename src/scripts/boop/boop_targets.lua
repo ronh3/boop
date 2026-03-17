@@ -8,6 +8,25 @@ local function normalizeName(name)
   return boop.util.safeLower(v)
 end
 
+local function currentRoomId()
+  if gmcp and gmcp.Room and gmcp.Room.Info and gmcp.Room.Info.num then
+    return tostring(gmcp.Room.Info.num or "")
+  end
+  return ""
+end
+
+local function configuredLeader()
+  return boop.util.trim((boop.config and boop.config.assistLeader) or "")
+end
+
+local function targetCallEnabled()
+  return not not (boop.config and boop.config.targetCall and boop.config.targetingMode ~= "manual")
+end
+
+local function sameSpeaker(a, b)
+  return sameName(a, b)
+end
+
 local function sameName(a, b)
   local na = normalizeName(a)
   local nb = normalizeName(b)
@@ -106,6 +125,75 @@ function boop.targets.setTarget(id)
   if gmcp and gmcp.IRE and gmcp.IRE.Target then
     sendGMCP([[IRE.Target.Set "]] .. boop.state.currentTargetId .. [["]])
   end
+end
+
+function boop.targets.clearTargetCall(reason)
+  boop.state = boop.state or {}
+  boop.state.calledTargetId = ""
+  boop.state.calledTargetRoom = ""
+  boop.state.calledTargetBy = ""
+  boop.state.calledTargetAt = nil
+  if reason and boop.trace and boop.trace.log then
+    boop.trace.log("target call cleared: " .. tostring(reason))
+  end
+end
+
+function boop.targets.waitingForTargetCall()
+  if not targetCallEnabled() then
+    return false
+  end
+
+  local calledId = tostring(boop.state and boop.state.calledTargetId or "")
+  if calledId == "" then
+    return true
+  end
+
+  local calledRoom = tostring(boop.state and boop.state.calledTargetRoom or "")
+  local roomId = currentRoomId()
+  if calledRoom ~= "" and roomId ~= "" and calledRoom ~= roomId then
+    return true
+  end
+
+  return findDenizenById(boop.state and boop.state.denizens or {}, calledId) == nil
+end
+
+function boop.targets.onPartyTargetCall(speaker, targetId, _rawLine)
+  local leader = configuredLeader()
+  local caller = boop.util.trim(speaker or "")
+  local calledId = boop.util.trim(tostring(targetId or ""))
+
+  if not targetCallEnabled() then
+    return false
+  end
+  if leader == "" or caller == "" or calledId == "" then
+    return false
+  end
+  if not sameSpeaker(caller, leader) then
+    return false
+  end
+
+  boop.state = boop.state or {}
+  boop.state.calledTargetId = calledId
+  boop.state.calledTargetRoom = currentRoomId()
+  boop.state.calledTargetBy = caller
+  boop.state.calledTargetAt = os.clock()
+
+  if boop.trace and boop.trace.log then
+    boop.trace.log(string.format("leader target call: %s -> %s", caller, calledId))
+  end
+
+  if boop.util and boop.util.info then
+    boop.util.info(string.format("leader target: %s (%s)", calledId, caller))
+  end
+
+  if boop.config and boop.config.enabled and not (boop.state and boop.state.diagHold) and tempTimer then
+    tempTimer(0, function()
+      if boop and boop.tick then
+        boop.tick()
+      end
+    end)
+  end
+  return true
 end
 
 local function listContains(list, name)
@@ -336,6 +424,53 @@ local function currentTargetEligible(mode, area, denizens)
   return ""
 end
 
+local function calledTargetEligible(mode, area, denizens)
+  if not targetCallEnabled() then
+    return ""
+  end
+
+  local calledId = tostring(boop.state and boop.state.calledTargetId or "")
+  if calledId == "" then
+    return ""
+  end
+
+  local calledRoom = tostring(boop.state and boop.state.calledTargetRoom or "")
+  local roomId = currentRoomId()
+  if calledRoom ~= "" and roomId ~= "" and calledRoom ~= roomId then
+    return ""
+  end
+
+  local denizen = findDenizenById(denizens, calledId)
+  if not denizen then
+    return ""
+  end
+
+  if mode == "whitelist" then
+    local whitelist = boop.lists.whitelist[area]
+    if whitelist and #whitelist > 0 and listContains(whitelist, denizen.name) then
+      return denizen.id
+    end
+    return ""
+  end
+
+  if mode == "blacklist" then
+    local blacklist = boop.lists.blacklist[area] or {}
+    if not listContains(blacklist, denizen.name) and not listContains(boop.lists.globalBlacklist, denizen.name) then
+      return denizen.id
+    end
+    return ""
+  end
+
+  if mode == "auto" then
+    if not boop.targets.isGloballyBlacklisted(denizen.name) then
+      return denizen.id
+    end
+    return ""
+  end
+
+  return denizen.id
+end
+
 function boop.targets.choose()
   local mode = boop.config.targetingMode
   local area = boop.targets.getArea()
@@ -343,6 +478,10 @@ function boop.targets.choose()
 
   if mode == "manual" then
     return boop.state.currentTargetId
+  end
+
+  if targetCallEnabled() then
+    return calledTargetEligible(mode, area, denizens)
   end
 
   if boop.config.retargetOnPriority == false then

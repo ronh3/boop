@@ -77,6 +77,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Targetcall",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+targetcall(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Walk",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+walk(?:\\s+(.+))?$",

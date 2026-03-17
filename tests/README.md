@@ -6,6 +6,8 @@ Current coverage:
 
 - `boop_targets_spec.lua`
   Confirms target choice behavior for whitelist priority and `retargetOnPriority`.
+- `boop_target_call_spec.lua`
+  Confirms leader target-call gating waits for a designated party leader to call a room target ID before attacking it.
 - `boop_attacks_spec.lua`
   Confirms opener and shieldbreak attack selection, plus preferred standard attack overrides and fallback when a preferred option is unavailable.
 - `boop_assist_spec.lua`

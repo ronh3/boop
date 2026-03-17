@@ -61,4 +61,9 @@ function boop.state.init()
   boop.state.walkArrivalTimer = boop.state.walkArrivalTimer or nil
 
   boop.state.openerUsedByClass = boop.state.openerUsedByClass or {}
+
+  boop.state.calledTargetId = boop.state.calledTargetId or ""
+  boop.state.calledTargetRoom = boop.state.calledTargetRoom or ""
+  boop.state.calledTargetBy = boop.state.calledTargetBy or ""
+  boop.state.calledTargetAt = boop.state.calledTargetAt or nil
 end
