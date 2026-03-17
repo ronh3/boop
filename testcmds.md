@@ -97,10 +97,72 @@ local original = {
 local lines = {}
 local pending = ""
 
+local STRIPPABLE_TAGS = {
+  reset = true,
+  white = true,
+  cyan = true,
+  yellow = true,
+  green = true,
+  red = true,
+  grey = true,
+  gray = true,
+  light_grey = true,
+  light_gray = true,
+  dark_grey = true,
+  dark_gray = true,
+  dark_turquoise = true,
+  dark_orchid = true,
+  alice_blue = true,
+  cadet_blue = true,
+  spring_green = true,
+  khaki = true,
+  tomato = true,
+  slate_gray = true,
+  slate_grey = true,
+  firebrick = true,
+  maroon = true,
+  misty_rose = true,
+  rosy_brown = true,
+  goldenrod = true,
+  salmon = true,
+  dark_slate_grey = true,
+  dark_slate_gray = true,
+  royal_blue = true,
+  peru = true,
+  light_slate_gray = true,
+  light_slate_grey = true,
+  olive_drab = true,
+  dark_olive_green = true,
+  honeydew = true,
+  dark_sea_green = true,
+  medium_sea_green = true,
+  orchid = true,
+  dark_slate_blue = true,
+  lavender = true,
+  thistle = true,
+  plum = true,
+  dim_grey = true,
+  dim_gray = true,
+  deep_sky_blue = true,
+  steel_blue = true,
+  light_steel_blue = true,
+  cornflower_blue = true,
+  forest_green = true,
+  saddle_brown = true,
+  beige = true,
+  tan = true,
+}
+
 local function stripMarkup(text)
   text = tostring(text or "")
   text = text:gsub("\27%[[0-9;]*m", "")
-  text = text:gsub("<[^>]+>", "")
+  text = text:gsub("<([^>]+)>", function(tag)
+    local key = tostring(tag or ""):lower()
+    if STRIPPABLE_TAGS[key] then
+      return ""
+    end
+    return "<" .. tag .. ">"
+  end)
   text = text:gsub("\r", "")
   return text
 end
