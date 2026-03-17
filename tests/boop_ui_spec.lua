@@ -161,6 +161,40 @@ describe("boop ui home", function()
     assert.are.equal("combat", boop.ui.configScreen)
   end)
 
+  it("shows a hunting subsection with overview context first", function()
+    helper.setTarget("42", "a vicious gnoll soldier", "100%")
+    boop.ui.setEnabled(true, true)
+
+    echoes = {}
+    boop.ui.config("combat")
+
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find("CONFIGURATION > Hunting", 1, true) ~= nil)
+    assert.is_true(joined:find("Hunting: ON | rage simple | blocker: engaged target", 1, true) ~= nil)
+    assert.is_true(joined:find("Target: 42 | a vicious gnoll soldier | next: let boop attack", 1, true) ~= nil)
+    assert.is_true(joined:find("[1] Toggle hunting", 1, true) ~= nil)
+    assert.is_true(joined:find("Type: boop config combat <number> | boop config back | boop config home", 1, true) ~= nil)
+  end)
+
+  it("shows a targeting subsection with live target context", function()
+    helper.setDenizens({
+      { id = "42", name = "a vicious gnoll soldier" },
+      { id = "43", name = "a lesser gnoll" },
+    })
+    boop.ui.setEnabled(true, true)
+    boop.state.calledTargetId = "43"
+
+    echoes = {}
+    boop.ui.config("targeting")
+
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find("CONFIGURATION > Targeting", 1, true) ~= nil)
+    assert.is_true(joined:find("Mode: whitelist | order: order | blocker: ready", 1, true) ~= nil)
+    assert.is_true(joined:find("Called target: 43 | room denizens: 2 | next: let boop attack", 1, true) ~= nil)
+    assert.is_true(joined:find("[6] Whitelist manager         [ OPEN ]", 1, true) ~= nil)
+    assert.is_true(joined:find("Type: boop config targeting <number> | boop config back | boop config home", 1, true) ~= nil)
+  end)
+
   it("shows a consolidated party dashboard and separate roster manager", function()
     helper.setClass("occultist")
     boop.ui.setEnabled(true, true)
