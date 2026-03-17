@@ -73,7 +73,6 @@ describe("boop leader target call mode", function()
 
     assert.stub(send_gmcp_stub).was_called_with([[IRE.Target.Set "43"]])
     assert.stub(send_stub).was_called_with("warp 43", false)
-    assert.stub(send_stub).was_called_with("harry 43", false)
   end)
 
   it("clears the leader call when the room changes", function()

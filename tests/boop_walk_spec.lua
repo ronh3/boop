@@ -121,6 +121,8 @@ describe("boop walk integration", function()
     scheduled[1]()
 
     assert.is_true(boop.state.walkMoveQueued)
+    assert.is_function(scheduled[2])
+    scheduled[2]()
     assert.stub(raise_event_stub).was_called_with("demonwalker.move")
   end)
 end)
