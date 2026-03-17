@@ -90,4 +90,21 @@ describe("boop gold handling", function()
     assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
     assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
   end)
+
+  it("still probes for sovereigns on a later no-target tick if settle expiry saw a stale target", function()
+    helper.setDenizens({
+      { id = "42", name = "a vicious gnoll soldier", attrib = "m" },
+    })
+    boop.config.useQueueing = true
+    boop.state.goldProbeNeeded = true
+
+    boop.tick()
+    assert.stub(send_stub).was_not_called()
+
+    helper.setDenizens({})
+    boop.tick()
+
+    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
+    assert.is_false(boop.state.goldProbeNeeded)
+  end)
 end)

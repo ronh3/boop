@@ -37,6 +37,7 @@ function boop.clearGoldQueueIntent()
     boop.state.goldSettleTimer = nil
   end
   boop.state.goldSettlePending = false
+  boop.state.goldProbeNeeded = false
   boop.state.goldGetPending = false
   boop.state.goldPutPending = false
   boop.state.goldGetRetries = 0
@@ -53,6 +54,20 @@ local function clearGoldSettleWindow()
   boop.state.goldSettlePending = false
 end
 
+local function consumeGoldProbe(reason)
+  boop.state = boop.state or {}
+  if not boop.state.goldProbeNeeded then
+    return false
+  end
+  if boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending then
+    return false
+  end
+  boop.state.goldProbeNeeded = false
+  boop.trace.log("gold probe: " .. tostring(reason or "unspecified"))
+  queueGoldCommands()
+  return true
+end
+
 local function armGoldSettleWindow(reason)
   if not boop.config.enabled then return end
   if not boop.config.autoGrabGold then return end
@@ -60,6 +75,7 @@ local function armGoldSettleWindow(reason)
   boop.state = boop.state or {}
   clearGoldSettleWindow()
   boop.state.goldSettlePending = true
+  boop.state.goldProbeNeeded = true
   boop.trace.log("gold settle watch: " .. tostring(reason or "target removed"))
   boop.state.goldSettleTimer = tempTimer(0.4, function()
     boop.state.goldSettleTimer = nil
@@ -67,13 +83,7 @@ local function armGoldSettleWindow(reason)
     boop.trace.log("gold settle expired")
     local targetId = boop.targets and boop.targets.choose and boop.targets.choose() or ""
     if targetId == "" then
-      if not (boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending) then
-        boop.trace.log("gold settle expired: probing get sovereigns")
-        if boop.config.useQueueing then
-          queueGoldCommands()
-        else
-          queueGoldCommands()
-        end
+      if consumeGoldProbe("settle expired") then
         return
       end
       if boop.walk and boop.walk.maybeAdvance then
@@ -116,6 +126,7 @@ local function onGoldDetected(source)
 
   boop.state = boop.state or {}
   clearGoldSettleWindow()
+  boop.state.goldProbeNeeded = false
   boop.trace.log("gold drop detected" .. (source and (": " .. source) or ""))
 
   if boop.config.useQueueing then
@@ -562,6 +573,9 @@ function boop.prequeueStandard()
       boop.trace.log("prequeue: waiting for gold settle")
       return
     end
+    if consumeGoldProbe("prequeue no target") then
+      return
+    end
     if boop.config.useQueueing and boop.state.autoGrabGoldPending then
       flushPendingGold("prequeue no target")
     end
@@ -621,6 +635,9 @@ function boop.tick()
   if not targetId or targetId == "" then
     if boop.state.goldSettlePending then
       boop.trace.log("tick: waiting for gold settle")
+      return
+    end
+    if consumeGoldProbe("tick no target") then
       return
     end
     if boop.config.useQueueing and boop.state.autoGrabGoldPending then
