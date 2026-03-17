@@ -431,7 +431,7 @@ uiPrintRow = function(index, label, buttonText, buttonColor, onClick, hint, labe
     local prefix = uiIndexPrefix(index)
     local leftRaw = prefix .. tostring(label or "")
     local left = uiPadRight(leftRaw, width)
-    cecho("\n" .. theme.text .. left .. "  " .. theme.reset)
+    cecho("\n" .. theme.text .. left .. " " .. theme.reset)
     local colorTag = semanticTag(tostring(buttonColor or "text"))
     local coloredButton = colorTag .. uiButtonLabel(buttonText or "") .. theme.reset
     if cechoLink and onClick then
@@ -462,6 +462,7 @@ boop.ui.printHeader = uiPrintHeader
 boop.ui.printSection = uiPrintSection
 boop.ui.printRow = uiPrintRow
 boop.ui.printFooter = uiPrintFooter
+boop.ui.computeLabelWidth = uiComputeLabelWidth
 
 local function cycleTargetingMode(step, noRefresh)
   local order = { "manual", "whitelist", "blacklist", "auto" }
