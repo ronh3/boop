@@ -133,8 +133,15 @@ local function footerClickableParts(text)
   local raw = tostring(text or "")
   local parts = {}
   local segments = {}
-  for segment in raw:gmatch("([^|]+)") do
-    segments[#segments + 1] = segment
+  local cursor = 1
+  while cursor <= #raw do
+    local sepStart, sepEnd = raw:find(" | ", cursor, true)
+    if not sepStart then
+      segments[#segments + 1] = raw:sub(cursor)
+      break
+    end
+    segments[#segments + 1] = raw:sub(cursor, sepStart - 1)
+    cursor = sepEnd + 1
   end
   if #segments == 0 and raw ~= "" then
     segments[1] = raw
@@ -3113,15 +3120,17 @@ local function helpRenderTopic(topic)
       uiPrintSection("what this covers")
       uiPrintRow(1, topic.summary, "INFO", "cyan")
     end
-    local rows = {}
+    local commandRows = {}
     for i, entry in ipairs(topic.commands or {}) do
       local cmd = type(entry) == "table" and entry.command or tostring(entry or "")
-      rows[#rows + 1] = { index = i, label = cmd }
+      commandRows[#commandRows + 1] = { index = i, label = cmd }
     end
+    local noteRows = {}
     for i, note in ipairs(topic.notes or {}) do
-      rows[#rows + 1] = { index = i, label = note }
+      noteRows[#noteRows + 1] = { index = i, label = note }
     end
-    local labelWidth = uiComputeLabelWidth(rows, UI_LABEL_COL_WIDTH, 140)
+    local commandWidth = uiComputeLabelWidth(commandRows, 56, 92)
+    local noteWidth = uiComputeLabelWidth(noteRows, 56, 110)
 
     uiPrintSection("commands")
     for i, entry in ipairs(topic.commands or {}) do
@@ -3130,12 +3139,12 @@ local function helpRenderTopic(topic)
       local hint = description ~= "" and (description .. " | Click to seed this command.") or ("Copy command: " .. value)
       uiPrintRow(i, value, "COPY", "yellow", function()
         uiSetCommandLine(value)
-      end, hint, labelWidth)
+      end, hint, commandWidth)
     end
     if topic.notes and #topic.notes > 0 then
       uiPrintSection("notes")
       for i, note in ipairs(topic.notes) do
-        uiPrintRow(i, note, "INFO", "cyan", nil, note, labelWidth)
+        uiPrintRow(i, note, "INFO", "cyan", nil, note, noteWidth)
       end
     end
     uiPrintFooter("Type: boop help home | boop help back | boop help <number|topic>")

@@ -344,6 +344,34 @@ describe("boop ui home", function()
     }, cmdline)
   end)
 
+  it("does not split help footer placeholders into fake commands", function()
+    local callbacks = {}
+    local cmdline = {}
+
+    _G.cecho = function(_) end
+    _G.cechoLink = function(_, cb, _, _)
+      callbacks[#callbacks + 1] = cb
+    end
+    append_cmd_stub = stub(_G, "appendCmdLine", function(text)
+      cmdline[#cmdline + 1] = text
+    end)
+    clear_cmd_stub = stub(_G, "clearCmdLine", function()
+      cmdline[#cmdline + 1] = "<clear>"
+    end)
+
+    boop.ui.printFooter("Type: boop help home | boop help <number|topic>")
+
+    assert.are.equal(2, #callbacks)
+
+    callbacks[1]()
+    callbacks[2]()
+
+    assert.are.same({
+      "<clear>", "boop help home",
+      "<clear>", "boop help",
+    }, cmdline)
+  end)
+
   it("shows a consolidated party dashboard and separate roster manager", function()
     helper.setClass("occultist")
     boop.ui.setEnabled(true, true)
