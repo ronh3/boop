@@ -17,6 +17,10 @@ describe("boop stats", function()
     helper.reset()
     messages = {}
     echoes = {}
+    saved_cecho = _G.cecho
+    saved_cecho_link = _G.cechoLink
+    _G.cecho = nil
+    _G.cechoLink = nil
 
     send_gmcp_stub = stub(_G, "sendGMCP", function(_) end)
     info_stub = stub(boop.util, "info", function(msg)
@@ -59,14 +63,10 @@ describe("boop stats", function()
       clear_mob_xp_stub:revert()
       clear_mob_xp_stub = nil
     end
-    if saved_cecho ~= nil then
-      _G.cecho = saved_cecho
-      saved_cecho = nil
-    end
-    if saved_cecho_link ~= nil then
-      _G.cechoLink = saved_cecho_link
-      saved_cecho_link = nil
-    end
+    _G.cecho = saved_cecho
+    _G.cechoLink = saved_cecho_link
+    saved_cecho = nil
+    saved_cecho_link = nil
   end)
 
   it("accumulates gold and experience deltas into session login trip lifetime and area buckets", function()
@@ -295,11 +295,6 @@ describe("boop stats", function()
   end)
 
   it("shows a summary-first dashboard with optimization next views", function()
-    saved_cecho = _G.cecho
-    saved_cecho_link = _G.cechoLink
-    _G.cecho = nil
-    _G.cechoLink = nil
-
     helper.setArea("Mhaldor")
     boop.config.partySize = 1
 
@@ -383,11 +378,6 @@ describe("boop stats", function()
   end)
 
   it("falls back to lifetime guidance when session and trip are empty", function()
-    saved_cecho = _G.cecho
-    saved_cecho_link = _G.cechoLink
-    _G.cecho = nil
-    _G.cechoLink = nil
-
     helper.setArea("UNKNOWN")
     boop.stats.lifetime.kills = 828
     boop.stats.lifetime.gold = 142435
@@ -789,8 +779,6 @@ describe("boop stats", function()
   end)
 
   it("stops a trip cleanly while the rich stats view is enabled", function()
-    saved_cecho = _G.cecho
-    saved_cecho_link = _G.cechoLink
     _G.cecho = function(_) end
     _G.cechoLink = nil
 
@@ -826,8 +814,6 @@ describe("boop stats", function()
   end)
 
   it("renders detailed stats views cleanly while the rich view is enabled", function()
-    saved_cecho = _G.cecho
-    saved_cecho_link = _G.cechoLink
     _G.cecho = function(_) end
     _G.cechoLink = nil
 
@@ -867,8 +853,6 @@ describe("boop stats", function()
     boop.stats.onTargetSet("42", "a vicious gnoll soldier")
     boop.stats.onExperienceGain("28,000")
     boop.stats.onExperienceGain("29,000")
-    saved_cecho = _G.cecho
-    saved_cecho_link = _G.cechoLink
     _G.cecho = nil
     _G.cechoLink = nil
 

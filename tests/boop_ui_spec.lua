@@ -116,6 +116,7 @@ describe("boop ui home", function()
     boop.ui.setEnabled(true, true)
     boop.ui.assistCommand("Leader")
     boop.ui.modeCommand("leader-call")
+    boop.state.calledTargetId = "42"
     boop.ui.setConfigValue("partySize", "3")
     boop.stats.trip.stopwatch = 88
     boop.stats.trip.kills = 3
@@ -144,6 +145,7 @@ describe("boop ui home", function()
     boop.ui.setEnabled(true, true)
     boop.ui.assistCommand("Leader")
     boop.ui.modeCommand("leader-call")
+    boop.state.calledTargetId = "42"
     boop.ui.setConfigValue("partySize", "3")
 
     echoes = {}
