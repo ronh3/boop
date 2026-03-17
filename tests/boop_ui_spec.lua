@@ -413,6 +413,48 @@ describe("boop ui home", function()
     assert.are.equal("[OK] mode: leader-call -> Leader", echoes[#echoes])
   end)
 
+  it("applies the solo preset as a baseline bundle", function()
+    boop.ui.assistCommand("Leader")
+    boop.ui.modeCommand("leader-call")
+    boop.ui.setConfigValue("partySize", "4")
+    boop.ui.setRageMode("tempo")
+    boop.ui.setConfigValue("useQueueing", "on")
+
+    boop.ui.presetCommand("solo")
+
+    assert.are.equal("whitelist", boop.config.targetingMode)
+    assert.is_false(boop.config.useQueueing)
+    assert.is_true(boop.config.prequeueEnabled)
+    assert.are.equal(1, boop.config.attackLeadSeconds)
+    assert.are.equal("simple", boop.config.attackMode)
+    assert.are.equal(1, boop.config.partySize)
+    assert.is_false(boop.config.rageAffCalloutsEnabled)
+    assert.is_false(boop.config.assistEnabled)
+    assert.is_false(boop.config.targetCall)
+    assert.are.equal("[OK] preset applied: solo", echoes[#echoes])
+  end)
+
+  it("requires a leader before applying the leader-call preset", function()
+    boop.ui.presetCommand("leader-call")
+
+    assert.are.equal("[WARN] leader-call preset needs a leader; use: boop assist <name>", echoes[#echoes])
+    assert.is_false(boop.config.assistEnabled)
+    assert.is_false(boop.config.targetCall)
+  end)
+
+  it("applies the leader-call preset when a leader is configured", function()
+    boop.ui.assistCommand("Leader")
+
+    boop.ui.presetCommand("leader-call")
+
+    assert.is_true(boop.config.assistEnabled)
+    assert.is_true(boop.config.targetCall)
+    assert.are.equal(2, boop.config.partySize)
+    assert.are.equal("simple", boop.config.attackMode)
+    assert.is_false(boop.config.rageAffCalloutsEnabled)
+    assert.are.equal("[OK] preset applied: leader-call", echoes[#echoes])
+  end)
+
   it("sets and reports the active theme", function()
     boop.ui.themeCommand("ocean")
 

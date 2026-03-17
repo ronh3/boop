@@ -1469,6 +1469,105 @@ function boop.ui.modeCommand(raw)
   boop.util.warn("Usage: boop mode solo|assist|leader-call")
 end
 
+local PRESET_DEFS = {
+  solo = {
+    label = "solo",
+    summary = "Whitelist solo hunting with simple rage and no party gating.",
+    values = {
+      targetingMode = "whitelist",
+      useQueueing = false,
+      prequeueEnabled = true,
+      attackLeadSeconds = 1,
+      autoGrabGold = true,
+      attackMode = "simple",
+      partySize = 1,
+      rageAffCalloutsEnabled = false,
+      assistEnabled = false,
+      targetCall = false,
+    },
+  },
+  party = {
+    label = "party",
+    summary = "Party-friendly hunting without assist or leader target gating.",
+    values = {
+      targetingMode = "whitelist",
+      useQueueing = false,
+      prequeueEnabled = true,
+      attackLeadSeconds = 1,
+      autoGrabGold = true,
+      attackMode = "simple",
+      partySize = 2,
+      rageAffCalloutsEnabled = false,
+      assistEnabled = false,
+      targetCall = false,
+    },
+  },
+  ["leader-call"] = {
+    label = "leader-call",
+    summary = "Party hunting that waits for a called target from your configured leader.",
+    values = {
+      targetingMode = "whitelist",
+      useQueueing = false,
+      prequeueEnabled = true,
+      attackLeadSeconds = 1,
+      autoGrabGold = true,
+      attackMode = "simple",
+      partySize = 2,
+      rageAffCalloutsEnabled = false,
+      assistEnabled = true,
+      targetCall = true,
+    },
+  },
+}
+
+local function canonicalPresetName(raw)
+  local cmd = boop.util.safeLower(boop.util.trim(raw or ""))
+  if cmd == "leadercall" or cmd == "lead" then
+    return "leader-call"
+  end
+  return cmd
+end
+
+function boop.ui.presetCommand(raw)
+  local cmd = canonicalPresetName(raw)
+
+  if cmd == "" or cmd == "status" or cmd == "show" or cmd == "list" then
+    boop.util.info("presets: solo | party | leader-call")
+    boop.util.info("Usage: boop preset <solo|party|leader-call>")
+    boop.util.echo("  solo        -> " .. PRESET_DEFS.solo.summary)
+    boop.util.echo("  party       -> " .. PRESET_DEFS.party.summary)
+    boop.util.echo("  leader-call -> " .. PRESET_DEFS["leader-call"].summary)
+    return
+  end
+
+  local preset = PRESET_DEFS[cmd]
+  if not preset then
+    boop.util.warn("unknown preset: " .. tostring(raw))
+    boop.util.info("Usage: boop preset <solo|party|leader-call>")
+    return
+  end
+
+  if cmd == "leader-call" and assistLeader() == "" then
+    boop.util.warn("leader-call preset needs a leader; use: boop assist <name>")
+    return
+  end
+
+  for key, value in pairs(preset.values) do
+    saveConfigValue(key, value)
+  end
+
+  if not preset.values.prequeueEnabled and boop.state and boop.state.prequeueTimer then
+    killTimer(boop.state.prequeueTimer)
+    boop.state.prequeueTimer = nil
+  end
+
+  if not preset.values.targetCall and boop.targets and boop.targets.clearTargetCall then
+    boop.targets.clearTargetCall("preset " .. preset.label)
+  end
+
+  boop.util.ok("preset applied: " .. preset.label)
+end
+
 function boop.ui.themeCommand(raw)
   local text = boop.util.trim(raw or "")
   local cmd = boop.util.safeLower(text)
@@ -2933,6 +3032,7 @@ local HELP_TOPICS = {
       helpCommand("boop config", "Open the guided settings hub."),
       helpCommand("boop config home", "Jump back to the root of the config hub from any config screen."),
       helpCommand("boop party", "Open the party coordination dashboard for leader, assist, walk, and roster state."),
+      helpCommand("boop preset <solo|party|leader-call>", "Apply a recommended baseline for solo hunting, party hunting, or leader-called party play."),
       helpCommand("boop help <topic>", "Open help for a specific workflow or feature area."),
     },
     notes = {
@@ -2953,6 +3053,7 @@ local HELP_TOPICS = {
       helpCommand("boop config targeting", "Open targeting mode, order, and list-management settings."),
       helpCommand("boop config loot", "Open sovereign pickup and gold-pack settings."),
       helpCommand("boop config debug", "Open trace, gag, and debug settings."),
+      helpCommand("boop preset <solo|party|leader-call>", "Apply a curated baseline without stepping through each individual setting."),
       helpCommand("boop get", "List or inspect raw config keys and values."),
       helpCommand("boop set <key> <value>", "Set a raw config value directly without using the guided screens."),
     },
@@ -2995,6 +3096,8 @@ local HELP_TOPICS = {
     aliases = { "party", "leader", "assist", "targetcall", "walk", "roster", "combos", "combo" },
     commands = {
       helpCommand("boop party", "Open the party dashboard with leader, assist, walk, target-call, and roster state."),
+      helpCommand("boop preset party", "Apply the default party baseline without leader gating."),
+      helpCommand("boop preset leader-call", "Apply the leader-call baseline; requires an assist leader to already be set."),
       helpCommand("boop mode solo|assist|leader-call", "Switch between solo hunting, assist mode, and leader-called target mode."),
       helpCommand("boop assist <leader>", "Set the assist leader boop should follow for assist-mode attacks."),
       helpCommand("boop assist on|off|clear", "Enable, disable, or clear assist mode without changing other party settings."),

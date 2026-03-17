@@ -17,6 +17,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop help` / `boop help <number|topic|home>` (examples: `boop help 2`, `boop help targeting`)
 - `boop status` (current settings/status dashboard)
 - `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow)
+- `boop preset <solo|party|leader-call>` (apply recommended baseline settings)
 - `boop party` (party coordination dashboard)
 - `boop roster` / `boop roster <class...>` / `boop roster clear` (save party class roster; your own class is auto-included)
 - `boop combos` / `boop combos <class...>` / `boop combos list` (party combo inference from rage afflictions + conditional needs)

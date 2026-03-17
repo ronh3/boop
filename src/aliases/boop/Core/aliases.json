@@ -91,6 +91,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Preset",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+preset(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Roster",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+roster(?:\\s+(.+))?$",
