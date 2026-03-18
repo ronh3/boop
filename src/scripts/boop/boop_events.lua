@@ -630,6 +630,36 @@ function boop.prequeueStandard()
   end
 end
 
+function boop.refreshPrequeuedStandard(reason)
+  if not boop.config.enabled then return false end
+  if not boop.config.prequeueEnabled then return false end
+  if not boop.state.prequeuedStandard then return false end
+  if boop.state.diagHold then return false end
+  if boop.state.goldGetPending or boop.state.goldPutPending then return false end
+  if gmcp and gmcp.Char and gmcp.Char.Vitals then
+    if gmcp.Char.Vitals.bal == "1" and gmcp.Char.Vitals.eq == "1" then
+      return false
+    end
+  end
+
+  local targetId = boop.targets.choose()
+  if not targetId or targetId == "" then return false end
+  if tostring(boop.state.currentTargetId or "") ~= tostring(targetId) then
+    return false
+  end
+
+  local actions = boop.attacks.choose()
+  if not actions.standard or actions.standard == "" then return false end
+  if not actions.standardShieldbreak then return false end
+
+  boop.executeAction(actions.standard, true)
+  if boop.targets and boop.targets.onShieldbreakAttempt then
+    boop.targets.onShieldbreakAttempt()
+  end
+  boop.trace.log("prequeue rebuilt: " .. tostring(reason or "state change"))
+  return true
+end
+
 function boop.canAct()
   if boop.state.limiters.hunting then return false end
   if gmcp and gmcp.Char and gmcp.Char.Vitals then

@@ -83,6 +83,35 @@ describe("boop prequeue", function()
     assert.is_true(boop.state.prequeuedStandard)
   end)
 
+  it("rebuilds a queued standard as shieldbreak when the target shields after prequeue", function()
+    helper.reset()
+    helper.setArea("Test Area")
+    helper.setClass("Occultist")
+    helper.setTargetHp("80%")
+    helper.learnSkill("Warp", "Occultism")
+    helper.learnSkill("Hammer", "Tattoos")
+    helper.setDenizens({
+      { id = "42", name = "a test denizen" },
+    })
+
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
+    boop.config.prequeueEnabled = true
+    gmcp.Char.Vitals.bal = "0"
+    gmcp.Char.Vitals.eq = "0"
+
+    send_stub:clear()
+
+    boop.prequeueStandard()
+    boop.targets.onShielded("a test denizen")
+
+    assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK warp 42", false)
+    assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK touch hammer 42", false)
+    assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
+    assert.is_true(boop.state.prequeuedStandard)
+    assert.is_true(type(boop.state.targetShield) == "table" and boop.state.targetShield.attempted)
+  end)
+
   it("does not prequeue attacks while gold commands are pending", function()
     gmcp.Char.Vitals.bal = "0"
     gmcp.Char.Vitals.eq = "0"

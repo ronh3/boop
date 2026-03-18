@@ -3,6 +3,7 @@ local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper
 describe("boop shield tracking", function()
   local timer_stub
   local kill_timer_stub
+  local refresh_stub
 
   before_each(function()
     helper.reset()
@@ -15,6 +16,9 @@ describe("boop shield tracking", function()
       return 101
     end)
     kill_timer_stub = stub(_G, "killTimer", function(_) end)
+    refresh_stub = stub(boop, "refreshPrequeuedStandard", function(_)
+      return true
+    end)
   end)
 
   after_each(function()
@@ -26,6 +30,10 @@ describe("boop shield tracking", function()
       kill_timer_stub:revert()
       kill_timer_stub = nil
     end
+    if refresh_stub then
+      refresh_stub:revert()
+      refresh_stub = nil
+    end
   end)
 
   it("tracks a shield when it is seen on the current target", function()
@@ -34,6 +42,7 @@ describe("boop shield tracking", function()
     assert.is_table(boop.state.targetShield)
     assert.is_false(boop.state.targetShield.attempted)
     assert.are.equal(101, boop.state.targetShield.timer)
+    assert.stub(refresh_stub).was_called_with("shield seen")
   end)
 
   it("clears tracked shield state when a matching shield-down trigger fires", function()

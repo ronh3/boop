@@ -997,6 +997,9 @@ function boop.targets.onShielded(name)
     if boop.trace and boop.trace.log then
       boop.trace.log("shield seen: " .. captured)
     end
+    if boop.refreshPrequeuedStandard then
+      boop.refreshPrequeuedStandard("shield seen")
+    end
   end
 end
 
