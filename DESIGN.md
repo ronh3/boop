@@ -89,11 +89,12 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 7. Apply safety checks and flee if needed.
 
 ## Implementation Notes (Current)
-- Targeting uses GMCP `Char.Items.*` data and sends `IRE.Target.Set` with denizen ID.
+- Targeting uses GMCP `Char.Items.*` data and sends `settarget <id>` as the only outbound targeting command.
 - Denizen filtering: attrib includes `m` and excludes `x` and `d`.
 - `boop ih` re-renders Info-Here lines and adds clickable whitelist/blacklist buttons for denizens.
-- `boop config` renders a clickable configuration dashboard for common toggles/modes.
-- `boop` shows status plus the main help dashboard for quick command discovery.
+- `boop`, `boop control`, `boop config`, `boop party`, and `boop stats` are now distinct operator surfaces rather than one large menu tree.
+- `boop config` renders a clickable configuration hub with subsection dashboards for combat, targeting, loot, and diagnostics.
+- `boop help` is now a curated workflow-oriented help surface, not a flat command index.
 - `boop config` and `boop help` use a shared sectioned row layout (`HEADER > section`, divider, aligned `[ value ]` action buttons).
 - `boop whitelist` and `boop blacklist` render clickable list managers (`up`/`down`/`remove`).
 - `boop whitelist browse [tag]` browses area-level whitelist entries with optional tag filter.
@@ -102,14 +103,20 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `boop pack <container>` sets an optional auto-stash container (`put sovereigns in <container>`) used after auto gold pickup.
 - `boop import foxhunt [merge|overwrite|dryrun]` imports area list data from Foxhunt's `hunting` DB into boop lists.
 - Gold get/put tracking now listens for success/failure lines and performs bounded retries before warning.
+- Gold queue state is now guarded by a short stale-pending timeout; if get/put success/failure triggers are missed, boop warns, clears stale pending state, and resumes.
 - `boop prequeue` and `boop lead` make prequeue behavior explicit and independent from `useQueueing`.
+- If a standard attack is already prequeued and the current target gains shield before it fires, boop rebuilds `BOOP_ATTACK` immediately to the current shieldbreak standard when appropriate.
 - `diag` clears queue, queues `diagnose`, and temporarily blocks attacks until a diagnose result line plus prompt.
 - `diag` includes a timeout fallback to release attack hold if diagnose result lines are missed.
 - `boop get/set` provides scriptable config access, and `boop trace` exposes a rolling decision/command buffer.
+- `boop trace` now includes compact GMCP room/info/item/gold-related room events for debugging movement and loot timing.
 - Two-handed standards prepend `battlefury focus speed/` when `Focus` is known (Weaponmastery), excluding shieldbreaker paths.
 - Unnamable standards prepend `maul &tar/` when `Maul` is known (Dominion) and ready, with readiness tracked through the existing ability-ready trigger lines.
 - Standard attacks and rage actions are independent; standard builds rage and there is no mode toggle.
 - Skill gating issues `Char.Skills.Get` requests per skill (group-aware).
+- `boop preset solo|party|leader-call` applies recommended baseline config bundles; `leader-call` requires an assist leader to already be configured.
+- Party-size is intentionally session-local and defaults to `1` on load; it is used by stats/mob XP telemetry and is not persisted.
+- External autowalking is integrated through `demonnicAutoWalker` as a separate package; boop decides when a room is clear, the external walker decides where to move next.
 
 ## Versioning Policy
 - Bump `mfile.version` on every commit/merge.
@@ -137,4 +144,4 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Targeting uses ID (not name).
 
 ## Open Questions
-- None yet (add here as they come up).
+- The next major phase is release hardening and 1.0 polish, not broad new feature development.

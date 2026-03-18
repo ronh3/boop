@@ -14,6 +14,19 @@ The UI is:
 
 The UI must not intercept or consume bare numeric input.
 
+Current product state
+
+- `boop` is now a status/home dashboard.
+- `boop control` is the live operations dashboard.
+- `boop config` is the guided settings hub.
+- `boop party` is the party/leader/walk coordination dashboard.
+- `boop stats` is the optimization/stats dashboard.
+- `boop help` is a curated workflow-oriented help surface.
+- `boop roster` is separate from `boop party`.
+- `boop preset solo|party|leader-call` exists as a shortcut for recommended baseline setups.
+
+This file still documents the config system in detail, but new UX work should preserve coherence across all of the above surfaces rather than treating `boop config` as the entire UI.
+
 Core Design Principles
 
 - No global hotkeys.
@@ -37,6 +50,18 @@ Base commands
   - Return to previous level.
 - `boop config help`
   - Display usage summary.
+
+Related top-level surfaces
+- `boop`
+  - Status / home dashboard.
+- `boop control`
+  - Live operational control center.
+- `boop party`
+  - Party coordination dashboard.
+- `boop stats`
+  - Stats dashboard and drill-down entrypoint.
+- `boop help`
+  - Reference/help entrypoint.
 
 Navigation
 - `boop config <section>`
@@ -80,6 +105,7 @@ Layout structure
   - One blank line between groups
 - Footer:
   - Single line instruction summary
+  - In rich Mudlet rendering, footer commands should be clickable.
 
 Alignment rules
 - Constants:
@@ -91,10 +117,17 @@ Alignment rules
   - `[3] Limb tracking               [ OFF ]`
 - Rules:
   - Labels left-aligned and padded with spaces.
-  - Button column must always begin at same character position.
+  - Button column should begin at the same character position within a section, using the longest visible label in that section as the alignment anchor when practical.
   - Button must always be bracketed.
   - Button width must remain constant.
   - Pad plain text first, then apply color to button content only.
+
+Current visual language expectations
+
+- Sectioned dashboards should use the shared themed row renderer where available.
+- Rich Mudlet screens should prefer concise rows with hover hints over long visible prose.
+- Plain-text fallback should remain readable and deterministic for tests.
+- Older raw/debug-dump output should be treated as technical debt and cleaned up when touched.
 
 Button rendering
 - Format: `[ <value> ]`
@@ -213,6 +246,13 @@ System is complete when:
 - Layout alignment remains consistent at 80 columns
 - Miniwindow (if enabled) mirrors inline functionality
 - All persisted values survive package reload/reconnect and redraw identically
+  - except explicitly session-local values such as `partySize`
+
+Release-phase guidance
+
+- New UX changes should bias toward discoverability, consistency, and operator clarity.
+- Avoid introducing parallel menu systems or one-off layouts when an existing dashboard pattern fits.
+- If a new command changes the operator workflow, update `boop help`, `README.md`, and the relevant dashboard entrypoints together.
 
 Implementation Order
 

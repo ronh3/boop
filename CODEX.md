@@ -43,6 +43,7 @@ Guidance for Codex when working in this repository.
 - Commit and push changes unless the user asks otherwise.
 - Keep `README.md` in sync when commands or features change.
 - Maintain the config UI look/feel (config theme + sectioned layout) for new menus.
+- When the user says there was a failure/error, inspect `output.md` by default before asking for more detail.
 
 ## User Preferences / Project Memory
 - Treat `CODEX.md` as the continuity file for new sessions; keep it current when preferences or workflow conventions change.
@@ -53,12 +54,15 @@ Guidance for Codex when working in this repository.
 - `bh` and `boop on/off` should use the compact boop aesthetic summary, not the full dashboard.
 - Preserve the newer, streamlined boop UI direction: fewer broader help/config sections rather than many tiny topics.
 - Prefer runtime-safe refactors over aggressive cleanup.
+- The user is aiming for a 1.0 release; prefer polish, clarity, and release-readiness work over broad feature expansion unless a real usage gap is identified.
 
 ## Current UI / UX Conventions
 - Keep boop output in the established styled format using `cecho` color tags and sectioned headers where appropriate.
 - Help and config should share the same overall visual language.
 - Status is the place for current settings; help is the place for reference/documentation.
 - New user-facing command output should acknowledge success/failure clearly and should not silently fail.
+- `boop control`, `boop config`, `boop party`, and `boop stats` are now primary surfaces and should be treated as the canonical operator workflow.
+- Footer breadcrumb/help commands should remain clickable in rich Mudlet rendering.
 
 ## Current Structure Notes
 - Trigger folders are now nested by class/category where practical.
@@ -67,11 +71,14 @@ Guidance for Codex when working in this repository.
 - `src/triggers/boop/Rage/Afflictions/` is organized into class folders, each with its own `triggers.json`.
 - When adding triggers in those areas, update the class-local manifest rather than flattening files back into the parent folder.
 - `tools/sort_manifests.sh` is safe to run for manifests, except for known load-order-sensitive files already excluded by the script.
+- Mudlet CI now runs real in-Mudlet `busted` specs; prefer extending that suite when fixing real regressions.
 
 ## Session Startup (New Agent Checklist)
 - Read `README.md` and `DESIGN.md` to understand current scope and user-facing behavior.
+- Read `UIDESIGN.md` as well when doing UI or UX work; it is now lagging less and should be kept in sync.
 - Open `mfile` to confirm current version and title; bump `version` and manually sync `title` on every commit.
 - Work only under `src/` for package content; never edit built artifacts.
 - Use the existing `boop` namespace and follow the current file/manifest layout.
 - For gameplay behavior questions, prefer the existing reference implementations (Basher/Bashing/Foxhunt) and our current code as the source of truth unless instructed otherwise.
 - If implementing new commands or flows, update `README.md` and ensure aliases/triggers are registered in the proper manifest JSON.
+- For party/leader/walker behavior, assume `demonnicAutoWalker` remains an external dependency and boop should integrate with it rather than absorb it.
