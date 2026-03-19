@@ -1,5 +1,4 @@
 boop.attacks.register("depthswalker", {  standard = {
-    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
     dam = { cmd = "shadow reap &tar", skill = "Reap", group = "Shadowmancy" },
     shield = { cmd = "shadow strike &tar", skill = "Strike", group = "Shadowmancy" },
   },

@@ -1,5 +1,4 @@
 boop.attacks.register("serpent", {  standard = {
-    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
     dam = { cmd = "garrote &tar", skill = "Garrote", group = "Subterfuge" },
     shield = { cmd = "flay &tar shield", skill = "Flay", group = "Subterfuge" },
   },

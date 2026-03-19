@@ -1,7 +1,12 @@
 boop.attacks.register("apostate", {  standard = {
-    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
-    dam = { cmd = "deadeyes bleed bleed", skill = "Deadeyes", group = "Evileye" },
-    shield = { cmd = "demon strip &tar", skill = "Strip", group = "Apostasy" },
+    dam = { 
+      {cmd = "deadeyes &tar bleed bleed", skill = "Deadeyes", group = "Evileye" },
+      {cmd = "decay &tar", skill = "Decay", group = "Necromancy" },
+    },
+    shield = { 
+      {cmd = "deadeyes &tar bleed bleed", skill = "Deadeyes", group = "Evileye" },
+      {cmd = "taint &tar", skill = "Taint", group = "Necromancy" },
+    },
   },
   rage = {
     ["abilities"] = {

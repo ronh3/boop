@@ -1,5 +1,4 @@
 boop.attacks.register("fire elemental lord", {  standard = {
-    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
     dam = { cmd = "ignite flamewhip &tar", skill = "Flamewhip", group = "Ignition" },
     shield = { cmd = "manifest superheat &tar", skill = "Vapourise", group = "Ignition" },
   },

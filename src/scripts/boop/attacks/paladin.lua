@@ -1,21 +1,47 @@
 boop.attacks.register("paladin", {  standard = {
-    -- TODO: Simplified Foxhunt standard (per-spec, no extra state); refine later.
     dam = {
       bySpec = {
-        ["Dual Cutting"] = { cmd = "dsl &tar", skill = "Duality", group = "Weaponmastery" },
-        ["Dual Blunt"] = { cmd = "doublewhirl &tar", skill = "Doublewhirl", group = "Weaponmastery" },
-        ["Two Handed"] = { cmd = "slaughter &tar", skill = "Slaughter", group = "Weaponmastery" },
-        ["Sword and Shield"] = { cmd = "combination &tar slice smash", skill = "Combination", group = "Weaponmastery" },
+        ["Dual Cutting"] = { 
+          {cmd = "dsl &tar", skill = "Duality", group = "Weaponmastery" },
+          {cmd = "jab &tar", skill = "Swordplay", group = "Weaponmastery" },
+        },
+        ["Dual Blunt"] = { 
+          {cmd = "doublewhirl &tar", skill = "Doublewhirl", group = "Weaponmastery" },
+          {cmd = "whirl &tar", skill = "Whirl", group = "Weaponmastery" },
+          {cmd = "jab &tar", skill = "Swordplay", group = "Weaponmastery" },
+        },
+        ["Two Handed"] = { 
+          {cmd = "slaughter &tar", skill = "Slaughter", group = "Weaponmastery" },
+          {cmd = "jab &tar", skill = "Swordplay", group = "Weaponmastery" },
+        },
+        ["Sword and Shield"] = { 
+          {cmd = "combination &tar slice smash", skill = "Slice", group = "Weaponmastery" },
+          {cmd = "combination &tar rend smash", skill = "Combination", group = "Weaponmastery" },
+          {cmd = "smash &tar", skill = "Smash", group = "Weaponmastery" },
+          {cmd = "rend &tar", skill = "Rend", group = "Weaponmastery" },
+          {cmd = "jab &tar", skill = "Swordplay", group = "Weaponmastery" },
+        },
       },
       default = { cmd = "kill &tar", skill = "", group = "" },
     },
     shield = {
       bySpec = {
-        ["Dual Cutting"] = { cmd = "rsl &tar", skill = "Razeslash", group = "Weaponmastery" },
-        ["Dual Blunt"] = { cmd = "fracture &tar", skill = "Fracture", group = "Weaponmastery" },
-        ["Two Handed"] = { cmd = "carve &tar", skill = "Carve", group = "Weaponmastery" },
-        ["Sword and Shield"] = { cmd = "combination &tar raze smash", skill = "Combination", group = "Weaponmastery" },
-      },
+        ["Dual Cutting"] = { 
+          {cmd = "rsl &tar", skill = "Razeslash", group = "Weaponmastery" },
+          {cmd = "raze &tar", skill = "Raze", group = "Weaponmastery" },
+        },
+        ["Dual Blunt"] = { 
+          {cmd = "fracture &tar", skill = "Fracture", group = "Weaponmastery" },
+        },
+        ["Two Handed"] = { 
+          {cmd = "carve &tar", skill = "Carve", group = "Weaponmastery" },
+          {cmd = "splinter &tar", skill = "Splinter", group = "Weaponmastery" },
+        },
+        ["Sword and Shield"] = { 
+          {cmd = "combination &tar raze smash", skill = "Combination", group = "Weaponmastery" },
+          {cmd = "raze &tar", skill = "Raze", group = "Weaponmastery" },
+        },
+      }
     },
   },
   rage = {

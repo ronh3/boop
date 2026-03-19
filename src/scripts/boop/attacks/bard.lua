@@ -1,5 +1,4 @@
 boop.attacks.register("bard", {  standard = {
-    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
     dam = { cmd = "jab &tar", skill = "Jab", group = "Bladedance" },
     shield = { cmd = "sing cantata at &tar/jab &tar", skill = "Jab", group = "Bladedance" },
   },

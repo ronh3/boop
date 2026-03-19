@@ -1,5 +1,4 @@
 boop.attacks.register("pariah", {  standard = {
-    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
     dam = { cmd = "kill &tar", skill = "", group = "" },
     shield = { cmd = "kill &tar", skill = "", group = "" },
   },

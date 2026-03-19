@@ -1,5 +1,4 @@
 boop.attacks.register("blademaster", {  standard = {
-    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
     dam = { cmd = "infuse fire/drawslash &tar sternum", skill = "Drawslash", group = "TwoArts" },
     shield = { cmd = "raze &tar sternum", skill = "Raze", group = "Weaponmastery" },
   },

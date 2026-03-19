@@ -231,7 +231,7 @@ local function currentBlocker()
     return "boop disabled", "boop on"
   end
   if boop.state and boop.state.diagHold then
-    return "diagnose pause active", "wait for diag or use boop diag"
+    return "diagnose pause active", "wait for diag or use diag"
   end
   if boop.state and boop.state.fleeing then
     return "flee in progress", "let flee resolve"
@@ -544,22 +544,22 @@ function boop.ui.controlCommand(raw)
     uiPrintRow(12, "Room denizens", tostring(denizenCount), "cyan")
 
     uiPrintSection("party & movement")
-    uiPrintRow(13, "Assist", assistShown, boop.config.assistEnabled and "green" or "yellow", function() boop.ui.partyCommand("") end, "Open party coordination")
-    uiPrintRow(14, "Leader target gate", targetCallShown, boop.config.targetCall and "green" or "yellow", function() boop.ui.partyCommand("") end, "Open party coordination")
-    uiPrintRow(15, "Party size", partySize, "cyan", function() boop.ui.partyCommand("") end, "Open party coordination")
+    uiPrintRow(13, "Assist", assistShown, boop.config.assistEnabled and "green" or "yellow", function() boop.ui.partyCommand("") end, "Open the party dashboard")
+    uiPrintRow(14, "Leader target gate", targetCallShown, boop.config.targetCall and "green" or "yellow", function() boop.ui.partyCommand("") end, "Open the party dashboard")
+    uiPrintRow(15, "Party size", partySize, "cyan", function() boop.ui.partyCommand("") end, "Open the party dashboard")
     uiPrintRow(16, "Walk", walkShown, walkShown == "ON" and "green" or "yellow", function() boop.ui.walkCommand("") end, "Open walk controls")
     uiPrintRow(17, "Theme", themeShown, "cyan", function() boop.ui.themeCommand("") end, "Open theme controls")
 
     uiPrintSection("navigation")
-    uiPrintRow(18, "Party dashboard", "OPEN", "cyan", function() boop.ui.partyCommand("") end, "Open party coordination dashboard")
+    uiPrintRow(18, "Party dashboard", "OPEN", "cyan", function() boop.ui.partyCommand("") end, "Open the party dashboard")
     uiPrintRow(19, "Roster manager", "OPEN", "cyan", function() boop.ui.rosterCommand("") end, "Open stored party roster")
-    uiPrintRow(20, "Configuration", "OPEN", "cyan", function() boop.ui.config("") end, "Open full configuration")
-    uiPrintRow(21, "Stats dashboard", "OPEN", "cyan", function() boop.stats.command("") end, "Open stats dashboard")
+    uiPrintRow(20, "Settings hub", "OPEN", "cyan", function() boop.ui.config("") end, "Open the settings hub")
+    uiPrintRow(21, "Stats dashboard", "OPEN", "cyan", function() boop.stats.command("") end, "Open the stats dashboard")
     uiPrintFooter("Type: boop control config | boop control party | boop control roster | boop control stats")
     return
   end
 
-  boop.util.echo("CONTROL CENTER")
+  boop.util.echo("CONTROL DASHBOARD")
   boop.util.echo("----------------------------------------")
   boop.util.echo(string.format("State: %s | mode: %s | blocker: %s | next: %s", enabled, modeShown, blocker, nextAction))
   boop.util.echo(string.format("Combat: class %s | targeting %s | ragemode %s | queue %s | prequeue %s", tostring(class), targetingMode, rageMode, queueShown, prequeueShown))
@@ -1707,9 +1707,9 @@ function boop.ui.partyCommand(raw)
     uiPrintRow(14, "Config hub", "OPEN", "cyan", function()
       boop.ui.config("party")
     end, "Open the broader config hub near party controls")
-    uiPrintRow(15, "Control center", "OPEN", "cyan", function()
+    uiPrintRow(15, "Control dashboard", "OPEN", "cyan", function()
       boop.ui.controlCommand("")
-    end, "Open the live control center")
+    end, "Open the control dashboard")
     uiPrintFooter("Type: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop party walk <cmd> | boop roster | boop combos")
     return
   end
@@ -3024,14 +3024,14 @@ local HELP_TOPICS = {
     summary = "Core entrypoints and the fastest way to get oriented.",
     aliases = { "start", "gettingstarted", "intro", "basics", "general", "main", "home" },
     commands = {
-      helpCommand("boop", "Open the main boop dashboard with the most important live state and next actions."),
-      helpCommand("boop control", "Open the control center for live hunting, navigation, and operational state."),
+      helpCommand("boop", "Open the home dashboard with the most important live state and next actions."),
+      helpCommand("boop control", "Open the live control dashboard for hunting, movement, and runtime state."),
       helpCommand("boop on", "Enable boop hunting and start the active session timer."),
       helpCommand("boop off", "Disable boop hunting and stop the active session timer."),
-      helpCommand("boop status", "Show the current state, target, queue, party, and movement status."),
+      helpCommand("boop status", "Show the current state, target, queue, party, and movement summary."),
       helpCommand("boop config", "Open the guided settings hub."),
       helpCommand("boop config home", "Jump back to the root of the config hub from any config screen."),
-      helpCommand("boop party", "Open the party coordination dashboard for leader, assist, walk, and roster state."),
+      helpCommand("boop party", "Open the party dashboard for leader, assist, walk, and roster state."),
       helpCommand("boop preset <solo|party|leader-call>", "Apply a recommended baseline for solo hunting, party hunting, or leader-called party play."),
       helpCommand("boop help <topic>", "Open help for a specific workflow or feature area."),
     },
@@ -3043,11 +3043,11 @@ local HELP_TOPICS = {
   {
     key = "control",
     title = "Control & Config",
-    summary = "Navigation between dashboards and the guided settings surfaces.",
+    summary = "Navigation between the main dashboards and the guided settings screens.",
     aliases = { "control", "controls", "config", "settings", "dashboard" },
     commands = {
-      helpCommand("boop control", "Open the live control center dashboard."),
-      helpCommand("boop config", "Open the main settings hub with summaries and links to each config area."),
+      helpCommand("boop control", "Open the live control dashboard."),
+      helpCommand("boop config", "Open the settings hub with summaries and links to each config area."),
       helpCommand("boop config home", "Return to the top-level config hub."),
       helpCommand("boop config combat", "Open hunting and queueing settings."),
       helpCommand("boop config targeting", "Open targeting mode, order, and list-management settings."),
@@ -3078,8 +3078,7 @@ local HELP_TOPICS = {
       helpCommand("boop whitelist", "Open or print the current area whitelist."),
       helpCommand("boop whitelist browse [tag]", "Browse whitelist entries, optionally filtered by tag."),
       helpCommand("boop blacklist", "Open or print the current area blacklist."),
-      helpCommand("boop ih", "Show the immediate hunting view for current-room target decisions."),
-      helpCommand("boop diag", "Queue diagnose and temporarily pause attacking until diagnose completes or times out."),
+      helpCommand("diag", "Queue diagnose and temporarily pause attacking until diagnose completes or times out."),
       helpCommand("boop prefer", "Show configurable attack-preference options for your current class/spec."),
       helpCommand("boop prefer <dam|shield> <option>", "Prefer a specific standard damage or shield attack when multiple valid options exist."),
     },
@@ -3112,7 +3111,7 @@ local HELP_TOPICS = {
       helpCommand("boop combos list", "List known class names supported by the combo helper."),
     },
     notes = {
-      "Use `boop party` as the coordination dashboard; it consolidates leader, assist, walk, target-call, and roster state.",
+      "Use `boop party` as the party dashboard; it consolidates leader, assist, walk, target-call, and roster state.",
       "Use `boop roster` to store party classes for combo/conditional assistance.",
       "Use quotes for multi-word classes when needed.",
     },
@@ -3123,7 +3122,7 @@ local HELP_TOPICS = {
     summary = "Trip, session, lifetime, area, ability, target, and rage analytics.",
     aliases = { "stats", "trip", "records", "areas", "targets", "abilities", "crits", "compare" },
     commands = {
-      helpCommand("boop stats", "Open the main stats dashboard with current summaries and drill-down suggestions."),
+      helpCommand("boop stats", "Open the stats dashboard with current summaries and drill-down suggestions."),
       helpCommand("boop stats help", "Show the dedicated stats command overview."),
       helpCommand("boop stats session|login|trip|lifetime", "Show totals and efficiency for a specific stats scope."),
       helpCommand("boop stats lasttrip", "Show the snapshot of the most recently completed trip."),
@@ -3195,7 +3194,7 @@ local function helpRenderHome()
     uiPrintRow(1, "Open boop", "boop", "cyan", function()
       uiSetCommandLine("boop")
     end, "Prepare: boop")
-    uiPrintRow(2, "Live control center", "boop control", "cyan", function()
+    uiPrintRow(2, "Control dashboard", "boop control", "cyan", function()
       uiSetCommandLine("boop control")
     end, "Prepare: boop control")
     uiPrintRow(3, "Settings hub", "boop config", "cyan", function()
@@ -3368,9 +3367,9 @@ function boop.ui.home()
     uiPrintRow(17, "Trip raw xp", tostring(tripXp), "yellow")
 
     uiPrintSection("quick actions")
-    uiPrintRow(18, "Party", "OPEN", "cyan", function() boop.ui.partyCommand("") end, "Open party coordination dashboard")
+    uiPrintRow(18, "Party", "OPEN", "cyan", function() boop.ui.partyCommand("") end, "Open the party dashboard")
     uiPrintRow(19, "Mode controls", "OPEN", "cyan", function() boop.ui.modeCommand("") end, "Show operating mode summary")
-    uiPrintRow(20, "Stats", "OPEN", "cyan", function() boop.stats.command("") end, "Open stats dashboard")
+    uiPrintRow(20, "Stats", "OPEN", "cyan", function() boop.stats.command("") end, "Open the stats dashboard")
     uiPrintRow(21, "Theme controls", "OPEN", "cyan", function() boop.ui.themeCommand("") end, "Show theme summary")
     uiPrintFooter("Type: boop control | boop party | boop roster | boop mode | boop stats")
     return
@@ -3544,7 +3543,7 @@ local function configHomeRoute(token)
     boop.ui.themeCommand("")
     return true
   end
-  if key == "8" or key == "control" or key == "controls" or key == "center" or key == "dashboard" then
+  if key == "8" or key == "control" then
     boop.ui.controlCommand("")
     return true
   end
@@ -3597,20 +3596,20 @@ local function configRenderHome()
     uiPrintSection("related controls")
     uiPrintRow(10, "Party dashboard", configPartySummary(), "cyan", function()
       boop.ui.partyCommand("")
-    end, "Open party coordination")
+    end, "Open the party dashboard")
     uiPrintRow(11, "Roster manager", tostring(#partyRosterMembers()) .. " entries", "cyan", function()
       boop.ui.rosterCommand("")
     end, "Open saved party roster")
     uiPrintRow(12, "Appearance", configThemeSummary(), "cyan", function()
       boop.ui.themeCommand("")
     end, "Open theme controls")
-    uiPrintRow(13, "Control center", "OPEN", "cyan", function()
+    uiPrintRow(13, "Control dashboard", "OPEN", "cyan", function()
       boop.ui.controlCommand("")
-    end, "Open the control center dashboard")
+    end, "Open the control dashboard")
     uiPrintRow(14, "Stats dashboard", "OPEN", "cyan", function()
       boop.stats.command("")
     end, "Open the stats dashboard")
-    uiPrintFooter("Type: boop config home | boop config <number> | boop config <name> | boop config party | boop config theme")
+    uiPrintFooter("Type: boop config home | boop config <number> | boop config <name> | boop party | boop theme | boop control")
     return
   end
 
@@ -3626,13 +3625,13 @@ local function configRenderHome()
   boop.util.echo(string.format("[5] Party dashboard          [ %s ]", configPartySummary()))
   boop.util.echo(string.format("[6] Roster manager           [ %d entries ]", #partyRosterMembers()))
   boop.util.echo(string.format("[7] Appearance               [ %s ]", configThemeSummary()))
-  boop.util.echo("[8] Control center           [ OPEN ]")
+  boop.util.echo("[8] Control dashboard       [ OPEN ]")
   boop.util.echo("[9] Stats dashboard          [ OPEN ]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config home")
   boop.util.echo("Type: boop config <number>  (example: boop config 1)")
   boop.util.echo("Type: boop config <name>    (example: boop config hunting)")
-  boop.util.echo("Type: boop config party | boop config theme | boop config control")
+  boop.util.echo("Type: boop party | boop theme | boop control")
 end
 
 local function configRenderCombatSection()

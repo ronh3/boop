@@ -1,5 +1,4 @@
 boop.attacks.register("air elemental lady", {  standard = {
-    -- TODO: Simplified Foxhunt standard (single default, no extra state); refine later.
     dam = { cmd = "manifest buffet &tar", skill = "Buffet", group = "Duress" },
     shield = { cmd = "manifest gale &tar", skill = "Gale", group = "Duress" },
   },

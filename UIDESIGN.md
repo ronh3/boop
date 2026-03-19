@@ -16,10 +16,10 @@ The UI must not intercept or consume bare numeric input.
 
 Current product state
 
-- `boop` is now a status/home dashboard.
-- `boop control` is the live operations dashboard.
+- `boop` is now the home dashboard.
+- `boop control` is the live control dashboard.
 - `boop config` is the guided settings hub.
-- `boop party` is the party/leader/walk coordination dashboard.
+- `boop party` is the party dashboard for leader, assist, and walk state.
 - `boop stats` is the optimization/stats dashboard.
 - `boop help` is a curated workflow-oriented help surface.
 - `boop roster` is separate from `boop party`.
@@ -31,7 +31,7 @@ Core Design Principles
 
 - No global hotkeys.
 - No modal input capture.
-- All commands require `boop config` prefix.
+- All config commands require the `boop config` prefix.
 - Instant apply for setting changes.
 - Confirmation required only for destructive actions.
 - Alignment and visual consistency are mandatory.
@@ -53,11 +53,11 @@ Base commands
 
 Related top-level surfaces
 - `boop`
-  - Status / home dashboard.
+  - Home dashboard.
 - `boop control`
-  - Live operational control center.
+  - Live control dashboard.
 - `boop party`
-  - Party coordination dashboard.
+  - Party dashboard.
 - `boop stats`
   - Stats dashboard and drill-down entrypoint.
 - `boop help`

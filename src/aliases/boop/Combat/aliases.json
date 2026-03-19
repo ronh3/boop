@@ -30,7 +30,7 @@
   {
     "name": "Boop Flee",
     "isActive": "yes",
-    "regex": "^(?i)boop\\s+flee$",
+    "regex": "^(?i)bflee$",
     "script": "",
     "isFolder": "no"
   },

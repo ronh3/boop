@@ -4,21 +4,21 @@ Standalone Mudlet package for Achaea auto hunting.
 
 ## Status
 - Functional core: targeting, attacks, rage readiness, safety, DB-backed lists.
-- Class profiles: broad Foxhunt-derived profile coverage is included; some standards are intentionally simplified and marked for later refinement.
+- Class profiles: broad Foxhunt-derived profile coverage is included for the shipped classes.
 - IH integration: `ih` output is re-rendered with clickable whitelist/blacklist buttons for denizens.
 - Skill gating uses GMCP `Char.Skills.*` info for standard/rage abilities.
 - Targeting uses denizen IDs (`settarget <id>`), not names.
 
 ## Commands
-- `boop` (current settings/status dashboard)
-- `boop control` / `boop controls` / `boop center` (main control-center dashboard)
+- `boop` (home dashboard)
+- `boop control` (live control dashboard)
 - `bh` (toggle on/off)
 - `boop on` / `boop off`
 - `boop help` / `boop help <number|topic|home>` (examples: `boop help 2`, `boop help targeting`)
-- `boop status` (current settings/status dashboard)
+- `boop status` (status summary)
 - `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow)
 - `boop preset <solo|party|leader-call>` (apply recommended baseline settings)
-- `boop party` (party coordination dashboard)
+- `boop party` (party dashboard)
 - `boop roster` / `boop roster <class...>` / `boop roster clear` (save party class roster; your own class is auto-included)
 - `boop combos` / `boop combos <class...>` / `boop combos list` (party combo inference from rage afflictions + conditional needs)
 - `boop autogold` / `boop autogold on` / `boop autogold off`
@@ -32,7 +32,6 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop targeting <manual|whitelist|blacklist|auto>`
 - `boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>` (default: `simple`)
 - `diag` (queue-clear + diagnose; temporarily pauses boop attacks until diagnose result + prompt)
-- `boop ih` (also overrides `ih`)
 - `boop whitelist` / `boop whitelist add <name>` / `boop whitelist remove <name>` (display is clickable: up/down/remove)
 - `boop whitelist browse [tag]` (browse whitelist areas; optional tag filter)
 - `boop whitelist tags <area>` / `boop whitelist tag list`
@@ -44,7 +43,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop debug` / `boop debug attacks` / `boop debug skills` / `boop debug skills dump`
 - `boop trip start` / `boop trip stop`
 - `boop stats [session|login|trip|lifetime|lasttrip|areas|mobs|targets|abilities|crits|rage|records|compare|reset]`
-- `boop flee`
+- `bflee`
 
 ## Notes
 - Standard attacks and rage actions are independent and can fire together.
@@ -53,7 +52,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Denizen name matching for whitelist/blacklist is case-insensitive and normalizes straight/curly apostrophes.
 - Whitelist areas can have multiple tags (for example `continent-a`, `newbie`, `high-end`) for browse/filter workflows.
 - Whitelist tags are normalized to lowercase and `-` separators, so `Mid Level` becomes `mid-level`.
-- `boop ih` shows items too; only denizens get whitelist/blacklist buttons.
+- `ih` shows items too; only denizens get whitelist/blacklist buttons.
 - Denizens on the global blacklist do not show `ih` whitelist/blacklist action labels.
 - Auto gold pickup grabs newly dropped room items whose names contain `gold sovereign`.
 - In queueing mode, auto gold pickup is prepended to the next standard attack as `get sovereigns/<attack>`.

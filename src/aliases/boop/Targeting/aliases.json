@@ -42,13 +42,6 @@
     "isFolder": "no"
   },
   {
-    "name": "Boop IH",
-    "isActive": "yes",
-    "regex": "^(?i)boop\\s+ih$",
-    "script": "",
-    "isFolder": "no"
-  },
-  {
     "name": "Boop Targeting",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+targeting(?:\\s+(.+))?$",

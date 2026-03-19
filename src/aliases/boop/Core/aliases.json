@@ -44,7 +44,7 @@
   {
     "name": "Boop Control",
     "isActive": "yes",
-    "regex": "^(?i)boop\\s+(?:control|controls|center|dashboard)(?:\\s+(.+))?$",
+    "regex": "^(?i)boop\\s+control(?:\\s+(.+))?$",
     "script": "",
     "isFolder": "no"
   },
@@ -73,13 +73,6 @@
     "name": "Boop On Off",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+(on|off)$",
-    "script": "",
-    "isFolder": "no"
-  },
-  {
-    "name": "Boop Ops",
-    "isActive": "yes",
-    "regex": "^(?i)boop\\s+(?:ops|operations)(?:\\s+(.+))?$",
     "script": "",
     "isFolder": "no"
   },
