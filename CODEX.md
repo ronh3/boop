@@ -29,8 +29,12 @@ Guidance for Codex when working in this repository.
 
 ## CI & Versioning
 - CI reads `mfile` for `package` and `version`, builds with Muddler, and uploads `build/tmp/` as `<package>-<version>`.
-- Versioning: bump `mfile.version` on every change we commit/merge (even docs/config-only); keep it monotonically increasing.
-- Title policy: update `mfile.title` manually on each version bump to `boop Hunter <version>` (for example `boop Hunter 0.1.35`).
+- Versioning: bump the boop version on every change we commit/merge/push (even docs/config-only); keep it monotonically increasing.
+- Sync rule: every version bump must update all three fields together with the exact same version value:
+  - `mfile.version`
+  - `mfile.title` as `boop Hunter <version>`
+  - `src/scripts/boop/boop_init.lua` `boop.version`
+- Never commit or push with those version fields mismatched.
 
 ## Workflow Reminders
 - Keep structure shallow and logical.
@@ -39,6 +43,7 @@ Guidance for Codex when working in this repository.
 - Make aliases responsive with confirmation output when they do not already emit results.
 - When adding new scripts, update the right manifest JSON and name files accordingly.
 - Keep `mfile` version, title, and description current; tokens replace on build.
+- Verify the three version fields are synchronized before every commit and again before every push.
 - Explain the reasoning behind code changes in responses. Do not make non-trivial changes without verifying with the user first.
 - Commit and push changes unless the user asks otherwise.
 - Keep `README.md` in sync when commands or features change.
@@ -48,7 +53,7 @@ Guidance for Codex when working in this repository.
 ## User Preferences / Project Memory
 - Treat `CODEX.md` as the continuity file for new sessions; keep it current when preferences or workflow conventions change.
 - Push non-trivial changes after committing them. If a version was bumped, the expectation is to push unless the user says not to.
-- Keep `mfile.title` updated manually to `boop Hunter <version>`.
+- Keep all boop version fields synchronized on every commit/push: `mfile.version`, `mfile.title`, and `src/scripts/boop/boop_init.lua` `boop.version`.
 - Avoid surfacing legacy/old command behavior in user-facing help or docs unless the user explicitly asks for backwards-compat details.
 - `boop` by itself should show status only. `boop help` should show help only.
 - `bh` and `boop on/off` should use the compact boop aesthetic summary, not the full dashboard.
@@ -76,7 +81,7 @@ Guidance for Codex when working in this repository.
 ## Session Startup (New Agent Checklist)
 - Read `README.md` and `DESIGN.md` to understand current scope and user-facing behavior.
 - Read `UIDESIGN.md` as well when doing UI or UX work; it is now lagging less and should be kept in sync.
-- Open `mfile` to confirm current version and title; bump `version` and manually sync `title` on every commit.
+- Open `mfile` and `src/scripts/boop/boop_init.lua` to confirm the current version fields; on every commit/push, bump and sync `mfile.version`, `mfile.title`, and `boop.version` together.
 - Work only under `src/` for package content; never edit built artifacts.
 - Use the existing `boop` namespace and follow the current file/manifest layout.
 - For gameplay behavior questions, prefer the existing reference implementations (Basher/Bashing/Foxhunt) and our current code as the source of truth unless instructed otherwise.
