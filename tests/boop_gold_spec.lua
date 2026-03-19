@@ -35,14 +35,13 @@ describe("boop gold handling", function()
     end
   end)
 
-  it("queues immediate get and put commands when queueing is disabled", function()
+  it("sends an immediate get command when queueing is disabled", function()
     boop.config.useQueueing = false
     boop.config.goldPack = "pack"
 
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
 
-    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
-    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
+    assert.stub(send_stub).was_called_with("get sovereigns", false)
     assert.is_true(boop.state.goldGetPending)
     assert.is_true(boop.state.goldPutPending)
     assert.are.equal("pack", boop.state.goldPackTarget)
@@ -57,8 +56,7 @@ describe("boop gold handling", function()
 
     boop.tick()
 
-    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
-    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
+    assert.stub(send_stub).was_called_with("get sovereigns", false)
     assert.is_false(boop.state.autoGrabGoldPending)
     assert.is_false(boop.state.goldDropped)
     assert.is_true(boop.state.goldGetPending)
@@ -83,8 +81,35 @@ describe("boop gold handling", function()
 
     boop.tick()
 
-    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
-    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
+    assert.stub(send_stub).was_called_with("get sovereigns", false)
+    assert.is_false(boop.state.autoGrabGoldPending)
+    assert.is_true(boop.state.goldGetPending)
+    assert.is_true(boop.state.goldPutPending)
+  end)
+
+  it("sends the put command only after a successful get", function()
+    boop.state.goldGetPending = true
+    boop.state.goldPutPending = true
+    boop.state.goldPackTarget = "pack"
+
+    boop.onGoldGetSuccess()
+
+    assert.stub(send_stub).was_called_with("put sovereigns in pack", false)
+    assert.is_false(boop.state.goldGetPending)
+    assert.is_true(boop.state.goldPutPending)
+  end)
+
+  it("blocks queued combat and flushes gold directly when queueing sees pending gold", function()
+    boop.config.useQueueing = true
+    boop.config.goldPack = "pack"
+    boop.state.autoGrabGoldPending = true
+    boop.state.autoGrabGoldPendingAt = -1
+    boop.state.goldDropped = true
+
+    boop.executeAction("warp 42")
+
+    assert.stub(send_stub).was_called_with("get sovereigns", false)
+    assert.stub(send_stub).was_not_called_with("queue addclearfull freestand BOOP_ATTACK", false)
     assert.is_false(boop.state.autoGrabGoldPending)
     assert.is_true(boop.state.goldGetPending)
     assert.is_true(boop.state.goldPutPending)

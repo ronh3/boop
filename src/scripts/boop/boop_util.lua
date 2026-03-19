@@ -201,34 +201,18 @@ function boop.executeAction(action, forceQueue)
 
   if boop.config.useQueueing or forceQueue then
     boop.state = boop.state or {}
-    if boop.config.useQueueing and (boop.state.goldGetPending or boop.state.goldPutPending) and not boop.state.autoGrabGoldPending then
+    if boop.config.useQueueing and boop.state.autoGrabGoldPending then
+      if boop.flushPendingGold then
+        boop.flushPendingGold("std queue handoff")
+      end
+      boop.trace.log("std queue blocked: gold pending")
+      return
+    end
+    if boop.config.useQueueing and (boop.state.goldGetPending or boop.state.goldPutPending) then
       boop.trace.log("std queue blocked: gold pending")
       return
     end
     local queuedAction = action
-    if boop.config.useQueueing then
-      local pendingGold = boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending
-      if pendingGold then
-      local normalized = boop.util.safeLower(boop.util.trim(queuedAction))
-      if normalized ~= "get sovereigns" and not boop.util.starts(normalized, "get sovereigns/") then
-        local prefix = "get sovereigns"
-        local pack = boop.util.trim(boop.state.goldPackTarget or boop.config.goldPack or "")
-        if boop.state.autoGrabGoldPending and boop.markGoldQueueIntent then
-          boop.markGoldQueueIntent(pack)
-        end
-        if pack ~= "" then
-          prefix = prefix .. "/put sovereigns in " .. pack
-        end
-        queuedAction = prefix .. "/" .. queuedAction
-      end
-      if boop.state.autoGrabGoldTimer then
-        killTimer(boop.state.autoGrabGoldTimer)
-        boop.state.autoGrabGoldTimer = nil
-      end
-      boop.state.autoGrabGoldPending = false
-      boop.state.goldDropped = false
-      end
-    end
 
     if boop.state.queueAliasDirty == nil then
       boop.state.queueAliasDirty = true

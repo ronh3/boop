@@ -139,13 +139,8 @@ end
 local function queueGoldCommands()
   local pack = boop.util.trim(boop.config.goldPack or "")
   boop.markGoldQueueIntent(pack)
-  send("queue add freestand get sovereigns", false)
-  boop.trace.log("gold queue: get sovereigns")
-
-  if pack ~= "" then
-    send("queue add freestand put sovereigns in " .. pack, false)
-    boop.trace.log("gold queue: put sovereigns in " .. pack)
-  end
+  send("get sovereigns", false)
+  boop.trace.log("gold send: get sovereigns")
 end
 
 local cancelAutoGrabGoldTimer
@@ -229,6 +224,8 @@ flushPendingGold = function(reason)
   return true
 end
 
+boop.flushPendingGold = flushPendingGold
+
 local function autoGrabRoomItem(item)
   if not isGoldItem(item) then return end
   onGoldDetected("gmcp room item")
@@ -256,7 +253,7 @@ local function retryGoldGet(reason)
   end
   boop.state.goldGetRetries = retries + 1
   armGoldPendingTimeout()
-  send("queue add freestand get sovereigns", false)
+  send("get sovereigns", false)
   boop.trace.log("gold get retry " .. tostring(boop.state.goldGetRetries) .. ": " .. tostring(reason))
 end
 
@@ -279,7 +276,7 @@ local function retryGoldPut(reason)
   end
   boop.state.goldPutRetries = retries + 1
   armGoldPendingTimeout()
-  send("queue add freestand put sovereigns in " .. pack, false)
+  send("put sovereigns in " .. pack, false)
   boop.trace.log("gold put retry " .. tostring(boop.state.goldPutRetries) .. " for " .. pack .. ": " .. tostring(reason))
 end
 
@@ -288,7 +285,13 @@ function boop.onGoldGetSuccess()
   if not boop.state.goldGetPending then return end
   boop.state.goldGetPending = false
   boop.state.goldGetRetries = 0
-  if not boop.state.goldPutPending then
+  local pack = boop.state.goldPackTarget or ""
+  if boop.state.goldPutPending and pack ~= "" then
+    armGoldPendingTimeout()
+    send("put sovereigns in " .. pack, false)
+    boop.trace.log("gold send: put sovereigns in " .. pack)
+  else
+    boop.state.goldPutPending = false
     stopGoldPendingTimeout()
   end
   boop.trace.log("gold get success")
