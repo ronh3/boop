@@ -534,3 +534,16 @@ function boop.gag.onExperienceLine(xp, _rawLine)
   pending.xp = boop.util.trim(tostring(xp or "")):gsub(",", "")
   flushPendingKill()
 end
+
+function boop.gag.onPrompt()
+  if not boop.config or not boop.config.gagOwnAttacks then
+    return
+  end
+
+  boop.state = boop.state or {}
+  if boop.state.gagPendingAttack then
+    flushPendingAttack()
+  elseif boop.state.gagPendingKill then
+    flushPendingKill()
+  end
+end

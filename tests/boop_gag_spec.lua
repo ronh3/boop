@@ -112,4 +112,19 @@ describe("boop gag summaries", function()
 
     assert.are.equal(0, #outputs)
   end)
+
+  it("flushes a pending own attack summary on prompt even without balance lines", function()
+    boop.gag.onAttackLine({
+      ability = "Jab",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, { "line", "a test denizen" }, "You jab a test denizen.")
+
+    boop.gag.onPrompt()
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("You", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Jab", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a test denizen", 1, true) ~= nil)
+  end)
 end)

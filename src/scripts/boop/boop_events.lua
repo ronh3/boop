@@ -809,5 +809,8 @@ function boop.onPrompt()
       return
     end
   end
+  if boop.gag and boop.gag.onPrompt then
+    boop.gag.onPrompt()
+  end
   boop.tick()
 end
