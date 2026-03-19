@@ -1603,10 +1603,6 @@ function boop.ui.themeCommand(raw)
   boop.util.ok("theme: " .. cmd)
 end
 
-function boop.ui.opsCommand(raw)
-  boop.ui.partyCommand(raw)
-end
-
 function boop.ui.partyCommand(raw)
   local text = boop.util.trim(raw or "")
   local cmd = boop.util.safeLower(text)
