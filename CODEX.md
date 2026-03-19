@@ -55,11 +55,12 @@ Guidance for Codex when working in this repository.
 - Push non-trivial changes after committing them. If a version was bumped, the expectation is to push unless the user says not to.
 - Keep all boop version fields synchronized on every commit/push: `mfile.version`, `mfile.title`, and `src/scripts/boop/boop_init.lua` `boop.version`.
 - Avoid surfacing legacy/old command behavior in user-facing help or docs unless the user explicitly asks for backwards-compat details.
-- `boop` by itself should show status only. `boop help` should show help only.
+- `boop` by itself should open the home dashboard. `boop help` should show help only.
 - `bh` and `boop on/off` should use the compact boop aesthetic summary, not the full dashboard.
 - Preserve the newer, streamlined boop UI direction: fewer broader help/config sections rather than many tiny topics.
 - Prefer runtime-safe refactors over aggressive cleanup.
 - The user is aiming for a 1.0 release; prefer polish, clarity, and release-readiness work over broad feature expansion unless a real usage gap is identified.
+- If the command surface changes, update aliases, help text, `README.md`, and `UIDESIGN.md` together so the shipped contract stays consistent.
 
 ## Current UI / UX Conventions
 - Keep boop output in the established styled format using `cecho` color tags and sectioned headers where appropriate.
