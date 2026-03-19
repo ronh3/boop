@@ -54,5 +54,12 @@
     "regex": "^(?i)matic$",
     "script": "",
     "isFolder": "no"
+  },
+  {
+    "name": "Catarin",
+    "isActive": "yes",
+    "regex": "^(?i)catarin$",
+    "script": "",
+    "isFolder": "no"
   }
 ]

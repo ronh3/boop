@@ -989,6 +989,14 @@ function boop.ui.matic()
   })
 end
 
+function boop.ui.catarin()
+  queueInterrupt("catarin", "ldeck draw catarin", {
+    clearQueue = false,
+    awaitPrompt = true,
+    infoMessage = "catarin queued; attacks paused until next prompt",
+  })
+end
+
 local function parseBool(raw)
   local value = boop.util.safeLower(boop.util.trim(raw or ""))
   if value == "on" or value == "true" or value == "1" or value == "yes" then return true end
@@ -3189,6 +3197,7 @@ local HELP_TOPICS = {
       helpCommand("boop blacklist", "Open or print the current area blacklist."),
       helpCommand("diag", "Queue diagnose and temporarily pause attacking until diagnose completes or times out."),
       helpCommand("matic", "Queue `ldeck draw matic` on the attack queue and pause attacking until the next prompt or timeout."),
+      helpCommand("catarin", "Queue `ldeck draw catarin` on the attack queue and pause attacking until the next prompt or timeout."),
       helpCommand("boop prefer", "Show configurable attack-preference options for your current class/spec."),
       helpCommand("boop prefer <dam|shield> <option>", "Prefer a specific standard damage or shield attack when multiple valid options exist."),
     },

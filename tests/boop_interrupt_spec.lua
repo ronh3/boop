@@ -68,4 +68,20 @@ describe("boop queued interrupts", function()
     assert.is_nil(boop.state.diagTimeoutTimer)
     assert.stub(warn_stub).was_called_with("matic timeout; attacks resumed")
   end)
+
+  it("queues catarin on the attack queue and resumes after the next prompt", function()
+    boop.ui.catarin()
+
+    assert.is_true(boop.state.diagHold)
+    assert.is_true(boop.state.diagAwaitPrompt)
+    assert.are.equal("catarin", boop.state.diagLabel)
+    assert.stub(send_stub).was_called_with("queue addclearfull freestand ldeck draw catarin", false)
+
+    boop.onPrompt()
+
+    assert.is_false(boop.state.diagHold)
+    assert.is_false(boop.state.diagAwaitPrompt)
+    assert.are.equal("", boop.state.diagLabel)
+    assert.stub(send_stub).was_called_with("command hound at 42", false)
+  end)
 end)
