@@ -30,6 +30,8 @@ local function findRoomGoldItem(items)
   return nil
 end
 
+local AUTO_GOLD_FLUSH_SECONDS = 0.35
+
 local function traceRoomInfo(info, moved, previousRoom)
   if not boop.trace or not boop.trace.log then return end
   if type(info) ~= "table" then return end
@@ -78,6 +80,13 @@ end
 
 function boop.clearGoldQueueIntent()
   boop.state = boop.state or {}
+  if boop.state.autoGrabGoldTimer then
+    killTimer(boop.state.autoGrabGoldTimer)
+    boop.state.autoGrabGoldTimer = nil
+  end
+  boop.state.autoGrabGoldPending = false
+  boop.state.autoGrabGoldPendingAt = nil
+  boop.state.goldDropped = false
   if boop.state.goldPendingTimer then
     killTimer(boop.state.goldPendingTimer)
     boop.state.goldPendingTimer = nil
@@ -142,6 +151,31 @@ end
 local cancelAutoGrabGoldTimer
 local flushPendingGold
 
+local function clearPendingGoldDrop(reason)
+  boop.state = boop.state or {}
+  if not boop.state.autoGrabGoldPending then
+    return false
+  end
+  cancelAutoGrabGoldTimer()
+  boop.state.autoGrabGoldPending = false
+  boop.state.autoGrabGoldPendingAt = nil
+  boop.state.goldDropped = false
+  if reason then
+    boop.trace.log("gold pending clear: " .. tostring(reason))
+  end
+  return true
+end
+
+local function maybeFlushPendingGold(reason)
+  boop.state = boop.state or {}
+  if not boop.state.autoGrabGoldPending then return false end
+  if boop.state.goldGetPending or boop.state.goldPutPending then return false end
+  local startedAt = tonumber(boop.state.autoGrabGoldPendingAt) or 0
+  if startedAt <= 0 then return false end
+  if (nowSeconds() - startedAt) < AUTO_GOLD_FLUSH_SECONDS then return false end
+  return flushPendingGold(reason or "pending age exceeded")
+end
+
 local function onGoldDetected(source)
   if not boop.config.enabled then return end
   if not boop.config.autoGrabGold then return end
@@ -151,6 +185,7 @@ local function onGoldDetected(source)
 
   if boop.config.useQueueing then
     boop.state.autoGrabGoldPending = true
+    boop.state.autoGrabGoldPendingAt = nowSeconds()
     boop.state.goldDropped = true
 
     local denizenCount = boop.state.denizens and #boop.state.denizens or 0
@@ -160,7 +195,7 @@ local function onGoldDetected(source)
     end
 
     cancelAutoGrabGoldTimer()
-    boop.state.autoGrabGoldTimer = tempTimer(0.35, function()
+    boop.state.autoGrabGoldTimer = tempTimer(AUTO_GOLD_FLUSH_SECONDS, function()
       if not boop.config or not boop.config.enabled or not boop.config.autoGrabGold then
         cancelAutoGrabGoldTimer()
         return
@@ -187,6 +222,7 @@ flushPendingGold = function(reason)
   if not boop.state.autoGrabGoldPending then return false end
   cancelAutoGrabGoldTimer()
   boop.state.autoGrabGoldPending = false
+  boop.state.autoGrabGoldPendingAt = nil
   boop.state.goldDropped = false
   boop.trace.log("gold pending flush: " .. tostring(reason or "unspecified"))
   queueGoldCommands()
@@ -369,8 +405,20 @@ function boop.onRoomItemsRemove()
   local removed = gmcp.Char.Items.Remove.item
   local removedId = tostring((removed and removed.id) or "")
   local removedName = removed and removed.name or ""
+  local removedWasGold = isGoldItem(removed)
   traceRoomItemEvent("remove", removed)
   boop.targets.removeRoomItem(removed)
+
+  if removedWasGold then
+    boop.state = boop.state or {}
+    if boop.state.autoGrabGoldPending then
+      clearPendingGoldDrop("gold removed before flush")
+    end
+    if boop.state.goldGetPending or boop.state.goldPutPending then
+      boop.trace.log("gold room item removed while pending: clearing stale gold state")
+      boop.clearGoldQueueIntent()
+    end
+  end
 
   if removedId ~= "" and boop.targets and boop.targets.clearTargetCall and tostring(boop.state.calledTargetId or "") == removedId then
     boop.targets.clearTargetCall("called target removed")
@@ -682,6 +730,7 @@ end
 function boop.tick()
   if not boop.config.enabled then return end
   if boop.state.diagHold then return end
+  if maybeFlushPendingGold("tick pending age") then return end
   if boop.state.goldGetPending or boop.state.goldPutPending then return end
 
   if boop.safety and boop.safety.shouldFlee and boop.safety.shouldFlee() then

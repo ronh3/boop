@@ -131,4 +131,27 @@ describe("boop event-driven state transitions", function()
     assert.are.equal("", boop.state.goldPackTarget)
     assert.stub(kill_timer_stub).was_called_with(57)
   end)
+
+  it("clears stale gold state if room sovereigns disappear mid-handling", function()
+    boop.config.enabled = true
+    boop.state.autoGrabGoldPending = true
+    boop.state.autoGrabGoldPendingAt = 1
+    boop.state.goldDropped = true
+    boop.state.goldGetPending = true
+    boop.state.goldPutPending = true
+    boop.state.goldPackTarget = "pack"
+
+    gmcp.Char.Items.Remove = {
+      location = "room",
+      item = { id = "99", name = "some gold sovereigns" },
+    }
+
+    boop.onRoomItemsRemove()
+
+    assert.is_false(boop.state.autoGrabGoldPending)
+    assert.is_nil(boop.state.autoGrabGoldPendingAt)
+    assert.is_false(boop.state.goldGetPending)
+    assert.is_false(boop.state.goldPutPending)
+    assert.are.equal("", boop.state.goldPackTarget)
+  end)
 end)

@@ -29,6 +29,7 @@ function boop.state.init()
   boop.state.goldDropped = boop.state.goldDropped or false
   boop.state.shardsDropped = boop.state.shardsDropped or false
   boop.state.autoGrabGoldPending = boop.state.autoGrabGoldPending or false
+  boop.state.autoGrabGoldPendingAt = boop.state.autoGrabGoldPendingAt or nil
   boop.state.autoGrabGoldTimer = boop.state.autoGrabGoldTimer or nil
   boop.state.goldGetPending = boop.state.goldGetPending or false
   boop.state.goldPutPending = boop.state.goldPutPending or false

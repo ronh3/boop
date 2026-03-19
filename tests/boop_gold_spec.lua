@@ -52,6 +52,7 @@ describe("boop gold handling", function()
     boop.config.useQueueing = true
     boop.config.goldPack = "pack"
     boop.state.autoGrabGoldPending = true
+    boop.state.autoGrabGoldPendingAt = -1
     boop.state.goldDropped = true
 
     boop.tick()
@@ -60,6 +61,31 @@ describe("boop gold handling", function()
     assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
     assert.is_false(boop.state.autoGrabGoldPending)
     assert.is_false(boop.state.goldDropped)
+    assert.is_true(boop.state.goldGetPending)
+    assert.is_true(boop.state.goldPutPending)
+  end)
+
+  it("flushes aged pending gold during tick even if combat is ongoing", function()
+    boop.config.useQueueing = true
+    boop.config.goldPack = "pack"
+    boop.state.autoGrabGoldPending = true
+    boop.state.autoGrabGoldPendingAt = -1
+    boop.state.goldDropped = true
+    helper.setClass("Occultist")
+    helper.learnSkills({
+      { name = "Warp", group = "Occultism" },
+      { name = "harry", group = "Attainment" },
+    })
+    helper.setDenizens({
+      { id = "42", name = "a test denizen" },
+    })
+    helper.setTarget("42", "a test denizen", "100%")
+
+    boop.tick()
+
+    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
+    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
+    assert.is_false(boop.state.autoGrabGoldPending)
     assert.is_true(boop.state.goldGetPending)
     assert.is_true(boop.state.goldPutPending)
   end)
