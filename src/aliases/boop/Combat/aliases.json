@@ -47,5 +47,12 @@
     "regex": "^(?i)diag$",
     "script": "",
     "isFolder": "no"
+  },
+  {
+    "name": "Matic",
+    "isActive": "yes",
+    "regex": "^(?i)matic$",
+    "script": "",
+    "isFolder": "no"
   }
 ]

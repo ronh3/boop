@@ -932,7 +932,8 @@ function boop.ui.showGoldPack()
   end
 end
 
-function boop.ui.diag()
+local function queueInterrupt(label, command, opts)
+  opts = opts or {}
   boop.state = boop.state or {}
   if boop.state.prequeueTimer then
     killTimer(boop.state.prequeueTimer)
@@ -940,7 +941,8 @@ function boop.ui.diag()
   end
   boop.state.prequeuedStandard = false
   boop.state.diagHold = true
-  boop.state.diagAwaitPrompt = false
+  boop.state.diagAwaitPrompt = opts.awaitPrompt and true or false
+  boop.state.diagLabel = tostring(label or "interrupt")
   boop.state.queueAliasDirty = true
 
   if boop.state.diagTimeoutTimer then
@@ -950,21 +952,41 @@ function boop.ui.diag()
 
   local timeout = tonumber(boop.config.diagTimeoutSeconds) or 8
   if timeout > 0 then
+    local timeoutLabel = boop.state.diagLabel
     boop.state.diagTimeoutTimer = tempTimer(timeout, function()
       boop.state.diagTimeoutTimer = nil
       if boop.state.diagHold then
         boop.state.diagHold = false
         boop.state.diagAwaitPrompt = false
-        boop.util.warn("diag timeout; attacks resumed")
-        boop.trace.log("diag timeout resume")
+        boop.state.diagLabel = ""
+        boop.util.warn(timeoutLabel .. " timeout; attacks resumed")
+        boop.trace.log(timeoutLabel .. " timeout resume")
       end
     end)
   end
 
-  send("queue clear", false)
-  send("queue addclearfull freestand diagnose", false)
-  boop.util.info("diag queued; attacks paused until diagnose line + prompt")
-  boop.trace.log("diag queued")
+  if opts.clearQueue then
+    send("queue clear", false)
+  end
+  send("queue addclearfull freestand " .. command, false)
+  boop.util.info(opts.infoMessage or (tostring(label) .. " queued; attacks paused"))
+  boop.trace.log((opts.traceLabel or tostring(label)) .. " queued")
+end
+
+function boop.ui.diag()
+  queueInterrupt("diag", "diagnose", {
+    clearQueue = true,
+    awaitPrompt = false,
+    infoMessage = "diag queued; attacks paused until diagnose line + prompt",
+  })
+end
+
+function boop.ui.matic()
+  queueInterrupt("matic", "ldeck draw matic", {
+    clearQueue = false,
+    awaitPrompt = true,
+    infoMessage = "matic queued; attacks paused until next prompt",
+  })
 end
 
 local function parseBool(raw)
@@ -3166,6 +3188,7 @@ local HELP_TOPICS = {
       helpCommand("boop whitelist browse [tag]", "Browse whitelist entries, optionally filtered by tag."),
       helpCommand("boop blacklist", "Open or print the current area blacklist."),
       helpCommand("diag", "Queue diagnose and temporarily pause attacking until diagnose completes or times out."),
+      helpCommand("matic", "Queue `ldeck draw matic` on the attack queue and pause attacking until the next prompt or timeout."),
       helpCommand("boop prefer", "Show configurable attack-preference options for your current class/spec."),
       helpCommand("boop prefer <dam|shield> <option>", "Prefer a specific standard damage or shield attack when multiple valid options exist."),
     },

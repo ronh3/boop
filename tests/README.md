@@ -40,6 +40,8 @@ Current coverage:
   Confirms diagnose pauses attacks and resumes them after the diagnose line plus prompt.
 - `boop_diag_timeout_spec.lua`
   Confirms diagnose timeout resumes attacks if the expected confirmation never arrives.
+- `boop_interrupt_spec.lua`
+  Confirms prompt-resume queued interrupt commands such as `matic` pause attacks, queue their action, and resume on prompt.
 - `boop_event_transitions_spec.lua`
   Confirms room and target gmcp transitions clear stale combat state and retarget correctly.
 - `boop_gag_spec.lua`

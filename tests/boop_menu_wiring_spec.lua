@@ -46,6 +46,7 @@ describe("boop menu wiring", function()
       "boop whitelist browse [tag]",
       "boop blacklist",
       "diag",
+      "matic",
       "boop prefer",
       "boop prefer <dam|shield> <option>",
     } },

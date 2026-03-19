@@ -40,6 +40,7 @@ function boop.state.init()
   boop.state.diagHold = boop.state.diagHold or false
   boop.state.diagAwaitPrompt = boop.state.diagAwaitPrompt or false
   boop.state.diagTimeoutTimer = boop.state.diagTimeoutTimer or nil
+  boop.state.diagLabel = boop.state.diagLabel or ""
   boop.state.traceBuffer = boop.state.traceBuffer or {}
 
   boop.state.class = boop.state.class or ""

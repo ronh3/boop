@@ -795,14 +795,16 @@ end
 function boop.onPrompt()
   if boop.state and boop.state.diagHold then
     if boop.state.diagAwaitPrompt then
+      local label = boop.state.diagLabel ~= "" and boop.state.diagLabel or "diag"
       boop.state.diagHold = false
       boop.state.diagAwaitPrompt = false
+      boop.state.diagLabel = ""
       if boop.state.diagTimeoutTimer then
         killTimer(boop.state.diagTimeoutTimer)
         boop.state.diagTimeoutTimer = nil
       end
-      boop.util.ok("diag complete; attacks resumed")
-      boop.trace.log("diag complete")
+      boop.util.ok(label .. " complete; attacks resumed")
+      boop.trace.log(label .. " complete")
     else
       return
     end
