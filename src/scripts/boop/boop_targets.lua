@@ -15,12 +15,34 @@ local function currentRoomId()
   return ""
 end
 
+local function selfName()
+  if gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.name then
+    return boop.util.trim(gmcp.Char.Status.name)
+  end
+  if gmcp and gmcp.Char and gmcp.Char.Name and gmcp.Char.Name.name then
+    return boop.util.trim(gmcp.Char.Name.name)
+  end
+  return ""
+end
+
 local function configuredLeader()
   return boop.util.trim((boop.config and boop.config.assistLeader) or "")
 end
 
 local function targetCallEnabled()
   return not not (boop.config and boop.config.targetCall and boop.config.targetingMode ~= "manual")
+end
+
+local function autoTargetCallEnabled()
+  return not not (boop.config and boop.config.autoTargetCall)
+end
+
+local function storeCalledTarget(caller, targetId)
+  boop.state = boop.state or {}
+  boop.state.calledTargetId = targetId
+  boop.state.calledTargetRoom = currentRoomId()
+  boop.state.calledTargetBy = caller
+  boop.state.calledTargetAt = os.clock()
 end
 
 local function sameName(a, b)
@@ -136,6 +158,17 @@ function boop.targets.setTarget(id)
   if changed and send then
     send("settarget " .. boop.state.currentTargetId, false)
   end
+  if changed and autoTargetCallEnabled() and send then
+    local caller = selfName()
+    if caller == "" then
+      caller = "self"
+    end
+    storeCalledTarget(caller, boop.state.currentTargetId)
+    send("pt Target: " .. boop.state.currentTargetId .. ".", false)
+    if boop.trace and boop.trace.log then
+      boop.trace.log(string.format("auto target call: %s -> %s", caller, boop.state.currentTargetId))
+    end
+  end
 end
 
 function boop.targets.clearTargetCall(reason)
@@ -183,11 +216,7 @@ function boop.targets.onPartyTargetCall(speaker, targetId, _rawLine)
     return false
   end
 
-  boop.state = boop.state or {}
-  boop.state.calledTargetId = calledId
-  boop.state.calledTargetRoom = currentRoomId()
-  boop.state.calledTargetBy = caller
-  boop.state.calledTargetAt = os.clock()
+  storeCalledTarget(caller, calledId)
 
   if boop.trace and boop.trace.log then
     boop.trace.log(string.format("leader target call: %s -> %s", caller, calledId))

@@ -23,7 +23,7 @@ Current product state
 - `boop stats` is the optimization/stats dashboard.
 - `boop help` is a curated workflow-oriented help surface.
 - `boop roster` is separate from `boop party`.
-- `boop preset solo|party|leader-call` exists as a shortcut for recommended baseline setups.
+- `boop preset solo|party|leader|leader-call` exists as a shortcut for recommended baseline setups.
 
 This file still documents the config system in detail, but new UX work should preserve coherence across all of the above surfaces rather than treating `boop config` as the entire UI.
 

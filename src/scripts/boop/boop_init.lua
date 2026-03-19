@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.220"
+boop.version = boop.version or "0.1.221"
 
 boop.defaults = {
   enabled = false,
@@ -28,6 +28,7 @@ boop.defaults = {
   rageAffCalloutsEnabled = true,
   assistEnabled = false,
   assistLeader = "",
+  autoTargetCall = false,
   uiTheme = "",
 }
 

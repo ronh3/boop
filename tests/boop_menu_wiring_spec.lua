@@ -19,7 +19,7 @@ describe("boop menu wiring", function()
       "boop config",
       "boop config home",
       "boop party",
-      "boop preset <solo|party|leader-call>",
+      "boop preset <solo|party|leader|leader-call>",
       "boop help <topic>",
     } },
     { key = "control", commands = {
@@ -30,7 +30,7 @@ describe("boop menu wiring", function()
       "boop config targeting",
       "boop config loot",
       "boop config debug",
-      "boop preset <solo|party|leader-call>",
+      "boop preset <solo|party|leader|leader-call>",
       "boop get",
       "boop set <key> <value>",
     } },
@@ -52,8 +52,9 @@ describe("boop menu wiring", function()
     { key = "party", commands = {
       "boop party",
       "boop preset party",
+      "boop preset leader",
       "boop preset leader-call",
-      "boop mode solo|assist|leader-call",
+      "boop mode solo|assist|leader|leader-call",
       "boop assist <leader>",
       "boop assist on|off|clear",
       "boop targetcall on|off",

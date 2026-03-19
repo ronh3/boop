@@ -217,6 +217,8 @@ local function operatingModeLabel()
   local mode = "solo"
   if boop.config.targetCall then
     mode = "leader-call"
+  elseif boop.config.autoTargetCall then
+    mode = "leader"
   elseif boop.config.assistEnabled and assistLeader() ~= "" then
     mode = "assist"
   end
@@ -1063,6 +1065,11 @@ local function canonConfigKey(raw)
     assistenabled = "assistEnabled",
     assistleader = "assistLeader",
     leader = "assistLeader",
+    autotargetcall = "autoTargetCall",
+    autocall = "autoTargetCall",
+    leaderautocall = "autoTargetCall",
+    leadermode = "autoTargetCall",
+    leadtargets = "autoTargetCall",
     theme = "uiTheme",
     uitheme = "uiTheme",
     targetcall = "targetCall",
@@ -1113,6 +1120,7 @@ function boop.ui.listConfigValues()
     "partySize",
     "partyRoster",
     "targetCall",
+    "autoTargetCall",
     "rageAffCalloutsEnabled",
     "assistEnabled",
     "assistLeader",
@@ -1316,10 +1324,31 @@ function boop.ui.setConfigValue(key, value)
       return
     end
     saveConfigValue("targetCall", parsed)
+    if parsed and boop.config.autoTargetCall then
+      saveConfigValue("autoTargetCall", false)
+    end
     if not parsed and boop.targets and boop.targets.clearTargetCall then
       boop.targets.clearTargetCall("target call disabled")
     end
     boop.util.ok("leader target call gate: " .. (parsed and "on" or "off"))
+    return
+  end
+
+  if canonical == "autoTargetCall" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.warn("autoTargetCall expects on/off")
+      return
+    end
+    local hadTargetCall = not not boop.config.targetCall
+    saveConfigValue("autoTargetCall", parsed)
+    if parsed and hadTargetCall then
+      saveConfigValue("targetCall", false)
+      if boop.targets and boop.targets.clearTargetCall then
+        boop.targets.clearTargetCall("auto target call enabled")
+      end
+    end
+    boop.util.ok("auto target calls: " .. (parsed and "on" or "off"))
     return
   end
 
@@ -1445,11 +1474,12 @@ function boop.ui.modeCommand(raw)
     boop.util.info("mode: " .. operatingModeLabel())
     boop.util.info("blocker: " .. blocker)
     boop.util.info("next: " .. nextAction)
-    boop.util.info("Usage: boop mode solo|assist|leader-call")
+    boop.util.info("Usage: boop mode solo|assist|leader|leader-call")
     return
   end
 
   if cmd == "solo" then
+    saveConfigValue("autoTargetCall", false)
     saveConfigValue("targetCall", false)
     if boop.targets and boop.targets.clearTargetCall then
       boop.targets.clearTargetCall("mode solo")
@@ -1466,11 +1496,23 @@ function boop.ui.modeCommand(raw)
       return
     end
     saveConfigValue("assistEnabled", true)
+    saveConfigValue("autoTargetCall", false)
     saveConfigValue("targetCall", false)
     if boop.targets and boop.targets.clearTargetCall then
       boop.targets.clearTargetCall("mode assist")
     end
     boop.util.ok("mode: assist -> " .. leader)
+    return
+  end
+
+  if cmd == "leader" or cmd == "leading" then
+    saveConfigValue("assistEnabled", false)
+    saveConfigValue("autoTargetCall", true)
+    saveConfigValue("targetCall", false)
+    if boop.targets and boop.targets.clearTargetCall then
+      boop.targets.clearTargetCall("mode leader")
+    end
+    boop.util.ok("mode: leader")
     return
   end
 
@@ -1481,12 +1523,13 @@ function boop.ui.modeCommand(raw)
       return
     end
     saveConfigValue("assistEnabled", true)
+    saveConfigValue("autoTargetCall", false)
     saveConfigValue("targetCall", true)
     boop.util.ok("mode: leader-call -> " .. leader)
     return
   end
 
-  boop.util.warn("Usage: boop mode solo|assist|leader-call")
+  boop.util.warn("Usage: boop mode solo|assist|leader|leader-call")
 end
 
 local PRESET_DEFS = {
@@ -1503,6 +1546,7 @@ local PRESET_DEFS = {
       partySize = 1,
       rageAffCalloutsEnabled = false,
       assistEnabled = false,
+      autoTargetCall = false,
       targetCall = false,
     },
   },
@@ -1519,6 +1563,24 @@ local PRESET_DEFS = {
       partySize = 2,
       rageAffCalloutsEnabled = false,
       assistEnabled = false,
+      autoTargetCall = false,
+      targetCall = false,
+    },
+  },
+  leader = {
+    label = "leader",
+    summary = "Party hunting that automatically calls each new target you engage.",
+    values = {
+      targetingMode = "whitelist",
+      useQueueing = false,
+      prequeueEnabled = true,
+      attackLeadSeconds = 1,
+      autoGrabGold = true,
+      attackMode = "simple",
+      partySize = 2,
+      rageAffCalloutsEnabled = false,
+      assistEnabled = false,
+      autoTargetCall = true,
       targetCall = false,
     },
   },
@@ -1535,6 +1597,7 @@ local PRESET_DEFS = {
       partySize = 2,
       rageAffCalloutsEnabled = false,
       assistEnabled = true,
+      autoTargetCall = false,
       targetCall = true,
     },
   },
@@ -1552,10 +1615,11 @@ function boop.ui.presetCommand(raw)
   local cmd = canonicalPresetName(raw)
 
   if cmd == "" or cmd == "status" or cmd == "show" or cmd == "list" then
-    boop.util.info("presets: solo | party | leader-call")
-    boop.util.info("Usage: boop preset <solo|party|leader-call>")
+    boop.util.info("presets: solo | party | leader | leader-call")
+    boop.util.info("Usage: boop preset <solo|party|leader|leader-call>")
     boop.util.echo("  solo        -> " .. PRESET_DEFS.solo.summary)
     boop.util.echo("  party       -> " .. PRESET_DEFS.party.summary)
+    boop.util.echo("  leader      -> " .. PRESET_DEFS.leader.summary)
     boop.util.echo("  leader-call -> " .. PRESET_DEFS["leader-call"].summary)
     return
   end
@@ -1563,7 +1627,7 @@ function boop.ui.presetCommand(raw)
   local preset = PRESET_DEFS[cmd]
   if not preset then
     boop.util.warn("unknown preset: " .. tostring(raw))
-    boop.util.info("Usage: boop preset <solo|party|leader-call>")
+    boop.util.info("Usage: boop preset <solo|party|leader|leader-call>")
     return
   end
 
@@ -1835,6 +1899,9 @@ function boop.ui.targetCallCommand(raw)
   end
 
   saveConfigValue("targetCall", parsed)
+  if parsed and boop.config.autoTargetCall then
+    saveConfigValue("autoTargetCall", false)
+  end
   if not parsed and boop.targets and boop.targets.clearTargetCall then
     boop.targets.clearTargetCall("target call disabled")
   end
@@ -3052,7 +3119,7 @@ local HELP_TOPICS = {
       helpCommand("boop config", "Open the guided settings hub."),
       helpCommand("boop config home", "Jump back to the root of the config hub from any config screen."),
       helpCommand("boop party", "Open the party dashboard for leader, assist, walk, and roster state."),
-      helpCommand("boop preset <solo|party|leader-call>", "Apply a recommended baseline for solo hunting, party hunting, or leader-called party play."),
+      helpCommand("boop preset <solo|party|leader|leader-call>", "Apply a recommended baseline for solo hunting, party hunting, leader target calling, or leader-following party play."),
       helpCommand("boop help <topic>", "Open help for a specific workflow or feature area."),
     },
     notes = {
@@ -3073,7 +3140,7 @@ local HELP_TOPICS = {
       helpCommand("boop config targeting", "Open targeting mode, order, and list-management settings."),
       helpCommand("boop config loot", "Open sovereign pickup and gold-pack settings."),
       helpCommand("boop config debug", "Open trace, gag, and debug settings."),
-      helpCommand("boop preset <solo|party|leader-call>", "Apply a curated baseline without stepping through each individual setting."),
+      helpCommand("boop preset <solo|party|leader|leader-call>", "Apply a curated baseline without stepping through each individual setting."),
       helpCommand("boop get", "List or inspect raw config keys and values."),
       helpCommand("boop set <key> <value>", "Set a raw config value directly without using the guided screens."),
     },
@@ -3114,13 +3181,14 @@ local HELP_TOPICS = {
     summary = "Assist, leader target calls, roster management, and movement coordination.",
     aliases = { "party", "leader", "assist", "targetcall", "walk", "roster", "combos", "combo" },
     commands = {
-      helpCommand("boop party", "Open the party dashboard with leader, assist, walk, target-call, and roster state."),
+      helpCommand("boop party", "Open the party dashboard with leader, assist, walk, target-call, auto-call, and roster state."),
       helpCommand("boop preset party", "Apply the default party baseline without leader gating."),
+      helpCommand("boop preset leader", "Apply the leader baseline; boop will automatically party-call each new target it engages."),
       helpCommand("boop preset leader-call", "Apply the leader-call baseline; requires an assist leader to already be set."),
-      helpCommand("boop mode solo|assist|leader-call", "Switch between solo hunting, assist mode, and leader-called target mode."),
+      helpCommand("boop mode solo|assist|leader|leader-call", "Switch between solo hunting, assist mode, leader auto-calling, and leader-following target mode."),
       helpCommand("boop assist <leader>", "Set the assist leader boop should follow for assist-mode attacks."),
       helpCommand("boop assist on|off|clear", "Enable, disable, or clear assist mode without changing other party settings."),
-      helpCommand("boop targetcall on|off", "Require a leader-called target before boop starts attacking."),
+      helpCommand("boop targetcall on|off", "Require a leader-called target before boop starts attacking when following another leader."),
       helpCommand("boop affcalls on|off", "Enable or suppress battlerage affliction party callouts."),
       helpCommand("boop walk [status|start|stop|move]", "Inspect or control external autowalker integration when the walker package is available."),
       helpCommand("boop walk install", "Install the required demonnicAutoWalker package into Mudlet."),
@@ -3132,7 +3200,7 @@ local HELP_TOPICS = {
       helpCommand("boop combos list", "List known class names supported by the combo helper."),
     },
     notes = {
-      "Use `boop party` as the party dashboard; it consolidates leader, assist, walk, target-call, and roster state.",
+      "Use `boop party` as the party dashboard; it consolidates leader, assist, walk, target-call, auto-call, and roster state.",
       "Use `boop roster` to store party classes for combo/conditional assistance.",
       "If the walker package is missing, use `boop walk install` from inside Mudlet.",
       "Use quotes for multi-word classes when needed.",

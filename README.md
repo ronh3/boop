@@ -17,9 +17,9 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop help` / `boop help <number|topic|home>` (examples: `boop help 2`, `boop help targeting`)
 - `boop status` (status summary)
 - `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow)
-- `boop preset <solo|party|leader-call>` (apply recommended baseline settings)
+- `boop preset <solo|party|leader|leader-call>` (apply recommended baseline settings)
 - `boop party` (party dashboard)
-- `boop mode solo|assist|leader-call` (switch hunting/party mode directly)
+- `boop mode solo|assist|leader|leader-call` (`leader` auto-calls your targets; `leader-call` follows another leader)
 - `boop assist <leader>` / `boop assist on|off|clear`
 - `boop targetcall on|off`
 - `boop affcalls on|off`

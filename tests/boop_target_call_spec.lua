@@ -84,4 +84,17 @@ describe("boop leader target call mode", function()
     assert.are.equal("", boop.state.calledTargetId)
     assert.are.equal("", boop.targets.choose())
   end)
+
+  it("automatically party-calls a newly engaged target in leader mode", function()
+    boop.config.targetCall = false
+    boop.config.assistLeader = ""
+    boop.config.autoTargetCall = true
+
+    boop.tick()
+
+    assert.stub(send_stub).was_called_with("settarget 42", false)
+    assert.stub(send_stub).was_called_with("pt Target: 42.", false)
+    assert.stub(send_stub).was_called_with("warp 42", false)
+    assert.are.equal("42", boop.state.calledTargetId)
+  end)
 end)
