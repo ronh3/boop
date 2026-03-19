@@ -64,8 +64,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - Denizens on the global blacklist do not show `ih` whitelist/blacklist action labels.
 - `boop walk` integrates with `demonnicAutoWalker`; if it is missing, use `boop walk install`.
 - Auto gold pickup grabs newly dropped room items whose names contain `gold sovereign`.
-- In queueing mode, auto gold pickup is prepended to the next standard attack as `get sovereigns/<attack>`.
-- If no standard attack follows quickly, boop falls back to `queue add freestand get sovereigns` (also used in non-queueing mode to avoid balance-lock misses).
+- In queueing mode, auto gold pickup blocks queued combat briefly and uses the game-side balance queue for `get sovereigns` so off-balance kills still loot cleanly.
+- Non-queueing mode uses the same balance-queue gold pickup path.
 - If `boop pack <container>` is set, boop follows pickup with `put sovereigns in <container>`.
 - Gold get/put has trigger-based success/failure tracking with limited retries and warning output when retries are exhausted.
 - For `Two Handed` spec with `Focus` known in `Weaponmastery`, boop prepends `battlefury focus speed/` to standard damage attacks (never shieldbreakers).

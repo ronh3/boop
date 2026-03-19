@@ -39,7 +39,7 @@ describe("boop event-driven state transitions", function()
     end
   end)
 
-  it("retargets and clears queued state when the current denizen is removed from the room", function()
+  it("retargets without clearing the server queue when the current denizen is removed from the room", function()
     helper.setArea("Test Area")
     helper.setClass("Occultist")
     helper.learnSkill("Lycantha", "Domination")
@@ -68,8 +68,8 @@ describe("boop event-driven state transitions", function()
     assert.is_false(boop.afflictions.hasTarget("stupidity"))
     assert.is_function(scheduled_callback)
     assert.stub(kill_timer_stub).was_called_with(77)
-    assert.stub(send_stub).was_called_with("queue clear", false)
     assert.stub(send_stub).was_called_with("settarget 43", false)
+    assert.stub(send_stub).was_not_called_with("queue clear", false)
 
     scheduled_callback()
 

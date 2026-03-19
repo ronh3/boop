@@ -99,7 +99,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `boop whitelist` and `boop blacklist` render clickable list managers (`up`/`down`/`remove`).
 - `boop whitelist browse [tag]` browses area-level whitelist entries with optional tag filter.
 - Whitelist areas support multi-tag metadata via `boop whitelist tag add/remove`, with `boop whitelist tag list` summary and per-area `boop whitelist tags <area>`.
-- `boop autogold` toggles automatic pickup of newly dropped gold sovereigns; in queueing mode it prepends `get sovereigns/` to the next standard attack, with a short fallback timer to queue `get sovereigns` if no attack follows (and non-queueing mode uses queued `get sovereigns` to avoid balance-lock misses).
+- `boop autogold` toggles automatic pickup of newly dropped gold sovereigns; in queueing mode it briefly blocks queued combat and places `get sovereigns` on the game's balance queue so off-balance kills still loot cleanly (non-queueing mode uses the same balance-queue pickup path).
 - `boop pack <container>` sets an optional auto-stash container (`put sovereigns in <container>`) used after auto gold pickup.
 - `boop import foxhunt [merge|overwrite|dryrun]` imports area list data from Foxhunt's `hunting` DB into boop lists.
 - Gold get/put tracking now listens for success/failure lines and performs bounded retries before warning.

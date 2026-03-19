@@ -139,8 +139,13 @@ end
 local function queueGoldCommands()
   local pack = boop.util.trim(boop.config.goldPack or "")
   boop.markGoldQueueIntent(pack)
-  send("get sovereigns", false)
-  boop.trace.log("gold send: get sovereigns")
+  send("queue add balance get sovereigns", false)
+  boop.trace.log("gold queue: get sovereigns")
+
+  if pack ~= "" then
+    send("queue add balance put sovereigns in " .. pack, false)
+    boop.trace.log("gold queue: put sovereigns in " .. pack)
+  end
 end
 
 local cancelAutoGrabGoldTimer
@@ -253,7 +258,7 @@ local function retryGoldGet(reason)
   end
   boop.state.goldGetRetries = retries + 1
   armGoldPendingTimeout()
-  send("get sovereigns", false)
+  send("queue add balance get sovereigns", false)
   boop.trace.log("gold get retry " .. tostring(boop.state.goldGetRetries) .. ": " .. tostring(reason))
 end
 
@@ -276,7 +281,7 @@ local function retryGoldPut(reason)
   end
   boop.state.goldPutRetries = retries + 1
   armGoldPendingTimeout()
-  send("put sovereigns in " .. pack, false)
+  send("queue add balance put sovereigns in " .. pack, false)
   boop.trace.log("gold put retry " .. tostring(boop.state.goldPutRetries) .. " for " .. pack .. ": " .. tostring(reason))
 end
 
@@ -285,12 +290,7 @@ function boop.onGoldGetSuccess()
   if not boop.state.goldGetPending then return end
   boop.state.goldGetPending = false
   boop.state.goldGetRetries = 0
-  local pack = boop.state.goldPackTarget or ""
-  if boop.state.goldPutPending and pack ~= "" then
-    armGoldPendingTimeout()
-    send("put sovereigns in " .. pack, false)
-    boop.trace.log("gold send: put sovereigns in " .. pack)
-  else
+  if not boop.state.goldPutPending then
     boop.state.goldPutPending = false
     stopGoldPendingTimeout()
   end
@@ -450,11 +450,6 @@ function boop.onRoomItemsRemove()
   end
   if boop.afflictions and boop.afflictions.clearTarget then
     boop.afflictions.clearTarget()
-  end
-
-  if boop.config and boop.config.enabled and boop.config.useQueueing then
-    send("queue clear", false)
-    boop.trace.log("queue cleared: current target removed")
   end
 
   if not boop.config or not boop.config.enabled or boop.state.diagHold then
