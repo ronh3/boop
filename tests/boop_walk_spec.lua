@@ -7,6 +7,8 @@ describe("boop walk integration", function()
   local info_stub
   local ok_stub
   local warn_stub
+  local err_stub
+  local install_stub
   local scheduled
   local original_demonwalker
 
@@ -32,6 +34,7 @@ describe("boop walk integration", function()
     info_stub = stub(boop.util, "info", function(_) end)
     ok_stub = stub(boop.util, "ok", function(_) end)
     warn_stub = stub(boop.util, "warn", function(_) end)
+    err_stub = stub(boop.util, "err", function(_) end)
 
     boop.config.enabled = true
     boop.config.targetingMode = "auto"
@@ -44,6 +47,8 @@ describe("boop walk integration", function()
     if info_stub then info_stub:revert() end
     if ok_stub then ok_stub:revert() end
     if warn_stub then warn_stub:revert() end
+    if err_stub then err_stub:revert() end
+    if install_stub then install_stub:revert() end
     _G.demonwalker = original_demonwalker
   end)
 
@@ -54,6 +59,16 @@ describe("boop walk integration", function()
     assert.is_true(boop.state.walkOwned)
     assert.is_true(demonwalker.enabled)
     assert.stub(ok_stub).was_called_with("walk started")
+  end)
+
+  it("installs the walker package from boop walk install when missing", function()
+    _G.demonwalker = nil
+    install_stub = stub(_G, "installPackage", function(_) end)
+
+    boop.ui.walkCommand("install")
+
+    assert.stub(install_stub).was_called_with("https://github.com/demonnic/demonnicAutoWalker/releases/latest/download/demonnicAutoWalker.mpackage")
+    assert.stub(ok_stub).was_called_with("install requested: demonnicAutoWalker")
   end)
 
   it("advances to the next room when the room list settles empty", function()

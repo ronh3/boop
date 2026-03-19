@@ -59,6 +59,7 @@ describe("boop menu wiring", function()
       "boop targetcall on|off",
       "boop affcalls on|off",
       "boop walk [status|start|stop|move]",
+      "boop walk install",
       "boop roster",
       "boop roster <class...>",
       "boop roster clear",
@@ -236,7 +237,7 @@ describe("boop menu wiring", function()
     expectCallback(callbacks[7].callback, { { label = "partyCommand", args = { "" } } })
     expectCallback(callbacks[8].callback, { { label = "partyCommand", args = { "" } } })
     expectCallback(callbacks[9].callback, { { label = "partyCommand", args = { "" } } })
-    expectCallback(callbacks[10].callback, { { label = "walkCommand", args = { "" } } })
+    expectCallback(callbacks[10].callback, { { label = "walkCommand", args = { "install" } } })
     expectCallback(callbacks[11].callback, { { label = "themeCommand", args = { "" } } })
     expectCallback(callbacks[12].callback, { { label = "partyCommand", args = { "" } } })
     expectCallback(callbacks[13].callback, { { label = "rosterCommand", args = { "" } } })
@@ -254,7 +255,7 @@ describe("boop menu wiring", function()
       boop.ui.partyCommand("")
     end)
 
-    assert.are.equal(19, #callbacks)
+    assert.are.equal(20, #callbacks)
 
     addStub(boop.ui, "modeCommand", "modeCommand")
     addStub(boop.ui, "targetCallCommand", "targetCallCommand")
@@ -272,7 +273,7 @@ describe("boop menu wiring", function()
     expectCallback(callbacks[3].callback, { { label = "modeCommand", args = { "assist" } } })
     expectCallback(callbacks[4].callback, { { label = "targetCallCommand", args = { "on" } } })
     expectCallback(callbacks[5].callback, seedExpectation("boop party size "))
-    expectCallback(callbacks[6].callback, { { label = "walkCommand", args = { "start" } } })
+    expectCallback(callbacks[6].callback, { { label = "walkCommand", args = { "install" } } })
     expectCallback(callbacks[7].callback, { { label = "walkCommand", args = { "status" } } })
     expectCallback(callbacks[8].callback, { { label = "walkCommand", args = { "move" } } })
     expectCallback(callbacks[9].callback, { { label = "affCallCommand", args = { "off" } } })
@@ -285,8 +286,9 @@ describe("boop menu wiring", function()
     expectCallback(callbacks[15].callback, seedExpectation("boop party targetcall on|off"))
     expectCallback(callbacks[16].callback, seedExpectation("boop party affcalls on|off"))
     expectCallback(callbacks[17].callback, seedExpectation("boop party walk"))
-    expectCallback(callbacks[18].callback, seedExpectation("boop roster"))
-    expectCallback(callbacks[19].callback, seedExpectation("boop combos"))
+    expectCallback(callbacks[18].callback, seedExpectation("boop walk install"))
+    expectCallback(callbacks[19].callback, seedExpectation("boop roster"))
+    expectCallback(callbacks[20].callback, seedExpectation("boop combos"))
   end)
 
   it("wires the config home rows and footer seeds", function()

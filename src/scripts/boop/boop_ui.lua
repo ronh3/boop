@@ -266,12 +266,18 @@ local function currentBlocker()
     if boop.walk and boop.walk.isActive and boop.walk.isActive() then
       return "room clear", "autowalk should advance"
     end
+    if boop.walk and boop.walk.isAvailable and not boop.walk.isAvailable() then
+      return "walk package missing", "boop walk install"
+    end
     return "room clear", "boop walk start"
   end
   return "ready", "let boop attack"
 end
 
 local function walkStatusLabel()
+  if boop.walk and boop.walk.isAvailable and not boop.walk.isAvailable() then
+    return "INSTALL"
+  end
   if boop.walk and boop.walk.isActive and boop.walk.isActive() then
     return "ON"
   end
@@ -303,7 +309,12 @@ local function renderStatusDashboard()
   local modeShown = operatingModeLabel()
   local themeShown = activeThemeLabel()
   local blocker, nextAction = currentBlocker()
-  local walkShown = (boop.walk and boop.walk.isActive and boop.walk.isActive()) and "ACTIVE" or "IDLE"
+  local walkShown = "IDLE"
+  if boop.walk and boop.walk.isAvailable and not boop.walk.isAvailable() then
+    walkShown = "INSTALL"
+  elseif boop.walk and boop.walk.isActive and boop.walk.isActive() then
+    walkShown = "ACTIVE"
+  end
   if calledTargetShown == "" then calledTargetShown = "(none)" end
 
   if cecho then
@@ -319,7 +330,7 @@ local function renderStatusDashboard()
     row = row + 1
     uiPrintRow(row, "Theme", themeShown, "cyan")
     row = row + 1
-    uiPrintRow(row, "Walk", walkShown, walkShown == "ACTIVE" and "green" or "yellow")
+    uiPrintRow(row, "Walk", walkShown, walkShown == "ACTIVE" and "green" or (walkShown == "INSTALL" and "red" or "yellow"))
     row = row + 1
     uiPrintRow(row, "Party size", tostring(partySize), "cyan")
     row = row + 1
@@ -517,7 +528,7 @@ function boop.ui.controlCommand(raw)
   local modeShown = operatingModeLabel()
   local themeShown = activeThemeLabel()
   local blocker, nextAction = currentBlocker()
-  local walkShown = (boop.walk and boop.walk.isActive and boop.walk.isActive()) and "ON" or "OFF"
+  local walkShown = walkStatusLabel()
   local queueShown = boolText(not not boop.config.useQueueing)
   local prequeueShown = boolText(not not boop.config.prequeueEnabled)
   local partySize = tostring(tonumber(boop.config.partySize) or 1)
@@ -547,7 +558,9 @@ function boop.ui.controlCommand(raw)
     uiPrintRow(13, "Assist", assistShown, boop.config.assistEnabled and "green" or "yellow", function() boop.ui.partyCommand("") end, "Open the party dashboard")
     uiPrintRow(14, "Leader target gate", targetCallShown, boop.config.targetCall and "green" or "yellow", function() boop.ui.partyCommand("") end, "Open the party dashboard")
     uiPrintRow(15, "Party size", partySize, "cyan", function() boop.ui.partyCommand("") end, "Open the party dashboard")
-    uiPrintRow(16, "Walk", walkShown, walkShown == "ON" and "green" or "yellow", function() boop.ui.walkCommand("") end, "Open walk controls")
+    uiPrintRow(16, "Walk", walkShown, walkShown == "ON" and "green" or (walkShown == "INSTALL" and "red" or "yellow"), function()
+      boop.ui.walkCommand(walkShown == "INSTALL" and "install" or "")
+    end, walkShown == "INSTALL" and "Install demonnicAutoWalker for walk controls" or "Open walk controls")
     uiPrintRow(17, "Theme", themeShown, "cyan", function() boop.ui.themeCommand("") end, "Open theme controls")
 
     uiPrintSection("navigation")
@@ -1413,7 +1426,14 @@ function boop.ui.walkCommand(raw)
     return
   end
 
-  boop.util.info("Usage: boop walk [status|start|stop|move]")
+  if cmd == "install" then
+    if boop.walk and boop.walk.install then
+      boop.walk.install()
+    end
+    return
+  end
+
+  boop.util.info("Usage: boop walk [status|start|stop|move|install]")
 end
 
 function boop.ui.modeCommand(raw)
@@ -1679,9 +1699,13 @@ function boop.ui.partyCommand(raw)
     end, "Prepare party size command")
 
     uiPrintSection("movement")
-    uiPrintRow(7, "Walk", walkShown, walkShown == "ON" and "green" or "yellow", function()
-      boop.ui.walkCommand(walkShown == "ON" and "stop" or "start")
-    end, "Start or stop autowalk")
+    uiPrintRow(7, "Walk", walkShown, walkShown == "ON" and "green" or (walkShown == "INSTALL" and "red" or "yellow"), function()
+      if walkShown == "INSTALL" then
+        boop.ui.walkCommand("install")
+      else
+        boop.ui.walkCommand(walkShown == "ON" and "stop" or "start")
+      end
+    end, walkShown == "INSTALL" and "Install demonnicAutoWalker for walk controls" or "Start or stop autowalk")
     uiPrintRow(8, "Blocker", blocker, blocker == "ready" and "green" or "yellow", function()
       boop.ui.walkCommand("status")
     end, "Show walk status")
@@ -1706,7 +1730,7 @@ function boop.ui.partyCommand(raw)
     uiPrintRow(15, "Control dashboard", "OPEN", "cyan", function()
       boop.ui.controlCommand("")
     end, "Open the control dashboard")
-    uiPrintFooter("Type: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop party walk <cmd> | boop roster | boop combos")
+    uiPrintFooter("Type: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop party walk <cmd> | boop walk install | boop roster | boop combos")
     return
   end
 
@@ -1718,7 +1742,7 @@ function boop.ui.partyCommand(raw)
   boop.util.echo("Next: " .. nextAction)
   boop.util.echo(string.format("Party size: %s | roster entries: %d", partySizeShown, #roster))
   boop.util.echo("Roster: " .. rosterShown)
-  boop.util.echo("Quick: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop party walk | boop roster | boop combos")
+  boop.util.echo("Quick: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop party walk | boop walk install | boop roster | boop combos")
 end
 
 function boop.ui.assistCommand(raw)
@@ -3098,7 +3122,8 @@ local HELP_TOPICS = {
       helpCommand("boop assist on|off|clear", "Enable, disable, or clear assist mode without changing other party settings."),
       helpCommand("boop targetcall on|off", "Require a leader-called target before boop starts attacking."),
       helpCommand("boop affcalls on|off", "Enable or suppress battlerage affliction party callouts."),
-      helpCommand("boop walk [status|start|stop|move]", "Inspect or control external autowalker integration; requires demonnicAutoWalker: https://github.com/demonnic/demonnicAutoWalker"),
+      helpCommand("boop walk [status|start|stop|move]", "Inspect or control external autowalker integration when the walker package is available."),
+      helpCommand("boop walk install", "Install the required demonnicAutoWalker package into Mudlet."),
       helpCommand("boop roster", "Show the stored party roster and your combo-relevant party composition."),
       helpCommand("boop roster <class...>", "Set the party roster classes used for combo and conditional help."),
       helpCommand("boop roster clear", "Clear the stored party roster."),
@@ -3109,7 +3134,7 @@ local HELP_TOPICS = {
     notes = {
       "Use `boop party` as the party dashboard; it consolidates leader, assist, walk, target-call, and roster state.",
       "Use `boop roster` to store party classes for combo/conditional assistance.",
-      "`boop walk` depends on `demonnicAutoWalker`: https://github.com/demonnic/demonnicAutoWalker",
+      "If the walker package is missing, use `boop walk install` from inside Mudlet.",
       "Use quotes for multi-word classes when needed.",
     },
   },
@@ -3336,7 +3361,7 @@ function boop.ui.home()
   local modeShown = operatingModeLabel()
   local themeShown = activeThemeLabel()
   local blocker, nextAction = currentBlocker()
-  local walkShown = (boop.walk and boop.walk.isActive and boop.walk.isActive()) and "ON" or "OFF"
+  local walkShown = walkStatusLabel()
 
   if cecho then
     uiPrintHeader("boop")
@@ -3345,7 +3370,7 @@ function boop.ui.home()
     uiPrintRow(2, "Mode", modeShown, "yellow")
     uiPrintRow(3, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
     uiPrintRow(4, "Next action", nextAction, "cyan")
-    uiPrintRow(5, "Walk", walkShown, walkShown == "ON" and "green" or "yellow")
+    uiPrintRow(5, "Walk", walkShown, walkShown == "ON" and "green" or (walkShown == "INSTALL" and "red" or "yellow"))
     uiPrintRow(6, "Theme", themeShown, "cyan")
 
     uiPrintSection("combat state")

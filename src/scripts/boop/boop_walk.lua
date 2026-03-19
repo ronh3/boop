@@ -1,5 +1,7 @@
 boop.walk = boop.walk or {}
 
+local WALKER_PACKAGE_URL = "https://github.com/demonnic/demonnicAutoWalker/releases/latest/download/demonnicAutoWalker.mpackage"
+
 local function walkState()
   boop.state = boop.state or {}
   return boop.state
@@ -114,6 +116,32 @@ function boop.walk.isAvailable()
   return available()
 end
 
+function boop.walk.install()
+  if available() then
+    boop.util.info("demonnicAutoWalker is already available")
+    boop.walk.status()
+    return true
+  end
+  if type(installPackage) ~= "function" then
+    boop.util.err("walk install failed: installPackage() is unavailable")
+    boop.util.info("Use a Mudlet build with package installs enabled, then run: boop walk install")
+    return false
+  end
+
+  local ok, err = pcall(function()
+    installPackage(WALKER_PACKAGE_URL)
+  end)
+  if not ok then
+    boop.util.err("walk install failed: " .. tostring(err))
+    boop.util.info("Retry with: boop walk install")
+    return false
+  end
+
+  boop.util.ok("install requested: demonnicAutoWalker")
+  boop.util.info("If Mudlet prompts you, accept the package install, then use: boop walk start")
+  return true
+end
+
 function boop.walk.isActive()
   local state = walkState()
   return state.walkActive and true or false
@@ -138,6 +166,9 @@ function boop.walk.status()
   ))
   if blocked then
     boop.util.info("walk blocked: " .. blocked)
+    if not available() then
+      boop.util.info("walk install: boop walk install")
+    end
   else
     boop.util.ok("walk ready to advance when room is clear")
   end
@@ -146,7 +177,7 @@ end
 function boop.walk.start(options)
   if not available() then
     boop.util.warn("demonnicAutoWalker is not available")
-    boop.util.info("Install the separate package, then use: boop walk start")
+    boop.util.info("Install it with: boop walk install")
     return false
   end
 
