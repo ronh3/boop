@@ -86,6 +86,9 @@ local originalEcho = {
 local lines = {}
 local pending = ""
 local currentCallbacks = {}
+local currentRenderLines = nil
+local totalChecks = 0
+local failedChecks = 0
 local STRIPPABLE_EXACT_TAGS = {}
 local STRIPPABLE_TAGS = {
   reset = true,
@@ -185,6 +188,9 @@ end
 local function flushPending()
   if pending ~= "" then
     lines[#lines + 1] = pending
+    if currentRenderLines then
+      currentRenderLines[#currentRenderLines + 1] = pending
+    end
     pending = ""
   end
 end
@@ -199,6 +205,9 @@ local function pushChunk(text)
     end
     pending = pending .. chunk:sub(1, pos - 1)
     lines[#lines + 1] = pending
+    if currentRenderLines then
+      currentRenderLines[#currentRenderLines + 1] = pending
+    end
     pending = ""
     chunk = chunk:sub(pos + 1)
   end
@@ -223,12 +232,35 @@ local function quote(value)
   return "<" .. kind .. ">"
 end
 
+local function captureArgs(...)
+  local args = {}
+  for i = 1, select("#", ...) do
+    args[i] = select(i, ...)
+  end
+  return args
+end
+
 local function formatArgs(args)
   local parts = {}
   for i = 1, #args do
     parts[#parts + 1] = quote(args[i])
   end
   return table.concat(parts, ", ")
+end
+
+local function action(path, ...)
+  return string.format("%s(%s)", path, formatArgs(captureArgs(...)))
+end
+
+local function seedActions(seed)
+  return {
+    action("clearCmdLine"),
+    action("appendCmdLine", seed),
+  }
+end
+
+local function contains(haystack, needle)
+  return tostring(haystack or ""):find(tostring(needle or ""), 1, true) ~= nil
 end
 
 local function resolvePath(path)
@@ -260,7 +292,7 @@ local function withWrappedPaths(fn)
     if parent and type(original) == "function" then
       originals[#originals + 1] = { parent = parent, key = key, original = original }
       parent[key] = function(...)
-        events[#events + 1] = string.format("%s(%s)", path, formatArgs({ ... }))
+        events[#events + 1] = string.format("%s(%s)", path, formatArgs(captureArgs(...)))
       end
     end
   end
@@ -273,6 +305,424 @@ local function withWrappedPaths(fn)
   end
 
   return ok, err, events
+end
+
+local HELP_TOPICS = {
+  start = {
+    title = "HELP > START HERE",
+    commands = {
+      "boop",
+      "boop control",
+      "boop on",
+      "boop off",
+      "boop status",
+      "boop config",
+      "boop config home",
+      "boop party",
+      "boop preset <solo|party|leader-call>",
+      "boop help <topic>",
+    },
+  },
+  control = {
+    title = "HELP > CONTROL & CONFIG",
+    commands = {
+      "boop control",
+      "boop config",
+      "boop config home",
+      "boop config combat",
+      "boop config targeting",
+      "boop config loot",
+      "boop config debug",
+      "boop preset <solo|party|leader-call>",
+      "boop get",
+      "boop set <key> <value>",
+    },
+  },
+  hunting = {
+    title = "HELP > HUNTING & TARGETING",
+    commands = {
+      "boop config combat",
+      "boop config targeting",
+      "boop ragemode",
+      "boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>",
+      "boop prequeue [on|off]",
+      "boop lead <seconds>",
+      "boop targeting <manual|whitelist|blacklist|auto>",
+      "boop whitelist",
+      "boop whitelist browse [tag]",
+      "boop blacklist",
+      "diag",
+      "boop prefer",
+      "boop prefer <dam|shield> <option>",
+    },
+  },
+  party = {
+    title = "HELP > PARTY & LEADER",
+    commands = {
+      "boop party",
+      "boop preset party",
+      "boop preset leader-call",
+      "boop mode solo|assist|leader-call",
+      "boop assist <leader>",
+      "boop assist on|off|clear",
+      "boop targetcall on|off",
+      "boop affcalls on|off",
+      "boop walk [status|start|stop|move]",
+      "boop roster",
+      "boop roster <class...>",
+      "boop roster clear",
+      "boop combos",
+      "boop combos <class...>",
+      "boop combos list",
+    },
+    required = {
+      "https://github.com/demonnic/demonnicAutoWalker",
+    },
+    hintOverrides = {
+      ["boop walk [status|start|stop|move]"] = "https://github.com/demonnic/demonnicAutoWalker",
+    },
+  },
+  stats = {
+    title = "HELP > STATS & OPTIMIZATION",
+    commands = {
+      "boop stats",
+      "boop stats help",
+      "boop stats session|login|trip|lifetime",
+      "boop stats lasttrip",
+      "boop stats compare [left] [right]",
+      "boop stats areas [scope] [limit] [metric]",
+      "boop stats targets [scope] [limit]",
+      "boop stats abilities [scope] [limit]",
+      "boop stats crits [scope]",
+      "boop stats rage [scope]",
+      "boop stats records [scope]",
+      "boop trip start",
+      "boop trip stop",
+      "boop stats reset session|login|trip|lifetime|all",
+    },
+  },
+  diagnostics = {
+    title = "HELP > DIAGNOSTICS & ADVANCED",
+    commands = {
+      "boop config debug",
+      "boop debug",
+      "boop debug attacks",
+      "boop debug skills",
+      "boop debug skills dump",
+      "boop trace on|off|show [n]|clear",
+      "boop gag on|off|own|others|all",
+      "boop get",
+      "boop set <key> <value>",
+      "boop import foxhunt [merge|overwrite|dryrun]",
+      "boop pack test",
+      "boop theme <name|auto|list>",
+    },
+  },
+}
+
+local function helpTopicExpectation(topic)
+  local callbacks = {}
+  for _, command in ipairs(topic.commands or {}) do
+    callbacks[#callbacks + 1] = {
+      source = command,
+      actions = seedActions(command),
+      hint = topic.hintOverrides and topic.hintOverrides[command] or nil,
+    }
+  end
+  callbacks[#callbacks + 1] = {
+    source = "boop help home",
+    actions = seedActions("boop help home"),
+  }
+  callbacks[#callbacks + 1] = {
+    source = "boop help back",
+    actions = seedActions("boop help back"),
+  }
+  callbacks[#callbacks + 1] = {
+    source = "boop help <number|topic>",
+    actions = seedActions("boop help"),
+  }
+  return {
+    required = topic.required or { topic.title },
+    callbacks = callbacks,
+  }
+end
+
+local expectedByCommand = {
+  ["boop"] = {
+    required = { "BOOP", "QUICK ACTIONS" },
+    callbacks = {
+      { source = "[18] Party", actions = { action("boop.ui.partyCommand", "") }, hint = "Open the party dashboard" },
+      { source = "[19] Mode controls", actions = { action("boop.ui.modeCommand", "") } },
+      { source = "[20] Stats", actions = { action("boop.stats.command", "") } },
+      { source = "[21] Theme controls", actions = { action("boop.ui.themeCommand", "") } },
+      { source = "boop control", actions = seedActions("boop control") },
+      { source = "boop party", actions = seedActions("boop party") },
+      { source = "boop roster", actions = seedActions("boop roster") },
+      { source = "boop mode", actions = seedActions("boop mode") },
+      { source = "boop stats", actions = seedActions("boop stats") },
+    },
+  },
+  ["boop control"] = {
+    required = { "BOOP > CONTROL", "NAVIGATION" },
+    callbacks = {
+      { source = "[1] Hunting", actions = { action("boop.ui.setEnabled", true) } },
+      { source = "[2] Mode", actions = { action("boop.ui.modeCommand", "") } },
+      { source = "[7] Targeting", actions = { action("boop.ui.config", "targeting") } },
+      { source = "[8] Ragemode", actions = { action("boop.ui.config", "combat") } },
+      { source = "[9] Queueing", actions = { action("boop.ui.config", "combat") } },
+      { source = "[10] Prequeue", actions = { action("boop.ui.config", "combat") } },
+      { source = "[13] Assist", actions = { action("boop.ui.partyCommand", "") } },
+      { source = "[14] Leader target gate", actions = { action("boop.ui.partyCommand", "") } },
+      { source = "[15] Party size", actions = { action("boop.ui.partyCommand", "") } },
+      { source = "[16] Walk", actions = { action("boop.ui.walkCommand", "") } },
+      { source = "[17] Theme", actions = { action("boop.ui.themeCommand", "") } },
+      { source = "[18] Party dashboard", actions = { action("boop.ui.partyCommand", "") } },
+      { source = "[19] Roster manager", actions = { action("boop.ui.rosterCommand", "") } },
+      { source = "[20] Settings hub", actions = { action("boop.ui.config", "") } },
+      { source = "[21] Stats dashboard", actions = { action("boop.stats.command", "") } },
+      { source = "boop control config", actions = seedActions("boop control config") },
+      { source = "boop control party", actions = seedActions("boop control party") },
+      { source = "boop control roster", actions = seedActions("boop control roster") },
+      { source = "boop control stats", actions = seedActions("boop control stats") },
+    },
+  },
+  ["boop config"] = {
+    required = { "CONFIGURATION", "RELATED CONTROLS" },
+    callbacks = {
+      { source = "[1] Hunting", actions = { action("boop.ui.config", "combat") } },
+      { source = "[2] Targeting", actions = { action("boop.ui.config", "targeting") } },
+      { source = "[6] Hunting settings", actions = { action("boop.ui.config", "combat") } },
+      { source = "[7] Targeting settings", actions = { action("boop.ui.config", "targeting") } },
+      { source = "[8] Loot settings", actions = { action("boop.ui.config", "loot") } },
+      { source = "[9] Diagnostics", actions = { action("boop.ui.config", "debug") } },
+      { source = "[10] Party dashboard", actions = { action("boop.ui.partyCommand", "") } },
+      { source = "[11] Roster manager", actions = { action("boop.ui.rosterCommand", "") } },
+      { source = "[12] Appearance", actions = { action("boop.ui.themeCommand", "") } },
+      { source = "[13] Control dashboard", actions = { action("boop.ui.controlCommand", "") } },
+      { source = "[14] Stats dashboard", actions = { action("boop.stats.command", "") } },
+      { source = "boop config home", actions = seedActions("boop config home") },
+      { source = "boop config <number>", actions = seedActions("boop config") },
+      { source = "boop config <name>", actions = seedActions("boop config") },
+      { source = "boop party", actions = seedActions("boop party") },
+      { source = "boop theme", actions = seedActions("boop theme") },
+      { source = "boop control", actions = seedActions("boop control") },
+    },
+  },
+  ["boop config combat"] = {
+    required = { "CONFIGURATION > HUNTING", "ACTIONS" },
+    callbacks = {
+      { source = "[6] Toggle hunting", actions = { action("boop.ui.config", "combat 1") }, contract = "then toggles hunting enabled" },
+      { source = "[7] Change rage mode", actions = { action("boop.ui.config", "combat 2") }, contract = "then opens the ragemode menu" },
+      { source = "[8] Run diag", actions = { action("boop.ui.config", "combat 3") }, contract = "then queues diag" },
+      { source = "[9] Queueing", actions = { action("boop.ui.config", "combat 4") }, contract = "then toggles queueing" },
+      { source = "[10] Prequeue", actions = { action("boop.ui.config", "combat 5") }, contract = "then toggles prequeue" },
+      { source = "[11] Attack lead", actions = { action("boop.ui.config", "combat 6") }, contract = "then prepares: boop lead " },
+      { source = "[12] Diag timeout", actions = { action("boop.ui.config", "combat 7") }, contract = "then prepares: boop set diagtimeout " },
+      { source = "[13] Tempo window", actions = { action("boop.ui.config", "combat 8") }, contract = "then prepares: boop set tempoRageWindowSeconds " },
+      { source = "[14] Tempo squeeze ETA", actions = { action("boop.ui.config", "combat 9") }, contract = "then prepares: boop set tempoSqueezeEtaSeconds " },
+      { source = "[15] Assist leader", actions = { action("boop.ui.config", "combat 10") }, contract = "then prepares: boop assist " },
+      { source = "[16] Rage aff calls", actions = { action("boop.ui.config", "combat 11") }, contract = "then toggles affliction callouts" },
+      { source = "boop config home", actions = seedActions("boop config home") },
+      { source = "boop config combat <number>", actions = seedActions("boop config combat") },
+      { source = "boop config back", actions = seedActions("boop config back") },
+    },
+  },
+  ["boop config targeting"] = {
+    required = { "CONFIGURATION > TARGETING", "LIST TOOLS" },
+    callbacks = {
+      { source = "[6] Targeting mode", actions = { action("boop.ui.config", "targeting 1") }, contract = "then cycles targeting mode" },
+      { source = "[7] Whitelist priority order", actions = { action("boop.ui.config", "targeting 2") }, contract = "then toggles whitelist priority order" },
+      { source = "[8] Target order", actions = { action("boop.ui.config", "targeting 3") }, contract = "then cycles target order" },
+      { source = "[9] Retarget on higher priority", actions = { action("boop.ui.config", "targeting 4") }, contract = "then toggles retarget-on-priority" },
+      { source = "[10] Leader target gate", actions = { action("boop.ui.config", "targeting 5") }, contract = "then toggles leader target gate" },
+      { source = "[11] Whitelist manager", actions = { action("boop.ui.config", "targeting 6") }, contract = "then opens the whitelist manager" },
+      { source = "[12] Whitelist browse", actions = { action("boop.ui.config", "targeting 7") }, contract = "then opens the whitelist browser" },
+      { source = "[13] Blacklist manager", actions = { action("boop.ui.config", "targeting 8") }, contract = "then opens the blacklist manager" },
+      { source = "boop config home", actions = seedActions("boop config home") },
+      { source = "boop config targeting <number>", actions = seedActions("boop config targeting") },
+      { source = "boop config back", actions = seedActions("boop config back") },
+    },
+  },
+  ["boop config loot"] = {
+    required = { "CONFIGURATION > LOOT", "ACTIONS" },
+    callbacks = {
+      { source = "[4] Auto grab sovereigns", actions = { action("boop.ui.config", "loot 1") }, contract = "then toggles automatic gold pickup" },
+      { source = "[5] Gold pack container", actions = { action("boop.ui.config", "loot 2") }, contract = "then prepares: boop pack " },
+      { source = "[6] Clear gold pack", actions = { action("boop.ui.config", "loot 3") }, contract = "then clears the gold pack" },
+      { source = "[7] Gold pack test", actions = { action("boop.ui.config", "loot 4") }, contract = "then runs the gold pack test" },
+      { source = "boop config home", actions = seedActions("boop config home") },
+      { source = "boop config loot <number>", actions = seedActions("boop config loot") },
+      { source = "boop config back", actions = seedActions("boop config back") },
+    },
+  },
+  ["boop config debug"] = {
+    required = { "CONFIGURATION > DEBUG", "ACTIONS" },
+    callbacks = {
+      { source = "[5] Toggle trace logging", actions = { action("boop.ui.config", "debug 1") }, contract = "then toggles trace logging" },
+      { source = "[6] Debug snapshot", actions = { action("boop.ui.config", "debug 2") }, contract = "then shows the debug snapshot" },
+      { source = "[7] Trace buffer", actions = { action("boop.ui.config", "debug 3") }, contract = "then shows the trace buffer" },
+      { source = "[8] Clear trace", actions = { action("boop.ui.config", "debug 4") }, contract = "then clears the trace buffer" },
+      { source = "[9] Toggle gag own attacks", actions = { action("boop.ui.config", "debug 5") }, contract = "then toggles self-attack gagging" },
+      { source = "[10] Toggle gag others attacks", actions = { action("boop.ui.config", "debug 6") }, contract = "then toggles other-attack gagging" },
+      { source = "boop config home", actions = seedActions("boop config home") },
+      { source = "boop config debug <number>", actions = seedActions("boop config debug") },
+      { source = "boop config back", actions = seedActions("boop config back") },
+    },
+  },
+  ["boop party"] = {
+    required = { "BOOP > PARTY", "PARTY DATA" },
+    callbacks = {
+      { source = "[1] Mode", actions = { action("boop.ui.modeCommand", "") } },
+      { source = "[2] Leader", actions = seedActions("boop assist ") },
+      { source = "[3] Assist", actions = { action("boop.ui.modeCommand", "assist") } },
+      { source = "[4] Leader target gate", actions = { action("boop.ui.targetCallCommand", "on") } },
+      { source = "[6] Party size", actions = seedActions("boop party size ") },
+      { source = "[7] Walk", actions = { action("boop.ui.walkCommand", "start") } },
+      { source = "[8] Blocker", actions = { action("boop.ui.walkCommand", "status") } },
+      { source = "[10] Force move", actions = { action("boop.ui.walkCommand", "move") } },
+      { source = "[11] Rage aff calls", actions = { action("boop.ui.affCallCommand", "on") } },
+      { source = "[12] Roster", actions = { action("boop.ui.rosterCommand", "") } },
+      { source = "[13] Combos", actions = { action("boop.ui.combos", "party") } },
+      { source = "[14] Config hub", actions = { action("boop.ui.config", "party") } },
+      { source = "[15] Control dashboard", actions = { action("boop.ui.controlCommand", "") } },
+      { source = "boop party assist <leader>", actions = seedActions("boop party assist") },
+      { source = "boop party targetcall on|off", actions = seedActions("boop party targetcall on|off") },
+      { source = "boop party affcalls on|off", actions = seedActions("boop party affcalls on|off") },
+      { source = "boop party walk <cmd>", actions = seedActions("boop party walk") },
+      { source = "boop roster", actions = seedActions("boop roster") },
+      { source = "boop combos", actions = seedActions("boop combos") },
+    },
+  },
+  ["boop help home"] = {
+    required = { "HELP", "TOPICS" },
+    callbacks = {
+      { source = "[1] Open boop", actions = seedActions("boop") },
+      { source = "[2] Control dashboard", actions = seedActions("boop control") },
+      { source = "[3] Settings hub", actions = seedActions("boop config") },
+      { source = "[4] Party dashboard", actions = seedActions("boop party") },
+      { source = "[5] Stats dashboard", actions = seedActions("boop stats") },
+      { source = "[6] Start Here", actions = { action("boop.ui.help", "start") } },
+      { source = "[7] Control & Config", actions = { action("boop.ui.help", "control") } },
+      { source = "[8] Hunting & Targeting", actions = { action("boop.ui.help", "hunting") } },
+      { source = "[9] Party & Leader", actions = { action("boop.ui.help", "party") } },
+      { source = "[10] Stats & Optimization", actions = { action("boop.ui.help", "stats") } },
+      { source = "[11] Diagnostics & Advanced", actions = { action("boop.ui.help", "diagnostics") } },
+      { source = "boop help home", actions = seedActions("boop help home") },
+      { source = "boop help <number|topic>", actions = seedActions("boop help") },
+    },
+  },
+  ["boop stats"] = {
+    required = { "BOOP STATS", "NEXT VIEWS" },
+    callbacks = {
+      { source = "[13] Trip vs last trip", actions = { action("boop.stats.command", "compare trip lasttrip") } },
+      { source = "[14] Area rankings", actions = { action("boop.stats.command", "areas trip 5 xp") } },
+      { source = "[15] Target breakdown", actions = { action("boop.stats.command", "targets trip 5") } },
+      { source = "[16] Ability breakdown", actions = { action("boop.stats.command", "abilities trip 5") } },
+      { source = "[17] Rage report", actions = { action("boop.stats.command", "rage trip") } },
+      { source = "boop stats areas", actions = seedActions("boop stats areas") },
+      { source = "boop stats targets", actions = seedActions("boop stats targets") },
+      { source = "boop stats abilities", actions = seedActions("boop stats abilities") },
+      { source = "boop stats compare", actions = seedActions("boop stats compare") },
+    },
+  },
+}
+
+expectedByCommand["boop help start"] = helpTopicExpectation(HELP_TOPICS.start)
+expectedByCommand["boop help control"] = helpTopicExpectation(HELP_TOPICS.control)
+expectedByCommand["boop help hunting"] = helpTopicExpectation(HELP_TOPICS.hunting)
+expectedByCommand["boop help party"] = helpTopicExpectation(HELP_TOPICS.party)
+expectedByCommand["boop help stats"] = helpTopicExpectation(HELP_TOPICS.stats)
+expectedByCommand["boop help diagnostics"] = helpTopicExpectation(HELP_TOPICS.diagnostics)
+
+local function compareActions(expected, observed)
+  if #expected ~= #observed then
+    return false
+  end
+  for i = 1, #expected do
+    if tostring(expected[i]) ~= tostring(observed[i]) then
+      return false
+    end
+  end
+  return true
+end
+
+local function recordCheck(label, ok, detail)
+  totalChecks = totalChecks + 1
+  if ok then
+    appendLine(string.format("  [OK] %s", label))
+  else
+    failedChecks = failedChecks + 1
+    appendLine(string.format("  [MISMATCH] %s", label))
+    if detail and detail ~= "" then
+      appendLine("             " .. detail)
+    end
+  end
+end
+
+local function verifyCommand(command, renderedText, observedCallbacks)
+  local expectation = expectedByCommand[command]
+  if not expectation then
+    appendLine("verification:")
+    appendLine("  (no expectations defined for this command)")
+    return
+  end
+
+  appendLine("verification:")
+
+  for _, fragment in ipairs(expectation.required or {}) do
+    recordCheck(
+      "render contains " .. quote(fragment),
+      contains(renderedText, fragment),
+      "Missing rendered fragment: " .. quote(fragment)
+    )
+  end
+
+  recordCheck(
+    "callback count == " .. tostring(#(expectation.callbacks or {})),
+    #observedCallbacks == #(expectation.callbacks or {}),
+    string.format("Observed %d callbacks", #observedCallbacks)
+  )
+
+  for index, expected in ipairs(expectation.callbacks or {}) do
+    local observed = observedCallbacks[index]
+    if not observed then
+      recordCheck(
+        string.format("callback %02d exists", index),
+        false,
+        "Missing callback; expected source fragment " .. quote(expected.source or "")
+      )
+    else
+      if expected.source then
+        recordCheck(
+          string.format("callback %02d source contains %s", index, quote(expected.source)),
+          contains(observed.context, expected.source),
+          "Observed source: " .. quote(observed.context)
+        )
+      end
+      if expected.button then
+        recordCheck(
+          string.format("callback %02d button contains %s", index, quote(expected.button)),
+          contains(observed.button, expected.button),
+          "Observed button: " .. quote(observed.button)
+        )
+      end
+      if expected.hint then
+        recordCheck(
+          string.format("callback %02d hint contains %s", index, quote(expected.hint)),
+          contains(observed.hint, expected.hint),
+          "Observed hint: " .. quote(observed.hint)
+        )
+      end
+      recordCheck(
+        string.format("callback %02d action log matches", index),
+        compareActions(expected.actions or {}, observed.events or {}),
+        "Observed: " .. table.concat(observed.events or {}, " || ")
+      )
+      if expected.contract then
+        appendLine("  [EXPECT] callback " .. string.format("%02d", index) .. " downstream contract: " .. expected.contract)
+      end
+    end
+  end
 end
 
 _G.cecho = function(text) pushChunk(text) end
@@ -295,6 +745,7 @@ _G.insertText = function(text) pushChunk(text) end
 
 for index, command in ipairs(commands) do
   currentCallbacks = {}
+  currentRenderLines = {}
 
   appendLine(string.rep("=", 96))
   appendLine(string.format("[%02d/%02d] %s", index, #commands, command))
@@ -302,10 +753,14 @@ for index, command in ipairs(commands) do
 
   local ok, err = pcall(expandAlias, command)
   flushPending()
+  local renderedText = table.concat(currentRenderLines, "\n")
+  currentRenderLines = nil
+
   if not ok then
     appendLine("[SCRIPT ERROR] " .. tostring(err))
   end
 
+  local observedCallbacks = {}
   if #currentCallbacks == 0 then
     appendLine("(no clickable menu items captured)")
   else
@@ -317,7 +772,7 @@ for index, command in ipairs(commands) do
         appendLine(string.format("       hint: %s", item.hint))
       end
 
-      local callbackOk, callbackErr, events = withWrappedPaths(function(log)
+      local callbackOk, callbackErr, events = withWrappedPaths(function()
         if type(item.callback) == "function" then
           item.callback()
         else
@@ -325,21 +780,39 @@ for index, command in ipairs(commands) do
         end
       end)
 
+      local observed = {
+        context = item.context,
+        button = item.button,
+        hint = item.hint,
+        events = {},
+      }
+
       if not callbackOk then
+        observed.events = { "[SCRIPT ERROR] " .. tostring(callbackErr) }
         appendLine("       action: [SCRIPT ERROR] " .. tostring(callbackErr))
       elseif #events == 0 then
         appendLine("       action: (no observable wrapped call)")
       else
+        observed.events = events
         for eventIndex, event in ipairs(events) do
           local prefix = eventIndex == 1 and "       action: " or "               "
           appendLine(prefix .. event)
         end
       end
+
+      observedCallbacks[#observedCallbacks + 1] = observed
     end
   end
 
+  verifyCommand(command, renderedText, observedCallbacks)
   appendLine("")
 end
+
+appendLine(string.rep("=", 96))
+appendLine("SUMMARY")
+appendLine(string.rep("-", 96))
+appendLine(string.format("checks: %d", totalChecks))
+appendLine(string.format("mismatches: %d", failedChecks))
 
 _G.cecho = originalEcho.cecho
 _G.cechoLink = originalEcho.cechoLink

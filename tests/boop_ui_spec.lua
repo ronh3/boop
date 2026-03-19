@@ -311,7 +311,16 @@ describe("boop ui home", function()
     local joined = table.concat(hints, "\n")
     assert.is_true(joined:find("Open the party dashboard with leader, assist, walk, target%-call, and roster state%.") ~= nil)
     assert.is_true(joined:find("Require a leader%-called target before boop starts attacking%.") ~= nil)
-    assert.is_true(joined:find("Inspect or control external autowalker integration; requires the separate demonnicAutoWalker package%.") ~= nil)
+    assert.is_true(joined:find("Inspect or control external autowalker integration; requires demonnicAutoWalker: https://github%.com/demonnic/demonnicAutoWalker") ~= nil)
+  end)
+
+  it("shows the walker dependency link in party help notes", function()
+    echoes = {}
+
+    boop.ui.help("party")
+
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find("https://github%.com/demonnic/demonnicAutoWalker") ~= nil)
   end)
 
   it("makes rich footer command breadcrumbs clickable", function()
