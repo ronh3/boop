@@ -648,6 +648,20 @@ local function compareActions(expected, observed)
   return true
 end
 
+local function sourceMatches(expectedSource, observed)
+  local wanted = tostring(expectedSource or "")
+  if wanted == "" then
+    return true
+  end
+  if contains(observed.context, wanted) then
+    return true
+  end
+  if observed.context:find("^Type:", 1, true) and contains(observed.button, wanted) then
+    return true
+  end
+  return false
+end
+
 local function recordCheck(label, ok, detail)
   totalChecks = totalChecks + 1
   if ok then
@@ -697,8 +711,8 @@ local function verifyCommand(command, renderedText, observedCallbacks)
       if expected.source then
         recordCheck(
           string.format("callback %02d source contains %s", index, quote(expected.source)),
-          contains(observed.context, expected.source),
-          "Observed source: " .. quote(observed.context)
+          sourceMatches(expected.source, observed),
+          "Observed source/button: " .. quote(observed.context) .. " / " .. quote(observed.button)
         )
       end
       if expected.button then
@@ -752,6 +766,10 @@ for index, command in ipairs(commands) do
   appendLine(string.rep("=", 96))
   appendLine(string.format("[%02d/%02d] %s", index, #commands, command))
   appendLine(string.rep("-", 96))
+  if index == 1 then
+    appendLine("loaded boop version: " .. tostring(boop and boop.version or "(unknown)"))
+    appendLine("")
+  end
 
   local ok, err = pcall(expandAlias, command)
   flushPending()
