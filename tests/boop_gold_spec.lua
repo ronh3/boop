@@ -4,9 +4,11 @@ describe("boop gold handling", function()
   local send_stub
   local timer_stub
   local kill_timer_stub
+  local scheduled
 
   before_each(function()
     helper.reset()
+    scheduled = {}
     boop.config.enabled = true
     boop.config.autoGrabGold = true
 

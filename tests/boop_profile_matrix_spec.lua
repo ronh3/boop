@@ -36,6 +36,34 @@ local function targetFormat(cmd)
   return boop.util.formatTarget(cmd or "", "42")
 end
 
+local function firstExpectedCommand(entry)
+  if type(entry) ~= "table" then
+    return type(entry) == "string" and entry or ""
+  end
+
+  if entry.bySpec then
+    local spec = boop.state and boop.state.spec or ""
+    local specEntry = entry.bySpec[spec]
+    if not specEntry then
+      specEntry = entry.default or entry.bySpec.default
+    end
+    return firstExpectedCommand(specEntry)
+  end
+
+  if entry.cmd or entry.skill or entry.name then
+    return entry.cmd or ""
+  end
+
+  for _, option in ipairs(entry) do
+    local cmd = firstExpectedCommand(option)
+    if cmd ~= "" then
+      return cmd
+    end
+  end
+
+  return ""
+end
+
 local profileCases = {}
 for classKey, profile in pairs(boop.attacks.registry or {}) do
   local standard = profile and profile.standard or nil
@@ -71,7 +99,7 @@ describe("boop class profile matrix", function()
 
       local actions = boop.attacks.choose()
 
-      assert.are.equal(targetFormat(case.dam.cmd), actions.standard)
+      assert.are.equal(targetFormat(firstExpectedCommand(case.dam)), actions.standard)
     end)
 
     if case.shield then
@@ -86,7 +114,7 @@ describe("boop class profile matrix", function()
 
         local actions = boop.attacks.choose()
 
-        assert.are.equal(targetFormat(case.shield.cmd), actions.standard)
+        assert.are.equal(targetFormat(firstExpectedCommand(case.shield)), actions.standard)
         assert.is_true(actions.standardShieldbreak)
       end)
     end

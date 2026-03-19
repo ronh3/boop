@@ -692,6 +692,9 @@ function boop.tick()
   local targetId = boop.targets.choose()
   if not targetId or targetId == "" then
     boop.state.attacking = false
+    if boop.config.useQueueing and boop.state.autoGrabGoldPending then
+      flushPendingGold("tick no target")
+    end
     if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
       boop.trace.log("tick: waiting for leader target call")
       return
