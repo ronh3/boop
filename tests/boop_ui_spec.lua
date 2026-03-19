@@ -311,7 +311,7 @@ describe("boop ui home", function()
     local joined = table.concat(hints, "\n")
     assert.is_true(joined:find("Open the party dashboard with leader, assist, walk, target%-call, and roster state%.") ~= nil)
     assert.is_true(joined:find("Require a leader%-called target before boop starts attacking%.") ~= nil)
-    assert.is_true(joined:find("Inspect or control external autowalker integration%.") ~= nil)
+    assert.is_true(joined:find("Inspect or control external autowalker integration; requires the separate demonnicAutoWalker package%.") ~= nil)
   end)
 
   it("makes rich footer command breadcrumbs clickable", function()

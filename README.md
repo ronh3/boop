@@ -19,8 +19,15 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow)
 - `boop preset <solo|party|leader-call>` (apply recommended baseline settings)
 - `boop party` (party dashboard)
+- `boop mode solo|assist|leader-call` (switch hunting/party mode directly)
+- `boop assist <leader>` / `boop assist on|off|clear`
+- `boop targetcall on|off`
+- `boop affcalls on|off`
+- `boop walk [status|start|stop|move]` (requires the separate `demonnicAutoWalker` package)
 - `boop roster` / `boop roster <class...>` / `boop roster clear` (save party class roster; your own class is auto-included)
 - `boop combos` / `boop combos <class...>` / `boop combos list` (party combo inference from rage afflictions + conditional needs)
+- `boop prefer` / `boop prefer <dam|shield> <option>` / `boop prefer clear <dam|shield>` (bias standard attack choice within a profile)
+- `boop theme <name|auto|list>`
 - `boop autogold` / `boop autogold on` / `boop autogold off`
 - `boop pack` / `boop pack <container>` / `boop pack off` / `boop pack test` (auto-stash container for sovereigns)
 - `boop import foxhunt [merge|overwrite|dryrun]` (imports Foxhunt DB whitelist/blacklist into boop)
@@ -54,6 +61,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Whitelist tags are normalized to lowercase and `-` separators, so `Mid Level` becomes `mid-level`.
 - `ih` shows items too; only denizens get whitelist/blacklist buttons.
 - Denizens on the global blacklist do not show `ih` whitelist/blacklist action labels.
+- `boop walk` integrates with the separate `demonnicAutoWalker` package; without that package installed, walk status will show as unavailable.
 - Auto gold pickup grabs newly dropped room items whose names contain `gold sovereign`.
 - In queueing mode, auto gold pickup is prepended to the next standard attack as `get sovereigns/<attack>`.
 - If no standard attack follows quickly, boop falls back to `queue add freestand get sovereigns` (also used in non-queueing mode to avoid balance-lock misses).

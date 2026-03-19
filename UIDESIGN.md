@@ -48,8 +48,6 @@ Base commands
   - Show section list.
 - `boop config back`
   - Return to previous level.
-- `boop config help`
-  - Display usage summary.
 
 Related top-level surfaces
 - `boop`
@@ -66,29 +64,24 @@ Related top-level surfaces
 Navigation
 - `boop config <section>`
 - `boop config <number>` (from home view)
-- Both open a section.
+- `boop config <section> <number>`
+- From inside a section, `boop config <number>` applies that section option immediately.
 
-Setting activation (inside section)
-- `boop config <number>`
-- Behavior depends on setting type:
-  - Boolean: toggle immediately.
-  - Enum: cycle to next value.
-  - Number: arm pending value input and print usage.
-  - String: arm pending value input and print usage.
-  - Action: initiate confirmation flow.
+Current shipped config behavior
+- Section options apply immediately.
+- Boolean settings toggle immediately.
+- Enum-style settings cycle or toggle immediately.
+- Numeric and string-like values that need explicit input are edited through top-level commands such as `boop set <key> <value>`.
+- Direct raw inspection/editing uses:
+  - `boop get [key]`
+  - `boop set <key> <value>`
 
-Non-modal value entry
-- `boop config value <value>`
-  - Valid only when a pending number/string setting is armed.
-  - Applies to the armed setting, validates, confirms, redraws.
-- `boop config set <key> <value>` (optional power feature)
-  - Direct key/value write path without index navigation.
-
-Important: "prompt for value" means "print instructions and wait for explicit prefixed command." It does not capture free-typed input.
-
-Confirmation flow
-- `boop config confirm`
-- `boop config cancel`
+Not currently shipped
+- Generic `boop config help`
+- Generic `boop config value <value>`
+- Generic `boop config confirm`
+- Generic `boop config cancel`
+- A pending-value or pending-confirmation config state machine
 
 Rendering Specification (Inline)
 
@@ -149,56 +142,29 @@ Boolean
 
 Enum
 - `boop config n` cycles to next valid value
-- `boop config set key value` sets directly
 - Print confirmation
 - Redraw section
 
 Number
-- `boop config n` arms pending value input and prints:
-  - `boop config value <number>`
-- Validate against defined range
-- On invalid: print error, no change
-- On valid: apply immediately, confirm, redraw
+- Values are currently edited through `boop set <key> <number>` or a dedicated top-level command.
+- Validate against defined range.
+- On invalid: print error, no change.
+- On valid: apply immediately, confirm, redraw.
 
 String
-- `boop config n` arms pending value input and prints:
-  - `boop config value <text>`
-- Apply immediately
-- Confirm and redraw
+- Values are currently edited through `boop set <key> <text>` or a dedicated top-level command.
+- Apply immediately.
+- Confirm and redraw.
 
 Action
-- Requires confirmation flow
-
-Confirmation Flow
-
-Triggered by destructive actions:
-- `reset section`
-- `reset all`
-- `import overwrite`
-
-Flow:
-1. Print warning message.
-2. Display: `Type: boop config confirm | boop config cancel`
-3. Store one pending action.
-4. `boop config confirm` executes action.
-5. `boop config cancel` clears pending state.
-
-Pending confirmation rules:
-- Expires after one use.
-- No modal blocking allowed.
-- Clears on any command except:
-  - `boop config confirm`
-  - `boop config cancel`
-  - `boop config help`
+- Dedicated actions should remain explicit and self-contained.
+- If destructive confirmation is ever reintroduced, it must be added to the real command surface, help, and tests together.
 
 Data Model
 
 UI session state
 - `current_view` (`home` | `section`)
 - `current_section_id` (string or nil)
-- `pending_confirm_action` (function/id or nil)
-- `pending_value_setting_id` (string or nil)
-- `pending_value_type` (`number` | `string` | nil)
 
 Setting object fields
 - `id` (string)
@@ -237,12 +203,11 @@ Acceptance Criteria
 
 System is complete when:
 - `boop config` redraws current view
-- Bare numeric input does not change settings
 - Navigation works via `boop config <section>` and `boop config <number>`
+- `boop config <section> <number>` applies section options directly
 - Boolean toggles apply instantly
-- Number and string inputs validate correctly
+- Number and string inputs validate correctly through the shipped command surface (`boop set` or dedicated commands)
 - Modified values visibly differ from defaults
-- Confirmation flow works correctly
 - Layout alignment remains consistent at 80 columns
 - Miniwindow (if enabled) mirrors inline functionality
 - All persisted values survive package reload/reconnect and redraw identically

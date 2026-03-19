@@ -3102,7 +3102,7 @@ local HELP_TOPICS = {
       helpCommand("boop assist on|off|clear", "Enable, disable, or clear assist mode without changing other party settings."),
       helpCommand("boop targetcall on|off", "Require a leader-called target before boop starts attacking."),
       helpCommand("boop affcalls on|off", "Enable or suppress battlerage affliction party callouts."),
-      helpCommand("boop walk [status|start|stop|move]", "Inspect or control external autowalker integration."),
+      helpCommand("boop walk [status|start|stop|move]", "Inspect or control external autowalker integration; requires the separate demonnicAutoWalker package."),
       helpCommand("boop roster", "Show the stored party roster and your combo-relevant party composition."),
       helpCommand("boop roster <class...>", "Set the party roster classes used for combo and conditional help."),
       helpCommand("boop roster clear", "Clear the stored party roster."),
@@ -3113,6 +3113,7 @@ local HELP_TOPICS = {
     notes = {
       "Use `boop party` as the party dashboard; it consolidates leader, assist, walk, target-call, and roster state.",
       "Use `boop roster` to store party classes for combo/conditional assistance.",
+      "`boop walk` depends on the separate `demonnicAutoWalker` package.",
       "Use quotes for multi-word classes when needed.",
     },
   },
