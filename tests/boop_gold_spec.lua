@@ -90,7 +90,7 @@ describe("boop gold handling", function()
     assert.is_true(boop.state.goldPutPending)
   end)
 
-  it("blocks queued combat and flushes gold directly when queueing sees pending gold", function()
+  it("prepends gold pickup to the next queued combat action when queueing sees pending gold", function()
     boop.config.useQueueing = true
     boop.config.goldPack = "pack"
     boop.state.autoGrabGoldPending = true
@@ -99,10 +99,11 @@ describe("boop gold handling", function()
 
     boop.executeAction("warp 42")
 
-    assert.stub(send_stub).was_called_with("queue add balance get sovereigns", false)
-    assert.stub(send_stub).was_called_with("queue add balance put sovereigns in pack", false)
-    assert.stub(send_stub).was_not_called_with("queue addclearfull freestand BOOP_ATTACK", false)
+    assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK get sovereigns/put sovereigns in pack/warp 42", false)
+    assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
     assert.is_false(boop.state.autoGrabGoldPending)
+    assert.is_nil(boop.state.autoGrabGoldPendingAt)
+    assert.is_false(boop.state.goldDropped)
     assert.is_true(boop.state.goldGetPending)
     assert.is_true(boop.state.goldPutPending)
   end)

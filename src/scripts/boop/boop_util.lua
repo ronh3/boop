@@ -202,10 +202,40 @@ function boop.executeAction(action, forceQueue)
   if boop.config.useQueueing or forceQueue then
     boop.state = boop.state or {}
     if boop.config.useQueueing and boop.state.autoGrabGoldPending then
-      if boop.flushPendingGold then
-        boop.flushPendingGold("std queue handoff")
+      local queuedAction = action
+      local normalized = boop.util.safeLower(boop.util.trim(queuedAction))
+      if normalized ~= "get sovereigns" and not boop.util.starts(normalized, "get sovereigns/") then
+        local prefix = "get sovereigns"
+        local pack = boop.util.trim(boop.config.goldPack or "")
+        if boop.markGoldQueueIntent then
+          boop.markGoldQueueIntent(pack)
+        end
+        if pack ~= "" then
+          prefix = prefix .. "/put sovereigns in " .. pack
+        end
+        queuedAction = prefix .. "/" .. queuedAction
       end
-      boop.trace.log("std queue blocked: gold pending")
+      if boop.state.autoGrabGoldTimer then
+        killTimer(boop.state.autoGrabGoldTimer)
+        boop.state.autoGrabGoldTimer = nil
+      end
+      boop.state.autoGrabGoldPending = false
+      boop.state.autoGrabGoldPendingAt = nil
+      boop.state.goldDropped = false
+
+      if boop.state.queueAliasDirty == nil then
+        boop.state.queueAliasDirty = true
+      end
+
+      local lastAction = boop.state.queueAliasAction or ""
+      if boop.state.queueAliasDirty or lastAction ~= queuedAction then
+        send("setalias BOOP_ATTACK " .. queuedAction, false)
+        boop.state.queueAliasAction = queuedAction
+        boop.state.queueAliasDirty = false
+      end
+      send("queue addclearfull freestand BOOP_ATTACK", false)
+      boop.trace.log("std queue: " .. queuedAction)
+      markUnnamableMaulUsed(queuedAction)
       return
     end
     if boop.config.useQueueing and (boop.state.goldGetPending or boop.state.goldPutPending) then
