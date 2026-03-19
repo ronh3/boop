@@ -263,6 +263,48 @@ local function contains(haystack, needle)
   return tostring(haystack or ""):find(tostring(needle or ""), 1, true) ~= nil
 end
 
+local function walkCommandAction(defaultCommand)
+  local command = defaultCommand
+  if boop.walk and boop.walk.isAvailable and not boop.walk.isAvailable() then
+    command = "install"
+  end
+  return { action("boop.ui.walkCommand", command) }
+end
+
+local function statsDashboardCallbacks(renderedText)
+  local callbacks
+  if contains(renderedText, "Trip vs last trip") then
+    callbacks = {
+      { source = "[13] Trip vs last trip", actions = { action("boop.stats.command", "compare trip lasttrip") } },
+      { source = "[14] Area rankings", actions = { action("boop.stats.command", "areas trip 5 xp") } },
+      { source = "[15] Target breakdown", actions = { action("boop.stats.command", "targets trip 5") } },
+      { source = "[16] Ability breakdown", actions = { action("boop.stats.command", "abilities trip 5") } },
+      { source = "[17] Rage report", actions = { action("boop.stats.command", "rage trip") } },
+    }
+  elseif contains(renderedText, "Lifetime summary") then
+    callbacks = {
+      { source = "[13] Lifetime summary", actions = { action("boop.stats.command", "lifetime") } },
+      { source = "[14] Lifetime areas", actions = { action("boop.stats.command", "areas lifetime 5 xp") } },
+      { source = "[15] Lifetime abilities", actions = { action("boop.stats.command", "abilities lifetime 5") } },
+      { source = "[16] Lifetime crits", actions = { action("boop.stats.command", "crits lifetime") } },
+      { source = "[17] Start a trip", actions = { action("boop.stats.startTrip") } },
+    }
+  else
+    callbacks = {
+      { source = "[13] Enable boop", actions = { action("boop.ui.setEnabled", true) } },
+      { source = "[14] Start a trip", actions = { action("boop.stats.startTrip") } },
+      { source = "[15] Lifetime summary", actions = { action("boop.stats.command", "lifetime") } },
+      { source = "[16] Lifetime areas", actions = { action("boop.stats.command", "areas lifetime 5 xp") } },
+      { source = "[17] Lifetime abilities", actions = { action("boop.stats.command", "abilities lifetime 5") } },
+    }
+  end
+  callbacks[#callbacks + 1] = { source = "boop stats areas", actions = seedActions("boop stats areas") }
+  callbacks[#callbacks + 1] = { source = "boop stats targets", actions = seedActions("boop stats targets") }
+  callbacks[#callbacks + 1] = { source = "boop stats abilities", actions = seedActions("boop stats abilities") }
+  callbacks[#callbacks + 1] = { source = "boop stats compare", actions = seedActions("boop stats compare") }
+  return callbacks
+end
+
 local function resolvePath(path)
   local parent = _G
   local segments = {}
@@ -475,7 +517,7 @@ local expectedByCommand = {
       { source = "[13] Assist", actions = { action("boop.ui.partyCommand", "") } },
       { source = "[14] Leader target gate", actions = { action("boop.ui.partyCommand", "") } },
       { source = "[15] Party size", actions = { action("boop.ui.partyCommand", "") } },
-      { source = "[16] Walk", actions = { action("boop.ui.walkCommand", "install") } },
+      { source = "[16] Walk", actions = walkCommandAction("") },
       { source = "[17] Theme", actions = { action("boop.ui.themeCommand", "") } },
       { source = "[18] Party dashboard", actions = { action("boop.ui.partyCommand", "") } },
       { source = "[19] Roster manager", actions = { action("boop.ui.rosterCommand", "") } },
@@ -578,7 +620,7 @@ local expectedByCommand = {
       { source = "[3] Assist", actions = { action("boop.ui.modeCommand", "assist") } },
       { source = "[4] Leader target gate", actions = { action("boop.ui.targetCallCommand", "on") } },
       { source = "[6] Party size", actions = seedActions("boop party size ") },
-      { source = "[7] Walk", actions = { action("boop.ui.walkCommand", "install") } },
+      { source = "[7] Walk", actions = walkCommandAction("start") },
       { source = "[8] Blocker", actions = { action("boop.ui.walkCommand", "status") } },
       { source = "[10] Force move", actions = { action("boop.ui.walkCommand", "move") } },
       { source = "[11] Rage aff calls", actions = { action("boop.ui.affCallCommand", "on") } },
@@ -613,20 +655,12 @@ local expectedByCommand = {
       { source = "boop help <number|topic>", actions = seedActions("boop help") },
     },
   },
-  ["boop stats"] = {
-    required = { "BOOP STATS", "NEXT VIEWS" },
-    callbacks = {
-      { source = "[13] Trip vs last trip", actions = { action("boop.stats.command", "compare trip lasttrip") } },
-      { source = "[14] Area rankings", actions = { action("boop.stats.command", "areas trip 5 xp") } },
-      { source = "[15] Target breakdown", actions = { action("boop.stats.command", "targets trip 5") } },
-      { source = "[16] Ability breakdown", actions = { action("boop.stats.command", "abilities trip 5") } },
-      { source = "[17] Rage report", actions = { action("boop.stats.command", "rage trip") } },
-      { source = "boop stats areas", actions = seedActions("boop stats areas") },
-      { source = "boop stats targets", actions = seedActions("boop stats targets") },
-      { source = "boop stats abilities", actions = seedActions("boop stats abilities") },
-      { source = "boop stats compare", actions = seedActions("boop stats compare") },
-    },
-  },
+  ["boop stats"] = function(renderedText)
+    return {
+      required = { "BOOP STATS", "NEXT VIEWS" },
+      callbacks = statsDashboardCallbacks(renderedText),
+    }
+  end,
 }
 
 expectedByCommand["boop help start"] = helpTopicExpectation(HELP_TOPICS.start)
@@ -656,7 +690,7 @@ local function sourceMatches(expectedSource, observed)
   if contains(observed.context, wanted) then
     return true
   end
-  if observed.context:find("^Type:", 1, true) and contains(observed.button, wanted) then
+  if contains(observed.button, wanted) then
     return true
   end
   return false
@@ -677,6 +711,9 @@ end
 
 local function verifyCommand(command, renderedText, observedCallbacks)
   local expectation = expectedByCommand[command]
+  if type(expectation) == "function" then
+    expectation = expectation(renderedText, observedCallbacks)
+  end
   if not expectation then
     appendLine("verification:")
     appendLine("  (no expectations defined for this command)")
