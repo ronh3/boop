@@ -1,5 +1,8 @@
 boop.attacks.register("depthswalker", {  standard = {
-    dam = { cmd = "shadow reap &tar", skill = "Reap", group = "Shadowmancy" },
+    dam = {
+      {cmd = "shadow reap &tar", skill = "Reap", group = "Shadowmancy" },
+      {cmd = "shadow cull &tar", skill = "Cull", group = "Shadowmancy" },
+    },
     shield = { cmd = "shadow strike &tar", skill = "Strike", group = "Shadowmancy" },
   },
   rage = {

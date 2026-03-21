@@ -965,6 +965,42 @@ local function prependInfernalHyenaMaul(cmd)
   return "hyena maul &tar/" .. trimmed
 end
 
+local function wieldedNameContains(fragment)
+  local needle = boop.util.safeLower(boop.util.trim(fragment or ""))
+  if needle == "" or not boop.getWieldedItem then
+    return false
+  end
+
+  local left = boop.getWieldedItem("left")
+  local right = boop.getWieldedItem("right")
+  for _, item in ipairs({ left, right }) do
+    local name = boop.util.safeLower(item and item.name or "")
+    if name ~= "" and name:find(needle, 1, true) then
+      return true
+    end
+  end
+  return false
+end
+
+local function prependDepthswalkerWeapon(cmd, standardShieldbreak)
+  local trimmed = boop.util.trim(cmd)
+  if trimmed == "" then return "" end
+
+  local needed = standardShieldbreak and "dagger" or "scythe"
+  if wieldedNameContains(needed) then
+    return trimmed
+  end
+
+  local normalized = boop.util.safeLower(trimmed)
+  if boop.util.starts(normalized, "wield " .. needed)
+    or boop.util.starts(normalized, "quickwield " .. needed)
+  then
+    return trimmed
+  end
+
+  return "wield " .. needed .. "/" .. trimmed
+end
+
 function boop.attacks.selectStandard(profile, classKey)
   if not profile then return "", false, false end
 
@@ -1033,6 +1069,9 @@ function boop.attacks.choose()
   end
   if standard ~= "" and class == "infernal" and infernalMaulKnown() and infernalMaulReady() then
     standard = prependInfernalHyenaMaul(standard)
+  end
+  if standard ~= "" and class == "depthswalker" then
+    standard = prependDepthswalkerWeapon(standard, standardShieldbreak)
   end
 
   local rageAction = ""

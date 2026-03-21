@@ -40,4 +40,36 @@ describe("boop class profile selection", function()
 
     assert.are.equal("doublewhirl 42", actions.standard)
   end)
+
+  it("prepends wield scythe for depthswalker damage when no scythe is tracked", function()
+    helper.setClass("Depthswalker")
+    helper.learnSkill("Reap", "Shadowmancy")
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("wield scythe/shadow reap 42", actions.standard)
+  end)
+
+  it("does not prepend wield scythe for depthswalker damage when a scythe is already wielded", function()
+    helper.setClass("Depthswalker")
+    helper.learnSkill("Reap", "Shadowmancy")
+    boop.state.wieldedRight = { id = "11", name = "a practice scythe", attrib = "L", icon = "weapon" }
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("shadow reap 42", actions.standard)
+  end)
+
+  it("prepends wield dagger for depthswalker shieldbreak when no dagger is tracked", function()
+    helper.setClass("Depthswalker")
+    helper.learnSkill("Strike", "Shadowmancy")
+    boop.state.targetShield = { attempted = false }
+    boop.state.wieldedLeft = { id = "12", name = "a tower shield", attrib = "l", icon = "armour" }
+    boop.state.wieldedRight = { id = "13", name = "a practice scythe", attrib = "L", icon = "weapon" }
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("wield dagger/shadow strike 42", actions.standard)
+    assert.is_true(actions.standardShieldbreak)
+  end)
 end)
