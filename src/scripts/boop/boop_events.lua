@@ -78,6 +78,132 @@ local function traceRoomItemEvent(kind, item)
   boop.trace.log(string.format("gmcp room item %s: %s (%s) | gold=%s", tostring(kind or "?"), tostring(name), tostring(id), gold))
 end
 
+local function copyInvItem(item)
+  if type(item) ~= "table" then return false end
+  return {
+    id = tostring(item.id or ""),
+    name = tostring(item.name or ""),
+    attrib = tostring(item.attrib or ""),
+    icon = tostring(item.icon or ""),
+  }
+end
+
+local function parseWieldAttrib(attrib)
+  local text = tostring(attrib or "")
+  return text:find("l", 1, true) ~= nil, text:find("L", 1, true) ~= nil
+end
+
+local function sameTrackedItem(left, right)
+  if not left and not right then return true end
+  if not left or not right then return false end
+  return tostring(left.id or "") == tostring(right.id or "")
+    and tostring(left.name or "") == tostring(right.name or "")
+    and tostring(left.attrib or "") == tostring(right.attrib or "")
+    and tostring(left.icon or "") == tostring(right.icon or "")
+end
+
+local function traceWieldChange(hand, item, reason)
+  if not boop.trace or not boop.trace.log then return end
+  local label = tostring(hand or "?")
+  if item then
+    boop.trace.log(string.format(
+      "wield %s: %s (%s) | icon=%s%s",
+      label,
+      tostring(item.name or "?"),
+      tostring(item.id or "?"),
+      tostring(item.icon or "?"),
+      reason and (" | " .. tostring(reason)) or ""
+    ))
+  else
+    boop.trace.log(string.format("wield %s: clear%s", label, reason and (" | " .. tostring(reason)) or ""))
+  end
+end
+
+local function setWieldedHand(hand, item, reason)
+  boop.state = boop.state or {}
+  local key = hand == "left" and "wieldedLeft" or "wieldedRight"
+  local nextItem = item and copyInvItem(item) or false
+  local current = boop.state[key]
+  if sameTrackedItem(current, nextItem) then
+    return
+  end
+  boop.state[key] = nextItem
+  traceWieldChange(hand, nextItem, reason)
+end
+
+local function updateWieldedFromInvItem(item, reason)
+  boop.state = boop.state or {}
+  if type(item) ~= "table" then return end
+  local tracked = copyInvItem(item)
+  local id = tostring(tracked.id or "")
+  if id ~= "" then
+    boop.state.inventoryItemsById = boop.state.inventoryItemsById or {}
+    boop.state.inventoryItemsById[id] = tracked
+  end
+
+  local isLeft, isRight = parseWieldAttrib(tracked.attrib)
+  local currentLeft = boop.state.wieldedLeft
+  local currentRight = boop.state.wieldedRight
+  if currentLeft and tostring(currentLeft.id or "") == id and not isLeft then
+    setWieldedHand("left", false, reason or "attrib cleared")
+  end
+  if currentRight and tostring(currentRight.id or "") == id and not isRight then
+    setWieldedHand("right", false, reason or "attrib cleared")
+  end
+  if isLeft then
+    setWieldedHand("left", tracked, reason)
+  end
+  if isRight then
+    setWieldedHand("right", tracked, reason)
+  end
+end
+
+local function removeInvItem(item, reason)
+  boop.state = boop.state or {}
+  if type(item) ~= "table" then return end
+  local id = tostring(item.id or "")
+  if id ~= "" and boop.state.inventoryItemsById then
+    boop.state.inventoryItemsById[id] = nil
+  end
+  if boop.state.wieldedLeft and tostring(boop.state.wieldedLeft.id or "") == id then
+    setWieldedHand("left", false, reason or "removed")
+  end
+  if boop.state.wieldedRight and tostring(boop.state.wieldedRight.id or "") == id then
+    setWieldedHand("right", false, reason or "removed")
+  end
+end
+
+local function rebuildWieldedFromInventory(items, reason)
+  boop.state = boop.state or {}
+  boop.state.inventoryItemsById = {}
+  local leftItem = false
+  local rightItem = false
+  if type(items) == "table" then
+    for _, item in ipairs(items) do
+      local tracked = copyInvItem(item)
+      if tracked then
+        local id = tostring(tracked.id or "")
+        if id ~= "" then
+          boop.state.inventoryItemsById[id] = tracked
+        end
+        local isLeft, isRight = parseWieldAttrib(tracked.attrib)
+        if isLeft then leftItem = tracked end
+        if isRight then rightItem = tracked end
+      end
+    end
+  end
+  setWieldedHand("left", leftItem, reason or "inventory list")
+  setWieldedHand("right", rightItem, reason or "inventory list")
+end
+
+function boop.getWieldedItem(hand)
+  boop.state = boop.state or {}
+  local key = boop.util.safeLower(hand or "") == "right" and "wieldedRight" or "wieldedLeft"
+  local item = boop.state[key]
+  if not item then return nil end
+  return copyInvItem(item)
+end
+
 function boop.clearGoldQueueIntent()
   boop.state = boop.state or {}
   if boop.state.autoGrabGoldTimer then
@@ -360,6 +486,7 @@ function boop.events.register()
   add("gmcp.Char.Items.List", "boop.onRoomItemsList")
   add("gmcp.Char.Items.Add", "boop.onRoomItemsAdd")
   add("gmcp.Char.Items.Remove", "boop.onRoomItemsRemove")
+  add("gmcp.Char.Items.Update", "boop.onItemsUpdate")
   add("gmcp.Room.Info", "boop.onRoomInfo")
   add("gmcp.IRE.Target.Set", "boop.onTargetSet")
   add("gmcp.IRE.Target.Info", "boop.onTargetInfo")
@@ -374,6 +501,10 @@ end
 
 function boop.onRoomItemsList()
   if not gmcp or not gmcp.Char or not gmcp.Char.Items or not gmcp.Char.Items.List then return end
+  if gmcp.Char.Items.List.location == "inv" then
+    rebuildWieldedFromInventory(gmcp.Char.Items.List.items, "inventory list")
+    return
+  end
   if gmcp.Char.Items.List.location ~= "room" then return end
   local items = gmcp.Char.Items.List.items
   boop.targets.updateRoomItems(items)
@@ -395,6 +526,10 @@ end
 
 function boop.onRoomItemsAdd()
   if not gmcp or not gmcp.Char or not gmcp.Char.Items or not gmcp.Char.Items.Add then return end
+  if gmcp.Char.Items.Add.location == "inv" then
+    updateWieldedFromInvItem(gmcp.Char.Items.Add.item, "inventory add")
+    return
+  end
   if gmcp.Char.Items.Add.location ~= "room" then return end
   local item = gmcp.Char.Items.Add.item
   traceRoomItemEvent("add", item)
@@ -404,6 +539,10 @@ end
 
 function boop.onRoomItemsRemove()
   if not gmcp or not gmcp.Char or not gmcp.Char.Items or not gmcp.Char.Items.Remove then return end
+  if gmcp.Char.Items.Remove.location == "inv" then
+    removeInvItem(gmcp.Char.Items.Remove.item, "inventory remove")
+    return
+  end
   if gmcp.Char.Items.Remove.location ~= "room" then return end
   local removed = gmcp.Char.Items.Remove.item
   local removedId = tostring((removed and removed.id) or "")
@@ -466,6 +605,12 @@ function boop.onRoomItemsRemove()
       boop.tick()
     end
   end)
+end
+
+function boop.onItemsUpdate()
+  if not gmcp or not gmcp.Char or not gmcp.Char.Items or not gmcp.Char.Items.Update then return end
+  if gmcp.Char.Items.Update.location ~= "inv" then return end
+  updateWieldedFromInvItem(gmcp.Char.Items.Update.item, "inventory update")
 end
 
 function boop.onRoomInfo()

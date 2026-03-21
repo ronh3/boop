@@ -37,6 +37,9 @@ function boop.state.init()
   boop.state.goldPutRetries = boop.state.goldPutRetries or 0
   boop.state.goldPackTarget = boop.state.goldPackTarget or ""
   boop.state.goldPendingTimer = boop.state.goldPendingTimer or nil
+  boop.state.inventoryItemsById = boop.state.inventoryItemsById or {}
+  boop.state.wieldedLeft = boop.state.wieldedLeft or false
+  boop.state.wieldedRight = boop.state.wieldedRight or false
   boop.state.diagHold = boop.state.diagHold or false
   boop.state.diagAwaitPrompt = boop.state.diagAwaitPrompt or false
   boop.state.diagTimeoutTimer = boop.state.diagTimeoutTimer or nil
