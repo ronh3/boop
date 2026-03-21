@@ -1984,7 +1984,8 @@ function boop.ui.weaponCommand(raw)
     if not found then
       boop.util.echo("  (none)")
     end
-    boop.util.info("Usage: boop weapon <role> <wield-target> | boop weapon clear <role>")
+    boop.util.info("Usage: boop weapon <role> <item-id> | boop weapon clear <role>")
+    boop.util.info("Prefer raw GMCP item ids for reliability.")
   end
 
   if text == "" or lower == "status" or lower == "show" or lower == "list" then
@@ -2011,7 +2012,7 @@ function boop.ui.weaponCommand(raw)
   role = boop.util.safeLower(boop.util.trim(role or ""))
   value = boop.util.trim(value or "")
   if role == "" or value == "" then
-    boop.util.warn("Usage: boop weapon <role> <wield-target>")
+    boop.util.warn("Usage: boop weapon <role> <item-id>")
     boop.util.info("Use: boop weapon")
     return
   end
@@ -3277,7 +3278,7 @@ local HELP_TOPICS = {
       helpCommand("boop prefer", "Show configurable attack-preference options for your current class/spec."),
       helpCommand("boop prefer <dam|shield> <option>", "Prefer a specific standard damage or shield attack when multiple valid options exist."),
       helpCommand("boop weapon", "Show saved weapon designations for your current class profile."),
-      helpCommand("boop weapon <role> <wield-target>", "Save a class-scoped weapon designation such as `scythe 47177` or `dagger dirk`."),
+      helpCommand("boop weapon <role> <item-id>", "Save a class-scoped weapon designation using a raw GMCP item id such as `scythe 47177`."),
     },
     notes = {
       "Use the config subsections when you want guided toggles; use the direct commands when you already know what you want.",
