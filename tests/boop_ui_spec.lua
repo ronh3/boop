@@ -493,4 +493,13 @@ describe("boop ui home", function()
     assert.are.equal("ocean", boop.config.uiTheme)
     assert.are.equal("[OK] theme: ocean", echoes[#echoes])
   end)
+
+  it("accepts adb palette names as boop themes", function()
+    boop.ui.themeCommand("ashtan")
+
+    assert.are.equal("ashtan", boop.config.uiTheme)
+    assert.are.equal("[OK] theme: ashtan", echoes[#echoes])
+    assert.is_true(boop.theme.exists("depthswalker"))
+    assert.is_true(boop.theme.exists("targossas"))
+  end)
 end)

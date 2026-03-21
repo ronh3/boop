@@ -1698,6 +1698,7 @@ function boop.ui.themeCommand(raw)
       boop.util.echo("  " .. name)
     end
     boop.util.echo("  auto")
+    boop.util.info("Includes boop themes plus the built-in ADB city/class palettes.")
     return
   end
 
@@ -3360,7 +3361,7 @@ local HELP_TOPICS = {
       helpCommand("boop set <key> <value>", "Set raw config values directly."),
       helpCommand("boop import foxhunt [merge|overwrite|dryrun]", "Import whitelist and blacklist data from Foxhunt."),
       helpCommand("boop pack test", "Queue a look-in command for the current configured gold pack."),
-      helpCommand("boop theme <name|auto|list>", "Inspect or change the active UI theme."),
+      helpCommand("boop theme <name|auto|list>", "Inspect or change the active UI theme; list includes boop + built-in ADB palette names."),
     },
     notes = {
       "Use trace when you need decision-flow debugging; use the debug snapshot when you need current-state debugging.",

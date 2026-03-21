@@ -39,6 +39,30 @@ local function builtin_themes()
       info = "cyan",
       dim = "dark_grey",
     },
+    ashtan = {
+      accent = "purple",
+      border = "midnight_blue",
+      text = "lavender_blush",
+      muted = "thistle",
+    },
+    cyrene = {
+      accent = "cornflower_blue",
+      border = "dark_slate_blue",
+      text = "alice_blue",
+      muted = "light_steel_blue",
+    },
+    eleusis = {
+      accent = "forest_green",
+      border = "saddle_brown",
+      text = "beige",
+      muted = "tan",
+    },
+    hashan = {
+      accent = "yellow",
+      border = "sienna",
+      text = "light_yellow",
+      muted = "wheat",
+    },
     occultist = {
       accent = "dark_turquoise",
       border = "dark_orchid",
@@ -50,6 +74,36 @@ local function builtin_themes()
       info = "dark_turquoise",
       dim = "slate_gray",
     },
+    apostate = {
+      accent = "dark_orchid",
+      border = "firebrick",
+      text = "lavender_blush",
+      muted = "plum",
+    },
+    bard = {
+      accent = "medium_aquamarine",
+      border = "royal_blue",
+      text = "alice_blue",
+      muted = "light_steel_blue",
+    },
+    blademaster = {
+      accent = "steel_blue",
+      border = "dark_goldenrod",
+      text = "white_smoke",
+      muted = "light_grey",
+    },
+    depthswalker = {
+      accent = "dark_slate_blue",
+      border = "midnight_blue",
+      text = "light_cyan",
+      muted = "light_steel_blue",
+    },
+    druid = {
+      accent = "sea_green",
+      border = "dark_olive_green",
+      text = "honeydew",
+      muted = "pale_green",
+    },
     infernal = {
       accent = "firebrick",
       border = "maroon",
@@ -60,6 +114,60 @@ local function builtin_themes()
       err = "red",
       info = "salmon",
       dim = "dark_slate_grey",
+    },
+    targossas = {
+      accent = "ivory",
+      border = "steel_blue",
+      text = "white",
+      muted = "gainsboro",
+    },
+    alchemist = {
+      accent = "goldenrod",
+      border = "dark_slate_grey",
+      text = "antique_white",
+      muted = "tan",
+    },
+    jester = {
+      accent = "magenta",
+      border = "dark_khaki",
+      text = "light_yellow",
+      muted = "light_grey",
+    },
+    magi = {
+      accent = "orange_red",
+      border = "saddle_brown",
+      text = "light_cyan",
+      muted = "light_sky_blue",
+    },
+    monk = {
+      accent = "burlywood",
+      border = "sienna",
+      text = "ivory",
+      muted = "wheat",
+    },
+    paladin = {
+      accent = "gold",
+      border = "slate_blue",
+      text = "ivory",
+      muted = "light_goldenrod_yellow",
+    },
+    pariah = {
+      accent = "sandy_brown",
+      border = "dark_slate_grey",
+      text = "ivory",
+      muted = "tan",
+    },
+    priest = {
+      accent = "light_goldenrod",
+      border = "slate_gray",
+      text = "white",
+      muted = "light_yellow",
+    },
+    psion = {
+      accent = "deep_sky_blue",
+      border = "dark_orchid",
+      text = "light_cyan",
+      muted = "powder_blue",
     },
     runewarden = {
       accent = "royal_blue",
@@ -82,6 +190,24 @@ local function builtin_themes()
       err = "tomato",
       info = "medium_sea_green",
       dim = "dim_grey",
+    },
+    serpent = {
+      accent = "chartreuse",
+      border = "dark_slate_grey",
+      text = "honeydew",
+      muted = "pale_green",
+    },
+    shaman = {
+      accent = "sienna",
+      border = "dark_slate_grey",
+      text = "wheat",
+      muted = "tan",
+    },
+    sylvan = {
+      accent = "spring_green",
+      border = "sea_green",
+      text = "honeydew",
+      muted = "pale_green",
     },
     unnamable = {
       accent = "orchid",
@@ -179,4 +305,3 @@ function boop.theme.exists(name)
   end
   return builtin_themes()[tostring(name):lower()] ~= nil
 end
-
