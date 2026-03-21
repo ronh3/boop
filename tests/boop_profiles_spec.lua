@@ -60,6 +60,18 @@ describe("boop class profile selection", function()
     assert.are.equal("shadow reap 42", actions.standard)
   end)
 
+  it("uses designated weapon ids for depthswalker weapon swaps", function()
+    helper.setClass("Depthswalker")
+    helper.learnSkill("Strike", "Shadowmancy")
+    boop.state.targetShield = { attempted = false }
+    local key = boop.attacks.weaponConfigKey("depthswalker", "dagger")
+    boop.config[key] = "47177"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("wield 47177/shadow strike 42", actions.standard)
+  end)
+
   it("prepends wield dagger for depthswalker shieldbreak when no dagger is tracked", function()
     helper.setClass("Depthswalker")
     helper.learnSkill("Strike", "Shadowmancy")

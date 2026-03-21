@@ -46,6 +46,8 @@ Current coverage:
   Confirms room and target gmcp transitions clear stale combat state and retarget correctly.
 - `boop_wield_spec.lua`
   Confirms inventory GMCP list/add/update/remove events track currently wielded left/right-hand items.
+- `boop_weapon_spec.lua`
+  Confirms `boop weapon` saves and clears class-scoped weapon designations consumed by weapon-dependent profiles.
 - `boop_gag_spec.lua`
   Confirms condensed gag summaries for attack and kill replay lines.
 - `boop_skills_spec.lua`

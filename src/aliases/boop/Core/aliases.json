@@ -126,6 +126,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Weapon",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+weapon(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Set",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+set\\s+(\\w+)\\s+(.+)$",

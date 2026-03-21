@@ -1949,6 +1949,82 @@ local function currentAttackPreferenceClass()
   return ""
 end
 
+local function currentWeaponConfigClass()
+  local classKey = boop.util.safeLower(currentClass())
+  if classKey == "" then
+    return ""
+  end
+  if boop.attacks and boop.attacks.registry and boop.attacks.registry[classKey] then
+    return classKey
+  end
+  return ""
+end
+
+function boop.ui.weaponCommand(raw)
+  local text = boop.util.trim(raw or "")
+  local lower = boop.util.safeLower(text)
+  local classKey = currentWeaponConfigClass()
+
+  if classKey == "" then
+    boop.util.warn("No active class profile is loaded yet")
+    return
+  end
+
+  local function showStatus()
+    boop.util.info("weapon designations: " .. classKey)
+    local found = false
+    for key, value in pairs(boop.config or {}) do
+      local prefix = "weapon." .. classKey .. "."
+      if tostring(key):find(prefix, 1, true) == 1 then
+        local role = tostring(key):sub(#prefix + 1)
+        boop.util.echo(string.format("  %s: %s", role, tostring(value)))
+        found = true
+      end
+    end
+    if not found then
+      boop.util.echo("  (none)")
+    end
+    boop.util.info("Usage: boop weapon <role> <wield-target> | boop weapon clear <role>")
+  end
+
+  if text == "" or lower == "status" or lower == "show" or lower == "list" then
+    showStatus()
+    return
+  end
+
+  local clearRole = lower:match("^clear%s+(%S+)$")
+  if clearRole then
+    local key = boop.attacks.weaponConfigKey(classKey, clearRole)
+    if key == "" then
+      boop.util.warn("weapon clear expects a role")
+      return
+    end
+    boop.config[key] = nil
+    if boop.db and boop.db.deleteConfig then
+      boop.db.deleteConfig(key)
+    end
+    boop.util.ok(string.format("weapon %s cleared for %s", clearRole, classKey))
+    return
+  end
+
+  local role, value = text:match("^(%S+)%s+(.+)$")
+  role = boop.util.safeLower(boop.util.trim(role or ""))
+  value = boop.util.trim(value or "")
+  if role == "" or value == "" then
+    boop.util.warn("Usage: boop weapon <role> <wield-target>")
+    boop.util.info("Use: boop weapon")
+    return
+  end
+
+  local key = boop.attacks.weaponConfigKey(classKey, role)
+  if key == "" then
+    boop.util.warn("Unable to save weapon designation")
+    return
+  end
+  saveConfigValue(key, value)
+  boop.util.ok(string.format("weapon %s: %s (%s)", role, value, classKey))
+end
+
 function boop.ui.attackPreferenceCommand(raw)
   local text = boop.util.trim(raw or "")
   local textLower = boop.util.safeLower(text)
@@ -3200,6 +3276,8 @@ local HELP_TOPICS = {
       helpCommand("catarin", "Queue `ldeck draw catarin` on the attack queue and pause attacking until the next prompt or timeout."),
       helpCommand("boop prefer", "Show configurable attack-preference options for your current class/spec."),
       helpCommand("boop prefer <dam|shield> <option>", "Prefer a specific standard damage or shield attack when multiple valid options exist."),
+      helpCommand("boop weapon", "Show saved weapon designations for your current class profile."),
+      helpCommand("boop weapon <role> <wield-target>", "Save a class-scoped weapon designation such as `scythe 47177` or `dagger dirk`."),
     },
     notes = {
       "Use the config subsections when you want guided toggles; use the direct commands when you already know what you want.",

@@ -28,6 +28,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop roster` / `boop roster <class...>` / `boop roster clear` (save party class roster; your own class is auto-included)
 - `boop combos` / `boop combos <class...>` / `boop combos list` (party combo inference from rage afflictions + conditional needs)
 - `boop prefer` / `boop prefer <dam|shield> <option>` / `boop prefer clear <dam|shield>` (bias standard attack choice within a profile)
+- `boop weapon` / `boop weapon <role> <wield-target>` / `boop weapon clear <role>` (save class-scoped weapon designations such as `scythe` or `dagger`)
 - `boop theme <name|auto|list>`
 - `boop autogold` / `boop autogold on` / `boop autogold off`
 - `boop pack` / `boop pack <container>` / `boop pack off` / `boop pack test` (auto-stash container for sovereigns)
@@ -79,6 +80,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Prequeue is separately configurable from queueing (`boop prequeue`); when enabled, it queues standard attacks before recovery using `boop lead` seconds (default `1.00`).
 - Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.
 - In queueing mode, boop caches the last `BOOP_ATTACK` alias payload and skips redundant `setalias` sends when unchanged.
+- `boop weapon` stores class-scoped wield targets that profiles can consume when they need a specific weapon role; the value can be a weapon id or a unique name fragment.
 - Trace buffer records recent boop decisions/commands for post-mortem debugging (`boop trace show`).
 - Attack-line gagging can be toggled separately for your own attacks and other players' attacks, replacing matched lines with `Who: What -> Victim`.
 - Weaponmastery standard attack lines (Two Handed + Sword and Shield) are included in gag replacement coverage.

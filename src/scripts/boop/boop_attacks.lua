@@ -50,6 +50,23 @@ function boop.attacks.getStandardPreference(classKey, section)
   return value
 end
 
+function boop.attacks.weaponConfigKey(classKey, role)
+  local cls = boop.util.safeLower(boop.util.trim(classKey or ""))
+  local slot = boop.util.safeLower(boop.util.trim(role or ""))
+  if cls == "" or slot == "" then
+    return ""
+  end
+  return string.format("weapon.%s.%s", cls, slot)
+end
+
+function boop.attacks.getDesignatedWeapon(classKey, role)
+  local key = boop.attacks.weaponConfigKey(classKey, role)
+  if key == "" or not boop.config then
+    return ""
+  end
+  return boop.util.trim(boop.config[key] or "")
+end
+
 local function addEntryToken(tokens, raw)
   local text = boop.util.safeLower(boop.util.trim(raw or ""))
   if text == "" then return end
@@ -995,6 +1012,28 @@ local function wieldedNameContains(fragment)
   return false
 end
 
+local function wieldedMatchesDesignation(designation)
+  local wanted = boop.util.trim(designation or "")
+  if wanted == "" or not boop.getWieldedItem then
+    return false
+  end
+
+  local wantedLower = boop.util.safeLower(wanted)
+  local left = boop.getWieldedItem("left")
+  local right = boop.getWieldedItem("right")
+  for _, item in ipairs({ left, right }) do
+    local itemId = tostring(item and item.id or "")
+    local itemName = boop.util.safeLower(item and item.name or "")
+    if itemId ~= "" and itemId == wanted then
+      return true
+    end
+    if itemName ~= "" and itemName:find(wantedLower, 1, true) then
+      return true
+    end
+  end
+  return false
+end
+
 local function depthswalkerNeededWeapon(cmd, standardShieldbreak)
   local normalized = boop.util.safeLower(boop.util.trim(cmd or ""))
   if normalized == "" then
@@ -1022,18 +1061,25 @@ local function prependDepthswalkerWeapon(cmd, standardShieldbreak)
   if needed == "" then
     return trimmed
   end
-  if wieldedNameContains(needed) then
+
+  local designated = boop.attacks.getDesignatedWeapon("depthswalker", needed)
+  if designated ~= "" then
+    if wieldedMatchesDesignation(designated) then
+      return trimmed
+    end
+  elseif wieldedNameContains(needed) then
     return trimmed
   end
 
   local normalized = boop.util.safeLower(trimmed)
-  if boop.util.starts(normalized, "wield " .. needed)
-    or boop.util.starts(normalized, "quickwield " .. needed)
+  local wieldTarget = designated ~= "" and designated or needed
+  if boop.util.starts(normalized, "wield " .. boop.util.safeLower(wieldTarget))
+    or boop.util.starts(normalized, "quickwield " .. boop.util.safeLower(wieldTarget))
   then
     return trimmed
   end
 
-  return "wield " .. needed .. "/" .. trimmed
+  return "wield " .. wieldTarget .. "/" .. trimmed
 end
 
 function boop.attacks.selectStandard(profile, classKey)
