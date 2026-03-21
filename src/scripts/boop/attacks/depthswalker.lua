@@ -1,5 +1,7 @@
 boop.attacks.register("depthswalker", {  standard = {
     dam = {
+      {cmd = "chrono deteriorate &tar", skill = "Deteriorate", group = "Aeonics", needs = { "recklessness", "charm", "fear", "aeon", "amnesia" } },
+      {cmd = "chrono degenerate &tar", skill = "Degenerate", group = "Aeonics", needs = { "inhibit", "weakness", "sensitivity", "clumsiness" } },
       {cmd = "shadow reap &tar", skill = "Reap", group = "Shadowmancy" },
       {cmd = "shadow cull &tar", skill = "Cull", group = "Shadowmancy" },
     },

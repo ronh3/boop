@@ -72,4 +72,26 @@ describe("boop class profile selection", function()
     assert.are.equal("wield dagger/shadow strike 42", actions.standard)
     assert.is_true(actions.standardShieldbreak)
   end)
+
+  it("prefers deteriorate for depthswalker when the target matches its affliction bucket", function()
+    helper.setClass("Depthswalker")
+    helper.learnSkill("Deteriorate", "Aeonics")
+    helper.learnSkill("Reap", "Shadowmancy")
+    helper.addTargetAfflictions({ "charm" })
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("chrono deteriorate 42", actions.standard)
+  end)
+
+  it("prefers degenerate for depthswalker when the target matches its affliction bucket", function()
+    helper.setClass("Depthswalker")
+    helper.learnSkill("Degenerate", "Aeonics")
+    helper.learnSkill("Reap", "Shadowmancy")
+    helper.addTargetAfflictions({ "weakness" })
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("chrono degenerate 42", actions.standard)
+  end)
 end)

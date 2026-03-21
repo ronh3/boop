@@ -790,41 +790,54 @@ local function standardCommand(entry, preference)
         return standardCommand(specEntry, preference)
       end
     end
+
     if entry.cmd or entry.skill or entry.name then
       local cmd = entry.cmd or ""
       if cmd == "" then return "" end
-    local skill = entry.skill or entry.name
-    if skill and skill ~= "" then
-      local ok = true
-      if boop.skills and boop.skills.ensureSkill then
-        ok = boop.skills.ensureSkill(skill, entry.group)
-      elseif boop.skills and boop.skills.knownSkill then
-        ok = boop.skills.knownSkill(skill)
+
+      local skill = entry.skill or entry.name
+      if skill and skill ~= "" then
+        local ok = true
+        if boop.skills and boop.skills.ensureSkill then
+          ok = boop.skills.ensureSkill(skill, entry.group)
+        elseif boop.skills and boop.skills.knownSkill then
+          ok = boop.skills.knownSkill(skill)
+        end
+        if not ok then
+          return ""
+        end
       end
-      if not ok then
-        return ""
+
+      if entry.needs then
+        local meets = boop.afflictions
+          and boop.afflictions.meetsNeeds
+          and boop.afflictions.meetsNeeds(entry.needs, entry.needsMode)
+        if not meets then
+          return ""
+        end
       end
-      end
+
       return cmd
-    else
-      local pref = boop.util.safeLower(boop.util.trim(preference or ""))
-      if pref ~= "" then
-        for _, option in ipairs(entry) do
-          if entryMatchesPreference(option, pref) then
-            local cmd = standardCommand(option)
-            if cmd ~= "" then
-              return cmd
-            end
+    end
+
+    local pref = boop.util.safeLower(boop.util.trim(preference or ""))
+    if pref ~= "" then
+      for _, option in ipairs(entry) do
+        if entryMatchesPreference(option, pref) then
+          local cmd = standardCommand(option)
+          if cmd ~= "" then
+            return cmd
           end
         end
       end
-      for _, option in ipairs(entry) do
-        local cmd = standardCommand(option)
-        if cmd ~= "" then return cmd end
-      end
-      return ""
     end
+    for _, option in ipairs(entry) do
+      local cmd = standardCommand(option)
+      if cmd ~= "" then return cmd end
+    end
+    return ""
   end
+
   if type(entry) == "string" then
     return entry
   end
@@ -982,11 +995,33 @@ local function wieldedNameContains(fragment)
   return false
 end
 
+local function depthswalkerNeededWeapon(cmd, standardShieldbreak)
+  local normalized = boop.util.safeLower(boop.util.trim(cmd or ""))
+  if normalized == "" then
+    return ""
+  end
+  if boop.util.starts(normalized, "shadow strike ") or boop.util.starts(normalized, "shadow strike/") then
+    return "dagger"
+  end
+  if boop.util.starts(normalized, "shadow reap ") or boop.util.starts(normalized, "shadow reap/")
+    or boop.util.starts(normalized, "shadow cull ") or boop.util.starts(normalized, "shadow cull/")
+  then
+    return "scythe"
+  end
+  if standardShieldbreak then
+    return "dagger"
+  end
+  return ""
+end
+
 local function prependDepthswalkerWeapon(cmd, standardShieldbreak)
   local trimmed = boop.util.trim(cmd)
   if trimmed == "" then return "" end
 
-  local needed = standardShieldbreak and "dagger" or "scythe"
+  local needed = depthswalkerNeededWeapon(trimmed, standardShieldbreak)
+  if needed == "" then
+    return trimmed
+  end
   if wieldedNameContains(needed) then
     return trimmed
   end
