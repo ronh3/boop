@@ -72,6 +72,18 @@ describe("boop class profile selection", function()
     assert.are.equal("wield 47177/shadow strike 42", actions.standard)
   end)
 
+  it("recognizes combined depthswalker weapon tokens like scythe12345 as already wielded", function()
+    helper.setClass("Depthswalker")
+    helper.learnSkill("Reap", "Shadowmancy")
+    local key = boop.attacks.weaponConfigKey("depthswalker", "scythe")
+    boop.config[key] = "scythe12345"
+    boop.state.wieldedRight = { id = "12345", name = "a practice scythe", attrib = "L", icon = "weapon" }
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("shadow reap 42", actions.standard)
+  end)
+
   it("prepends wield dagger for depthswalker shieldbreak when no dagger is tracked", function()
     helper.setClass("Depthswalker")
     helper.learnSkill("Strike", "Shadowmancy")

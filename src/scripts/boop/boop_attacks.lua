@@ -1019,16 +1019,30 @@ local function wieldedMatchesDesignation(designation)
   end
 
   local wantedLower = boop.util.safeLower(wanted)
+  local compactWanted = wantedLower:gsub("[^%w]+", "")
   local left = boop.getWieldedItem("left")
   local right = boop.getWieldedItem("right")
   for _, item in ipairs({ left, right }) do
     local itemId = tostring(item and item.id or "")
     local itemName = boop.util.safeLower(item and item.name or "")
+    local compactName = itemName:gsub("[^%w]+", "")
     if itemId ~= "" and itemId == wanted then
       return true
     end
     if itemName ~= "" and itemName:find(wantedLower, 1, true) then
       return true
+    end
+    if compactWanted ~= "" and compactName ~= "" and compactName:find(compactWanted, 1, true) then
+      return true
+    end
+    if itemId ~= "" and compactWanted:sub(-#itemId) == itemId then
+      local prefix = compactWanted:sub(1, #compactWanted - #itemId)
+      if prefix == "" then
+        return true
+      end
+      if compactName ~= "" and compactName:find(prefix, 1, true) then
+        return true
+      end
     end
   end
   return false
