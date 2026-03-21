@@ -1049,7 +1049,27 @@ function boop.ui.gagCommand(raw)
     return
   end
 
-  boop.util.info("Usage: boop gag [status|on|off|own|others|all|<scope> on|off]")
+  if token == "colors" then
+    boop.gag.showColors()
+    return
+  end
+
+  local colorArgs = text:match("^[Cc][Oo][Ll][Oo]?[Uu]?[Rr]%s+(.+)$")
+  if colorArgs then
+    local lowerArgs = boop.util.safeLower(boop.util.trim(colorArgs))
+    if lowerArgs == "reset" then
+      boop.gag.resetColors()
+      return
+    end
+
+    local role, value = colorArgs:match("^(%S+)%s+(.+)$")
+    if role and value then
+      boop.gag.setColor(role, value)
+      return
+    end
+  end
+
+  boop.util.info("Usage: boop gag [status|on|off|own|others|all|<scope> on|off|colors|color <role> <color|off>|color reset]")
 end
 
 local function canonConfigKey(raw)
@@ -1084,6 +1104,13 @@ local function canonConfigKey(raw)
     gagownattacks = "gagOwnAttacks",
     gagothers = "gagOthersAttacks",
     gagothersattacks = "gagOthersAttacks",
+    gagcolorwho = "gagColorWho",
+    gagcolorability = "gagColorAbility",
+    gagcolortarget = "gagColorTarget",
+    gagcolormeta = "gagColorMeta",
+    gagcolorseparator = "gagColorSeparator",
+    gagcolorbg = "gagColorBackground",
+    gagcolorbackground = "gagColorBackground",
     diagtimeout = "diagTimeoutSeconds",
     diagtimeoutseconds = "diagTimeoutSeconds",
     partysize = "partySize",
@@ -1146,6 +1173,12 @@ function boop.ui.listConfigValues()
     "traceEnabled",
     "gagOwnAttacks",
     "gagOthersAttacks",
+    "gagColorWho",
+    "gagColorAbility",
+    "gagColorTarget",
+    "gagColorMeta",
+    "gagColorSeparator",
+    "gagColorBackground",
     "diagTimeoutSeconds",
     "partySize",
     "partyRoster",
@@ -1313,6 +1346,36 @@ function boop.ui.setConfigValue(key, value)
       return
     end
     boop.gag.setOthers(parsed)
+    return
+  end
+
+  if canonical == "gagColorWho" then
+    boop.gag.setColor("who", value)
+    return
+  end
+
+  if canonical == "gagColorAbility" then
+    boop.gag.setColor("ability", value)
+    return
+  end
+
+  if canonical == "gagColorTarget" then
+    boop.gag.setColor("target", value)
+    return
+  end
+
+  if canonical == "gagColorMeta" then
+    boop.gag.setColor("meta", value)
+    return
+  end
+
+  if canonical == "gagColorSeparator" then
+    boop.gag.setColor("separator", value)
+    return
+  end
+
+  if canonical == "gagColorBackground" then
+    boop.gag.setColor("background", value)
     return
   end
 
@@ -3357,6 +3420,8 @@ local HELP_TOPICS = {
       helpCommand("boop debug skills dump", "Dump the raw skill tables boop is using."),
       helpCommand("boop trace on|off|show [n]|clear", "Control or inspect the boop trace buffer used for decision-flow debugging."),
       helpCommand("boop gag on|off|own|others|all", "Control attack-line gagging behavior."),
+      helpCommand("boop gag colors", "Show the current gag palette and a rendered sample line."),
+      helpCommand("boop gag color <who|ability|target|meta|separator|bg> <color|off>", "Set one gag color role or turn the shared background off."),
       helpCommand("boop get", "Inspect raw config values."),
       helpCommand("boop set <key> <value>", "Set raw config values directly."),
       helpCommand("boop import foxhunt [merge|overwrite|dryrun]", "Import whitelist and blacklist data from Foxhunt."),
@@ -4022,38 +4087,43 @@ local function configRenderDebugSection()
     uiPrintRow(2, "Trace entries", tostring(traceCount), "cyan")
     uiPrintRow(3, "Gag own attacks", boolText(not not boop.config.gagOwnAttacks), boolColor(not not boop.config.gagOwnAttacks))
     uiPrintRow(4, "Gag others attacks", boolText(not not boop.config.gagOthersAttacks), boolColor(not not boop.config.gagOthersAttacks))
+    uiPrintRow(5, "Gag palette", boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary() or "AUTO", "cyan")
 
     uiPrintSection("actions")
-    uiPrintRow(5, "Toggle trace logging", boolText(not not boop.config.traceEnabled), boolColor(not not boop.config.traceEnabled), function()
+    uiPrintRow(6, "Toggle trace logging", boolText(not not boop.config.traceEnabled), boolColor(not not boop.config.traceEnabled), function()
       boop.ui.config("debug 1")
     end, "Toggle trace logging")
-    uiPrintRow(6, "Debug snapshot", "SHOW", "cyan", function()
+    uiPrintRow(7, "Debug snapshot", "SHOW", "cyan", function()
       boop.ui.config("debug 2")
     end, "Show boop debug snapshot")
-    uiPrintRow(7, "Trace buffer", "SHOW", "cyan", function()
+    uiPrintRow(8, "Trace buffer", "SHOW", "cyan", function()
       boop.ui.config("debug 3")
     end, "Show trace entries")
-    uiPrintRow(8, "Clear trace", "CLEAR", "red", function()
+    uiPrintRow(9, "Clear trace", "CLEAR", "red", function()
       boop.ui.config("debug 4")
     end, "Clear trace buffer")
-    uiPrintRow(9, "Toggle gag own attacks", boolText(not not boop.config.gagOwnAttacks), boolColor(not not boop.config.gagOwnAttacks), function()
+    uiPrintRow(10, "Toggle gag own attacks", boolText(not not boop.config.gagOwnAttacks), boolColor(not not boop.config.gagOwnAttacks), function()
       boop.ui.config("debug 5")
     end, "Toggle gagging your own attack lines")
-    uiPrintRow(10, "Toggle gag others attacks", boolText(not not boop.config.gagOthersAttacks), boolColor(not not boop.config.gagOthersAttacks), function()
+    uiPrintRow(11, "Toggle gag others attacks", boolText(not not boop.config.gagOthersAttacks), boolColor(not not boop.config.gagOthersAttacks), function()
       boop.ui.config("debug 6")
     end, "Toggle gagging other players' attack lines")
+    uiPrintRow(12, "Gag colors", boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary() or "AUTO", "cyan", function()
+      boop.ui.config("debug 7")
+    end, "Show gag color roles and sample output")
     uiPrintFooter("Type: boop config home | boop config debug <number> | boop config back")
     return
   end
   boop.util.echo("CONFIGURATION > Debug")
   boop.util.echo("----------------------------------------")
-  boop.util.echo(string.format("Trace: %s | entries: %d | gag own %s | gag others %s", boolText(not not boop.config.traceEnabled), traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks)))
+  boop.util.echo(string.format("Trace: %s | entries: %d | gag own %s | gag others %s | palette %s", boolText(not not boop.config.traceEnabled), traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks), boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary() or "AUTO"))
   boop.util.echo("[1] Trace logging             [ " .. boolText(not not boop.config.traceEnabled) .. " ]")
   boop.util.echo("[2] Debug snapshot            [ SHOW ]")
   boop.util.echo("[3] Trace buffer              [ SHOW ]")
   boop.util.echo("[4] Clear trace               [ CLEAR ]")
   boop.util.echo("[5] Gag own attacks           [ " .. boolText(not not boop.config.gagOwnAttacks) .. " ]")
   boop.util.echo("[6] Gag others attacks        [ " .. boolText(not not boop.config.gagOthersAttacks) .. " ]")
+  boop.util.echo("[7] Gag colors                [ " .. (boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary() or "AUTO") .. " ]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config home | boop config debug <number> | boop config back")
 end
@@ -4192,6 +4262,9 @@ local function configApplySectionOption(sectionKey, option)
       return true
     elseif n == 6 then
       boop.gag.setOthers(not boop.config.gagOthersAttacks)
+      return true
+    elseif n == 7 then
+      boop.gag.showColors()
       return true
     end
     return false

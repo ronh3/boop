@@ -502,4 +502,16 @@ describe("boop ui home", function()
     assert.is_true(boop.theme.exists("depthswalker"))
     assert.is_true(boop.theme.exists("targossas"))
   end)
+
+  it("updates gag palette colors through the gag command", function()
+    boop.ui.gagCommand("color separator khaki")
+
+    assert.are.equal("khaki", boop.config.gagColorSeparator)
+    assert.are.equal("[OK] gag separator color: khaki", echoes[#echoes])
+
+    boop.ui.gagCommand("color bg off")
+
+    assert.are.equal("", boop.config.gagColorBackground)
+    assert.are.equal("[OK] gag background color: off", echoes[#echoes])
+  end)
 end)

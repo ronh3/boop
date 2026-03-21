@@ -127,4 +127,24 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("Jab", 1, true) ~= nil)
     assert.is_true(outputs[1]:find("a test denizen", 1, true) ~= nil)
   end)
+
+  it("applies custom separator and background gag colors", function()
+    boop.gag.setColor("who", "yellow")
+    boop.gag.setColor("separator", "dark_grey")
+    boop.gag.setColor("background", "midnight_blue")
+
+    outputs = {}
+    boop.gag.onAttackLine({
+      ability = "Jab",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, { "line", "a test denizen" }, "You jab a test denizen.")
+
+    boop.gag.onPrompt()
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("<yellow:midnight_blue>You<reset>", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("<dark_grey:midnight_blue>: <reset>", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("<dark_grey:midnight_blue> -> <reset>", 1, true) ~= nil)
+  end)
 end)

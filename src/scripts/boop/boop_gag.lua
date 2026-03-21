@@ -106,6 +106,220 @@ local function shouldSuppressDuplicate(rawLine)
   return false
 end
 
+local GAG_COLOR_KEYS = {
+  who = "gagColorWho",
+  ability = "gagColorAbility",
+  target = "gagColorTarget",
+  meta = "gagColorMeta",
+  separator = "gagColorSeparator",
+  background = "gagColorBackground",
+}
+
+local GAG_COLOR_ALIASES = {
+  who = "who",
+  actor = "who",
+  name = "who",
+  ability = "ability",
+  action = "ability",
+  what = "ability",
+  target = "target",
+  victim = "target",
+  meta = "meta",
+  suffix = "meta",
+  details = "meta",
+  separator = "separator",
+  separators = "separator",
+  sep = "separator",
+  punctuation = "separator",
+  punct = "separator",
+  background = "background",
+  bg = "background",
+  highlight = "background",
+}
+
+local GAG_THEME_DEFAULTS = {
+  who = "ok",
+  ability = "info",
+  target = "err",
+  meta = "text",
+  separator = "muted",
+}
+
+local GAG_FALLBACK_COLORS = {
+  who = "green",
+  ability = "cyan",
+  target = "red",
+  meta = "white",
+  separator = "light_grey",
+}
+
+local GAG_COLOR_ORDER = { "who", "ability", "target", "meta", "separator", "background" }
+
+local GAG_COLOR_LABELS = {
+  who = "who",
+  ability = "ability",
+  target = "target",
+  meta = "meta",
+  separator = "separator",
+  background = "background",
+}
+
+local function normalizeGagRole(raw)
+  local key = boop.util.safeLower(boop.util.trim(raw or ""))
+  return GAG_COLOR_ALIASES[key] or ""
+end
+
+local function unwrapColorToken(raw)
+  local text = boop.util.trim(tostring(raw or ""))
+  if text:sub(1, 1) == "<" and text:sub(-1) == ">" then
+    text = text:sub(2, -2)
+  end
+  return boop.util.trim(text)
+end
+
+local function normalizeConfiguredColor(raw)
+  local text = unwrapColorToken(raw)
+  local lower = boop.util.safeLower(text)
+  if lower == "" or lower == "off" or lower == "none" or lower == "clear" or lower == "inherit" or lower == "auto" or lower == "default" then
+    return ""
+  end
+  return text
+end
+
+local function activeThemeTags()
+  if boop.theme and boop.theme.tags then
+    return boop.theme.tags()
+  end
+  return nil
+end
+
+local function defaultColorForRole(role)
+  local theme = activeThemeTags() or {}
+  local themeKey = GAG_THEME_DEFAULTS[role]
+  local themed = themeKey and unwrapColorToken(theme[themeKey] or "") or ""
+  if themed ~= "" then
+    return themed
+  end
+  return GAG_FALLBACK_COLORS[role] or "white"
+end
+
+local function configuredColorForRole(role)
+  local key = GAG_COLOR_KEYS[role]
+  if key == nil or not boop.config then
+    return ""
+  end
+  return normalizeConfiguredColor(boop.config[key])
+end
+
+local function effectiveColorForRole(role)
+  local configured = configuredColorForRole(role)
+  if configured ~= "" then
+    return configured
+  end
+  if role == "background" then
+    return ""
+  end
+  return defaultColorForRole(role)
+end
+
+local function renderTagForRole(role)
+  local foreground = effectiveColorForRole(role)
+  if foreground == "" then
+    return ""
+  end
+  local background = effectiveColorForRole("background")
+  if background ~= "" then
+    return "<" .. foreground .. ":" .. background .. ">"
+  end
+  return "<" .. foreground .. ">"
+end
+
+local function renderSegment(role, text)
+  local value = tostring(text or "")
+  if value == "" then
+    return ""
+  end
+  local tag = renderTagForRole(role)
+  if tag == "" then
+    return value
+  end
+  return tag .. value .. "<reset>"
+end
+
+local function configuredOrAutoText(role)
+  local configured = configuredColorForRole(role)
+  if configured ~= "" then
+    return configured
+  end
+  if role == "background" then
+    return "off"
+  end
+  return "auto (" .. defaultColorForRole(role) .. ")"
+end
+
+function boop.gag.paletteSummary()
+  local hasCustom = false
+  for _, role in ipairs(GAG_COLOR_ORDER) do
+    if configuredColorForRole(role) ~= "" then
+      hasCustom = true
+      break
+    end
+  end
+  return hasCustom and "CUSTOM" or "AUTO"
+end
+
+function boop.gag.showColors()
+  boop.util.info("gag colors:")
+  for _, role in ipairs(GAG_COLOR_ORDER) do
+    boop.util.echo("  " .. GAG_COLOR_LABELS[role] .. ": " .. configuredOrAutoText(role))
+  end
+  if cecho then
+    cecho(
+      "\n  sample: "
+      .. renderSegment("who", "You")
+      .. renderSegment("separator", ": ")
+      .. renderSegment("ability", "Attack")
+      .. renderSegment("separator", " -> ")
+      .. renderSegment("target", "a denizen")
+      .. renderSegment("meta", " (1234 cutting - 8xCRIT) (Bal: 2.1s)")
+    )
+  else
+    echo("\n  sample: You: Attack -> a denizen (1234 cutting - 8xCRIT) (Bal: 2.1s)")
+  end
+end
+
+function boop.gag.setColor(role, rawValue)
+  local normalizedRole = normalizeGagRole(role)
+  if normalizedRole == "" then
+    boop.util.warn("gag color role: use who|ability|target|meta|separator|bg")
+    return
+  end
+
+  local value = normalizeConfiguredColor(rawValue)
+  local key = GAG_COLOR_KEYS[normalizedRole]
+  boop.config[key] = value
+  if boop.db and boop.db.saveConfig then
+    boop.db.saveConfig(key, value)
+  end
+
+  if normalizedRole == "background" then
+    boop.util.ok("gag background color: " .. (value ~= "" and value or "off"))
+  else
+    boop.util.ok("gag " .. GAG_COLOR_LABELS[normalizedRole] .. " color: " .. (value ~= "" and value or "auto"))
+  end
+end
+
+function boop.gag.resetColors()
+  for _, role in ipairs(GAG_COLOR_ORDER) do
+    local key = GAG_COLOR_KEYS[role]
+    boop.config[key] = ""
+    if boop.db and boop.db.saveConfig then
+      boop.db.saveConfig(key, "")
+    end
+  end
+  boop.util.ok("gag colors: reset")
+end
+
 local function emitReplacement(actor, ability, victim, selfActor)
   local who = boop.util.trim(actor or "")
   if selfActor then
@@ -127,7 +341,12 @@ local function emitReplacement(actor, ability, victim, selfActor)
   local msg = string.format("%s: %s -> %s", who, what, target)
   if cecho then
     cecho(
-      "\n<green>" .. who .. "<reset>: <cyan>" .. what .. "<reset> -> <red>" .. target .. "<reset>"
+      "\n"
+      .. renderSegment("who", who)
+      .. renderSegment("separator", ": ")
+      .. renderSegment("ability", what)
+      .. renderSegment("separator", " -> ")
+      .. renderSegment("target", target)
     )
   else
     echo("\n" .. msg)
@@ -141,7 +360,7 @@ local function emitSimple(who, ability)
   if what == "" then what = "Action" end
 
   if cecho then
-    cecho("\n<green>" .. actor .. "<reset>: <cyan>" .. what .. "<reset>")
+    cecho("\n" .. renderSegment("who", actor) .. renderSegment("separator", ": ") .. renderSegment("ability", what))
   else
     echo("\n" .. actor .. ": " .. what)
   end
@@ -170,7 +389,13 @@ local function emitAttackSummary(entry)
 
   if cecho then
     cecho(
-      "\n<green>" .. who .. "<reset>: <cyan>" .. what .. "<reset> -> <red>" .. target .. "<reset><white>" .. suffix .. "<reset>"
+      "\n"
+      .. renderSegment("who", who)
+      .. renderSegment("separator", ": ")
+      .. renderSegment("ability", what)
+      .. renderSegment("separator", " -> ")
+      .. renderSegment("target", target)
+      .. renderSegment("meta", suffix)
     )
   else
     echo("\n" .. string.format("%s: %s -> %s%s", who, what, target, suffix))
@@ -189,7 +414,13 @@ local function emitKillSummary(target, xp)
 
   if cecho then
     cecho(
-      "\n<green>You<reset>: <cyan>Killed<reset> -> <red>" .. victim .. "<reset><white>" .. suffix .. "<reset>"
+      "\n"
+      .. renderSegment("who", "You")
+      .. renderSegment("separator", ": ")
+      .. renderSegment("ability", "Killed")
+      .. renderSegment("separator", " -> ")
+      .. renderSegment("target", victim)
+      .. renderSegment("meta", suffix)
     )
   else
     echo("\nYou: Killed -> " .. victim .. suffix)
@@ -315,6 +546,8 @@ end
 function boop.gag.showStatus()
   boop.util.info("gag own attacks: " .. (boop.config.gagOwnAttacks and "on" or "off"))
   boop.util.info("gag others attacks: " .. (boop.config.gagOthersAttacks and "on" or "off"))
+  boop.util.info("gag palette: " .. boop.gag.paletteSummary())
+  boop.util.info("Use: boop gag colors | boop gag color <role> <color|off>")
 end
 
 function boop.gag.setOwn(value)

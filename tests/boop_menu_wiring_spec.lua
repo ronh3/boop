@@ -96,6 +96,8 @@ describe("boop menu wiring", function()
       "boop debug skills dump",
       "boop trace on|off|show [n]|clear",
       "boop gag on|off|own|others|all",
+      "boop gag colors",
+      "boop gag color <who|ability|target|meta|separator|bg> <color|off>",
       "boop get",
       "boop set <key> <value>",
       "boop import foxhunt [merge|overwrite|dryrun]",
@@ -403,21 +405,21 @@ describe("boop menu wiring", function()
       boop.ui.config("debug")
     end)
 
-    assert.are.equal(9, #callbacks)
+    assert.are.equal(10, #callbacks)
 
     addStub(boop.ui, "config", "config")
     addStub(_G, "appendCmdLine", "appendCmdLine")
     addStub(_G, "clearCmdLine", "clearCmdLine")
 
-    for i = 1, 6 do
+    for i = 1, 7 do
       expectCallback(callbacks[i].callback, {
         { label = "config", args = { "debug " .. tostring(i) } },
       })
     end
 
-    expectCallback(callbacks[7].callback, seedExpectation("boop config home"))
-    expectCallback(callbacks[8].callback, seedExpectation("boop config debug"))
-    expectCallback(callbacks[9].callback, seedExpectation("boop config back"))
+    expectCallback(callbacks[8].callback, seedExpectation("boop config home"))
+    expectCallback(callbacks[9].callback, seedExpectation("boop config debug"))
+    expectCallback(callbacks[10].callback, seedExpectation("boop config back"))
   end)
 
   it("wires the help home rows and footer seeds", function()
