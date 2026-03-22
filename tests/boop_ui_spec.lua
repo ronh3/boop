@@ -514,4 +514,26 @@ describe("boop ui home", function()
     assert.are.equal("", boop.config.gagColorBackground)
     assert.are.equal("[OK] gag background color: off", echoes[#echoes])
   end)
+
+  it("renders theme list as a clickable sample browser", function()
+    local rendered = {}
+    local callbacks = {}
+
+    _G.cecho = function(msg)
+      rendered[#rendered + 1] = msg
+    end
+    _G.cechoLink = function(text, cb, _, _)
+      rendered[#rendered + 1] = text
+      callbacks[#callbacks + 1] = cb
+    end
+
+    boop.ui.themeCommand("list")
+
+    local joined = table.concat(rendered, "")
+    assert.is_true(joined:find("THEME SAMPLES", 1, true) ~= nil)
+    assert.is_true(joined:find("[auto]", 1, true) ~= nil)
+    assert.is_true(joined:find("[use]", 1, true) ~= nil)
+    assert.is_true(joined:find("Ashtan", 1, true) ~= nil)
+    assert.is_true(#callbacks > 10)
+  end)
 end)

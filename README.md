@@ -29,7 +29,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop combos` / `boop combos <class...>` / `boop combos list` (party combo inference from rage afflictions + conditional needs)
 - `boop prefer` / `boop prefer <dam|shield> <option>` / `boop prefer clear <dam|shield>` (bias standard attack choice within a profile)
 - `boop weapon` / `boop weapon <role> <item-id>` / `boop weapon clear <role>` (save class-scoped weapon designations such as `scythe` or `dagger`; prefer raw GMCP item ids)
-- `boop theme <name|auto|list>` (`list` includes boop themes plus the built-in ADB city/class themes)
+- `boop theme <name|auto|list>` (`list` opens an ADB-style sample browser with boop themes plus the built-in ADB city/class themes)
 - `boop autogold` / `boop autogold on` / `boop autogold off`
 - `boop pack` / `boop pack <container>` / `boop pack off` / `boop pack test` (auto-stash container for sovereigns)
 - `boop import foxhunt [merge|overwrite|dryrun]` (imports Foxhunt DB whitelist/blacklist into boop)

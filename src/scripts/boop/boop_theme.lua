@@ -256,6 +256,14 @@ local function builtin_themes()
   }
 end
 
+local function builtin_theme_categories()
+  return {
+    { label = "Cities", names = { "ashtan", "cyrene", "eleusis", "hashan", "mhaldor", "targossas" } },
+    { label = "Classes", names = { "alchemist", "apostate", "bard", "blademaster", "depthswalker", "druid", "infernal", "jester", "magi", "monk", "occultist", "paladin", "pariah", "priest", "psion", "runewarden", "sentinel", "serpent", "shaman", "sylvan", "unnamable" } },
+    { label = "Boop", names = { "default", "ocean", "forest" } },
+  }
+end
+
 local function current_class()
   local class = ""
   if boop and boop.state and boop.state.class then
@@ -290,6 +298,18 @@ function boop.theme.tags()
   return theme_to_tags(def)
 end
 
+function boop.theme.tagsFor(name)
+  local themes = builtin_themes()
+  local key = tostring(name or ""):lower()
+  local def = themes[key] or themes.default
+  return theme_to_tags(def)
+end
+
+function boop.theme.definition(name)
+  local themes = builtin_themes()
+  return themes[tostring(name or ""):lower()]
+end
+
 function boop.theme.names()
   local names = {}
   for name, _ in pairs(builtin_themes()) do
@@ -304,4 +324,34 @@ function boop.theme.exists(name)
     return false
   end
   return builtin_themes()[tostring(name):lower()] ~= nil
+end
+
+function boop.theme.categories()
+  local result = {}
+  local seen = {}
+  for _, category in ipairs(builtin_theme_categories()) do
+    local names = {}
+    for _, name in ipairs(category.names) do
+      if builtin_themes()[name] then
+        names[#names + 1] = name
+        seen[name] = true
+      end
+    end
+    if #names > 0 then
+      result[#result + 1] = { label = category.label, names = names }
+    end
+  end
+
+  local remaining = {}
+  for name in pairs(builtin_themes()) do
+    if not seen[name] then
+      remaining[#remaining + 1] = name
+    end
+  end
+  table.sort(remaining)
+  if #remaining > 0 then
+    result[#result + 1] = { label = "Other", names = remaining }
+  end
+
+  return result
 end

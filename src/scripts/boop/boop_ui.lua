@@ -213,6 +213,56 @@ local function activeThemeLabel()
   return tostring(boop.theme.resolve_name() or "default")
 end
 
+local function themeDisplayName(name)
+  local label = tostring(name or "")
+  if label == "" then
+    return "Default"
+  end
+  label = label:gsub("_", " ")
+  return label:gsub("(%a)([%w']*)", function(a, b)
+    return a:upper() .. b:lower()
+  end)
+end
+
+local function renderThemeSampleRow(name)
+  local sample = boop.theme and boop.theme.tagsFor and boop.theme.tagsFor(name) or themeTags()
+  cecho("\n" .. sample.border .. "[" .. sample.accent .. "##" .. sample.border .. "] " .. sample.reset)
+  cecho(sample.text .. string.format("%-14s", themeDisplayName(name)) .. sample.reset)
+  cecho(" ")
+  cecho(sample.accent .. "A" .. sample.reset .. " ")
+  cecho(sample.border .. "B" .. sample.reset .. " ")
+  cecho(sample.text .. "T" .. sample.reset .. " ")
+  cecho(sample.muted .. "M" .. sample.reset)
+  cecho(" ")
+  cechoLink(themeColor("info") .. "[use]" .. sample.reset, function()
+    boop.ui.themeCommand(name)
+  end, "Apply theme", true)
+end
+
+local function renderThemeSamples()
+  local configured = boop.util.trim(boop.config and boop.config.uiTheme or "")
+  uiPrintHeader("theme samples")
+  if configured == "" then
+    boop.util.echo("Current: auto (" .. activeThemeLabel() .. ")")
+  else
+    boop.util.echo("Current: " .. configured)
+  end
+
+  cecho("\n")
+  cechoLink(themeColor("info") .. "[auto]" .. themeColor("reset"), function()
+    boop.ui.themeCommand("auto")
+  end, "Use automatic class theme", true)
+  cecho(themeColor("text") .. " Follow the current class theme." .. themeColor("reset"))
+
+  local categories = (boop.theme and boop.theme.categories and boop.theme.categories()) or {}
+  for _, category in ipairs(categories) do
+    uiPrintSection(category.label)
+    for _, name in ipairs(category.names or {}) do
+      renderThemeSampleRow(name)
+    end
+  end
+end
+
 local function operatingModeLabel()
   local mode = "solo"
   if boop.config.targetCall then
@@ -1756,12 +1806,16 @@ function boop.ui.themeCommand(raw)
   end
 
   if cmd == "list" then
-    boop.util.info("themes:")
-    for _, name in ipairs((boop.theme and boop.theme.names and boop.theme.names()) or {}) do
-      boop.util.echo("  " .. name)
+    if cecho then
+      renderThemeSamples()
+    else
+      boop.util.info("themes:")
+      for _, name in ipairs((boop.theme and boop.theme.names and boop.theme.names()) or {}) do
+        boop.util.echo("  " .. name)
+      end
+      boop.util.echo("  auto")
+      boop.util.info("Includes boop themes plus the built-in ADB city/class palettes.")
     end
-    boop.util.echo("  auto")
-    boop.util.info("Includes boop themes plus the built-in ADB city/class palettes.")
     return
   end
 
