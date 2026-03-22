@@ -60,6 +60,7 @@ Guidance for Codex when working in this repository.
 - Preserve the newer, streamlined boop UI direction: fewer broader help/config sections rather than many tiny topics.
 - Prefer runtime-safe refactors over aggressive cleanup.
 - The user is aiming for a 1.0 release; prefer polish, clarity, and release-readiness work over broad feature expansion unless a real usage gap is identified.
+- Future party/dashboard follow-up: add reporting for the current area's whitelist on `boop party`.
 - If the command surface changes, update aliases, help text, `README.md`, and `UIDESIGN.md` together so the shipped contract stays consistent.
 
 ## Current UI / UX Conventions
