@@ -507,12 +507,14 @@ describe("boop ui home", function()
     boop.ui.gagCommand("color separator khaki")
 
     assert.are.equal("khaki", boop.config.gagColorSeparator)
-    assert.are.equal("[OK] gag separator color: khaki", echoes[#echoes])
+    assert.is_true(table.concat(echoes, "\n"):find("%[OK%] gag separator color: khaki") ~= nil)
+    assert.is_true(table.concat(echoes, "\n"):find("%[INFO%] gag colors:") ~= nil)
+    assert.is_true(table.concat(echoes, "\n"):find("sample: You: Attack %-%> a denizen %(1234 cutting %- 8xCRIT%) %(Bal: 2%.1s%)") ~= nil)
 
     boop.ui.gagCommand("color bg off")
 
     assert.are.equal("", boop.config.gagColorBackground)
-    assert.are.equal("[OK] gag background color: off", echoes[#echoes])
+    assert.is_true(table.concat(echoes, "\n"):find("%[OK%] gag background color: off") ~= nil)
   end)
 
   it("renders theme list as a clickable sample browser", function()

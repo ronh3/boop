@@ -307,6 +307,7 @@ function boop.gag.setColor(role, rawValue)
   else
     boop.util.ok("gag " .. GAG_COLOR_LABELS[normalizedRole] .. " color: " .. (value ~= "" and value or "auto"))
   end
+  boop.gag.showColors()
 end
 
 function boop.gag.resetColors()
@@ -318,6 +319,7 @@ function boop.gag.resetColors()
     end
   end
   boop.util.ok("gag colors: reset")
+  boop.gag.showColors()
 end
 
 local function emitReplacement(actor, ability, victim, selfActor)
