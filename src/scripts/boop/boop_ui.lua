@@ -194,6 +194,10 @@ local uiPrintHeader
 local uiPrintSection
 local uiPrintRow
 local uiPrintFooter
+local uiPrintControlRow
+local uiPrintToggleControl
+local uiPrintActionControl
+local uiPrintNumberControl
 
 function boop.ui.statusLine(context)
   local enabled = boop.config.enabled and "on" or "off"
@@ -676,6 +680,54 @@ uiPrintRow = function(index, label, buttonText, buttonColor, onClick, hint, labe
   boop.util.echo(row)
 end
 
+uiPrintControlRow = function(index, label, currentText, currentColor, actions, labelWidth)
+  local prefix = uiIndexPrefix(index)
+  local valueText = tostring(currentText or "")
+  local leftRaw = prefix .. tostring(label or "") .. ": " .. valueText
+
+  if cecho then
+    local theme = themeTags()
+    local width = tonumber(labelWidth) or UI_LABEL_COL_WIDTH
+    local valueTag = semanticTag(tostring(currentColor or "text"))
+    cecho("\n" .. theme.text .. uiPadRight(prefix .. tostring(label or "") .. ":", width) .. " " .. valueTag .. valueText .. theme.reset)
+    for _, action in ipairs(actions or {}) do
+      cecho(" ")
+      local rendered = semanticTag(tostring(action.color or "info")) .. tostring(action.label or "") .. theme.reset
+      if cechoLink and action.onClick then
+        cechoLink(rendered, action.onClick, action.hint or "", true)
+      else
+        cecho(rendered)
+      end
+    end
+    return
+  end
+
+  local parts = { leftRaw }
+  for _, action in ipairs(actions or {}) do
+    parts[#parts + 1] = tostring(action.label or "")
+  end
+  boop.util.echo(table.concat(parts, " "))
+end
+
+uiPrintToggleControl = function(index, label, enabled, onClick, hint, labelWidth)
+  uiPrintControlRow(index, label, boolText(not not enabled), boolColor(not not enabled), {
+    { label = "[toggle]", color = "info", onClick = onClick, hint = hint or "Toggle " .. tostring(label or "") },
+  }, labelWidth)
+end
+
+uiPrintActionControl = function(index, label, currentText, currentColor, actionLabel, actionColor, onClick, hint, labelWidth)
+  uiPrintControlRow(index, label, currentText, currentColor, {
+    { label = tostring(actionLabel or "[open]"), color = tostring(actionColor or "info"), onClick = onClick, hint = hint or tostring(label or "") },
+  }, labelWidth)
+end
+
+uiPrintNumberControl = function(index, label, currentText, currentColor, decClick, incClick, labelWidth)
+  uiPrintControlRow(index, label, currentText, currentColor, {
+    { label = "[-]", color = "info", onClick = decClick, hint = "Decrease " .. tostring(label or "") },
+    { label = "[+]", color = "info", onClick = incClick, hint = "Increase " .. tostring(label or "") },
+  }, labelWidth)
+end
+
 uiPrintFooter = function(text)
   if cecho then
     local theme = themeTags()
@@ -711,6 +763,10 @@ boop.ui.printHeader = uiPrintHeader
 boop.ui.printSection = uiPrintSection
 boop.ui.printRow = uiPrintRow
 boop.ui.printFooter = uiPrintFooter
+boop.ui.printControlRow = uiPrintControlRow
+boop.ui.printToggleControl = uiPrintToggleControl
+boop.ui.printActionControl = uiPrintActionControl
+boop.ui.printNumberControl = uiPrintNumberControl
 boop.ui.computeLabelWidth = uiComputeLabelWidth
 boop.ui._printHeader = uiPrintHeader
 boop.ui._printSection = uiPrintSection
@@ -4146,35 +4202,29 @@ end
 local function configRenderDebugSection()
   configSetScreen("debug")
   local traceCount = boop.state and boop.state.traceBuffer and #boop.state.traceBuffer or 0
+  local palette = boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary() or "AUTO"
   if cecho then
     uiPrintHeader("configuration > debug")
-    uiPrintSection("overview")
-    uiPrintRow(1, "Trace logging", boolText(not not boop.config.traceEnabled), boolColor(not not boop.config.traceEnabled))
-    uiPrintRow(2, "Trace entries", tostring(traceCount), "cyan")
-    uiPrintRow(3, "Gag own attacks", boolText(not not boop.config.gagOwnAttacks), boolColor(not not boop.config.gagOwnAttacks))
-    uiPrintRow(4, "Gag others attacks", boolText(not not boop.config.gagOthersAttacks), boolColor(not not boop.config.gagOthersAttacks))
-    uiPrintRow(5, "Gag palette", boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary() or "AUTO", "cyan")
-
-    uiPrintSection("actions")
-    uiPrintRow(6, "Toggle trace logging", boolText(not not boop.config.traceEnabled), boolColor(not not boop.config.traceEnabled), function()
+    uiPrintSection("settings")
+    uiPrintToggleControl(1, "Trace logging", not not boop.config.traceEnabled, function()
       boop.ui.config("debug 1")
     end, "Toggle trace logging")
-    uiPrintRow(7, "Debug snapshot", "SHOW", "cyan", function()
+    uiPrintActionControl(2, "Debug snapshot", "ready", "green", "[open]", "info", function()
       boop.ui.config("debug 2")
     end, "Show boop debug snapshot")
-    uiPrintRow(8, "Trace buffer", "SHOW", "cyan", function()
+    uiPrintActionControl(3, "Trace buffer", tostring(traceCount), traceCount > 0 and "cyan" or "text", "[open]", "info", function()
       boop.ui.config("debug 3")
     end, "Show trace entries")
-    uiPrintRow(9, "Clear trace", "CLEAR", "red", function()
+    uiPrintActionControl(4, "Clear trace", tostring(traceCount), traceCount > 0 and "yellow" or "text", "[clear]", traceCount > 0 and "err" or "text", function()
       boop.ui.config("debug 4")
     end, "Clear trace buffer")
-    uiPrintRow(10, "Toggle gag own attacks", boolText(not not boop.config.gagOwnAttacks), boolColor(not not boop.config.gagOwnAttacks), function()
+    uiPrintToggleControl(5, "Gag own attacks", not not boop.config.gagOwnAttacks, function()
       boop.ui.config("debug 5")
     end, "Toggle gagging your own attack lines")
-    uiPrintRow(11, "Toggle gag others attacks", boolText(not not boop.config.gagOthersAttacks), boolColor(not not boop.config.gagOthersAttacks), function()
+    uiPrintToggleControl(6, "Gag others", not not boop.config.gagOthersAttacks, function()
       boop.ui.config("debug 6")
     end, "Toggle gagging other players' attack lines")
-    uiPrintRow(12, "Gag colors", boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary() or "AUTO", "cyan", function()
+    uiPrintActionControl(7, "Gag palette", palette, "cyan", "[color]", "info", function()
       boop.ui.config("debug 7")
     end, "Show gag color roles and sample output")
     uiPrintFooter("Type: boop config home | boop config debug <number> | boop config back")
@@ -4182,14 +4232,14 @@ local function configRenderDebugSection()
   end
   boop.util.echo("CONFIGURATION > Debug")
   boop.util.echo("----------------------------------------")
-  boop.util.echo(string.format("Trace: %s | entries: %d | gag own %s | gag others %s | palette %s", boolText(not not boop.config.traceEnabled), traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks), boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary() or "AUTO"))
-  boop.util.echo("[1] Trace logging             [ " .. boolText(not not boop.config.traceEnabled) .. " ]")
-  boop.util.echo("[2] Debug snapshot            [ SHOW ]")
-  boop.util.echo("[3] Trace buffer              [ SHOW ]")
-  boop.util.echo("[4] Clear trace               [ CLEAR ]")
-  boop.util.echo("[5] Gag own attacks           [ " .. boolText(not not boop.config.gagOwnAttacks) .. " ]")
-  boop.util.echo("[6] Gag others attacks        [ " .. boolText(not not boop.config.gagOthersAttacks) .. " ]")
-  boop.util.echo("[7] Gag colors                [ " .. (boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary() or "AUTO") .. " ]")
+  boop.util.echo(string.format("Trace: %s | entries: %d | gag own %s | gag others %s | palette %s", boolText(not not boop.config.traceEnabled), traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks), palette))
+  boop.util.echo("[1] Trace logging             [ " .. boolText(not not boop.config.traceEnabled) .. " ] [toggle]")
+  boop.util.echo("[2] Debug snapshot            [ ready ] [open]")
+  boop.util.echo("[3] Trace buffer              [ " .. tostring(traceCount) .. " ] [open]")
+  boop.util.echo("[4] Clear trace               [ " .. tostring(traceCount) .. " ] [clear]")
+  boop.util.echo("[5] Gag own attacks           [ " .. boolText(not not boop.config.gagOwnAttacks) .. " ] [toggle]")
+  boop.util.echo("[6] Gag others                [ " .. boolText(not not boop.config.gagOthersAttacks) .. " ] [toggle]")
+  boop.util.echo("[7] Gag palette               [ " .. palette .. " ] [color]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config home | boop config debug <number> | boop config back")
 end
