@@ -61,5 +61,12 @@
     "regex": "^(?i)catarin$",
     "script": "",
     "isFolder": "no"
+  },
+  {
+    "name": "Fly",
+    "isActive": "yes",
+    "regex": "^(?i)fly$",
+    "script": "",
+    "isFolder": "no"
   }
 ]

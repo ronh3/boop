@@ -84,4 +84,20 @@ describe("boop queued interrupts", function()
     assert.are.equal("", boop.state.diagLabel)
     assert.stub(send_stub).was_called_with("command hound at 42", false)
   end)
+
+  it("queues fly on the attack queue and resumes after the next prompt", function()
+    boop.ui.fly()
+
+    assert.is_true(boop.state.diagHold)
+    assert.is_true(boop.state.diagAwaitPrompt)
+    assert.are.equal("fly", boop.state.diagLabel)
+    assert.stub(send_stub).was_called_with("queue addclearfull freestand fly", false)
+
+    boop.onPrompt()
+
+    assert.is_false(boop.state.diagHold)
+    assert.is_false(boop.state.diagAwaitPrompt)
+    assert.are.equal("", boop.state.diagLabel)
+    assert.stub(send_stub).was_called_with("command hound at 42", false)
+  end)
 end)
