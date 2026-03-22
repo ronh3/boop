@@ -482,6 +482,11 @@ function boop.gag.setColor(role, rawValue)
   else
     boop.util.ok("gag " .. GAG_COLOR_LABELS[normalizedRole] .. " color: " .. (value ~= "" and value or "auto"))
   end
+  local returnScreen = boop.ui and boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("debug") or ""
+  if returnScreen == "debug" and boop.ui and boop.ui.config then
+    boop.ui.config("debug")
+    return
+  end
   boop.gag.showColors()
 end
 
@@ -494,6 +499,11 @@ function boop.gag.resetColors()
     end
   end
   boop.util.ok("gag colors: reset")
+  local returnScreen = boop.ui and boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("debug") or ""
+  if returnScreen == "debug" and boop.ui and boop.ui.config then
+    boop.ui.config("debug")
+    return
+  end
   boop.gag.showColors()
 end
 

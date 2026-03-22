@@ -680,7 +680,7 @@ uiPrintRow = function(index, label, buttonText, buttonColor, onClick, hint, labe
   boop.util.echo(row)
 end
 
-uiPrintControlRow = function(index, label, currentText, currentColor, actions, labelWidth)
+uiPrintControlRow = function(index, label, currentText, currentColor, actions, labelWidth, valueClick, valueHint)
   local prefix = uiIndexPrefix(index)
   local valueText = tostring(currentText or "")
   local leftRaw = prefix .. tostring(label or "") .. ": " .. valueText
@@ -689,7 +689,12 @@ uiPrintControlRow = function(index, label, currentText, currentColor, actions, l
     local theme = themeTags()
     local width = tonumber(labelWidth) or UI_LABEL_COL_WIDTH
     local valueTag = semanticTag(tostring(currentColor or "text"))
-    cecho("\n" .. theme.text .. uiPadRight(prefix .. tostring(label or "") .. ":", width) .. " " .. valueTag .. valueText .. theme.reset)
+    cecho("\n" .. theme.text .. uiPadRight(prefix .. tostring(label or "") .. ":", width) .. " ")
+    if cechoLink and valueClick then
+      cechoLink(valueTag .. valueText .. theme.reset, valueClick, valueHint or tostring(label or ""), true)
+    else
+      cecho(valueTag .. valueText .. theme.reset)
+    end
     for _, action in ipairs(actions or {}) do
       cecho(" ")
       local rendered = semanticTag(tostring(action.color or "info")) .. tostring(action.label or "") .. theme.reset
@@ -712,13 +717,13 @@ end
 uiPrintToggleControl = function(index, label, enabled, onClick, hint, labelWidth)
   uiPrintControlRow(index, label, boolText(not not enabled), boolColor(not not enabled), {
     { label = "[toggle]", color = "info", onClick = onClick, hint = hint or "Toggle " .. tostring(label or "") },
-  }, labelWidth)
+  }, labelWidth, onClick, hint or "Toggle " .. tostring(label or ""))
 end
 
 uiPrintActionControl = function(index, label, currentText, currentColor, actionLabel, actionColor, onClick, hint, labelWidth)
   uiPrintControlRow(index, label, currentText, currentColor, {
     { label = tostring(actionLabel or "[open]"), color = tostring(actionColor or "info"), onClick = onClick, hint = hint or tostring(label or "") },
-  }, labelWidth)
+  }, labelWidth, onClick, hint or tostring(label or ""))
 end
 
 uiPrintNumberControl = function(index, label, currentText, currentColor, decClick, incClick, labelWidth)
@@ -951,6 +956,11 @@ function boop.ui.setAttackMode(mode)
     boop.db.saveConfig("attackMode", boop.config.attackMode)
   end
   boop.util.ok("ragemode: " .. tostring(mode))
+  local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat") or ""
+  if returnScreen == "combat" and boop.ui and boop.ui.config then
+    boop.ui.config("combat")
+    return
+  end
   if chosenByNumber then
     boop.ui.showRageModeMenu()
   end
@@ -1001,6 +1011,10 @@ function boop.ui.setAttackLeadSeconds(raw)
     boop.schedulePrequeue()
   end
   boop.util.ok(string.format("attack lead: %.2fs", value))
+  local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat", "boop lead ") or ""
+  if returnScreen == "combat" and boop.ui and boop.ui.config then
+    boop.ui.config("combat")
+  end
 end
 
 function boop.ui.setTraceEnabled(value)
@@ -1019,6 +1033,10 @@ function boop.ui.setGoldPack(value)
     boop.util.ok("gold pack: (off)")
   else
     boop.util.ok("gold pack: " .. pack)
+  end
+  local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("loot", "boop pack ") or ""
+  if returnScreen == "loot" and boop.ui and boop.ui.config then
+    boop.ui.config("loot")
   end
 end
 
@@ -1421,6 +1439,10 @@ function boop.ui.setConfigValue(key, value)
     end
     saveConfigValue("tempoRageWindowSeconds", seconds)
     boop.util.ok(string.format("tempo rage window: %.2fs", seconds))
+    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat", "boop set tempoRageWindowSeconds ") or ""
+    if returnScreen == "combat" and boop.ui and boop.ui.config then
+      boop.ui.config("combat")
+    end
     return
   end
 
@@ -1432,6 +1454,10 @@ function boop.ui.setConfigValue(key, value)
     end
     saveConfigValue("tempoSqueezeEtaSeconds", seconds)
     boop.util.ok(string.format("tempo squeeze eta: %.2fs", seconds))
+    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat", "boop set tempoSqueezeEtaSeconds ") or ""
+    if returnScreen == "combat" and boop.ui and boop.ui.config then
+      boop.ui.config("combat")
+    end
     return
   end
 
@@ -1503,6 +1529,10 @@ function boop.ui.setConfigValue(key, value)
     end
     saveConfigValue("diagTimeoutSeconds", timeout)
     boop.util.ok(string.format("diag timeout: %.2fs", timeout))
+    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat", "boop set diagtimeout ") or ""
+    if returnScreen == "combat" and boop.ui and boop.ui.config then
+      boop.ui.config("combat")
+    end
     return
   end
 
@@ -2044,6 +2074,10 @@ function boop.ui.assistCommand(raw)
   if cmd == "off" or cmd == "disable" then
     saveConfigValue("assistEnabled", false)
     boop.util.ok("assist: off")
+    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat", "boop assist ") or ""
+    if returnScreen == "combat" and boop.ui and boop.ui.config then
+      boop.ui.config("combat")
+    end
     return
   end
 
@@ -2051,6 +2085,10 @@ function boop.ui.assistCommand(raw)
     saveConfigValue("assistEnabled", false)
     saveConfigValue("assistLeader", "")
     boop.util.ok("assist cleared")
+    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat", "boop assist ") or ""
+    if returnScreen == "combat" and boop.ui and boop.ui.config then
+      boop.ui.config("combat")
+    end
     return
   end
 
@@ -2061,12 +2099,20 @@ function boop.ui.assistCommand(raw)
     end
     saveConfigValue("assistEnabled", true)
     boop.util.ok("assist: on -> " .. leader)
+    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat", "boop assist ") or ""
+    if returnScreen == "combat" and boop.ui and boop.ui.config then
+      boop.ui.config("combat")
+    end
     return
   end
 
   saveConfigValue("assistLeader", text)
   saveConfigValue("assistEnabled", true)
   boop.util.ok("assist leader: " .. text)
+  local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat", "boop assist ") or ""
+  if returnScreen == "combat" and boop.ui and boop.ui.config then
+    boop.ui.config("combat")
+  end
 end
 
 function boop.ui.affCallCommand(raw)
@@ -3858,6 +3904,30 @@ end
 
 boop.ui._setScreen = configSetScreen
 
+local function configRememberReturnScreen(key, prefix)
+  local screen = boop.util.safeLower(boop.util.trim(key or ""))
+  if screen ~= "" and configSectionByKey(screen) then
+    boop.ui = boop.ui or {}
+    boop.ui.configReturnScreen = screen
+    boop.ui.configReturnPrefix = prefix or ""
+  end
+end
+
+function boop.ui.consumeConfigReturnScreen(expected, prefix)
+  boop.ui = boop.ui or {}
+  local screen = boop.ui.configReturnScreen or ""
+  local storedPrefix = boop.ui.configReturnPrefix or ""
+  if expected and screen ~= expected then
+    return ""
+  end
+  if prefix and storedPrefix ~= prefix then
+    return ""
+  end
+  boop.ui.configReturnScreen = nil
+  boop.ui.configReturnPrefix = nil
+  return screen
+end
+
 local function configHuntingSummary()
   return string.format(
     "%s | rage %s | queue %s | prequeue %s",
@@ -4266,37 +4336,43 @@ local function configApplySectionOption(sectionKey, option)
   if sectionKey == "combat" then
     if n == 1 then
       boop.ui.setEnabled(not boop.config.enabled, true)
-      return true
+      return "refresh"
     elseif n == 2 then
+      configRememberReturnScreen("combat")
       boop.ui.showRageModeMenu()
-      return true
+      return "handled"
     elseif n == 3 then
       boop.ui.diag()
-      return true
+      return "refresh"
     elseif n == 4 then
       boop.ui.toggleConfigBool("useQueueing", true)
-      return true
+      return "refresh"
     elseif n == 5 then
       boop.ui.setPrequeueEnabled(not boop.config.prequeueEnabled)
-      return true
+      return "refresh"
     elseif n == 6 then
+      configRememberReturnScreen("combat", "boop lead ")
       uiSetCommandLine("boop lead ")
-      return true
+      return "seed"
     elseif n == 7 then
+      configRememberReturnScreen("combat", "boop set diagtimeout ")
       uiSetCommandLine("boop set diagtimeout ")
-      return true
+      return "seed"
     elseif n == 8 then
+      configRememberReturnScreen("combat", "boop set tempoRageWindowSeconds ")
       uiSetCommandLine("boop set tempoRageWindowSeconds ")
-      return true
+      return "seed"
     elseif n == 9 then
+      configRememberReturnScreen("combat", "boop set tempoSqueezeEtaSeconds ")
       uiSetCommandLine("boop set tempoSqueezeEtaSeconds ")
-      return true
+      return "seed"
     elseif n == 10 then
+      configRememberReturnScreen("combat", "boop assist ")
       uiSetCommandLine("boop assist ")
-      return true
+      return "seed"
     elseif n == 11 then
       boop.ui.toggleConfigBool("rageAffCalloutsEnabled", true)
-      return true
+      return "refresh"
     end
     return false
   end
@@ -4304,28 +4380,28 @@ local function configApplySectionOption(sectionKey, option)
   if sectionKey == "targeting" then
     if n == 1 then
       cycleTargetingMode(1, true)
-      return true
+      return "refresh"
     elseif n == 2 then
       boop.ui.toggleConfigBool("whitelistPriorityOrder", true)
-      return true
+      return "refresh"
     elseif n == 3 then
       boop.ui.cycleTargetOrder(1, true)
-      return true
+      return "refresh"
     elseif n == 4 then
       boop.ui.toggleConfigBool("retargetOnPriority", true)
-      return true
+      return "refresh"
     elseif n == 5 then
       boop.ui.targetCallCommand(boop.config.targetCall and "off" or "on")
-      return true
+      return "refresh"
     elseif n == 6 then
       boop.targets.displayWhitelist()
-      return true
+      return "handled"
     elseif n == 7 then
       boop.targets.displayWhitelistBrowse()
-      return true
+      return "handled"
     elseif n == 8 then
       boop.targets.displayBlacklist()
-      return true
+      return "handled"
     end
     return false
   end
@@ -4333,16 +4409,17 @@ local function configApplySectionOption(sectionKey, option)
   if sectionKey == "loot" then
     if n == 1 then
       boop.ui.toggleAutoGrabGold()
-      return true
+      return "refresh"
     elseif n == 2 then
+      configRememberReturnScreen("loot", "boop pack ")
       uiSetCommandLine("boop pack ")
-      return true
+      return "seed"
     elseif n == 3 then
       boop.ui.setGoldPack("")
-      return true
+      return "refresh"
     elseif n == 4 then
       boop.ui.testGoldPack()
-      return true
+      return "refresh"
     end
     return false
   end
@@ -4350,33 +4427,34 @@ local function configApplySectionOption(sectionKey, option)
   if sectionKey == "debug" then
     if n == 1 then
       boop.ui.setTraceEnabled(not boop.config.traceEnabled)
-      return true
+      return "refresh"
     elseif n == 2 then
       boop.ui.debug()
-      return true
+      return "handled"
     elseif n == 3 then
       if boop.trace and boop.trace.show then
         boop.trace.show()
       else
         boop.util.echo("trace unavailable")
       end
-      return true
+      return "handled"
     elseif n == 4 then
       if boop.trace and boop.trace.clear then
         boop.trace.clear()
       else
         boop.util.echo("trace unavailable")
       end
-      return true
+      return "refresh"
     elseif n == 5 then
       boop.gag.setOwn(not boop.config.gagOwnAttacks)
-      return true
+      return "refresh"
     elseif n == 6 then
       boop.gag.setOthers(not boop.config.gagOthersAttacks)
-      return true
+      return "refresh"
     elseif n == 7 then
+      configRememberReturnScreen("debug")
       boop.gag.showColors()
-      return true
+      return "handled"
     end
     return false
   end
@@ -4443,8 +4521,11 @@ function boop.ui.config(arg)
   local sectionPart, optionPart = raw:match("^%s*([%w_%-]+)%s+(%d+)%s*$")
   if sectionPart and optionPart then
     local requestedExplicit = configResolveSection(sectionPart)
-    if requestedExplicit and configApplySectionOption(requestedExplicit.key, optionPart) then
-      configRenderSection(requestedExplicit.key)
+    local result = requestedExplicit and configApplySectionOption(requestedExplicit.key, optionPart)
+    if result then
+      if result == "refresh" then
+        configRenderSection(requestedExplicit.key)
+      end
       return
     end
   end
@@ -4458,8 +4539,11 @@ function boop.ui.config(arg)
     if tonumber(token) and configHomeRoute(token) then
       return
     end
-    if configApplySectionOption(current, token) then
-      configRenderSection(current)
+    local result = configApplySectionOption(current, token)
+    if result then
+      if result == "refresh" then
+        configRenderSection(current)
+      end
       return
     end
     boop.util.echo("Unknown option for " .. tostring(current) .. ": " .. tostring(arg))

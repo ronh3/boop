@@ -242,15 +242,42 @@ describe("boop ui home", function()
 
     boop.ui.config("debug")
 
-    assert.is_true(type(callbacks[2]) == "function")
     assert.is_true(type(callbacks[3]) == "function")
+    assert.is_true(type(callbacks[5]) == "function")
 
-    callbacks[2]()
     callbacks[3]()
+    callbacks[5]()
 
     assert.are.equal(1, debug_calls)
     assert.are.equal(1, trace_show_calls)
     assert.are.equal("debug", boop.ui.configScreen)
+  end)
+
+  it("returns to combat config after changing rage mode from the combat screen", function()
+    boop.ui.config("combat 2")
+
+    echoes = {}
+    boop.ui.setAttackMode("tempo")
+
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find("%[OK%] ragemode: tempo") ~= nil)
+    assert.is_true(joined:find("CONFIGURATION > Combat", 1, true) ~= nil)
+    assert.are.equal("combat", boop.ui.configScreen)
+  end)
+
+  it("returns to loot config after setting a seeded pack value", function()
+    clear_cmd_stub = stub(_G, "clearCmdLine", function() end)
+    append_cmd_stub = stub(_G, "appendCmdLine", function() end)
+
+    boop.ui.config("loot 2")
+
+    echoes = {}
+    boop.ui.setGoldPack("tophat")
+
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find("%[OK%] gold pack: tophat") ~= nil)
+    assert.is_true(joined:find("CONFIGURATION > Loot", 1, true) ~= nil)
+    assert.are.equal("loot", boop.ui.configScreen)
   end)
 
   it("shows a cleaner debug snapshot", function()
