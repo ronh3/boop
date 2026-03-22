@@ -604,7 +604,7 @@ function boop.ui.controlCommand(raw)
     uiPrintSection("combat controls")
     uiPrintRow(6, "Class", tostring(class), "cyan")
     uiPrintRow(7, "Targeting", targetingMode, "cyan", function() boop.ui.config("targeting") end, "Open targeting controls")
-    uiPrintRow(8, "Ragemode", rageMode, "yellow", function() boop.ui.config("combat") end, "Open hunting controls")
+    uiPrintRow(8, "Ragemode", rageMode, "yellow", function() boop.ui.config("combat") end, "Open combat controls")
     uiPrintRow(9, "Queueing", queueShown, boop.config.useQueueing and "green" or "yellow", function() boop.ui.config("combat") end, "Open queueing controls")
     uiPrintRow(10, "Prequeue", prequeueShown .. " | lead " .. leadShown, boop.config.prequeueEnabled and "green" or "yellow", function() boop.ui.config("combat") end, "Open prequeue controls")
     uiPrintRow(11, "Target", targetShown, "cyan")
@@ -849,7 +849,7 @@ function boop.ui.showRageModeMenu()
         boop.ui.setAttackMode(tostring(option.id))
       end, "Set ragemode to " .. option.key, labelWidth)
     end
-    uiPrintFooter("Type: boop ragemode <number|mode> | boop config hunting | boop help combat")
+    uiPrintFooter("Type: boop ragemode <number|mode> | boop config combat | boop help combat")
     return
   end
 
@@ -860,7 +860,7 @@ function boop.ui.showRageModeMenu()
     boop.util.echo(string.format("[%d] %s - %s [%s]", option.id, option.label, option.desc, state))
   end
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Type: boop ragemode <number|mode> | boop config hunting | boop help combat")
+  boop.util.echo("Type: boop ragemode <number|mode> | boop config combat | boop help combat")
 end
 
 function boop.ui.setEnabled(value, quiet)
@@ -3427,7 +3427,7 @@ local HELP_TOPICS = {
       helpCommand("boop control", "Open the live control dashboard."),
       helpCommand("boop config", "Open the settings hub with summaries and links to each config area."),
       helpCommand("boop config home", "Return to the top-level config hub."),
-      helpCommand("boop config combat", "Open hunting and queueing settings."),
+      helpCommand("boop config combat", "Open combat and queueing settings."),
       helpCommand("boop config targeting", "Open targeting mode, order, and list-management settings."),
       helpCommand("boop config loot", "Open sovereign pickup and gold-pack settings."),
       helpCommand("boop config debug", "Open trace, gag, and debug settings."),
@@ -3446,7 +3446,7 @@ local HELP_TOPICS = {
     summary = "Targeting modes, rage modes, queueing, and target list management.",
     aliases = { "hunting", "combat", "targeting", "targets", "whitelist", "blacklist", "rage", "ragemode", "attackmode", "queue", "queueing", "prequeue", "diag", "diagnose", "ih" },
     commands = {
-      helpCommand("boop config combat", "Open the hunting settings screen for toggles like queueing, prequeue, and rage mode."),
+      helpCommand("boop config combat", "Open the combat settings screen for toggles like queueing, prequeue, and rage mode."),
       helpCommand("boop config targeting", "Open the targeting settings screen for mode, order, and retarget behavior."),
       helpCommand("boop ragemode", "Show the rage-mode menu and current selection."),
       helpCommand("boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>", "Set how boop chooses battlerage attacks."),
@@ -3958,9 +3958,9 @@ local function configRenderHome()
     uiPrintHeader("configuration")
 
     uiPrintSection("overview")
-    uiPrintRow(1, "Hunting", configHuntingSummary(), boop.config.enabled and "green" or "yellow", function()
+    uiPrintRow(1, "Combat", configHuntingSummary(), boop.config.enabled and "green" or "yellow", function()
       boop.ui.config("combat")
-    end, "Open hunting settings")
+    end, "Open combat settings")
     uiPrintRow(2, "Targeting", configTargetingSummary(), "cyan", function()
       boop.ui.config("targeting")
     end, "Open targeting settings")
@@ -3969,9 +3969,9 @@ local function configRenderHome()
     uiPrintRow(5, "Target", targetShown, "cyan")
 
     uiPrintSection("settings")
-    uiPrintRow(6, "Hunting settings", "OPEN", "cyan", function()
+    uiPrintRow(6, "Combat settings", "OPEN", "cyan", function()
       boop.ui.config("combat")
-    end, "Open hunting settings")
+    end, "Open combat settings")
     uiPrintRow(7, "Targeting settings", "OPEN", "cyan", function()
       boop.ui.config("targeting")
     end, "Open targeting settings")
@@ -4007,7 +4007,7 @@ local function configRenderHome()
   boop.util.echo(string.format("Hunting: %s", configHuntingSummary()))
   boop.util.echo(string.format("Targeting: %s | blocker: %s", configTargetingSummary(), blocker))
   boop.util.echo("Target: " .. targetShown .. " | next: " .. nextAction)
-  boop.util.echo(string.format("[1] Hunting settings         [ OPEN ]"))
+  boop.util.echo(string.format("[1] Combat settings          [ OPEN ]"))
   boop.util.echo(string.format("[2] Targeting settings       [ OPEN ]"))
   boop.util.echo(string.format("[3] Loot settings            [ %s ]", configLootSummary()))
   boop.util.echo(string.format("[4] Diagnostics              [ %s ]", configDebugSummary()))
@@ -4019,7 +4019,7 @@ local function configRenderHome()
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config home")
   boop.util.echo("Type: boop config <number>  (example: boop config 1)")
-  boop.util.echo("Type: boop config <name>    (example: boop config hunting)")
+  boop.util.echo("Type: boop config <name>    (example: boop config combat)")
   boop.util.echo("Type: boop party | boop theme | boop control")
 end
 
@@ -4034,7 +4034,7 @@ local function configRenderCombatSection()
   local targetName = boop.state and boop.state.targetName or ""
   local targetShown = targetId ~= "" and (targetId .. " | " .. (targetName ~= "" and targetName or "(unnamed)")) or "(none)"
   if cecho then
-    uiPrintHeader("configuration > hunting")
+    uiPrintHeader("configuration > combat")
     uiPrintSection("live")
     boop.util.echo("Blocker: " .. blocker .. " | next: " .. nextAction)
     boop.util.echo("Target: " .. targetShown)
@@ -4076,7 +4076,7 @@ local function configRenderCombatSection()
     uiPrintFooter("Type: boop config home | boop config combat <number> | boop config back")
     return
   end
-  boop.util.echo("CONFIGURATION > Hunting")
+  boop.util.echo("CONFIGURATION > Combat")
   boop.util.echo("----------------------------------------")
   boop.util.echo(string.format("Hunting: %s | rage %s | blocker: %s", boolText(boop.config.enabled), tostring(boop.config.attackMode or "simple"), blocker))
   boop.util.echo("Target: " .. targetShown .. " | next: " .. nextAction)

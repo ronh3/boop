@@ -197,7 +197,7 @@ describe("boop ui home", function()
     boop.ui.config("combat")
 
     local joined = table.concat(echoes, "\n")
-    assert.is_true(joined:find("CONFIGURATION > Hunting", 1, true) ~= nil)
+    assert.is_true(joined:find("CONFIGURATION > Combat", 1, true) ~= nil)
     assert.is_true(joined:find("Hunting: ON | rage simple | blocker: engaged target", 1, true) ~= nil)
     assert.is_true(joined:find("Target: 42 | a vicious gnoll soldier | next: let boop attack", 1, true) ~= nil)
     assert.is_true(joined:find("[1] Hunting                  [ ON ] [toggle]", 1, true) ~= nil)
