@@ -234,7 +234,7 @@ local function renderThemeSampleRow(name)
   cecho(sample.text .. "T" .. sample.reset .. " ")
   cecho(sample.muted .. "M" .. sample.reset)
   cecho(" ")
-  cechoLink(themeColor("info") .. "[use]" .. sample.reset, function()
+  cechoLink(semanticTag("info") .. "[use]" .. sample.reset, function()
     boop.ui.themeCommand(name)
   end, "Apply theme", true)
 end
@@ -249,10 +249,10 @@ local function renderThemeSamples()
   end
 
   cecho("\n")
-  cechoLink(themeColor("info") .. "[auto]" .. themeColor("reset"), function()
+  cechoLink(semanticTag("info") .. "[auto]" .. semanticTag("reset"), function()
     boop.ui.themeCommand("auto")
   end, "Use automatic class theme", true)
-  cecho(themeColor("text") .. " Follow the current class theme." .. themeColor("reset"))
+  cecho(semanticTag("text") .. " Follow the current class theme." .. semanticTag("reset"))
 
   local categories = (boop.theme and boop.theme.categories and boop.theme.categories()) or {}
   for _, category in ipairs(categories) do
@@ -712,6 +712,10 @@ boop.ui.printSection = uiPrintSection
 boop.ui.printRow = uiPrintRow
 boop.ui.printFooter = uiPrintFooter
 boop.ui.computeLabelWidth = uiComputeLabelWidth
+boop.ui._printHeader = uiPrintHeader
+boop.ui._printSection = uiPrintSection
+boop.ui._printRow = uiPrintRow
+boop.ui._printFooter = uiPrintFooter
 
 local function cycleTargetingMode(step, noRefresh)
   local order = { "manual", "whitelist", "blacklist", "auto" }
@@ -1115,6 +1119,12 @@ function boop.ui.gagCommand(raw)
     local role, value = colorArgs:match("^(%S+)%s+(.+)$")
     if role and value then
       boop.gag.setColor(role, value)
+      return
+    end
+
+    local pickerRole = boop.util.trim(colorArgs)
+    if pickerRole ~= "" and boop.gag and boop.gag.showColorPicker then
+      boop.gag.showColorPicker(pickerRole)
       return
     end
   end
@@ -3474,8 +3484,8 @@ local HELP_TOPICS = {
       helpCommand("boop debug skills dump", "Dump the raw skill tables boop is using."),
       helpCommand("boop trace on|off|show [n]|clear", "Control or inspect the boop trace buffer used for decision-flow debugging."),
       helpCommand("boop gag on|off|own|others|all", "Control attack-line gagging behavior."),
-      helpCommand("boop gag colors", "Show the current gag palette and a rendered sample line."),
-      helpCommand("boop gag color <who|ability|target|meta|separator|bg> <color|off>", "Set one gag color role or turn the shared background off."),
+      helpCommand("boop gag colors", "Open the interactive gag palette browser with per-role preview and picker links."),
+      helpCommand("boop gag color <who|ability|target|meta|separator|bg> <color|off>", "Set one gag color role directly; use `boop gag color <role>` to open the picker."),
       helpCommand("boop get", "Inspect raw config values."),
       helpCommand("boop set <key> <value>", "Set raw config values directly."),
       helpCommand("boop import foxhunt [merge|overwrite|dryrun]", "Import whitelist and blacklist data from Foxhunt."),
@@ -3789,6 +3799,8 @@ local function configSetScreen(key)
   boop.state.configScreen = screen
   return screen
 end
+
+boop.ui._setScreen = configSetScreen
 
 local function configHuntingSummary()
   return string.format(

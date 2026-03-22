@@ -517,6 +517,29 @@ describe("boop ui home", function()
     assert.is_true(table.concat(echoes, "\n"):find("%[OK%] gag background color: off") ~= nil)
   end)
 
+  it("renders gag colors as an interactive browser", function()
+    local rendered = {}
+    local callbacks = {}
+
+    _G.cecho = function(msg)
+      rendered[#rendered + 1] = msg
+    end
+    _G.cechoLink = function(text, cb, _, _)
+      rendered[#rendered + 1] = text
+      callbacks[#callbacks + 1] = cb
+    end
+
+    boop.ui.gagCommand("colors")
+
+    local joined = table.concat(rendered, "")
+    assert.is_true(joined:find("GAG COLORS", 1, true) ~= nil)
+    assert.is_true(joined:find("[color]", 1, true) ~= nil)
+    assert.is_true(joined:find("[ auto ]", 1, true) ~= nil)
+    assert.is_true(joined:find("[ off ]", 1, true) ~= nil)
+    assert.is_true(joined:find("You", 1, true) ~= nil)
+    assert.is_true(#callbacks > 6)
+  end)
+
   it("renders theme list as a clickable sample browser", function()
     local rendered = {}
     local callbacks = {}

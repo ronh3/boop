@@ -164,6 +164,43 @@ local GAG_COLOR_LABELS = {
   background = "background",
 }
 
+local GAG_ROLE_SAMPLE_TEXT = {
+  who = "You",
+  ability = "Attack",
+  target = "a denizen",
+  meta = " (1234 cutting - 8xCRIT) (Bal: 2.1s)",
+  separator = ":  -> ",
+  background = "sample highlight",
+}
+
+local function gagColorPalette()
+  if agnosticdb and agnosticdb.colors and type(agnosticdb.colors.list) == "function" then
+    local listed = agnosticdb.colors.list()
+    if type(listed) == "table" and #listed > 0 then
+      return listed
+    end
+  end
+  return {
+    "white", "silver", "grey", "light_grey", "dark_grey",
+    "cyan", "light_blue", "cornflower_blue", "royal_blue", "midnight_blue",
+    "forest_green", "green", "spring_green", "olive_drab", "pale_green",
+    "yellow", "khaki", "orange", "gold", "goldenrod",
+    "red", "tomato", "firebrick", "pink", "purple", "orchid",
+  }
+end
+
+local function gagColorGroups()
+  if agnosticdb and agnosticdb.colors and type(agnosticdb.colors.grouped) == "function" then
+    local grouped = agnosticdb.colors.grouped()
+    if type(grouped) == "table" and #grouped > 0 then
+      return grouped
+    end
+  end
+  return {
+    { label = "Colors", colors = gagColorPalette() }
+  }
+end
+
 local function normalizeGagRole(raw)
   local key = boop.util.safeLower(boop.util.trim(raw or ""))
   return GAG_COLOR_ALIASES[key] or ""
@@ -268,7 +305,86 @@ function boop.gag.paletteSummary()
   return hasCustom and "CUSTOM" or "AUTO"
 end
 
+local function gagRoleStatusText(role)
+  local configured = configuredColorForRole(role)
+  if configured ~= "" then
+    return configured
+  end
+  if role == "background" then
+    return "off"
+  end
+  return "auto"
+end
+
+local function gagRoleSample(role)
+  local text = GAG_ROLE_SAMPLE_TEXT[role] or role
+  return renderSegment(role, text)
+end
+
+local function gagRowAutoLabel(role)
+  if role == "background" then
+    return "[ off ]"
+  end
+  return "[ auto ]"
+end
+
+local function gagRowAutoHint(role)
+  if role == "background" then
+    return "Disable the shared background highlight"
+  end
+  return "Use the theme-driven default color"
+end
+
+local function renderGagColorRows()
+  local theme = boop.theme and boop.theme.tags and boop.theme.tags() or {
+    text = "<white>",
+    muted = "<light_grey>",
+    info = "<cyan>",
+    reset = "<reset>",
+  }
+
+  for _, role in ipairs(GAG_COLOR_ORDER) do
+    local label = GAG_COLOR_LABELS[role]
+    cecho("\n" .. theme.text .. "  " .. string.format("%-10s", label) .. " " .. theme.reset)
+    cecho(gagRoleSample(role))
+    cecho(theme.muted .. "  " .. gagRoleStatusText(role) .. theme.reset)
+    cecho(" ")
+    cechoLink(theme.info .. "[color]" .. theme.reset, function()
+      boop.gag.showColorPicker(role)
+    end, "Open color picker for " .. label, true)
+    cecho(" ")
+    cechoLink(theme.info .. gagRowAutoLabel(role) .. theme.reset, function()
+      boop.gag.setColor(role, "off")
+    end, gagRowAutoHint(role), true)
+  end
+end
+
 function boop.gag.showColors()
+  if cecho then
+    if boop.ui and boop.ui._setScreen then
+      boop.ui._setScreen("gag-colors")
+    end
+    if boop.ui and boop.ui._printHeader then
+      boop.ui._printHeader("gag colors")
+      boop.ui._printSection("sample")
+      cecho(
+        "\n  "
+        .. renderSegment("who", "You")
+        .. renderSegment("separator", ": ")
+        .. renderSegment("ability", "Attack")
+        .. renderSegment("separator", " -> ")
+        .. renderSegment("target", "a denizen")
+        .. renderSegment("meta", " (1234 cutting - 8xCRIT) (Bal: 2.1s)")
+      )
+      boop.ui._printSection("roles")
+      renderGagColorRows()
+      if boop.ui and boop.ui._printFooter then
+        boop.ui._printFooter("Type: boop gag color <role> <color|off> | boop gag color <role> | boop gag color reset")
+      end
+      return
+    end
+  end
+
   boop.util.info("gag colors:")
   for _, role in ipairs(GAG_COLOR_ORDER) do
     boop.util.echo("  " .. GAG_COLOR_LABELS[role] .. ": " .. configuredOrAutoText(role))
@@ -285,6 +401,65 @@ function boop.gag.showColors()
     )
   else
     echo("\n  sample: You: Attack -> a denizen (1234 cutting - 8xCRIT) (Bal: 2.1s)")
+  end
+end
+
+function boop.gag.showColorPicker(role)
+  local normalizedRole = normalizeGagRole(role)
+  if normalizedRole == "" then
+    boop.util.warn("gag color role: use who|ability|target|meta|separator|bg")
+    return
+  end
+
+  if not cecho or not boop.ui or not boop.ui._printHeader then
+    boop.util.info("Use: boop gag color " .. normalizedRole .. " <color|off>")
+    return
+  end
+
+  if boop.ui and boop.ui._setScreen then
+    boop.ui._setScreen("gag-color-picker")
+  end
+
+  local theme = boop.theme and boop.theme.tags and boop.theme.tags() or {
+    text = "<white>",
+    info = "<cyan>",
+    muted = "<light_grey>",
+    reset = "<reset>",
+  }
+
+  boop.ui._printHeader("gag colors > " .. normalizedRole)
+  boop.ui._printSection("picker")
+  cecho(theme.text .. "  Role: " .. normalizedRole .. " | current: " .. gagRoleStatusText(normalizedRole) .. theme.reset)
+  cecho(" ")
+  cechoLink(theme.info .. "[back]" .. theme.reset, function()
+    boop.gag.showColors()
+  end, "Back to gag colors", true)
+  cecho("\n")
+  cecho(theme.text .. "  Sample: " .. theme.reset .. gagRoleSample(normalizedRole) .. "\n")
+  cecho(theme.text .. "  ")
+  cechoLink(theme.info .. gagRowAutoLabel(normalizedRole) .. theme.reset, function()
+    boop.gag.setColor(normalizedRole, "off")
+  end, gagRowAutoHint(normalizedRole), true)
+  cecho("\n")
+
+  for _, group in ipairs(gagColorGroups()) do
+    boop.ui._printSection(group.label or "colors")
+    cecho(theme.text .. "  " .. theme.reset)
+    local lineLen = 2
+    for _, color in ipairs(group.colors or {}) do
+      local label = tostring(color)
+      local entryLen = #label + 2
+      if lineLen + entryLen > 72 then
+        cecho("\n" .. theme.text .. "  " .. theme.reset)
+        lineLen = 2
+      end
+      cechoLink("<" .. label .. ">[" .. label .. "]<reset>", function()
+        boop.gag.setColor(normalizedRole, label)
+      end, "Set " .. normalizedRole .. " to " .. label, true)
+      cecho("  ")
+      lineLen = lineLen + entryLen
+    end
+    cecho("\n")
   end
 end
 

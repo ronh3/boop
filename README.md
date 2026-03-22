@@ -85,6 +85,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Trace buffer records recent boop decisions/commands for post-mortem debugging (`boop trace show`).
 - Attack-line gagging can be toggled separately for your own attacks and other players' attacks, replacing matched lines with `Who: What -> Victim`.
 - Gag summaries now support configurable role colors for `who`, `ability`, `target`, `meta`, `separator`, plus one shared optional background/highlight color.
+- `boop gag colors` is an interactive browser: each role shows its current sample plus clickable `[color]` and `[auto]` / `[off]` controls, and `boop gag color <role>` opens the picker directly.
 - Weaponmastery standard attack lines (Two Handed + Sword and Shield) are included in gag replacement coverage.
 - Self-attack gag mode now compacts Weaponmastery speed/damage/balance lines into one attack summary and condenses slain + experience into a single kill summary.
 - When both summaries are pending, boop now emits the attack summary before the kill summary.
