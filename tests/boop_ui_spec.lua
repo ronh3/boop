@@ -189,7 +189,7 @@ describe("boop ui home", function()
     assert.are.equal("combat", boop.ui.configScreen)
   end)
 
-  it("shows a hunting subsection with overview context first", function()
+  it("shows a hunting subsection with live context and inline controls", function()
     helper.setTarget("42", "a vicious gnoll soldier", "100%")
     boop.ui.setEnabled(true, true)
 
@@ -200,7 +200,7 @@ describe("boop ui home", function()
     assert.is_true(joined:find("CONFIGURATION > Hunting", 1, true) ~= nil)
     assert.is_true(joined:find("Hunting: ON | rage simple | blocker: engaged target", 1, true) ~= nil)
     assert.is_true(joined:find("Target: 42 | a vicious gnoll soldier | next: let boop attack", 1, true) ~= nil)
-    assert.is_true(joined:find("[1] Toggle hunting", 1, true) ~= nil)
+    assert.is_true(joined:find("[1] Hunting                  [ ON ] [toggle]", 1, true) ~= nil)
     assert.is_true(joined:find("Type: boop config home | boop config combat <number> | boop config back", 1, true) ~= nil)
   end)
 

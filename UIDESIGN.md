@@ -218,6 +218,7 @@ Release-phase guidance
 - New UX changes should bias toward discoverability, consistency, and operator clarity.
 - Avoid introducing parallel menu systems or one-off layouts when an existing dashboard pattern fits.
 - If a new command changes the operator workflow, update `boop help`, `README.md`, and the relevant dashboard entrypoints together.
+- After the current config-surface homogenization pass settles, do a dedicated footer polish pass rather than changing footer behavior piecemeal.
 
 Implementation Order
 
