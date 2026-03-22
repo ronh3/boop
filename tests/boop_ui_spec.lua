@@ -534,14 +534,22 @@ describe("boop ui home", function()
     boop.ui.gagCommand("color separator khaki")
 
     assert.are.equal("khaki", boop.config.gagColorSeparator)
-    assert.is_true(table.concat(echoes, "\n"):find("%[OK%] gag separator color: khaki") ~= nil)
-    assert.is_true(table.concat(echoes, "\n"):find("%[INFO%] gag colors:") ~= nil)
+    assert.is_true(table.concat(echoes, "\n"):find("%[OK%] gag own separator color: khaki") ~= nil)
+    assert.is_true(table.concat(echoes, "\n"):find("%[INFO%] gag colors %(own%)") ~= nil)
     assert.is_true(table.concat(echoes, "\n"):find("sample: You: Attack %-%> a denizen %(1234 cutting %- 8xCRIT%) %(Bal: 2%.1s%)") ~= nil)
 
     boop.ui.gagCommand("color bg off")
 
     assert.are.equal("", boop.config.gagColorBackground)
-    assert.is_true(table.concat(echoes, "\n"):find("%[OK%] gag background color: off") ~= nil)
+    assert.is_true(table.concat(echoes, "\n"):find("%[OK%] gag own background color: off") ~= nil)
+  end)
+
+  it("updates the others gag palette through the gag command", function()
+    boop.ui.gagCommand("color others separator tomato")
+
+    assert.are.equal("tomato", boop.config.gagOtherColorSeparator)
+    assert.is_true(table.concat(echoes, "\n"):find("%[OK%] gag others separator color: tomato") ~= nil)
+    assert.is_true(table.concat(echoes, "\n"):find("%[INFO%] gag colors %(others%)") ~= nil)
   end)
 
   it("renders gag colors as an interactive browser", function()
@@ -560,6 +568,7 @@ describe("boop ui home", function()
 
     local joined = table.concat(rendered, "")
     assert.is_true(joined:find("GAG COLORS", 1, true) ~= nil)
+    assert.is_true(joined:find("[others]", 1, true) ~= nil)
     assert.is_true(joined:find("[color]", 1, true) ~= nil)
     assert.is_true(joined:find("[ auto ]", 1, true) ~= nil)
     assert.is_true(joined:find("[ off ]", 1, true) ~= nil)

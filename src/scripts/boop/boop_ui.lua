@@ -1178,7 +1178,13 @@ function boop.ui.gagCommand(raw)
   end
 
   if token == "colors" then
-    boop.gag.showColors()
+    boop.gag.showColors("own")
+    return
+  end
+
+  local colorsScope = token:match("^colors%s+(%S+)$")
+  if colorsScope then
+    boop.gag.showColors(colorsScope)
     return
   end
 
@@ -1186,24 +1192,42 @@ function boop.ui.gagCommand(raw)
   if colorArgs then
     local lowerArgs = boop.util.safeLower(boop.util.trim(colorArgs))
     if lowerArgs == "reset" then
-      boop.gag.resetColors()
+      boop.gag.resetColors("own")
       return
     end
 
-    local role, value = colorArgs:match("^(%S+)%s+(.+)$")
-    if role and value then
-      boop.gag.setColor(role, value)
+    local scopeReset = boop.util.trim(colorArgs):match("^(%S+)%s+reset$")
+    if scopeReset then
+      boop.gag.resetColors(scopeReset)
       return
     end
 
-    local pickerRole = boop.util.trim(colorArgs)
-    if pickerRole ~= "" and boop.gag and boop.gag.showColorPicker then
-      boop.gag.showColorPicker(pickerRole)
+    local scope, role, value = colorArgs:match("^(%S+)%s+(%S+)%s+(.+)$")
+    if scope and role and value and (scope == "own" or scope == "self" or scope == "others" or scope == "other") then
+      boop.gag.setColor(scope, role, value)
+      return
+    end
+
+    local roleOnly, valueOnly = colorArgs:match("^(%S+)%s+(.+)$")
+    if roleOnly and valueOnly then
+      boop.gag.setColor("own", roleOnly, valueOnly)
+      return
+    end
+
+    local pickerScope, pickerRole = colorArgs:match("^(%S+)%s+(%S+)$")
+    if pickerScope and pickerRole and (pickerScope == "own" or pickerScope == "self" or pickerScope == "others" or pickerScope == "other") and boop.gag and boop.gag.showColorPicker then
+      boop.gag.showColorPicker(pickerScope, pickerRole)
+      return
+    end
+
+    local pickerRoleOnly = boop.util.trim(colorArgs)
+    if pickerRoleOnly ~= "" and boop.gag and boop.gag.showColorPicker then
+      boop.gag.showColorPicker("own", pickerRoleOnly)
       return
     end
   end
 
-  boop.util.info("Usage: boop gag [status|on|off|own|others|all|<scope> on|off|colors|color <role> <color|off>|color reset]")
+  boop.util.info("Usage: boop gag [status|on|off|own|others|all|<scope> on|off|colors [own|others]|color [own|others] <role> <color|off>|color [own|others] <role>|color [own|others] reset]")
 end
 
 local function canonConfigKey(raw)
@@ -1245,6 +1269,13 @@ local function canonConfigKey(raw)
     gagcolorseparator = "gagColorSeparator",
     gagcolorbg = "gagColorBackground",
     gagcolorbackground = "gagColorBackground",
+    gagothercolorwho = "gagOtherColorWho",
+    gagothercolorability = "gagOtherColorAbility",
+    gagothercolortarget = "gagOtherColorTarget",
+    gagothercolormeta = "gagOtherColorMeta",
+    gagothercolorseparator = "gagOtherColorSeparator",
+    gagothercolorbg = "gagOtherColorBackground",
+    gagothercolorbackground = "gagOtherColorBackground",
     diagtimeout = "diagTimeoutSeconds",
     diagtimeoutseconds = "diagTimeoutSeconds",
     partysize = "partySize",
@@ -1313,6 +1344,12 @@ function boop.ui.listConfigValues()
     "gagColorMeta",
     "gagColorSeparator",
     "gagColorBackground",
+    "gagOtherColorWho",
+    "gagOtherColorAbility",
+    "gagOtherColorTarget",
+    "gagOtherColorMeta",
+    "gagOtherColorSeparator",
+    "gagOtherColorBackground",
     "diagTimeoutSeconds",
     "partySize",
     "partyRoster",
@@ -1492,32 +1529,62 @@ function boop.ui.setConfigValue(key, value)
   end
 
   if canonical == "gagColorWho" then
-    boop.gag.setColor("who", value)
+    boop.gag.setColor("own", "who", value)
     return
   end
 
   if canonical == "gagColorAbility" then
-    boop.gag.setColor("ability", value)
+    boop.gag.setColor("own", "ability", value)
     return
   end
 
   if canonical == "gagColorTarget" then
-    boop.gag.setColor("target", value)
+    boop.gag.setColor("own", "target", value)
     return
   end
 
   if canonical == "gagColorMeta" then
-    boop.gag.setColor("meta", value)
+    boop.gag.setColor("own", "meta", value)
     return
   end
 
   if canonical == "gagColorSeparator" then
-    boop.gag.setColor("separator", value)
+    boop.gag.setColor("own", "separator", value)
     return
   end
 
   if canonical == "gagColorBackground" then
-    boop.gag.setColor("background", value)
+    boop.gag.setColor("own", "background", value)
+    return
+  end
+
+  if canonical == "gagOtherColorWho" then
+    boop.gag.setColor("others", "who", value)
+    return
+  end
+
+  if canonical == "gagOtherColorAbility" then
+    boop.gag.setColor("others", "ability", value)
+    return
+  end
+
+  if canonical == "gagOtherColorTarget" then
+    boop.gag.setColor("others", "target", value)
+    return
+  end
+
+  if canonical == "gagOtherColorMeta" then
+    boop.gag.setColor("others", "meta", value)
+    return
+  end
+
+  if canonical == "gagOtherColorSeparator" then
+    boop.gag.setColor("others", "separator", value)
+    return
+  end
+
+  if canonical == "gagOtherColorBackground" then
+    boop.gag.setColor("others", "background", value)
     return
   end
 
@@ -3586,8 +3653,8 @@ local HELP_TOPICS = {
       helpCommand("boop debug skills dump", "Dump the raw skill tables boop is using."),
       helpCommand("boop trace on|off|show [n]|clear", "Control or inspect the boop trace buffer used for decision-flow debugging."),
       helpCommand("boop gag on|off|own|others|all", "Control attack-line gagging behavior."),
-      helpCommand("boop gag colors", "Open the interactive gag palette browser with per-role preview and picker links."),
-      helpCommand("boop gag color <who|ability|target|meta|separator|bg> <color|off>", "Set one gag color role directly; use `boop gag color <role>` to open the picker."),
+      helpCommand("boop gag colors [own|others]", "Open the interactive gag palette browser for your own or other players' gag lines."),
+      helpCommand("boop gag color [own|others] <who|ability|target|meta|separator|bg> <color|off>", "Set one gag color role directly; use `boop gag color [own|others] <role>` to open the picker."),
       helpCommand("boop get", "Inspect raw config values."),
       helpCommand("boop set <key> <value>", "Set raw config values directly."),
       helpCommand("boop import foxhunt [merge|overwrite|dryrun]", "Import whitelist and blacklist data from Foxhunt."),
@@ -4267,7 +4334,8 @@ end
 local function configRenderDebugSection()
   configSetScreen("debug")
   local traceCount = boop.state and boop.state.traceBuffer and #boop.state.traceBuffer or 0
-  local palette = boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary() or "AUTO"
+  local ownPalette = boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary("own") or "AUTO"
+  local othersPalette = boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary("others") or "AUTO"
   if cecho then
     uiPrintHeader("configuration > debug")
     uiPrintSection("settings")
@@ -4289,22 +4357,26 @@ local function configRenderDebugSection()
     uiPrintToggleControl(6, "Gag others", not not boop.config.gagOthersAttacks, function()
       boop.ui.config("debug 6")
     end, "Toggle gagging other players' attack lines")
-    uiPrintActionControl(7, "Gag palette", palette, "cyan", "[color]", "info", function()
+    uiPrintActionControl(7, "Gag own palette", ownPalette, "cyan", "[color]", "info", function()
       boop.ui.config("debug 7")
-    end, "Show gag color roles and sample output")
+    end, "Show own gag color roles and sample output")
+    uiPrintActionControl(8, "Gag others palette", othersPalette, "cyan", "[color]", "info", function()
+      boop.ui.config("debug 8")
+    end, "Show other-player gag color roles and sample output")
     uiPrintFooter("Type: boop config home | boop config debug <number> | boop config back")
     return
   end
   boop.util.echo("CONFIGURATION > Debug")
   boop.util.echo("----------------------------------------")
-  boop.util.echo(string.format("Trace: %s | entries: %d | gag own %s | gag others %s | palette %s", boolText(not not boop.config.traceEnabled), traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks), palette))
+  boop.util.echo(string.format("Trace: %s | entries: %d | gag own %s | gag others %s | own palette %s | others palette %s", boolText(not not boop.config.traceEnabled), traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks), ownPalette, othersPalette))
   boop.util.echo("[1] Trace logging             [ " .. boolText(not not boop.config.traceEnabled) .. " ] [toggle]")
   boop.util.echo("[2] Debug snapshot            [ ready ] [open]")
   boop.util.echo("[3] Trace buffer              [ " .. tostring(traceCount) .. " ] [open]")
   boop.util.echo("[4] Clear trace               [ " .. tostring(traceCount) .. " ] [clear]")
   boop.util.echo("[5] Gag own attacks           [ " .. boolText(not not boop.config.gagOwnAttacks) .. " ] [toggle]")
   boop.util.echo("[6] Gag others                [ " .. boolText(not not boop.config.gagOthersAttacks) .. " ] [toggle]")
-  boop.util.echo("[7] Gag palette               [ " .. palette .. " ] [color]")
+  boop.util.echo("[7] Gag own palette           [ " .. ownPalette .. " ] [color]")
+  boop.util.echo("[8] Gag others palette        [ " .. othersPalette .. " ] [color]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config home | boop config debug <number> | boop config back")
 end
@@ -4453,7 +4525,11 @@ local function configApplySectionOption(sectionKey, option)
       return "refresh"
     elseif n == 7 then
       configRememberReturnScreen("debug")
-      boop.gag.showColors()
+      boop.gag.showColors("own")
+      return "handled"
+    elseif n == 8 then
+      configRememberReturnScreen("debug")
+      boop.gag.showColors("others")
       return "handled"
     end
     return false

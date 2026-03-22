@@ -129,9 +129,9 @@ describe("boop gag summaries", function()
   end)
 
   it("applies custom separator and background gag colors", function()
-    boop.gag.setColor("who", "yellow")
-    boop.gag.setColor("separator", "dark_grey")
-    boop.gag.setColor("background", "midnight_blue")
+    boop.gag.setColor("own", "who", "yellow")
+    boop.gag.setColor("own", "separator", "dark_grey")
+    boop.gag.setColor("own", "background", "midnight_blue")
 
     outputs = {}
     boop.gag.onAttackLine({
@@ -146,5 +146,22 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("<yellow:midnight_blue>You<reset>", 1, true) ~= nil)
     assert.is_true(outputs[1]:find("<dark_grey:midnight_blue>: <reset>", 1, true) ~= nil)
     assert.is_true(outputs[1]:find("<dark_grey:midnight_blue> -> <reset>", 1, true) ~= nil)
+  end)
+
+  it("uses a separate palette for other players' gag lines", function()
+    boop.config.gagOthersAttacks = true
+    boop.gag.setColor("others", "who", "khaki")
+    boop.gag.setColor("others", "separator", "tomato")
+
+    outputs = {}
+    boop.gag.onAttackLine({
+      ability = "Jab",
+      actor = { kind = "literal", value = "Someone" },
+      target = { kind = "match", index = 2 },
+    }, { "line", "a test denizen" }, "Someone jabs a test denizen.")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("<khaki>Someone<reset>", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("<tomato>: <reset>", 1, true) ~= nil)
   end)
 end)
