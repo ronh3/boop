@@ -72,6 +72,7 @@ Current shipped config behavior
 - Boolean settings toggle immediately.
 - Enum-style settings cycle or toggle immediately.
 - Numeric and string-like values that need explicit input are edited through dedicated top-level commands or, when no guided row exists yet, advanced raw commands such as `boop set <key> <value>`.
+- Dedicated top-level value commands currently include things like `boop separator <text>` for game-side command chaining behavior.
 - Direct raw inspection/editing remains available as an advanced/operator path:
   - `boop get [key]`
   - `boop set <key> <value>`

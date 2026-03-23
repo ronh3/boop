@@ -48,6 +48,8 @@ describe("boop menu wiring", function()
       "catarin",
       "fly",
       "leap <direction>",
+      "pull <mobname> <direction>",
+      "boop separator <text>",
       "boop prefer",
       "boop prefer <dam|shield> <option>",
       "boop weapon",

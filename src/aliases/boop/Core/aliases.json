@@ -140,6 +140,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Separator",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+separator(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Status",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+status$",

@@ -1148,6 +1148,73 @@ function boop.ui.leap(direction)
   })
 end
 
+local function inverseDirection(direction)
+  local dir = boop.util.safeLower(boop.util.trim(direction or ""))
+  local opposite = {
+    n = "s", s = "n", e = "w", w = "e",
+    ne = "sw", sw = "ne", nw = "se", se = "nw",
+    u = "d", d = "u",
+    ["in"] = "out", out = "in",
+    north = "south", south = "north",
+    east = "west", west = "east",
+    northeast = "southwest", southwest = "northeast",
+    northwest = "southeast", southeast = "northwest",
+    up = "down", down = "up",
+  }
+  return opposite[dir] or ""
+end
+
+function boop.ui.gameSeparatorCommand(raw)
+  local value = raw ~= nil and boop.util.trim(raw) or ""
+  if value == "" then
+    boop.util.info("game separator: " .. tostring(boop.config.gameSeparator or "|"))
+    boop.util.info("Usage: boop separator <text>")
+    return
+  end
+
+  saveConfigValue("gameSeparator", value)
+  boop.util.ok("game separator: " .. value)
+end
+
+function boop.ui.pullCommand(mobName, direction)
+  local mob = boop.util.trim(mobName or "")
+  local dir = boop.util.trim(direction or "")
+  if mob == "" or dir == "" then
+    boop.util.warn("pull needs a mob name and direction")
+    boop.util.info("Usage: pull <mobname> <direction>")
+    return
+  end
+
+  local back = inverseDirection(dir)
+  if back == "" then
+    boop.util.warn("pull: unsupported direction " .. tostring(direction))
+    return
+  end
+
+  local separator = boop.util.trim((boop.config and boop.config.gameSeparator) or "|")
+  if separator == "" then
+    boop.util.warn("pull needs a game separator; use `boop separator <text>`")
+    return
+  end
+
+  local rageAction = ""
+  if boop.attacks and boop.attacks.choosePullRage then
+    rageAction = boop.attacks.choosePullRage(mob)
+  end
+  if type(rageAction) == "table" then
+    rageAction = rageAction[1] or ""
+  end
+  if rageAction == "" then
+    boop.util.warn("pull: no damage battlerage attack is ready")
+    return
+  end
+
+  local command = table.concat({ dir, rageAction, "leap " .. back }, separator)
+  send(command, false)
+  boop.util.ok("pull queued: " .. command)
+  boop.trace.log("pull: " .. command)
+end
+
 local function parseBool(raw)
   local value = boop.util.safeLower(boop.util.trim(raw or ""))
   if value == "on" or value == "true" or value == "1" or value == "yes" then return true end
@@ -1329,6 +1396,7 @@ local function canonConfigKey(raw)
     tempoeta = "tempoSqueezeEtaSeconds",
     temposqueezeeta = "tempoSqueezeEtaSeconds",
     temposqueezeetaseconds = "tempoSqueezeEtaSeconds",
+    gameseparator = "gameSeparator",
   }
   return map[key] or ""
 end
@@ -1382,6 +1450,7 @@ function boop.ui.listConfigValues()
     "assistEnabled",
     "assistLeader",
     "uiTheme",
+    "gameSeparator",
   }
   boop.util.info("config keys:")
   for _, key in ipairs(keys) do
@@ -1711,6 +1780,11 @@ function boop.ui.setConfigValue(key, value)
 
   if canonical == "uiTheme" then
     boop.ui.themeCommand(value)
+    return
+  end
+
+  if canonical == "gameSeparator" then
+    boop.ui.gameSeparatorCommand(value)
     return
   end
 
@@ -3595,6 +3669,8 @@ local HELP_TOPICS = {
       helpCommand("catarin", "Queue `ldeck draw catarin` on the attack queue and pause attacking until the next prompt or timeout."),
       helpCommand("fly", "Queue `fly` on the attack queue and pause attacking until the next prompt or timeout."),
       helpCommand("leap <direction>", "Queue `leap <direction>` on the attack queue and pause attacking until the next prompt or timeout."),
+      helpCommand("pull <mobname> <direction>", "Send `<direction><sep><damage rage><sep>leap <opposite>` using your configured game separator and the typed mob name as the rage target."),
+      helpCommand("boop separator <text>", "Set the game-side command separator used by `pull`, such as `|`."),
       helpCommand("boop prefer", "Show configurable attack-preference options for your current class/spec."),
       helpCommand("boop prefer <dam|shield> <option>", "Prefer a specific standard damage or shield attack when multiple valid options exist."),
       helpCommand("boop weapon", "Show saved weapon designations for your current class profile."),
@@ -3603,6 +3679,7 @@ local HELP_TOPICS = {
     notes = {
       "Use the config subsections when you want guided toggles; use the direct commands when you already know what you want.",
       "Target list displays support clickable management for whitelist, blacklist, and tags.",
+      "`pull` uses your configured `boop separator` and the typed mob name directly inside the rage command.",
       "Use `boop prefer` if you want to bias standard attack choice within a profile.",
     },
   },

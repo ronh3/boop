@@ -75,5 +75,12 @@
     "regex": "^(?i)leap\\s+(.+)$",
     "script": "",
     "isFolder": "no"
+  },
+  {
+    "name": "Pull",
+    "isActive": "yes",
+    "regex": "^(?i)pull\\s+(.+)\\s+(\\S+)$",
+    "script": "",
+    "isFolder": "no"
   }
 ]

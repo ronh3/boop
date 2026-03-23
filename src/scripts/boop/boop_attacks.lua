@@ -1205,3 +1205,32 @@ function boop.attacks.choose()
     rageDecision = rageDecision
   }
 end
+
+function boop.attacks.choosePullRage(targetToken)
+  local target = boop.util.trim(targetToken or "")
+  if target == "" then
+    return "", nil
+  end
+  if not gmcp or not gmcp.Char or not gmcp.Char.Status then
+    return "", nil
+  end
+
+  local class = boop.util.safeLower(gmcp.Char.Status.class or "")
+  if class == "" then
+    return "", nil
+  end
+
+  local profile = boop.attacks.registry[class]
+  local rageProfile = profile and profile.rage
+  if not rageProfile then
+    return "", nil
+  end
+
+  local rage = boop.attacks.getRage()
+  local ability = findByDescList(rageProfile, { "Big Damage", "Mid Damage", "Small Damage" }, rage)
+  if not ability or not ability.cmd or ability.cmd == "" then
+    return "", nil
+  end
+
+  return boop.util.formatTarget(ability.cmd, target), ability
+end
