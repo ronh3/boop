@@ -47,6 +47,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `leap <direction>` (queues `leap <direction>` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
 - `pull <mobname> <direction>` (pauses boop, sends `<direction><sep><damage rage on mobname><sep>leap <opposite direction>`, then resumes boop when GMCP confirms you returned)
 - `boop separator <text>` (sets the game-side command separator used by `pull`; for example `|`)
+- `boop focus <speed|precision>` (sets which battlefury focus verb two-handed standards use when `Focus` is known)
 - `boop set pullRageReserve on|off` (advanced toggle; keep enough rage reserved for a pull-capable damage battlerage attack)
 - `boop whitelist` / `boop whitelist add <name>` / `boop whitelist remove <name>` (display is clickable: up/down/remove)
 - `boop whitelist browse [tag]` (browse whitelist areas; optional tag filter)
@@ -77,7 +78,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Non-queueing mode uses the same balance-queue fallback path.
 - If `boop pack <container>` is set, boop follows pickup with `put sovereigns in <container>`.
 - Gold get/put has trigger-based success/failure tracking with limited retries and warning output when retries are exhausted.
-- For `Two Handed` spec with `Focus` known in `Weaponmastery`, boop prepends `battlefury focus speed/` to standard damage attacks (never shieldbreakers).
+- For `Two Handed` spec with `Focus` known in `Weaponmastery`, boop prepends `battlefury focus <speed|precision>/` to standard damage attacks (never shieldbreakers); configure it with `boop focus`.
 - For `Unnamable` with `Maul` known in `Dominion`, boop prepends `maul &tar/` to standard attacks while ready, then waits for the cooldown-ready line before prepending again.
 - `diag` clears queue, queues `diagnose`, and pauses attacks until `You are: ...` or `You are in perfect health.` and the following prompt (with timeout fallback via `diagTimeoutSeconds`).
 - `matic` queues `ldeck draw matic` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).

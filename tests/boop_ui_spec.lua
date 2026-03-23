@@ -514,6 +514,13 @@ describe("boop ui home", function()
     assert.are.equal("[OK] preset applied: leader", echoes[#echoes])
   end)
 
+  it("supports setting the two-handed focus verb directly", function()
+    boop.ui.focusVerbCommand("precision")
+
+    assert.are.equal("precision", boop.config.focusVerb)
+    assert.are.equal("[OK] focus verb: precision", echoes[#echoes])
+  end)
+
   it("sets and reports the active theme", function()
     boop.ui.themeCommand("ocean")
 

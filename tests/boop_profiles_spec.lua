@@ -19,6 +19,20 @@ describe("boop class profile selection", function()
     assert.are.equal("battlefury focus speed/slaughter 42", actions.standard)
   end)
 
+  it("can prepend focus precision for two-handed standards when configured", function()
+    helper.setClass("Infernal")
+    helper.setSpec("Two Handed")
+    helper.learnSkills({
+      { name = "Slaughter", group = "Weaponmastery" },
+      { name = "Focus", group = "Weaponmastery" },
+    })
+    boop.config.focusVerb = "precision"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("battlefury focus precision/slaughter 42", actions.standard)
+  end)
+
   it("uses the infernal sword-and-shield shieldbreak standard for shielded targets", function()
     helper.setClass("Infernal")
     helper.setSpec("Sword and Shield")

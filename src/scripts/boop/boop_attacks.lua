@@ -959,14 +959,25 @@ local function focusKnown()
   return true
 end
 
-local function prependFocusSpeed(cmd)
+local function normalizedFocusVerb()
+  local raw = boop.config and boop.config.focusVerb or "speed"
+  local value = boop.util.safeLower(boop.util.trim(raw or ""))
+  if value ~= "precision" then
+    return "speed"
+  end
+  return value
+end
+
+local function prependFocusVerb(cmd)
   local trimmed = boop.util.trim(cmd)
   if trimmed == "" then return "" end
   local normalized = boop.util.safeLower(trimmed)
-  if boop.util.starts(normalized, "battlefury focus speed/") then
+  if boop.util.starts(normalized, "battlefury focus speed/")
+    or boop.util.starts(normalized, "battlefury focus precision/")
+  then
     return trimmed
   end
-  return "battlefury focus speed/" .. trimmed
+  return "battlefury focus " .. normalizedFocusVerb() .. "/" .. trimmed
 end
 
 local function unnamableMaulKnown()
@@ -1173,13 +1184,13 @@ function boop.attacks.selectStandard(profile, classKey)
     if cmd ~= "" then return cmd, true, false end
   end
   if profile.dam then
-    local cmd = standardCommand(profile.dam, boop.attacks.getStandardPreference(classKey, "dam"))
-    if cmd ~= "" then
-      if isTwoHandedSpec() and focusKnown() then
-        cmd = prependFocusSpeed(cmd)
+      local cmd = standardCommand(profile.dam, boop.attacks.getStandardPreference(classKey, "dam"))
+      if cmd ~= "" then
+        if isTwoHandedSpec() and focusKnown() then
+          cmd = prependFocusVerb(cmd)
+        end
+        return cmd, false, false
       end
-      return cmd, false, false
-    end
   end
   return "", false, false
 end

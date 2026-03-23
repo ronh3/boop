@@ -50,6 +50,7 @@ describe("boop menu wiring", function()
       "leap <direction>",
       "pull <mobname> <direction>",
       "boop separator <text>",
+      "boop focus <speed|precision>",
       "boop prefer",
       "boop prefer <dam|shield> <option>",
       "boop weapon",

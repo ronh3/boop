@@ -56,6 +56,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Focus",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+focus(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Get",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+get(?:\\s+(\\w+))?$",

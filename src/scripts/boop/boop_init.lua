@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.258"
+boop.version = boop.version or "0.1.259"
 
 boop.defaults = {
   enabled = false,
@@ -44,6 +44,7 @@ boop.defaults = {
   autoTargetCall = false,
   uiTheme = "",
   gameSeparator = "|",
+  focusVerb = "speed",
 }
 
 boop.config = boop.config or {}

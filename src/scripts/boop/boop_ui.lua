@@ -1176,6 +1176,28 @@ function boop.ui.gameSeparatorCommand(raw)
   boop.util.ok("game separator: " .. value)
 end
 
+function boop.ui.focusVerbCommand(raw)
+  local value = boop.util.safeLower(boop.util.trim(raw or ""))
+  if value == "" then
+    boop.util.info("focus verb: " .. tostring((boop.config and boop.config.focusVerb) or "speed"))
+    boop.util.info("Usage: boop focus <speed|precision>")
+    return
+  end
+
+  if value ~= "speed" and value ~= "precision" then
+    boop.util.warn("focus verb expects speed|precision")
+    boop.util.info("Usage: boop focus <speed|precision>")
+    return
+  end
+
+  saveConfigValue("focusVerb", value)
+  boop.util.ok("focus verb: " .. value)
+  local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat") or ""
+  if returnScreen == "combat" and boop.ui and boop.ui.config then
+    boop.ui.config("combat")
+  end
+end
+
 function boop.ui.pullCommand(mobName, direction)
   local mob = boop.util.trim(mobName or "")
   local dir = boop.util.trim(direction or "")
@@ -1427,6 +1449,8 @@ local function canonConfigKey(raw)
     temposqueezeeta = "tempoSqueezeEtaSeconds",
     temposqueezeetaseconds = "tempoSqueezeEtaSeconds",
     gameseparator = "gameSeparator",
+    focus = "focusVerb",
+    focusverb = "focusVerb",
   }
   return map[key] or ""
 end
@@ -1457,6 +1481,7 @@ function boop.ui.listConfigValues()
     "pullRageReserve",
     "tempoRageWindowSeconds",
     "tempoSqueezeEtaSeconds",
+    "focusVerb",
     "traceEnabled",
     "gagOwnAttacks",
     "gagOthersAttacks",
@@ -1633,6 +1658,11 @@ function boop.ui.setConfigValue(key, value)
     if returnScreen == "combat" and boop.ui and boop.ui.config then
       boop.ui.config("combat")
     end
+    return
+  end
+
+  if canonical == "focusVerb" then
+    boop.ui.focusVerbCommand(value)
     return
   end
 
@@ -3717,6 +3747,7 @@ local HELP_TOPICS = {
       helpCommand("leap <direction>", "Queue `leap <direction>` on the attack queue and pause attacking until the next prompt or timeout."),
       helpCommand("pull <mobname> <direction>", "Send `<direction><sep><damage rage><sep>leap <opposite>` using your configured game separator and the typed mob name as the rage target."),
       helpCommand("boop separator <text>", "Set the game-side command separator used by `pull`, such as `|`."),
+      helpCommand("boop focus <speed|precision>", "Choose which battlefury focus verb two-handed standards prepend when Focus is known."),
       helpCommand("boop set pullRageReserve on|off", "Advanced toggle to keep enough rage reserved for a pull-capable damage battlerage attack."),
       helpCommand("boop prefer", "Show configurable attack-preference options for your current class/spec."),
       helpCommand("boop prefer <dam|shield> <option>", "Prefer a specific standard damage or shield attack when multiple valid options exist."),
@@ -4361,6 +4392,9 @@ local function configRenderCombatSection()
     uiPrintToggleControl(12, "Pull reserve", not not boop.config.pullRageReserve, function()
       boop.ui.config("combat 12")
     end, "Keep enough rage in reserve for pull")
+    uiPrintActionControl(13, "Focus verb", tostring(boop.config.focusVerb or "speed"), "yellow", "[set]", "info", function()
+      boop.ui.config("combat 13")
+    end, "Set the two-handed battlefury focus verb")
     uiPrintFooter("Type: boop config home | boop config combat <number> | boop config back")
     return
   end
@@ -4380,6 +4414,7 @@ local function configRenderCombatSection()
   boop.util.echo("[10] Assist leader           [ " .. assistStatusText() .. " ] [set]")
   boop.util.echo("[11] Rage aff calls          [ " .. boolText(not not boop.config.rageAffCalloutsEnabled) .. " ] [toggle]")
   boop.util.echo("[12] Pull reserve            [ " .. boolText(not not boop.config.pullRageReserve) .. " ] [toggle]")
+  boop.util.echo("[13] Focus verb              [ " .. tostring(boop.config.focusVerb or "speed") .. " ] [set]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config home | boop config combat <number> | boop config back")
 end
@@ -4600,6 +4635,10 @@ local function configApplySectionOption(sectionKey, option)
     elseif n == 12 then
       boop.ui.toggleConfigBool("pullRageReserve", true)
       return "refresh"
+    elseif n == 13 then
+      configRememberReturnScreen("combat", "boop focus ")
+      uiSetCommandLine("boop focus ")
+      return "seed"
     end
     return false
   end
