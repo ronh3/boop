@@ -35,7 +35,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop import foxhunt [merge|overwrite|dryrun]` (imports Foxhunt DB whitelist/blacklist into boop)
 - `boop prequeue` / `boop prequeue on` / `boop prequeue off`
 - `boop lead` / `boop lead <seconds>` (prequeue lead timing)
-- `boop get [key]` / `boop set <key> <value>`
+- `boop get [key]` / `boop set <key> <value>` (advanced raw config inspection/editing; prefer `boop config` for normal setup)
 - `boop trace` / `boop trace on|off|show [n]|clear`
 - `boop gag` / `boop gag on|off|own|others|all|<scope> on|off|colors [own|others]|color [own|others] <who|ability|target|meta|separator|bg> <color|off>|color [own|others] reset`
 - `boop targeting <manual|whitelist|blacklist|auto>`

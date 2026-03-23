@@ -71,8 +71,8 @@ Current shipped config behavior
 - Section options apply immediately.
 - Boolean settings toggle immediately.
 - Enum-style settings cycle or toggle immediately.
-- Numeric and string-like values that need explicit input are edited through top-level commands such as `boop set <key> <value>`.
-- Direct raw inspection/editing uses:
+- Numeric and string-like values that need explicit input are edited through dedicated top-level commands or, when no guided row exists yet, advanced raw commands such as `boop set <key> <value>`.
+- Direct raw inspection/editing remains available as an advanced/operator path:
   - `boop get [key]`
   - `boop set <key> <value>`
 
@@ -146,13 +146,13 @@ Enum
 - Redraw section
 
 Number
-- Values are currently edited through `boop set <key> <number>` or a dedicated top-level command.
+- Values are currently edited through a dedicated top-level command or, as an advanced fallback, `boop set <key> <number>`.
 - Validate against defined range.
 - On invalid: print error, no change.
 - On valid: apply immediately, confirm, redraw.
 
 String
-- Values are currently edited through `boop set <key> <text>` or a dedicated top-level command.
+- Values are currently edited through a dedicated top-level command or, as an advanced fallback, `boop set <key> <text>`.
 - Apply immediately.
 - Confirm and redraw.
 
@@ -206,7 +206,7 @@ System is complete when:
 - Navigation works via `boop config <section>` and `boop config <number>`
 - `boop config <section> <number>` applies section options directly
 - Boolean toggles apply instantly
-- Number and string inputs validate correctly through the shipped command surface (`boop set` or dedicated commands)
+- Number and string inputs validate correctly through the shipped command surface (dedicated commands first, `boop set` as the advanced fallback)
 - Modified values visibly differ from defaults
 - Layout alignment remains consistent at 80 columns
 - Miniwindow (if enabled) mirrors inline functionality

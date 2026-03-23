@@ -446,7 +446,7 @@ local function renderStatusDashboard()
     row = row + 1
     uiPrintRow(row, "Gag others attacks", boolText(not not boop.config.gagOthersAttacks), boolColor(not not boop.config.gagOthersAttacks))
 
-    uiPrintFooter("Type: boop config | boop help | boop get")
+    uiPrintFooter("Type: boop config | boop help | boop config debug")
     return
   end
 
@@ -3553,12 +3553,10 @@ local HELP_TOPICS = {
       helpCommand("boop config loot", "Open sovereign pickup and gold-pack settings."),
       helpCommand("boop config debug", "Open trace, gag, and debug settings."),
       helpCommand("boop preset <solo|party|leader|leader-call>", "Apply a curated baseline without stepping through each individual setting."),
-      helpCommand("boop get", "List or inspect raw config keys and values."),
-      helpCommand("boop set <key> <value>", "Set a raw config value directly without using the guided screens."),
     },
     notes = {
       "Use `boop control` for live state and `boop config` for guided settings changes.",
-      "Use `boop get` and `boop set` only when you want direct key/value control instead of the guided screens.",
+      "Use `boop config debug` when you need lower-level tools that do not fit the normal guided settings flow.",
     },
   },
   {
@@ -3664,15 +3662,15 @@ local HELP_TOPICS = {
       helpCommand("boop gag on|off|own|others|all", "Control attack-line gagging behavior."),
       helpCommand("boop gag colors [own|others]", "Open the interactive gag palette browser for your own or other players' gag lines."),
       helpCommand("boop gag color [own|others] <who|ability|target|meta|separator|bg> <color|off>", "Set one gag color role directly; use `boop gag color [own|others] <role>` to open the picker."),
-      helpCommand("boop get", "Inspect raw config values."),
-      helpCommand("boop set <key> <value>", "Set raw config values directly."),
+      helpCommand("boop get", "Inspect raw config values when you need to verify the stored state directly."),
+      helpCommand("boop set <key> <value>", "Set a raw config value directly when there is no better guided control for it yet."),
       helpCommand("boop import foxhunt [merge|overwrite|dryrun]", "Import whitelist and blacklist data from Foxhunt."),
       helpCommand("boop pack test", "Queue a look-in command for the current configured gold pack."),
       helpCommand("boop theme <name|auto|list>", "Inspect or change the active UI theme; list includes boop + built-in ADB palette names."),
     },
     notes = {
       "Use trace when you need decision-flow debugging; use the debug snapshot when you need current-state debugging.",
-      "This is also the place for lower-level commands that do not fit the main control/config/party/stats flow.",
+      "This is also the place for lower-level commands that do not fit the main control/config/party/stats flow, including raw `boop get` / `boop set` access.",
     },
   },
 }

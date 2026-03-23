@@ -31,8 +31,6 @@ describe("boop menu wiring", function()
       "boop config loot",
       "boop config debug",
       "boop preset <solo|party|leader|leader-call>",
-      "boop get",
-      "boop set <key> <value>",
     } },
     { key = "hunting", commands = {
       "boop config combat",
