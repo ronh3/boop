@@ -72,4 +72,5 @@ function boop.state.init()
   boop.state.calledTargetRoom = boop.state.calledTargetRoom or ""
   boop.state.calledTargetBy = boop.state.calledTargetBy or ""
   boop.state.calledTargetAt = boop.state.calledTargetAt or nil
+  boop.state.pullState = boop.state.pullState or false
 end

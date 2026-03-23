@@ -1197,6 +1197,12 @@ function boop.ui.pullCommand(mobName, direction)
     return
   end
 
+  boop.state = boop.state or {}
+  if boop.state.pullState and boop.state.pullState.active then
+    boop.util.warn("pull already in progress")
+    return
+  end
+
   local rageAction = ""
   if boop.attacks and boop.attacks.choosePullRage then
     rageAction = boop.attacks.choosePullRage(mob)
@@ -1208,6 +1214,28 @@ function boop.ui.pullCommand(mobName, direction)
     boop.util.warn("pull: no damage battlerage attack is ready")
     return
   end
+
+  local originRoom = boop.util.trim(tostring((boop.state and boop.state.room) or ""))
+  if originRoom == "" and gmcp and gmcp.Room and gmcp.Room.Info and gmcp.Room.Info.num then
+    originRoom = boop.util.trim(tostring(gmcp.Room.Info.num or ""))
+  end
+  if originRoom == "" then
+    boop.util.warn("pull needs a known current room before it can pause and resume boop safely")
+    return
+  end
+
+  local restoreEnabled = not not boop.config.enabled
+  if restoreEnabled then
+    boop.ui.setEnabled(false, true)
+  end
+  boop.state.pullState = {
+    active = true,
+    phase = "outbound",
+    originRoom = originRoom,
+    direction = dir,
+    returnDirection = back,
+    restoreEnabled = restoreEnabled,
+  }
 
   local command = table.concat({ dir, rageAction, "leap " .. back }, separator)
   send(command, false)

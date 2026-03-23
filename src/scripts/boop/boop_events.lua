@@ -653,6 +653,27 @@ function boop.onRoomInfo()
   if vars.movedRooms and vars.lastRoom ~= "" and boop.stats and boop.stats.onRoomChange then
     boop.stats.onRoomChange()
   end
+
+  local pull = vars.pullState
+  if type(pull) == "table" and pull.active then
+    local currentRoom = boop.util.trim(tostring(vars.room or ""))
+    local originRoom = boop.util.trim(tostring(pull.originRoom or ""))
+    if currentRoom ~= "" and originRoom ~= "" then
+      if pull.phase == "outbound" and currentRoom ~= originRoom then
+        pull.phase = "away"
+        boop.trace.log("pull: away room " .. currentRoom)
+      elseif pull.phase == "away" and currentRoom == originRoom then
+        vars.pullState = false
+        if pull.restoreEnabled then
+          boop.ui.setEnabled(true, true)
+          boop.util.ok("pull complete; boop resumed")
+        else
+          boop.util.ok("pull complete")
+        end
+        boop.trace.log("pull: returned to origin")
+      end
+    end
+  end
 end
 
 function boop.onWalkArrived()
