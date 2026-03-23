@@ -88,6 +88,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - When boop is already enabled, `pull` pauses it before the chained move starts and resumes it only after GMCP confirms you returned to the origin room.
 - If there is no ready damage battlerage attack or not enough rage to use one, `pull` aborts before movement.
 - `pullRageReserve` optionally makes normal battlerage spending hold back enough rage to preserve a pull-capable damage hit.
+- With `pullRageReserve` on, rage shieldbreak also yields to a standard shieldbreak when the class/profile already has one available.
 - Prequeue is separately configurable from queueing (`boop prequeue`); when enabled, it queues standard attacks before recovery using `boop lead` seconds (default `1.00`).
 - Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.
 - In queueing mode, boop caches the last `BOOP_ATTACK` alias payload and skips redundant `setalias` sends when unchanged.

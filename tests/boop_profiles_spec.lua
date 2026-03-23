@@ -31,6 +31,22 @@ describe("boop class profile selection", function()
     assert.is_true(actions.standardShieldbreak)
   end)
 
+  it("uses the standard shieldbreak instead of rage shieldbreak when pull reserve is enabled", function()
+    helper.setClass("Infernal")
+    helper.setSpec("Sword and Shield")
+    helper.setRage(17)
+    helper.learnSkill("Combination", "Weaponmastery")
+    helper.learnSkill("shiver", "Attainment")
+    boop.config.pullRageReserve = true
+    boop.state.targetShield = { attempted = false }
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("combination 42 raze smash", actions.standard)
+    assert.is_true(actions.standardShieldbreak)
+    assert.are.equal("", actions.rage)
+  end)
+
   it("uses the runewarden dual blunt standard for the matching spec", function()
     helper.setClass("Runewarden")
     helper.setSpec("Dual Blunt")

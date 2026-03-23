@@ -757,10 +757,13 @@ local function selectRageTempo(profile, rage, classKey)
   return aff, "tempo_aff"
 end
 
-function boop.attacks.selectRage(profile, rage, classKey)
+function boop.attacks.selectRage(profile, rage, classKey, standardShieldbreak)
   if not profile then return nil, nil end
 
   if boop.state.targetShield and (type(boop.state.targetShield) ~= "table" or not boop.state.targetShield.attempted) then
+    if boop.config and boop.config.pullRageReserve and standardShieldbreak then
+      return finalizeRageDecision("shieldbreak", "pull_reserve", nil)
+    end
     local ability = findByDesc(profile, "Shieldbreak", rage)
     if ability then return finalizeRageDecision("shieldbreak", "shieldbreak", ability) end
   end
@@ -1213,7 +1216,7 @@ function boop.attacks.choose()
   local rageDecision = nil
   if profile.rage then
     local rage = boop.attacks.getRage()
-    local ability, decision = boop.attacks.selectRage(profile.rage, rage, class)
+    local ability, decision = boop.attacks.selectRage(profile.rage, rage, class, standardShieldbreak)
     if ability and ability.cmd and ability.cmd ~= "" then
       rageAction = ability.cmd
       rageAbility = ability
