@@ -1003,7 +1003,10 @@ local function wieldedNameContains(fragment)
 
   local left = boop.getWieldedItem and boop.getWieldedItem("left") or (boop.state and boop.state.wieldedLeft) or nil
   local right = boop.getWieldedItem and boop.getWieldedItem("right") or (boop.state and boop.state.wieldedRight) or nil
-  for _, item in ipairs({ left, right }) do
+  local items = {}
+  if left then items[#items + 1] = left end
+  if right then items[#items + 1] = right end
+  for _, item in ipairs(items) do
     local name = boop.util.safeLower(item and item.name or "")
     if name ~= "" and name:find(needle, 1, true) then
       return true
@@ -1022,7 +1025,10 @@ local function wieldedMatchesDesignation(designation)
   local compactWanted = wantedLower:gsub("[^%w]+", "")
   local left = boop.getWieldedItem and boop.getWieldedItem("left") or (boop.state and boop.state.wieldedLeft) or nil
   local right = boop.getWieldedItem and boop.getWieldedItem("right") or (boop.state and boop.state.wieldedRight) or nil
-  for _, item in ipairs({ left, right }) do
+  local items = {}
+  if left then items[#items + 1] = left end
+  if right then items[#items + 1] = right end
+  for _, item in ipairs(items) do
     local itemId = tostring(item and item.id or "")
     local itemName = boop.util.safeLower(item and item.name or "")
     local compactName = itemName:gsub("[^%w]+", "")

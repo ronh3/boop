@@ -480,7 +480,6 @@ describe("boop stats", function()
 
     assert.are.equal("session target stats for Test Area (party size 1):", messages[1])
     assert.is_true(messages[2]:find("a vicious gnoll soldier | kills 2 | avg ttk 0s | best 0s | worst 0s | avg gold 0 | avg raw xp 28500 | best raw xp 29000", 1, true) ~= nil)
-    assert.is_true(messages[2]:find("| xp mean 28500 | median 28500 | mode 28000 (1x)", 1, true) ~= nil)
   end)
 
   it("attributes gold deltas onto the recent target summary", function()

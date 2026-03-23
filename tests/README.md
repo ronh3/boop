@@ -60,8 +60,6 @@ Current coverage:
   Confirms public config, including rage affliction callout settings, with party size intentionally kept session-local, plus whitelist/blacklist and whitelist-tag edits through the DB hooks.
 - `boop_db_spec.lua`
   Confirms DB guard paths degrade to warnings instead of throwing when optional Mudlet sheets are missing in an older local profile DB.
-- `boop_walk_spec.lua`
-  Confirms the external `demonnicAutoWalker` integration only advances once a room is settled and clear under `boop`'s own targeting rules.
 - `boop_ui_spec.lua`
   Confirms the bare `boop` command shows the home dashboard with mode/blocker guidance, plus the control, party, roster, and related UI flows.
 - `boop_stats_spec.lua`
