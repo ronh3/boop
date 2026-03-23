@@ -170,5 +170,25 @@
       }
     ],
     "script": ""
+  },
+  {
+    "name": "Occultist General Lycantha Other",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^With an unearthly howl, a chaos hound leaps upon (.+) and savages \\w+ viciously\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
   }
 ]

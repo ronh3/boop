@@ -167,4 +167,24 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("<khaki>Someone<reset>", 1, true) ~= nil)
     assert.is_true(outputs[1]:find("<tomato>: <reset>", 1, true) ~= nil)
   end)
+
+  it("captures the third-person Occultist hound line as an others gag", function()
+    boop.config.gagOwnAttacks = false
+    boop.config.gagOthersAttacks = true
+
+    outputs = {}
+    boop.gag.onAttackLine({
+      ability = "Lycantha",
+      actor = { kind = "literal", value = "Chaos Hound" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "With an unearthly howl, a chaos hound leaps upon a test denizen and savages him viciously.",
+      "a test denizen",
+    }, "With an unearthly howl, a chaos hound leaps upon a test denizen and savages him viciously.")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("Chaos Hound", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Lycantha", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a test denizen", 1, true) ~= nil)
+  end)
 end)
