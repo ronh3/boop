@@ -66,7 +66,10 @@ describe("boop gag summaries", function()
       ability = "Lycantha",
       actor = { kind = "literal", value = "You" },
       target = { kind = "match", index = 2 },
-    }, { "line", "a test denizen" }, "You lunge at a test denizen.")
+    }, {
+      "You command your hound to rend the flesh of a test denizen.",
+      "a test denizen",
+    }, "You command your hound to rend the flesh of a test denizen.")
     boop.gag.onDamageLine("1,234", "cutting", "Damage line")
     boop.gag.onCriticalLine("world shattering critical", "Crit line")
     boop.gag.onBalanceUsed("2.5", "Balance line")
