@@ -100,4 +100,20 @@ describe("boop queued interrupts", function()
     assert.are.equal("", boop.state.diagLabel)
     assert.stub(send_stub).was_called_with("command hound at 42", false)
   end)
+
+  it("queues leap on the attack queue and resumes after the next prompt", function()
+    boop.ui.leap("north")
+
+    assert.is_true(boop.state.diagHold)
+    assert.is_true(boop.state.diagAwaitPrompt)
+    assert.are.equal("leap", boop.state.diagLabel)
+    assert.stub(send_stub).was_called_with("queue addclearfull freestand leap north", false)
+
+    boop.onPrompt()
+
+    assert.is_false(boop.state.diagHold)
+    assert.is_false(boop.state.diagAwaitPrompt)
+    assert.are.equal("", boop.state.diagLabel)
+    assert.stub(send_stub).was_called_with("command hound at 42", false)
+  end)
 end)

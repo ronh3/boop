@@ -47,6 +47,7 @@ describe("boop menu wiring", function()
       "matic",
       "catarin",
       "fly",
+      "leap <direction>",
       "boop prefer",
       "boop prefer <dam|shield> <option>",
       "boop weapon",

@@ -68,5 +68,12 @@
     "regex": "^(?i)fly$",
     "script": "",
     "isFolder": "no"
+  },
+  {
+    "name": "Leap",
+    "isActive": "yes",
+    "regex": "^(?i)leap\\s+(.+)$",
+    "script": "",
+    "isFolder": "no"
   }
 ]
