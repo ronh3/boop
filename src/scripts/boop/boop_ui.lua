@@ -203,7 +203,8 @@ function boop.ui.statusLine(context)
   local enabled = boop.config.enabled and "on" or "off"
   local mode = boop.config.targetingMode or "unknown"
   local class = currentClass()
-  local msg = string.format("%s | class: %s | targeting: %s | flee: %s", enabled, class, mode, tostring(boop.config.fleeAt))
+  local fleeShown = boop.config.fleeEnabled and tostring(boop.config.fleeAt) or "off"
+  local msg = string.format("%s | class: %s | targeting: %s | flee: %s", enabled, class, mode, fleeShown)
   if context then
     msg = context .. " | " .. msg
   end
@@ -1198,6 +1199,70 @@ function boop.ui.focusVerbCommand(raw)
   end
 end
 
+function boop.ui.fleeCommand(raw)
+  local value = boop.util.safeLower(boop.util.trim(raw or ""))
+  local currentThreshold = boop.util.trim(tostring((boop.config and boop.config.fleeAt) or "30%"))
+  if currentThreshold == "" or currentThreshold == "false" then
+    currentThreshold = "30%"
+  end
+
+  if value == "" or value == "status" or value == "show" then
+    local shown = (boop.config and boop.config.fleeEnabled) and tostring(boop.config.fleeAt or currentThreshold) or "off"
+    boop.util.info("auto flee: " .. shown)
+    boop.util.info("Usage: boop flee <on|off|toggle|percent>")
+    boop.util.info("Example: boop flee 25%")
+    return
+  end
+
+  if value == "off" then
+    saveConfigValue("fleeEnabled", false)
+    boop.util.ok("auto flee: off")
+    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat") or ""
+    if returnScreen == "combat" and boop.ui and boop.ui.config then
+      boop.ui.config("combat")
+    end
+    return
+  end
+
+  if value == "on" then
+    saveConfigValue("fleeEnabled", true)
+    if not boop.config.fleeAt or tostring(boop.config.fleeAt) == "" or tostring(boop.config.fleeAt) == "false" then
+      saveConfigValue("fleeAt", currentThreshold)
+    end
+    boop.util.ok("auto flee: " .. tostring(boop.config.fleeAt or currentThreshold))
+    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat") or ""
+    if returnScreen == "combat" and boop.ui and boop.ui.config then
+      boop.ui.config("combat")
+    end
+    return
+  end
+
+  if value == "toggle" then
+    boop.ui.fleeCommand((boop.config and boop.config.fleeEnabled) and "off" or "on")
+    return
+  end
+
+  local pct = value:match("^(%d+)%%$")
+  if pct then
+    local n = tonumber(pct)
+    if not n or n <= 0 or n >= 100 then
+      boop.util.warn("flee percent expects 1-99%")
+      return
+    end
+    saveConfigValue("fleeAt", tostring(n) .. "%")
+    saveConfigValue("fleeEnabled", true)
+    boop.util.ok("auto flee: " .. tostring(n) .. "%")
+    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat", "boop flee ") or ""
+    if returnScreen == "combat" and boop.ui and boop.ui.config then
+      boop.ui.config("combat")
+    end
+    return
+  end
+
+  boop.util.warn("flee expects on|off|toggle|<percent>")
+  boop.util.info("Example: boop flee 25%")
+end
+
 function boop.ui.pullCommand(mobName, direction)
   local mob = boop.util.trim(mobName or "")
   local dir = boop.util.trim(direction or "")
@@ -1434,6 +1499,9 @@ local function canonConfigKey(raw)
     leadtargets = "autoTargetCall",
     pullreserve = "pullRageReserve",
     pullragereserve = "pullRageReserve",
+    flee = "fleeEnabled",
+    fleeenabled = "fleeEnabled",
+    fleeat = "fleeAt",
     theme = "uiTheme",
     uitheme = "uiTheme",
     targetcall = "targetCall",
@@ -1479,6 +1547,8 @@ function boop.ui.listConfigValues()
     "targetOrder",
     "attackMode",
     "pullRageReserve",
+    "fleeEnabled",
+    "fleeAt",
     "tempoRageWindowSeconds",
     "tempoSqueezeEtaSeconds",
     "focusVerb",
@@ -1628,6 +1698,21 @@ function boop.ui.setConfigValue(key, value)
     if returnScreen == "combat" and boop.ui and boop.ui.config then
       boop.ui.config("combat")
     end
+    return
+  end
+
+  if canonical == "fleeEnabled" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.warn("flee expects on/off")
+      return
+    end
+    boop.ui.fleeCommand(parsed and "on" or "off")
+    return
+  end
+
+  if canonical == "fleeAt" then
+    boop.ui.fleeCommand(value)
     return
   end
 
@@ -3748,6 +3833,7 @@ local HELP_TOPICS = {
       helpCommand("pull <mobname> <direction>", "Send `<direction><sep><damage rage><sep>leap <opposite>` using your configured game separator and the typed mob name as the rage target."),
       helpCommand("boop separator <text>", "Set the game-side command separator used by `pull`, such as `|`."),
       helpCommand("boop focus <speed|precision>", "Choose which battlefury focus verb two-handed standards prepend when Focus is known."),
+      helpCommand("boop flee <on|off|toggle|percent>", "Control auto-flee and set its percentage threshold, for example `boop flee 25%`."),
       helpCommand("boop set pullRageReserve on|off", "Advanced toggle to keep enough rage reserved for a pull-capable damage battlerage attack."),
       helpCommand("boop prefer", "Show configurable attack-preference options for your current class/spec."),
       helpCommand("boop prefer <dam|shield> <option>", "Prefer a specific standard damage or shield attack when multiple valid options exist."),
@@ -4345,6 +4431,7 @@ local function configRenderCombatSection()
   local tempoEta = tonumber(boop.config.tempoSqueezeEtaSeconds) or 2.5
   local lead = tonumber(boop.config.attackLeadSeconds) or 0
   local diagTimeout = tonumber(boop.config.diagTimeoutSeconds) or 0
+  local fleeShown = boop.config.fleeEnabled and tostring(boop.config.fleeAt or "30%") or "off"
   local blocker, nextAction = currentBlocker()
   local targetId = boop.state and boop.state.currentTargetId or ""
   local targetName = boop.state and boop.state.targetName or ""
@@ -4392,8 +4479,14 @@ local function configRenderCombatSection()
     uiPrintToggleControl(12, "Pull reserve", not not boop.config.pullRageReserve, function()
       boop.ui.config("combat 12")
     end, "Keep enough rage in reserve for pull")
-    uiPrintActionControl(13, "Focus verb", tostring(boop.config.focusVerb or "speed"), "yellow", "[set]", "info", function()
+    uiPrintToggleControl(13, "Auto flee", not not boop.config.fleeEnabled, function()
       boop.ui.config("combat 13")
+    end, "Toggle auto flee")
+    uiPrintActionControl(14, "Flee at", fleeShown, boop.config.fleeEnabled and "yellow" or "red", "[set]", "info", function()
+      boop.ui.config("combat 14")
+    end, "Prepare boop flee command")
+    uiPrintActionControl(15, "Focus verb", tostring(boop.config.focusVerb or "speed"), "yellow", "[set]", "info", function()
+      boop.ui.config("combat 15")
     end, "Set the two-handed battlefury focus verb")
     uiPrintFooter("Type: boop config home | boop config combat <number> | boop config back")
     return
@@ -4414,7 +4507,9 @@ local function configRenderCombatSection()
   boop.util.echo("[10] Assist leader           [ " .. assistStatusText() .. " ] [set]")
   boop.util.echo("[11] Rage aff calls          [ " .. boolText(not not boop.config.rageAffCalloutsEnabled) .. " ] [toggle]")
   boop.util.echo("[12] Pull reserve            [ " .. boolText(not not boop.config.pullRageReserve) .. " ] [toggle]")
-  boop.util.echo("[13] Focus verb              [ " .. tostring(boop.config.focusVerb or "speed") .. " ] [set]")
+  boop.util.echo("[13] Auto flee               [ " .. boolText(not not boop.config.fleeEnabled) .. " ] [toggle]")
+  boop.util.echo("[14] Flee at                 [ " .. fleeShown .. " ] [set]")
+  boop.util.echo("[15] Focus verb              [ " .. tostring(boop.config.focusVerb or "speed") .. " ] [set]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config home | boop config combat <number> | boop config back")
 end
@@ -4636,6 +4731,13 @@ local function configApplySectionOption(sectionKey, option)
       boop.ui.toggleConfigBool("pullRageReserve", true)
       return "refresh"
     elseif n == 13 then
+      boop.ui.fleeCommand((boop.config and boop.config.fleeEnabled) and "off" or "on")
+      return "refresh"
+    elseif n == 14 then
+      configRememberReturnScreen("combat", "boop flee ")
+      uiSetCommandLine("boop flee ")
+      return "seed"
+    elseif n == 15 then
       configRememberReturnScreen("combat", "boop focus ")
       uiSetCommandLine("boop focus ")
       return "seed"

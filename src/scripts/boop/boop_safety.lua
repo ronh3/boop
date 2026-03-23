@@ -12,7 +12,7 @@ function boop.safety.parseThreshold(value)
 end
 
 function boop.safety.shouldFlee()
-  if not boop.config.enabled or not boop.config.fleeAt then return false end
+  if not boop.config.enabled or not boop.config.fleeEnabled or not boop.config.fleeAt then return false end
   if not gmcp or not gmcp.Char or not gmcp.Char.Vitals then return false end
 
   local hp = tonumber(gmcp.Char.Vitals.hp) or 0

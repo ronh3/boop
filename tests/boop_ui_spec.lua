@@ -521,6 +521,19 @@ describe("boop ui home", function()
     assert.are.equal("[OK] focus verb: precision", echoes[#echoes])
   end)
 
+  it("supports setting and toggling auto flee directly", function()
+    boop.ui.fleeCommand("25%")
+
+    assert.are.equal("25%", boop.config.fleeAt)
+    assert.is_true(boop.config.fleeEnabled)
+    assert.are.equal("[OK] auto flee: 25%", echoes[#echoes])
+
+    boop.ui.fleeCommand("off")
+
+    assert.is_false(boop.config.fleeEnabled)
+    assert.are.equal("[OK] auto flee: off", echoes[#echoes])
+  end)
+
   it("sets and reports the active theme", function()
     boop.ui.themeCommand("ocean")
 

@@ -51,6 +51,7 @@ describe("boop menu wiring", function()
       "pull <mobname> <direction>",
       "boop separator <text>",
       "boop focus <speed|precision>",
+      "boop flee <on|off|toggle|percent>",
       "boop prefer",
       "boop prefer <dam|shield> <option>",
       "boop weapon",
@@ -342,13 +343,13 @@ describe("boop menu wiring", function()
       boop.ui.config("combat")
     end)
 
-    assert.are.equal(25, #callbacks)
+    assert.are.equal(33, #callbacks)
 
     addStub(boop.ui, "config", "config")
     addStub(_G, "appendCmdLine", "appendCmdLine")
     addStub(_G, "clearCmdLine", "clearCmdLine")
 
-    for i = 1, 11 do
+    for i = 1, 15 do
       expectCallback(callbacks[(i * 2) - 1].callback, {
         { label = "config", args = { "combat " .. tostring(i) } },
       })
@@ -357,9 +358,9 @@ describe("boop menu wiring", function()
       })
     end
 
-    expectCallback(callbacks[23].callback, seedExpectation("boop config home"))
-    expectCallback(callbacks[24].callback, seedExpectation("boop config combat"))
-    expectCallback(callbacks[25].callback, seedExpectation("boop config back"))
+    expectCallback(callbacks[31].callback, seedExpectation("boop config home"))
+    expectCallback(callbacks[32].callback, seedExpectation("boop config combat"))
+    expectCallback(callbacks[33].callback, seedExpectation("boop config back"))
   end)
 
   it("wires the config targeting rows and footer seeds", function()

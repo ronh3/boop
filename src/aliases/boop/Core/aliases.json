@@ -63,6 +63,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Flee Config",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+flee(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Get",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+get(?:\\s+(\\w+))?$",

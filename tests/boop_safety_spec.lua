@@ -54,4 +54,17 @@ describe("boop safety", function()
     assert.is_true(boop.state.fleeing)
     assert.is_false(boop.state.attacking)
   end)
+
+  it("does not auto-flee when auto flee is disabled", function()
+    gmcp.Char.Vitals.hp = 1000
+    gmcp.Char.Vitals.maxhp = 5000
+    boop.config.fleeEnabled = false
+    boop.config.fleeAt = "30%"
+    boop.state.lastRoomDir = "north"
+
+    boop.tick()
+
+    assert.stub(send_stub).was_not_called()
+    assert.is_true(boop.config.enabled)
+  end)
 end)
