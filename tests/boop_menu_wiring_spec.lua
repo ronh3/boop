@@ -48,10 +48,11 @@ describe("boop menu wiring", function()
       "diag",
       "matic",
       "catarin",
+      "fly",
       "boop prefer",
       "boop prefer <dam|shield> <option>",
       "boop weapon",
-      "boop weapon <role> <wield-target>",
+      "boop weapon <role> <item-id>",
     } },
     { key = "party", commands = {
       "boop party",

@@ -4606,6 +4606,9 @@ function boop.ui.config(arg)
   local sectionPart, optionPart = raw:match("^%s*([%w_%-]+)%s+(%d+)%s*$")
   if sectionPart and optionPart then
     local requestedExplicit = configResolveSection(sectionPart)
+    if requestedExplicit then
+      configSetScreen(requestedExplicit.key)
+    end
     local result = requestedExplicit and configApplySectionOption(requestedExplicit.key, optionPart)
     if result then
       if result == "refresh" then

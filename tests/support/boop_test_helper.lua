@@ -151,6 +151,7 @@ function M.reset()
   boop.afflictions.init()
   resetTableData(boop.stats)
   boop.stats.init()
+  resetTableData(boop.ui)
   resetTableData(boop.skills)
   boop.skills.desiredGroups = desiredGroups
   boop.rage.init()

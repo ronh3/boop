@@ -1,6 +1,7 @@
 boop.walk = boop.walk or {}
 
 local WALKER_PACKAGE_URL = "https://github.com/demonnic/demonnicAutoWalker/releases/latest/download/demonnicAutoWalker.mpackage"
+boop.walk.packageUrl = boop.walk.packageUrl or WALKER_PACKAGE_URL
 
 local function walkState()
   boop.state = boop.state or {}
@@ -128,8 +129,14 @@ function boop.walk.install()
     return false
   end
 
+  local url = tostring(boop.walk.packageUrl or WALKER_PACKAGE_URL or "")
+  if url == "" then
+    boop.util.err("walk install failed: package url is unavailable")
+    return false
+  end
+
   local ok, err = pcall(function()
-    installPackage(WALKER_PACKAGE_URL)
+    installPackage(url)
   end)
   if not ok then
     boop.util.err("walk install failed: " .. tostring(err))

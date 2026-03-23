@@ -456,7 +456,7 @@ function boop.gag.showColors(scope)
       .. renderSegment(normalizedScope, "meta", " (1234 cutting - 8xCRIT) (Bal: 2.1s)")
     )
   else
-    echo("\n  sample: " .. (normalizedScope == "own" and "You" or "Someone") .. ": Attack -> a denizen (1234 cutting - 8xCRIT) (Bal: 2.1s)")
+    boop.util.echo("  sample: " .. (normalizedScope == "own" and "You" or "Someone") .. ": Attack -> a denizen (1234 cutting - 8xCRIT) (Bal: 2.1s)")
   end
 end
 

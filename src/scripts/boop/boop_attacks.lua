@@ -997,12 +997,12 @@ end
 
 local function wieldedNameContains(fragment)
   local needle = boop.util.safeLower(boop.util.trim(fragment or ""))
-  if needle == "" or not boop.getWieldedItem then
+  if needle == "" then
     return false
   end
 
-  local left = boop.getWieldedItem("left")
-  local right = boop.getWieldedItem("right")
+  local left = boop.getWieldedItem and boop.getWieldedItem("left") or (boop.state and boop.state.wieldedLeft) or nil
+  local right = boop.getWieldedItem and boop.getWieldedItem("right") or (boop.state and boop.state.wieldedRight) or nil
   for _, item in ipairs({ left, right }) do
     local name = boop.util.safeLower(item and item.name or "")
     if name ~= "" and name:find(needle, 1, true) then
@@ -1014,14 +1014,14 @@ end
 
 local function wieldedMatchesDesignation(designation)
   local wanted = boop.util.trim(designation or "")
-  if wanted == "" or not boop.getWieldedItem then
+  if wanted == "" then
     return false
   end
 
   local wantedLower = boop.util.safeLower(wanted)
   local compactWanted = wantedLower:gsub("[^%w]+", "")
-  local left = boop.getWieldedItem("left")
-  local right = boop.getWieldedItem("right")
+  local left = boop.getWieldedItem and boop.getWieldedItem("left") or (boop.state and boop.state.wieldedLeft) or nil
+  local right = boop.getWieldedItem and boop.getWieldedItem("right") or (boop.state and boop.state.wieldedRight) or nil
   for _, item in ipairs({ left, right }) do
     local itemId = tostring(item and item.id or "")
     local itemName = boop.util.safeLower(item and item.name or "")
