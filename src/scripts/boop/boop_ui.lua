@@ -1410,6 +1410,8 @@ local function canonConfigKey(raw)
     leaderautocall = "autoTargetCall",
     leadermode = "autoTargetCall",
     leadtargets = "autoTargetCall",
+    pullreserve = "pullRageReserve",
+    pullragereserve = "pullRageReserve",
     theme = "uiTheme",
     uitheme = "uiTheme",
     targetcall = "targetCall",
@@ -1452,6 +1454,7 @@ function boop.ui.listConfigValues()
     "retargetOnPriority",
     "targetOrder",
     "attackMode",
+    "pullRageReserve",
     "tempoRageWindowSeconds",
     "tempoSqueezeEtaSeconds",
     "traceEnabled",
@@ -1585,6 +1588,21 @@ function boop.ui.setConfigValue(key, value)
 
   if canonical == "attackMode" then
     boop.ui.setRageMode(value)
+    return
+  end
+
+  if canonical == "pullRageReserve" then
+    local parsed = parseBool(value)
+    if parsed == nil then
+      boop.util.warn("pullRageReserve expects on/off")
+      return
+    end
+    saveConfigValue("pullRageReserve", parsed)
+    boop.util.ok("pull rage reserve: " .. (parsed and "on" or "off"))
+    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat") or ""
+    if returnScreen == "combat" and boop.ui and boop.ui.config then
+      boop.ui.config("combat")
+    end
     return
   end
 
@@ -3699,6 +3717,7 @@ local HELP_TOPICS = {
       helpCommand("leap <direction>", "Queue `leap <direction>` on the attack queue and pause attacking until the next prompt or timeout."),
       helpCommand("pull <mobname> <direction>", "Send `<direction><sep><damage rage><sep>leap <opposite>` using your configured game separator and the typed mob name as the rage target."),
       helpCommand("boop separator <text>", "Set the game-side command separator used by `pull`, such as `|`."),
+      helpCommand("boop set pullRageReserve on|off", "Advanced toggle to keep enough rage reserved for a pull-capable damage battlerage attack."),
       helpCommand("boop prefer", "Show configurable attack-preference options for your current class/spec."),
       helpCommand("boop prefer <dam|shield> <option>", "Prefer a specific standard damage or shield attack when multiple valid options exist."),
       helpCommand("boop weapon", "Show saved weapon designations for your current class profile."),
@@ -3708,6 +3727,7 @@ local HELP_TOPICS = {
       "Use the config subsections when you want guided toggles; use the direct commands when you already know what you want.",
       "Target list displays support clickable management for whitelist, blacklist, and tags.",
       "`pull` uses your configured `boop separator` and the typed mob name directly inside the rage command.",
+      "Enable pull reserve if you want normal rage usage to keep enough rage banked for `pull`.",
       "Use `boop prefer` if you want to bias standard attack choice within a profile.",
     },
   },
@@ -4338,6 +4358,9 @@ local function configRenderCombatSection()
     uiPrintToggleControl(11, "Rage aff calls", not not boop.config.rageAffCalloutsEnabled, function()
       boop.ui.config("combat 11")
     end, "Toggle party affliction callouts")
+    uiPrintToggleControl(12, "Pull reserve", not not boop.config.pullRageReserve, function()
+      boop.ui.config("combat 12")
+    end, "Keep enough rage in reserve for pull")
     uiPrintFooter("Type: boop config home | boop config combat <number> | boop config back")
     return
   end
@@ -4356,6 +4379,7 @@ local function configRenderCombatSection()
   boop.util.echo(string.format("[9] Tempo squeeze ETA        [ %.2fs ] [set]", tempoEta))
   boop.util.echo("[10] Assist leader           [ " .. assistStatusText() .. " ] [set]")
   boop.util.echo("[11] Rage aff calls          [ " .. boolText(not not boop.config.rageAffCalloutsEnabled) .. " ] [toggle]")
+  boop.util.echo("[12] Pull reserve            [ " .. boolText(not not boop.config.pullRageReserve) .. " ] [toggle]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config home | boop config combat <number> | boop config back")
 end
@@ -4572,6 +4596,9 @@ local function configApplySectionOption(sectionKey, option)
       return "seed"
     elseif n == 11 then
       boop.ui.toggleConfigBool("rageAffCalloutsEnabled", true)
+      return "refresh"
+    elseif n == 12 then
+      boop.ui.toggleConfigBool("pullRageReserve", true)
       return "refresh"
     end
     return false

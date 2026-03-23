@@ -239,4 +239,21 @@ describe("boop rage modes", function()
     assert.are.equal("claw 42", actions.standard)
     assert.are.equal("pester 42", actions.rage)
   end)
+
+  it("holds rage in small mode when pull reserve is enabled and only the reserve amount is available", function()
+    helper.setClass("Sentinel")
+    helper.setRage(14)
+    helper.learnSkills({
+      { name = "Claw", group = "Metamorphosis" },
+      { name = "pester", group = "Attainment" },
+      { name = "skewer", group = "Attainment" },
+    })
+    boop.config.attackMode = "small"
+    boop.config.pullRageReserve = true
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("claw 42", actions.standard)
+    assert.are.equal("", actions.rage)
+  end)
 end)

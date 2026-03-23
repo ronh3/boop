@@ -47,6 +47,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `leap <direction>` (queues `leap <direction>` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
 - `pull <mobname> <direction>` (pauses boop, sends `<direction><sep><damage rage on mobname><sep>leap <opposite direction>`, then resumes boop when GMCP confirms you returned)
 - `boop separator <text>` (sets the game-side command separator used by `pull`; for example `|`)
+- `boop set pullRageReserve on|off` (advanced toggle; keep enough rage reserved for a pull-capable damage battlerage attack)
 - `boop whitelist` / `boop whitelist add <name>` / `boop whitelist remove <name>` (display is clickable: up/down/remove)
 - `boop whitelist browse [tag]` (browse whitelist areas; optional tag filter)
 - `boop whitelist tags <area>` / `boop whitelist tag list`
@@ -85,6 +86,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - `leap <direction>` queues `leap <direction>` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
 - `pull <mobname> <direction>` uses the configured `boop separator` to send one chained game command: move in, use the highest available damage battlerage attack against the typed mob name, then `leap` back using the opposite direction.
 - When boop is already enabled, `pull` pauses it before the chained move starts and resumes it only after GMCP confirms you returned to the origin room.
+- If there is no ready damage battlerage attack or not enough rage to use one, `pull` aborts before movement.
+- `pullRageReserve` optionally makes normal battlerage spending hold back enough rage to preserve a pull-capable damage hit.
 - Prequeue is separately configurable from queueing (`boop prequeue`); when enabled, it queues standard attacks before recovery using `boop lead` seconds (default `1.00`).
 - Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.
 - In queueing mode, boop caches the last `BOOP_ATTACK` alias payload and skips redundant `setalias` sends when unchanged.

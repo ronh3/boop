@@ -276,6 +276,22 @@ local function selectDamageForHp(profile, rageBudget)
   return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rageBudget)
 end
 
+local function pullReserveAbility(profile)
+  if not profile then return nil end
+  return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, nil)
+end
+
+local function pullReserveCost(profile)
+  if not boop.config or not boop.config.pullRageReserve then
+    return 0
+  end
+  local ability = pullReserveAbility(profile)
+  if not ability then
+    return 0
+  end
+  return tonumber(ability.rage) or 0
+end
+
 local function normalizeAffName(raw)
   local key = boop.util.safeLower(boop.util.trim(raw or ""))
   if key == "stunned" then
@@ -416,6 +432,23 @@ local function finalizeRageDecision(mode, outcome, ability)
     boop.stats.onRageDecision(decision)
   end
   return ability, decision
+end
+
+local function finalizeRageDecisionWithPullReserve(profile, mode, outcome, ability, rage)
+  local chosen = ability
+  local result = outcome
+  local reserve = pullReserveCost(profile)
+  local currentRage = tonumber(rage) or 0
+
+  if chosen and reserve > 0 and chosen.desc ~= "Shieldbreak" then
+    local cost = tonumber(chosen.rage) or 0
+    if (currentRage - cost) < reserve then
+      chosen = nil
+      result = "pull_reserve"
+    end
+  end
+
+  return finalizeRageDecision(mode, result, chosen)
 end
 
 local function conditionalMissingNeeds(ability)
@@ -756,19 +789,19 @@ function boop.attacks.selectRage(profile, rage, classKey)
     local cfg = profile.configRage or { bigDamage = 101, smallDamage = 0 }
 
     if hp >= (cfg.bigDamage or 101) then
-      return finalizeRageDecision(mode, "damage", findByDescList(profile, {"Big Damage", "Mid Damage", "Small Damage"}, rage))
+      return finalizeRageDecisionWithPullReserve(profile, mode, "damage", findByDescList(profile, {"Big Damage", "Mid Damage", "Small Damage"}, rage), rage)
     end
 
     if hp >= (cfg.smallDamage or 0) then
-      return finalizeRageDecision(mode, "damage", findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage))
+      return finalizeRageDecisionWithPullReserve(profile, mode, "damage", findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage), rage)
     end
 
-    return finalizeRageDecision(mode, "damage", findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage))
+    return finalizeRageDecisionWithPullReserve(profile, mode, "damage", findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage), rage)
   elseif mode == "big" then
     -- Pool rage until a big hit is affordable; only fall back to small while big is on cooldown.
     local big = findByDesc(profile, "Big Damage", rage)
     if big then
-      return finalizeRageDecision(mode, "big_damage", big)
+      return finalizeRageDecisionWithPullReserve(profile, mode, "big_damage", big, rage)
     end
 
     local bigReadyNoCost = findByDesc(profile, "Big Damage", nil)
@@ -776,23 +809,23 @@ function boop.attacks.selectRage(profile, rage, classKey)
       return finalizeRageDecision(mode, "big_hold", nil)
     end
 
-    return finalizeRageDecision(mode, "small_damage", findByDesc(profile, "Small Damage", rage))
+    return finalizeRageDecisionWithPullReserve(profile, mode, "small_damage", findByDesc(profile, "Small Damage", rage), rage)
   elseif mode == "small" then
-    return finalizeRageDecision(mode, "small_damage", findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage))
+    return finalizeRageDecisionWithPullReserve(profile, mode, "small_damage", findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rage), rage)
   elseif mode == "aff" then
-    return finalizeRageDecision(mode, "aff", findByDesc(profile, "Gives Affliction", rage))
+    return finalizeRageDecisionWithPullReserve(profile, mode, "aff", findByDesc(profile, "Gives Affliction", rage), rage)
   elseif mode == "tempo" then
     local ability, outcome = selectRageTempo(profile, rage, classKey)
-    return finalizeRageDecision(mode, outcome, ability)
+    return finalizeRageDecisionWithPullReserve(profile, mode, outcome, ability, rage)
   elseif mode == "combo" then
     local ability, outcome = selectRageCombo(profile, rage, classKey, true, true)
-    return finalizeRageDecision(mode, outcome, ability)
+    return finalizeRageDecisionWithPullReserve(profile, mode, outcome, ability, rage)
   elseif mode == "hybrid" then
     local ability, outcome = selectRageCombo(profile, rage, classKey, true, false)
-    return finalizeRageDecision(mode, outcome, ability)
+    return finalizeRageDecisionWithPullReserve(profile, mode, outcome, ability, rage)
   end
 
-  return finalizeRageDecision(mode, "damage", selectDamageForHp(profile, rage))
+  return finalizeRageDecisionWithPullReserve(profile, mode, "damage", selectDamageForHp(profile, rage), rage)
 end
 
 local function standardCommand(entry, preference)
