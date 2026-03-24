@@ -222,17 +222,10 @@ end
 function boop.walk.stop(silent, external)
   local state = walkState()
   local wasActive = state.walkActive
-  local shouldStopWalker = not external and attached()
   resetRuntimeFlags()
 
-  if shouldStopWalker then
-    pcall(function()
-      raiseEvent("demonwalker.stop")
-    end)
-  end
-
   if not silent and wasActive then
-    boop.util.ok("walk stopped")
+    boop.util.ok("walk stopped in current room")
   end
 end
 
