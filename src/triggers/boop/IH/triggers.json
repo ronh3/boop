@@ -33,7 +33,7 @@
     "highlightBG": "#ffff00",
     "patterns": [
       {
-        "pattern": "^([a-z]+\\d+)\\s+(.+)$",
+        "pattern": "^(\\S+\\d+)\\s+(.+)$",
         "type": "regex"
       }
     ],

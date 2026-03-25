@@ -54,4 +54,14 @@ describe("boop ih", function()
 
     assert.are.equal("42  a test denizen [+whitelist] [+blacklist]", echoes[1])
   end)
+
+  it("keeps the ih trigger broad enough for apostrophes in object ids", function()
+    local testsDir = assert(os.getenv("TESTS_DIRECTORY"))
+    local repoRoot = assert(testsDir:match("^(.*)/tests$"))
+    local handle = assert(io.open(repoRoot .. "/src/triggers/boop/IH/triggers.json", "r"))
+    local contents = assert(handle:read("*a"))
+    handle:close()
+
+    assert.is_true(contents:find([["pattern": "^(\\S+\\d+)\\s+(.+)$"]], 1, true) ~= nil)
+  end)
 end)
