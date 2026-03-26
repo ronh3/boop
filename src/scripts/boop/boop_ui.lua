@@ -4105,6 +4105,9 @@ function boop.ui.home()
   local themeShown = activeThemeLabel()
   local blocker, nextAction = currentBlocker()
   local walkShown = walkStatusLabel()
+  local walkHint = walkShown == "INSTALL"
+    and "Install demonnicAutoWalker for walk controls"
+    or "Open walk controls"
 
   if cecho then
     uiPrintHeader("boop")
@@ -4113,7 +4116,9 @@ function boop.ui.home()
     uiPrintRow(2, "Mode", modeShown, "yellow")
     uiPrintRow(3, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
     uiPrintRow(4, "Next action", nextAction, "cyan")
-    uiPrintRow(5, "Walk", walkShown, walkShown == "ON" and "green" or (walkShown == "INSTALL" and "red" or "yellow"))
+    uiPrintRow(5, "Walk", walkShown, walkShown == "ON" and "green" or (walkShown == "INSTALL" and "red" or "yellow"), function()
+      boop.ui.walkCommand(walkShown == "INSTALL" and "install" or "")
+    end, walkHint)
     uiPrintRow(6, "Theme", themeShown, "cyan")
 
     uiPrintSection("combat state")

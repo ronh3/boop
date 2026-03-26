@@ -16,6 +16,7 @@ describe("boop ui home", function()
   local trace_clear_stub
   local append_cmd_stub
   local clear_cmd_stub
+  local walk_install_stub
 
   before_each(function()
     helper.reset()
@@ -75,6 +76,10 @@ describe("boop ui home", function()
       clear_cmd_stub:revert()
       clear_cmd_stub = nil
     end
+    if walk_install_stub then
+      walk_install_stub:revert()
+      walk_install_stub = nil
+    end
     _G.cecho = saved_cecho
     _G.cechoLink = saved_cecho_link
     _G.echo = saved_echo
@@ -103,6 +108,37 @@ describe("boop ui home", function()
     assert.is_true(echoes[5]:find("Target: 42 | a vicious gnoll soldier | room denizens: 2", 1, true) ~= nil)
     assert.is_true(echoes[6]:find("Trip: running | kills 3 | gold 125 | xp 28376", 1, true) ~= nil)
     assert.are.equal("Quick: boop control | boop party | boop roster | boop mode | boop stats", echoes[7])
+  end)
+
+  it("makes the home dashboard walk install row clickable when the walker package is missing", function()
+    local links = {}
+    local install_calls = 0
+
+    _G.cecho = function(_) end
+    _G.cechoLink = function(text, cb, hint, _)
+      links[#links + 1] = { text = text, cb = cb, hint = hint }
+    end
+    walk_install_stub = stub(boop.walk, "install", function()
+      install_calls = install_calls + 1
+      return true
+    end)
+
+    boop.ui.home()
+
+    local walk_link
+    for _, link in ipairs(links) do
+      if link.hint == "Install demonnicAutoWalker for walk controls" then
+        walk_link = link
+        break
+      end
+    end
+
+    assert.is_not_nil(walk_link)
+    assert.is_true(type(walk_link.cb) == "function")
+
+    walk_link.cb()
+
+    assert.are.equal(1, install_calls)
   end)
 
   it("shows a dedicated control dashboard", function()
