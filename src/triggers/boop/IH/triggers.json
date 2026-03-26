@@ -1,7 +1,7 @@
 [
   {
     "name": "IH End",
-    "isActive": "yes",
+    "isActive": "no",
     "isFolder": "no",
     "multiline": "no",
     "multilineDelta": "0",
@@ -21,7 +21,7 @@
   },
   {
     "name": "IH Line",
-    "isActive": "yes",
+    "isActive": "no",
     "isFolder": "no",
     "multiline": "no",
     "multilineDelta": "0",
@@ -33,7 +33,7 @@
     "highlightBG": "#ffff00",
     "patterns": [
       {
-        "pattern": "^(\\S+\\d+)\\s+(.+)$",
+        "pattern": "^([A-Za-z][A-Za-z0-9_'-]*\\d+)\\s+(.+)$",
         "type": "regex"
       }
     ],
