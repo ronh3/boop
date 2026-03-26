@@ -3922,6 +3922,7 @@ local HELP_TOPICS = {
       helpCommand("boop gag color [own|others] <who|ability|target|meta|separator|bg> <color|off>", "Set one gag color role directly; use `boop gag color [own|others] <role>` to open the picker."),
       helpCommand("boop get", "Inspect raw config values when you need to verify the stored state directly."),
       helpCommand("boop set <key> <value>", "Set a raw config value directly when there is no better guided control for it yet."),
+      helpCommand("boop help audit", "Dump every help topic, alias, command, and note into a review-friendly audit view."),
       helpCommand("boop import foxhunt [merge|overwrite|dryrun]", "Import whitelist and blacklist data from Foxhunt."),
       helpCommand("boop pack test", "Queue a look-in command for the current configured gold pack."),
       helpCommand("boop theme <name|auto|list>", "Inspect or change the active UI theme; list includes boop + built-in ADB palette names."),
@@ -3950,6 +3951,20 @@ local function helpResolveTopic(raw)
     end
   end
   return nil
+end
+
+local function helpEntryCommand(entry)
+  if type(entry) == "table" then
+    return tostring(entry.command or "")
+  end
+  return tostring(entry or "")
+end
+
+local function helpEntryDescription(entry)
+  if type(entry) == "table" then
+    return tostring(entry.description or "")
+  end
+  return ""
 end
 
 local function helpRenderHome()
@@ -3984,7 +3999,7 @@ local function helpRenderHome()
         boop.ui.help(key)
       end, topic.summary or ("Open help for " .. topic.title), labelWidth)
     end
-    uiPrintFooter("Type: boop help home | boop help <number|topic>")
+    uiPrintFooter("Type: boop help home | boop help <number|topic> | boop help audit")
     return
   end
 
@@ -3998,6 +4013,39 @@ local function helpRenderHome()
   boop.util.echo("Type: boop help home")
   boop.util.echo("Type: boop help <number>  (example: boop help 2)")
   boop.util.echo("Type: boop help <topic>   (example: boop help targeting)")
+  boop.util.echo("Type: boop help audit")
+end
+
+local function helpRenderAudit()
+  boop.util.echo("HELP AUDIT")
+  boop.util.echo("----------------------------------------")
+  boop.util.echo("Review prompts: title fit | first useful command | command discoverability | next-step clarity")
+  boop.util.echo("Use one real user goal per topic and verify the first 1-3 commands actually get you there.")
+
+  for i, topic in ipairs(HELP_TOPICS) do
+    boop.util.echo("")
+    boop.util.echo(string.format("[%d] %s", i, tostring(topic.title or "")))
+    boop.util.echo("Summary: " .. tostring(topic.summary or ""))
+    boop.util.echo("Aliases: " .. table.concat(topic.aliases or {}, ", "))
+    boop.util.echo("Commands:")
+    for _, entry in ipairs(topic.commands or {}) do
+      local cmd = helpEntryCommand(entry)
+      local description = helpEntryDescription(entry)
+      boop.util.echo("  " .. cmd)
+      if description ~= "" then
+        boop.util.echo("    " .. description)
+      end
+    end
+    if topic.notes and #topic.notes > 0 then
+      boop.util.echo("Notes:")
+      for _, note in ipairs(topic.notes) do
+        boop.util.echo("  - " .. tostring(note))
+      end
+    end
+  end
+
+  boop.util.echo("----------------------------------------")
+  boop.util.echo("Type: boop help <topic> | boop help audit")
 end
 
 local function helpRenderTopic(topic)
@@ -4026,8 +4074,8 @@ local function helpRenderTopic(topic)
 
     uiPrintSection("commands")
     for i, entry in ipairs(topic.commands or {}) do
-      local value = type(entry) == "table" and entry.command or tostring(entry or "")
-      local description = type(entry) == "table" and entry.description or ""
+      local value = helpEntryCommand(entry)
+      local description = helpEntryDescription(entry)
       local hint = description ~= "" and (description .. " | Click to seed this command.") or ("Copy command: " .. value)
       uiPrintRow(i, value, "COPY", "yellow", function()
         uiSetCommandLine(value)
@@ -4050,8 +4098,8 @@ local function helpRenderTopic(topic)
     boop.util.echo("")
   end
   for _, entry in ipairs(topic.commands or {}) do
-    local cmd = type(entry) == "table" and entry.command or tostring(entry or "")
-    local description = type(entry) == "table" and entry.description or ""
+    local cmd = helpEntryCommand(entry)
+    local description = helpEntryDescription(entry)
     boop.util.echo("  " .. cmd)
     if description ~= "" then
       boop.util.echo("    " .. description)
@@ -4069,6 +4117,11 @@ end
 
 function boop.ui.help(topic)
   local t = boop.util.safeLower(boop.util.trim(topic or ""))
+
+  if t == "audit" or t == "review" then
+    helpRenderAudit()
+    return
+  end
 
   if t == "" or t == "main" or t == "general" or t == "home" or t == "topics" or t == "topic" or t == "back" then
     helpRenderHome()

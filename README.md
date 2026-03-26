@@ -14,7 +14,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop control` (live control dashboard)
 - `bh` (toggle on/off)
 - `boop on` / `boop off`
-- `boop help` / `boop help <number|topic|home>` (examples: `boop help 2`, `boop help targeting`)
+- `boop help` / `boop help <number|topic|home|audit>` (examples: `boop help 2`, `boop help targeting`, `boop help audit`)
 - `boop status` (status summary)
 - `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow)
 - `boop preset <solo|party|leader|leader-call>` (apply recommended baseline settings)

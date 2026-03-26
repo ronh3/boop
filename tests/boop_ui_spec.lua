@@ -361,6 +361,21 @@ describe("boop ui home", function()
     assert.is_true(joined:find("Type: boop help home | boop help back", 1, true) ~= nil)
   end)
 
+  it("renders a review-friendly help audit dump", function()
+    echoes = {}
+
+    boop.ui.help("audit")
+
+    local joined = table.concat(echoes, "\n")
+    assert.are.equal("HELP AUDIT", echoes[1])
+    assert.is_true(joined:find("Review prompts: title fit | first useful command | command discoverability | next%-step clarity") ~= nil)
+    assert.is_true(joined:find("%[1%] Start Here") ~= nil)
+    assert.is_true(joined:find("Aliases: start, gettingstarted, intro, basics, general, main, home") ~= nil)
+    assert.is_true(joined:find("  boop help audit", 1, true) ~= nil)
+    assert.is_true(joined:find("Dump every help topic, alias, command, and note into a review%-friendly audit view%.") ~= nil)
+    assert.is_true(joined:find("Type: boop help <topic> | boop help audit", 1, true) ~= nil)
+  end)
+
   it("adds rich hover descriptions to help command rows", function()
     local hints = {}
 
