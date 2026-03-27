@@ -31,6 +31,20 @@ describe("boop skill-gated attack selection", function()
     assert.are.equal("warp 42", actions.standard)
   end)
 
+  it("falls back from the apostate first-hit opener when one required skill is unavailable", function()
+    helper.reset()
+    helper.setClass("Apostate")
+    helper.setTarget("42", "a test denizen", "80%")
+    helper.learnSkill("Deadeyes", "Evileye")
+    helper.setSkillKnown("Soulstorm", false, "Necromancy")
+    helper.learnSkill("Decay", "Necromancy")
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("deadeyes 42 bleed bleed", actions.standard)
+    assert.is_false(actions.standardIsOpener)
+  end)
+
   it("suppresses rage output when the available rage skill is unknown", function()
     helper.setTargetHp("80%")
     helper.setRage(14)

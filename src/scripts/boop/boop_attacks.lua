@@ -157,19 +157,59 @@ function boop.attacks.standardOptions(classKey, section)
   return out
 end
 
+local function entrySkillsKnown(entry, defaultGroup)
+  if not entry then return false end
+
+  local requirements = {}
+  local primary = entry.skill or entry.name
+  if primary and primary ~= "" then
+    requirements[#requirements + 1] = {
+      skill = primary,
+      group = entry.group or defaultGroup or "Attainment",
+    }
+  end
+
+  if type(entry.skills) == "table" then
+    for _, requirement in ipairs(entry.skills) do
+      if type(requirement) == "table" then
+        local skill = requirement.skill or requirement.name
+        if skill and skill ~= "" then
+          requirements[#requirements + 1] = {
+            skill = skill,
+            group = requirement.group or defaultGroup or entry.group or "Attainment",
+          }
+        end
+      elseif type(requirement) == "string" and requirement ~= "" then
+        requirements[#requirements + 1] = {
+          skill = requirement,
+          group = defaultGroup or entry.group or "Attainment",
+        }
+      end
+    end
+  end
+
+  if #requirements == 0 then
+    return true
+  end
+
+  for _, requirement in ipairs(requirements) do
+    if boop.skills and boop.skills.ensureSkill then
+      if not boop.skills.ensureSkill(requirement.skill, requirement.group) then
+        return false
+      end
+    elseif boop.skills and boop.skills.knownSkill then
+      if not boop.skills.knownSkill(requirement.skill) then
+        return false
+      end
+    end
+  end
+
+  return true
+end
+
 local function abilityKnown(ability)
   if not ability then return false end
-  local name = ability.skill or ability.name
-  if not name or name == "" then return true end
-  -- Rage abilities are in Attainment unless explicitly overridden.
-  local group = ability.group or "Attainment"
-  if boop.skills and boop.skills.ensureSkill then
-    return boop.skills.ensureSkill(name, group)
-  end
-  if boop.skills and boop.skills.knownSkill then
-    return boop.skills.knownSkill(name)
-  end
-  return true
+  return entrySkillsKnown(ability, "Attainment")
 end
 
 function boop.attacks.rageReady(ability, rage)
@@ -848,17 +888,8 @@ local function standardCommand(entry, preference)
       local cmd = entry.cmd or ""
       if cmd == "" then return "" end
 
-      local skill = entry.skill or entry.name
-      if skill and skill ~= "" then
-        local ok = true
-        if boop.skills and boop.skills.ensureSkill then
-          ok = boop.skills.ensureSkill(skill, entry.group)
-        elseif boop.skills and boop.skills.knownSkill then
-          ok = boop.skills.knownSkill(skill)
-        end
-        if not ok then
-          return ""
-        end
+      if not entrySkillsKnown(entry, entry.group) then
+        return ""
       end
 
       if entry.needs then
@@ -1149,31 +1180,55 @@ local function prependDepthswalkerWeapon(cmd, standardShieldbreak)
   return "wield " .. wieldTarget .. "/" .. trimmed
 end
 
+local function selectOpenerEntry(entry, classKey, targetId, requireFullHp)
+  if not entry then
+    return ""
+  end
+
+  if targetId == "" then
+    traceOpenerDecision(classKey, targetId, "skip:no-target")
+    return ""
+  end
+
+  if requireFullHp then
+    local hp = boop.attacks.getTargetHpPercKnown()
+    if hp == nil then
+      traceOpenerDecision(classKey, targetId, "skip:hp-unknown")
+      return ""
+    end
+    if hp < 100 then
+      traceOpenerDecision(classKey, targetId, "skip:hp-not-full")
+      return ""
+    end
+  end
+
+  if boop.attacks.openerUsedForTarget(classKey, targetId) then
+    traceOpenerDecision(classKey, targetId, "skip:already-used")
+    return ""
+  end
+
+  local cmd = standardCommand(entry)
+  if cmd ~= "" then
+    traceOpenerDecision(classKey, targetId, "selected")
+    return cmd
+  end
+
+  traceOpenerDecision(classKey, targetId, "skip:unavailable")
+  return ""
+end
+
 function boop.attacks.selectStandard(profile, classKey)
   if not profile then return "", false, false end
 
-  local opener = profile.openerAt100 or profile.opener
   local targetId = boop.util.trim(tostring(boop.state and boop.state.currentTargetId or ""))
-  if opener then
-    if targetId == "" then
-      traceOpenerDecision(classKey, targetId, "skip:no-target")
-    else
-      local hp = boop.attacks.getTargetHpPercKnown()
-      if hp == nil then
-        traceOpenerDecision(classKey, targetId, "skip:hp-unknown")
-      elseif hp < 100 then
-        traceOpenerDecision(classKey, targetId, "skip:hp-not-full")
-      elseif boop.attacks.openerUsedForTarget(classKey, targetId) then
-        traceOpenerDecision(classKey, targetId, "skip:already-used")
-      else
-        local cmd = standardCommand(opener)
-        if cmd ~= "" then
-          traceOpenerDecision(classKey, targetId, "selected")
-          return cmd, false, true
-        end
-        traceOpenerDecision(classKey, targetId, "skip:unavailable")
-      end
-    end
+  local opener = selectOpenerEntry(profile.openerAt100, classKey, targetId, true)
+  if opener ~= "" then
+    return opener, false, true
+  end
+
+  opener = selectOpenerEntry(profile.opener, classKey, targetId, false)
+  if opener ~= "" then
+    return opener, false, true
   end
 
   if boop.state.targetShield

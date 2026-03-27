@@ -1,4 +1,11 @@
 boop.attacks.register("apostate", {  standard = {
+    opener = {
+      cmd = "deadeyes &tar bleed bleed/soulstorm &tar",
+      skills = {
+        { skill = "Deadeyes", group = "Evileye" },
+        { skill = "Soulstorm", group = "Necromancy" },
+      },
+    },
     dam = { 
       {cmd = "deadeyes &tar bleed bleed", skill = "Deadeyes", group = "Evileye" },
       {cmd = "decay &tar", skill = "Decay", group = "Necromancy" },
