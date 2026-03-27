@@ -11,6 +11,22 @@ describe("boop skill-gated attack selection", function()
     helper.setRage(0)
     helper.setSkillKnown("Attend", false, "Occultism")
     helper.learnSkills({
+      { name = "Cleanse Aura", group = "Occultism" },
+      { name = "Lycantha", group = "Domination" },
+      { name = "Warp", group = "Occultism" },
+    })
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("command hound at 42", actions.standard)
+    assert.is_false(actions.standardIsOpener)
+  end)
+
+  it("falls back to standard damage when occultist cleanseaura is unavailable", function()
+    helper.setRage(0)
+    helper.setSkillKnown("Cleanse Aura", false, "Occultism")
+    helper.learnSkills({
+      { name = "Attend", group = "Occultism" },
       { name = "Lycantha", group = "Domination" },
       { name = "Warp", group = "Occultism" },
     })
