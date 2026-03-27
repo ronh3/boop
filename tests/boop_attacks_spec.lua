@@ -23,6 +23,17 @@ describe("boop attack selection", function()
     assert.is_true(actions.standardIsOpener)
   end)
 
+  it("skips the full-hp opener when target hp info belongs to a different target", function()
+    helper.setRage(0)
+    gmcp.IRE.Target.Info.id = "41"
+    gmcp.IRE.Target.Info.hpperc = "100%"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("command hound at 42", actions.standard)
+    assert.is_false(actions.standardIsOpener)
+  end)
+
   it("chooses a rage shieldbreak when the target is shielded", function()
     helper.setTargetHp("80%")
     helper.setRage(17)

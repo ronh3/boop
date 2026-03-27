@@ -275,8 +275,21 @@ function boop.attacks.getTargetHpPerc()
 end
 
 function boop.attacks.getTargetHpPercKnown()
-  if gmcp and gmcp.IRE and gmcp.IRE.Target and gmcp.IRE.Target.Info and gmcp.IRE.Target.Info.hpperc then
-    local num = tostring(gmcp.IRE.Target.Info.hpperc or ""):gsub("%%", "")
+  if not gmcp or not gmcp.IRE or not gmcp.IRE.Target or not gmcp.IRE.Target.Info then
+    return nil
+  end
+
+  local info = gmcp.IRE.Target.Info
+  local currentTargetId = boop.util.trim(tostring(boop.state and boop.state.currentTargetId or ""))
+  local infoTargetId = boop.util.trim(tostring(info.id or ""))
+  if currentTargetId ~= "" then
+    if infoTargetId == "" or infoTargetId ~= currentTargetId then
+      return nil
+    end
+  end
+
+  if info.hpperc then
+    local num = tostring(info.hpperc or ""):gsub("%%", "")
     local val = tonumber(num)
     if val then
       return val
