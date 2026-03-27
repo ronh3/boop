@@ -6,7 +6,6 @@ describe("boop attack selection", function()
     helper.setClass("Occultist")
     helper.setTarget("42", "a test denizen", "100%")
     helper.learnSkills({
-      { name = "Cleanse Aura", group = "Occultism" },
       { name = "Attend", group = "Occultism" },
       { name = "Lycantha", group = "Domination" },
       { name = "Warp", group = "Occultism" },
@@ -14,12 +13,12 @@ describe("boop attack selection", function()
     })
   end)
 
-  it("prefers the first-hit opener when available", function()
+  it("prefers the full-hp opener when available", function()
     helper.setRage(0)
 
     local actions = boop.attacks.choose()
 
-    assert.are.equal("cleanseaura/attend 42", actions.standard)
+    assert.are.equal("attend 42", actions.standard)
     assert.are.equal("", actions.rage)
     assert.is_true(actions.standardIsOpener)
   end)
