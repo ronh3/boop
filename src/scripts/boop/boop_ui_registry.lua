@@ -1,7 +1,10 @@
 boop.ui = boop.ui or {}
 boop.config = boop.config or {}
+boop.registry = boop.registry or {}
+boop.registry.config = boop.registry.config or {}
+boop.registry.ui = boop.registry.ui or {}
 
-boop.config.schema = boop.config.schema or {
+boop.registry.config.schema = boop.registry.config.schema or {
   order = {
     "enabled",
     "targetingMode",
@@ -131,7 +134,7 @@ boop.config.schema = boop.config.schema or {
   },
 }
 
-boop.ui.modes = boop.ui.modes or {
+boop.registry.ui.modes = boop.registry.ui.modes or {
   solo = {
     key = "solo",
     requiresLeader = false,
@@ -192,7 +195,7 @@ boop.ui.modes = boop.ui.modes or {
   },
 }
 
-boop.ui.presets = boop.ui.presets or {
+boop.registry.ui.presets = boop.registry.ui.presets or {
   solo = {
     label = "solo",
     summary = "Whitelist solo hunting with simple rage and no party gating.",
@@ -327,7 +330,7 @@ local function gagColorSetter(scope, role)
   end
 end
 
-boop.config.setters = boop.config.setters or {
+boop.registry.config.setters = boop.registry.config.setters or {
   enabled = configBoolSetter({
     key = "enabled",
     warn = "enabled expects on/off",
@@ -553,7 +556,7 @@ local function helpCommand(command, description)
   }
 end
 
-boop.ui.helpTopics = boop.ui.helpTopics or {
+boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
   {
     key = "start",
     title = "Start Here",
@@ -721,14 +724,14 @@ boop.ui.helpTopics = boop.ui.helpTopics or {
   },
 }
 
-boop.ui.screens = boop.ui.screens or {}
-boop.ui.screens.configSections = boop.ui.screens.configSections or {
+boop.registry.ui.screens = boop.registry.ui.screens or {}
+boop.registry.ui.screens.configSections = boop.registry.ui.screens.configSections or {
     { id = 1, key = "combat", label = "Hunting", aliases = { "combat", "hunting", "queueing", "queue" } },
     { id = 2, key = "targeting", label = "Targeting", aliases = { "targeting", "targets" } },
     { id = 3, key = "loot", label = "Loot", aliases = { "loot", "gold", "import" } },
     { id = 4, key = "debug", label = "Diagnostics", aliases = { "debug", "diagnostics", "trace", "gag" } },
 }
-boop.ui.screens.configHomeRoutes = boop.ui.screens.configHomeRoutes or {
+boop.registry.ui.screens.configHomeRoutes = boop.registry.ui.screens.configHomeRoutes or {
     ["5"] = "party",
     party = "party",
     assist = "party",
@@ -744,7 +747,7 @@ boop.ui.screens.configHomeRoutes = boop.ui.screens.configHomeRoutes or {
     stats = "stats",
     mode = "mode",
 }
-boop.ui.screens.configActions = boop.ui.screens.configActions or {
+boop.registry.ui.screens.configActions = boop.registry.ui.screens.configActions or {
     combat = {
       [1] = function()
         boop.ui.setEnabled(not boop.config.enabled, true)
@@ -905,3 +908,60 @@ boop.ui.screens.configActions = boop.ui.screens.configActions or {
       end,
     },
 }
+
+local function attachRegistryFallback(target, public)
+  if type(target) ~= "table" or type(public) ~= "table" then
+    return
+  end
+
+  local meta = getmetatable(target) or {}
+  local previous = meta.__index
+
+  if previous == public then
+    return
+  end
+
+  meta.__index = function(self, key)
+    local value = public[key]
+    if value ~= nil then
+      return value
+    end
+    if type(previous) == "function" then
+      return previous(self, key)
+    end
+    if type(previous) == "table" then
+      return previous[key]
+    end
+    return nil
+  end
+
+  setmetatable(target, meta)
+end
+
+boop.registry.attachUiConfigRegistries = boop.registry.attachUiConfigRegistries or function()
+  boop.config = boop.config or {}
+  boop.ui = boop.ui or {}
+
+  boop.config.schema = boop.config.schema or boop.registry.config.schema
+  boop.config.setters = boop.config.setters or boop.registry.config.setters
+  boop.ui.modes = boop.ui.modes or boop.registry.ui.modes
+  boop.ui.presets = boop.ui.presets or boop.registry.ui.presets
+  boop.ui.helpTopics = boop.ui.helpTopics or boop.registry.ui.helpTopics
+  boop.ui.screens = boop.ui.screens or {}
+  boop.ui.screens.configSections = boop.ui.screens.configSections or boop.registry.ui.screens.configSections
+  boop.ui.screens.configHomeRoutes = boop.ui.screens.configHomeRoutes or boop.registry.ui.screens.configHomeRoutes
+  boop.ui.screens.configActions = boop.ui.screens.configActions or boop.registry.ui.screens.configActions
+
+  attachRegistryFallback(boop.config, {
+    schema = boop.registry.config.schema,
+    setters = boop.registry.config.setters,
+  })
+  attachRegistryFallback(boop.ui, {
+    modes = boop.registry.ui.modes,
+    presets = boop.registry.ui.presets,
+    helpTopics = boop.registry.ui.helpTopics,
+    screens = boop.registry.ui.screens,
+  })
+end
+
+boop.registry.attachUiConfigRegistries()
