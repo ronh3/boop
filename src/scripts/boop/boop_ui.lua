@@ -25,6 +25,14 @@ local function presetRegistry()
   return boop.ui and boop.ui.presets or {}
 end
 
+local function helpTopicRegistry()
+  return boop.ui and boop.ui.helpTopics or {}
+end
+
+local function configSetterRegistry()
+  return boop.config and boop.config.setters or {}
+end
+
 local function boolText(value)
   return value and "ON" or "OFF"
 end
@@ -40,6 +48,8 @@ end
 local function assistLeader()
   return boop.util.trim(boop.config.assistLeader or "")
 end
+
+boop.ui.assistLeader = assistLeader
 
 local function themeTags()
   if boop.theme and boop.theme.tags then
@@ -810,6 +820,8 @@ local function cycleTargetingMode(step, noRefresh)
   end
 end
 
+boop.ui.cycleTargetingMode = cycleTargetingMode
+
 local RAGE_MODE_OPTIONS = {
   { id = 1, key = "simple", label = "Simple", desc = "HP-aware damage selection." },
   { id = 2, key = "big", label = "Big", desc = "Pool for big hits; fallback small on cooldown." },
@@ -1473,6 +1485,13 @@ function boop.ui.listConfigValues()
   end
 end
 
+local function reopenConfigScreen(screen, prefix)
+  local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen(screen, prefix) or ""
+  if returnScreen == screen and boop.ui and boop.ui.config then
+    boop.ui.config(screen)
+  end
+end
+
 function boop.ui.setConfigValue(key, value)
   local canonical = canonConfigKey(key)
   if canonical == "" then
@@ -1481,373 +1500,18 @@ function boop.ui.setConfigValue(key, value)
     return
   end
 
-  if canonical == "enabled" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn("enabled expects on/off")
-      return
-    end
-    boop.ui.setEnabled(parsed)
+  local setter = configSetterRegistry()[canonical]
+  if not setter then
+    boop.util.warn("No config setter registered for: " .. tostring(canonical))
     return
   end
 
-  if canonical == "targetingMode" then
-    boop.ui.setTargetingMode(value)
-    return
-  end
-
-  if canonical == "useQueueing" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn("useQueueing expects on/off")
-      return
-    end
-    saveConfigValue("useQueueing", parsed)
-    boop.util.ok("use queueing: " .. (parsed and "on" or "off"))
-    return
-  end
-
-  if canonical == "prequeueEnabled" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn("prequeue expects on/off")
-      return
-    end
-    boop.ui.setPrequeueEnabled(parsed)
-    return
-  end
-
-  if canonical == "attackLeadSeconds" then
-    boop.ui.setAttackLeadSeconds(value)
-    return
-  end
-
-  if canonical == "autoGrabGold" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn("autogold expects on/off")
-      return
-    end
-    boop.ui.setAutoGrabGold(parsed)
-    return
-  end
-
-  if canonical == "goldPack" then
-    boop.ui.setGoldPack(value)
-    return
-  end
-
-  if canonical == "whitelistPriorityOrder" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn(canonical .. " expects on/off")
-      return
-    end
-    saveConfigValue(canonical, parsed)
-    boop.util.ok(canonical .. ": " .. (parsed and "on" or "off"))
-    return
-  end
-
-  if canonical == "retargetOnPriority" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn(canonical .. " expects on/off")
-      return
-    end
-    saveConfigValue(canonical, parsed)
-    boop.util.ok(canonical .. ": " .. (parsed and "on" or "off"))
-    return
-  end
-
-  if canonical == "targetOrder" then
-    local order = boop.util.safeLower(boop.util.trim(value or ""))
-    if order ~= "order" and order ~= "numeric" and order ~= "reverse" then
-      boop.util.warn("targetOrder expects order|numeric|reverse")
-      return
-    end
-    saveConfigValue("targetOrder", order)
-    boop.util.ok("targetOrder: " .. order)
-    return
-  end
-
-  if canonical == "attackMode" then
-    boop.ui.setRageMode(value)
-    return
-  end
-
-  if canonical == "pullRageReserve" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn("pullRageReserve expects on/off")
-      return
-    end
-    saveConfigValue("pullRageReserve", parsed)
-    boop.util.ok("pull rage reserve: " .. (parsed and "on" or "off"))
-    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat") or ""
-    if returnScreen == "combat" and boop.ui and boop.ui.config then
-      boop.ui.config("combat")
-    end
-    return
-  end
-
-  if canonical == "fleeEnabled" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn("flee expects on/off")
-      return
-    end
-    boop.ui.fleeCommand(parsed and "on" or "off")
-    return
-  end
-
-  if canonical == "fleeAt" then
-    boop.ui.fleeCommand(value)
-    return
-  end
-
-  if canonical == "tempoRageWindowSeconds" then
-    local seconds = tonumber(boop.util.trim(value or ""))
-    if not seconds or seconds <= 0 then
-      boop.util.warn("tempoRageWindowSeconds expects number > 0")
-      return
-    end
-    saveConfigValue("tempoRageWindowSeconds", seconds)
-    boop.util.ok(string.format("tempo rage window: %.2fs", seconds))
-    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat", "boop set tempoRageWindowSeconds ") or ""
-    if returnScreen == "combat" and boop.ui and boop.ui.config then
-      boop.ui.config("combat")
-    end
-    return
-  end
-
-  if canonical == "tempoSqueezeEtaSeconds" then
-    local seconds = tonumber(boop.util.trim(value or ""))
-    if not seconds or seconds < 0 then
-      boop.util.warn("tempoSqueezeEtaSeconds expects number >= 0")
-      return
-    end
-    saveConfigValue("tempoSqueezeEtaSeconds", seconds)
-    boop.util.ok(string.format("tempo squeeze eta: %.2fs", seconds))
-    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat", "boop set tempoSqueezeEtaSeconds ") or ""
-    if returnScreen == "combat" and boop.ui and boop.ui.config then
-      boop.ui.config("combat")
-    end
-    return
-  end
-
-  if canonical == "focusVerb" then
-    boop.ui.focusVerbCommand(value)
-    return
-  end
-
-  if canonical == "traceEnabled" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn("trace expects on/off")
-      return
-    end
-    boop.ui.setTraceEnabled(parsed)
-    return
-  end
-
-  if canonical == "gagOwnAttacks" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn("gagOwnAttacks expects on/off")
-      return
-    end
-    boop.gag.setOwn(parsed)
-    return
-  end
-
-  if canonical == "gagOthersAttacks" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn("gagOthersAttacks expects on/off")
-      return
-    end
-    boop.gag.setOthers(parsed)
-    return
-  end
-
-  if canonical == "gagColorWho" then
-    boop.gag.setColor("own", "who", value)
-    return
-  end
-
-  if canonical == "gagColorAbility" then
-    boop.gag.setColor("own", "ability", value)
-    return
-  end
-
-  if canonical == "gagColorTarget" then
-    boop.gag.setColor("own", "target", value)
-    return
-  end
-
-  if canonical == "gagColorMeta" then
-    boop.gag.setColor("own", "meta", value)
-    return
-  end
-
-  if canonical == "gagColorSeparator" then
-    boop.gag.setColor("own", "separator", value)
-    return
-  end
-
-  if canonical == "gagColorBackground" then
-    boop.gag.setColor("own", "background", value)
-    return
-  end
-
-  if canonical == "gagOtherColorWho" then
-    boop.gag.setColor("others", "who", value)
-    return
-  end
-
-  if canonical == "gagOtherColorAbility" then
-    boop.gag.setColor("others", "ability", value)
-    return
-  end
-
-  if canonical == "gagOtherColorTarget" then
-    boop.gag.setColor("others", "target", value)
-    return
-  end
-
-  if canonical == "gagOtherColorMeta" then
-    boop.gag.setColor("others", "meta", value)
-    return
-  end
-
-  if canonical == "gagOtherColorSeparator" then
-    boop.gag.setColor("others", "separator", value)
-    return
-  end
-
-  if canonical == "gagOtherColorBackground" then
-    boop.gag.setColor("others", "background", value)
-    return
-  end
-
-  if canonical == "diagTimeoutSeconds" then
-    local timeout = tonumber(boop.util.trim(value or ""))
-    if not timeout or timeout < 0 then
-      boop.util.warn("diagTimeoutSeconds expects number >= 0")
-      return
-    end
-    saveConfigValue("diagTimeoutSeconds", timeout)
-    boop.util.ok(string.format("diag timeout: %.2fs", timeout))
-    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat", "boop set diagtimeout ") or ""
-    if returnScreen == "combat" and boop.ui and boop.ui.config then
-      boop.ui.config("combat")
-    end
-    return
-  end
-
-  if canonical == "partySize" then
-    local size = tonumber(boop.util.trim(value or ""))
-    if not size or size < 1 or size ~= math.floor(size) then
-      boop.util.warn("partySize expects integer >= 1")
-      return
-    end
-    saveConfigValue("partySize", size)
-    boop.util.ok("party size: " .. tostring(size))
-    return
-  end
-
-  if canonical == "partyRoster" then
-    boop.ui.rosterCommand(value or "")
-    return
-  end
-
-  if canonical == "targetCall" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn("targetCall expects on/off")
-      return
-    end
-    if parsed and assistLeader() == "" then
-      boop.util.warn("target call mode needs a leader; use: boop assist <name>")
-      return
-    end
-    saveConfigValue("targetCall", parsed)
-    if parsed and boop.config.autoTargetCall then
-      saveConfigValue("autoTargetCall", false)
-    end
-    if not parsed and boop.targets and boop.targets.clearTargetCall then
-      boop.targets.clearTargetCall("target call disabled")
-    end
-    boop.util.ok("leader target call gate: " .. (parsed and "on" or "off"))
-    return
-  end
-
-  if canonical == "autoTargetCall" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn("autoTargetCall expects on/off")
-      return
-    end
-    local hadTargetCall = not not boop.config.targetCall
-    saveConfigValue("autoTargetCall", parsed)
-    if parsed and hadTargetCall then
-      saveConfigValue("targetCall", false)
-      if boop.targets and boop.targets.clearTargetCall then
-        boop.targets.clearTargetCall("auto target call enabled")
-      end
-    end
-    boop.util.ok("auto target calls: " .. (parsed and "on" or "off"))
-    return
-  end
-
-  if canonical == "assistEnabled" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn("assist expects on/off")
-      return
-    end
-    if parsed and assistLeader() == "" then
-      boop.util.warn("assist needs a leader; use: boop assist <name>")
-      return
-    end
-    saveConfigValue("assistEnabled", parsed)
-    boop.util.ok("assist: " .. (parsed and "on" or "off"))
-    return
-  end
-
-  if canonical == "assistLeader" then
-    local leader = boop.util.trim(value or "")
-    saveConfigValue("assistLeader", leader)
-    if leader == "" then
-      saveConfigValue("assistEnabled", false)
-      boop.util.ok("assist leader cleared")
-    else
-      saveConfigValue("assistEnabled", true)
-      boop.util.ok("assist leader: " .. leader)
-    end
-    return
-  end
-
-  if canonical == "uiTheme" then
-    boop.ui.themeCommand(value)
-    return
-  end
-
-  if canonical == "gameSeparator" then
-    boop.ui.gameSeparatorCommand(value)
-    return
-  end
-
-  if canonical == "rageAffCalloutsEnabled" then
-    local parsed = parseBool(value)
-    if parsed == nil then
-      boop.util.warn("affcalls expects on/off")
-      return
-    end
-    saveConfigValue("rageAffCalloutsEnabled", parsed)
-    boop.util.ok("rage affliction callouts: " .. (parsed and "on" or "off"))
-    return
-  end
+  setter(value, {
+    key = canonical,
+    parseBool = parseBool,
+    save = saveConfigValue,
+    reopen = reopenConfigScreen,
+  })
 end
 
 function boop.ui.traceCommand(sub, arg)
@@ -1967,80 +1631,6 @@ function boop.ui.modeCommand(raw)
   boop.util.warn("Usage: boop mode solo|assist|leader|leader-call")
 end
 
-local PRESET_DEFS = {
-  solo = {
-    label = "solo",
-    summary = "Whitelist solo hunting with simple rage and no party gating.",
-    values = {
-      targetingMode = "whitelist",
-      useQueueing = false,
-      prequeueEnabled = true,
-      attackLeadSeconds = 1,
-      autoGrabGold = true,
-      attackMode = "simple",
-      partySize = 1,
-      rageAffCalloutsEnabled = false,
-      assistEnabled = false,
-      autoTargetCall = false,
-      targetCall = false,
-    },
-  },
-  party = {
-    label = "party",
-    summary = "Party-friendly hunting without assist or leader target gating.",
-    values = {
-      targetingMode = "whitelist",
-      useQueueing = false,
-      prequeueEnabled = true,
-      attackLeadSeconds = 1,
-      autoGrabGold = true,
-      attackMode = "simple",
-      partySize = 2,
-      rageAffCalloutsEnabled = false,
-      assistEnabled = false,
-      autoTargetCall = false,
-      targetCall = false,
-    },
-  },
-  leader = {
-    label = "leader",
-    summary = "Party hunting that automatically calls each new target you engage.",
-    values = {
-      targetingMode = "whitelist",
-      useQueueing = false,
-      prequeueEnabled = true,
-      attackLeadSeconds = 1,
-      autoGrabGold = true,
-      attackMode = "simple",
-      partySize = 2,
-      rageAffCalloutsEnabled = false,
-      assistEnabled = false,
-      autoTargetCall = true,
-      targetCall = false,
-    },
-  },
-  ["leader-call"] = {
-    label = "leader-call",
-    summary = "Party hunting that waits for a called target from your configured leader.",
-    values = {
-      targetingMode = "whitelist",
-      useQueueing = false,
-      prequeueEnabled = true,
-      attackLeadSeconds = 1,
-      autoGrabGold = true,
-      attackMode = "simple",
-      partySize = 2,
-      rageAffCalloutsEnabled = false,
-      assistEnabled = true,
-      autoTargetCall = false,
-      targetCall = true,
-    },
-  },
-}
-
-boop.ui.presets = boop.ui.presets or PRESET_DEFS
-PRESET_DEFS = boop.ui.presets
-
 local function canonicalPresetName(raw)
   local cmd = boop.util.safeLower(boop.util.trim(raw or ""))
   if cmd == "leadercall" or cmd == "lead" then
@@ -2051,18 +1641,19 @@ end
 
 function boop.ui.presetCommand(raw)
   local cmd = canonicalPresetName(raw)
+  local presets = presetRegistry()
 
   if cmd == "" or cmd == "status" or cmd == "show" or cmd == "list" then
     boop.util.info("presets: solo | party | leader | leader-call")
     boop.util.info("Usage: boop preset <solo|party|leader|leader-call>")
-    boop.util.echo("  solo        -> " .. PRESET_DEFS.solo.summary)
-    boop.util.echo("  party       -> " .. PRESET_DEFS.party.summary)
-    boop.util.echo("  leader      -> " .. PRESET_DEFS.leader.summary)
-    boop.util.echo("  leader-call -> " .. PRESET_DEFS["leader-call"].summary)
+    boop.util.echo("  solo        -> " .. presets.solo.summary)
+    boop.util.echo("  party       -> " .. presets.party.summary)
+    boop.util.echo("  leader      -> " .. presets.leader.summary)
+    boop.util.echo("  leader-call -> " .. presets["leader-call"].summary)
     return
   end
 
-  local preset = PRESET_DEFS[cmd]
+  local preset = presets[cmd]
   if not preset then
     boop.util.warn("unknown preset: " .. tostring(raw))
     boop.util.info("Usage: boop preset <solo|party|leader|leader-call>")
@@ -3633,194 +3224,17 @@ function boop.ui.party(rawArgs)
   boop.ui.partyCommand(rawArgs)
 end
 
-local function helpCommand(command, description)
-  return {
-    command = tostring(command or ""),
-    description = tostring(description or ""),
-  }
-end
-
-local HELP_TOPICS = {
-  {
-    key = "start",
-    title = "Start Here",
-    summary = "Core entrypoints and the fastest way to get oriented.",
-    aliases = { "start", "gettingstarted", "intro", "basics", "general", "main", "home" },
-    commands = {
-      helpCommand("boop", "Open the home dashboard with the most important live state and next actions."),
-      helpCommand("boop control", "Open the live control dashboard for hunting, movement, and runtime state."),
-      helpCommand("boop on", "Enable boop hunting and start the active session timer."),
-      helpCommand("boop off", "Disable boop hunting and stop the active session timer."),
-      helpCommand("boop status", "Show the current state, target, queue, party, and movement summary."),
-      helpCommand("boop config", "Open the guided settings hub."),
-      helpCommand("boop config home", "Jump back to the root of the config hub from any config screen."),
-      helpCommand("boop party", "Open the party dashboard for leader, assist, walk, and roster state."),
-      helpCommand("boop preset <solo|party|leader|leader-call>", "Apply a recommended baseline for solo hunting, party hunting, leader target calling, or leader-following party play."),
-      helpCommand("boop help <topic>", "Open help for a specific workflow or feature area."),
-    },
-    notes = {
-      "Start with `boop`, then move to `boop control` for live operations or `boop config` for settings.",
-      "Use `boop party` for leader/assist/walk coordination and `boop stats` for optimization data.",
-    },
-  },
-  {
-    key = "control",
-    title = "Control & Config",
-    summary = "Navigation between the main dashboards and the guided settings screens.",
-    aliases = { "control", "controls", "config", "settings", "dashboard" },
-    commands = {
-      helpCommand("boop control", "Open the live control dashboard."),
-      helpCommand("boop config", "Open the settings hub with summaries and links to each config area."),
-      helpCommand("boop config home", "Return to the top-level config hub."),
-      helpCommand("boop config combat", "Open combat and queueing settings."),
-      helpCommand("boop config targeting", "Open targeting mode, order, and list-management settings."),
-      helpCommand("boop config loot", "Open sovereign pickup and gold-pack settings."),
-      helpCommand("boop config debug", "Open trace, gag, and debug settings."),
-      helpCommand("boop preset <solo|party|leader|leader-call>", "Apply a curated baseline without stepping through each individual setting."),
-    },
-    notes = {
-      "Use `boop control` for live state and `boop config` for guided settings changes.",
-      "Use `boop config debug` when you need lower-level tools that do not fit the normal guided settings flow.",
-    },
-  },
-  {
-    key = "hunting",
-    title = "Hunting & Targeting",
-    summary = "Targeting modes, rage modes, queueing, and target list management.",
-    aliases = { "hunting", "combat", "targeting", "targets", "whitelist", "blacklist", "rage", "ragemode", "attackmode", "queue", "queueing", "prequeue", "diag", "diagnose", "ih" },
-    commands = {
-      helpCommand("boop config combat", "Open the combat settings screen for toggles like queueing, prequeue, and rage mode."),
-      helpCommand("boop config targeting", "Open the targeting settings screen for mode, order, and retarget behavior."),
-      helpCommand("boop ragemode", "Show the rage-mode menu and current selection."),
-      helpCommand("boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>", "Set how boop chooses battlerage attacks."),
-      helpCommand("boop prequeue [on|off]", "Enable or disable standard-attack prequeueing."),
-      helpCommand("boop lead <seconds>", "Set how early boop should prequeue before balance comes back."),
-      helpCommand("boop targeting <manual|whitelist|blacklist|auto>", "Set the top-level target-selection mode."),
-      helpCommand("boop whitelist", "Open or print the current area whitelist."),
-      helpCommand("boop whitelist browse [tag]", "Browse whitelist entries, optionally filtered by tag."),
-      helpCommand("boop blacklist", "Open or print the current area blacklist."),
-      helpCommand("diag", "Queue diagnose and temporarily pause attacking until diagnose completes or times out."),
-      helpCommand("matic", "Queue `ldeck draw matic` on the attack queue and pause attacking until the next prompt or timeout."),
-      helpCommand("catarin", "Queue `ldeck draw catarin` on the attack queue and pause attacking until the next prompt or timeout."),
-      helpCommand("fly", "Queue `fly` on the attack queue and pause attacking until the next prompt or timeout."),
-      helpCommand("leap <direction>", "Queue `leap <direction>` on the attack queue and pause attacking until the next prompt or timeout."),
-      helpCommand("pull <mobname> <direction>", "Send `<direction><sep><damage rage><sep>leap <opposite>` using your configured game separator and the typed mob name as the rage target."),
-      helpCommand("boop separator <text>", "Set the game-side command separator used by `pull`, such as `|`."),
-      helpCommand("boop focus <speed|precision>", "Choose which battlefury focus verb two-handed standards prepend when Focus is known."),
-      helpCommand("boop flee <on|off|toggle|percent>", "Control auto-flee and set its percentage threshold, for example `boop flee 25%`."),
-      helpCommand("boop set pullRageReserve on|off", "Advanced toggle to keep enough rage reserved for a pull-capable damage battlerage attack."),
-      helpCommand("boop prefer", "Show configurable attack-preference options for your current class/spec."),
-      helpCommand("boop prefer <dam|shield> <option>", "Prefer a specific standard damage or shield attack when multiple valid options exist."),
-      helpCommand("boop weapon", "Show saved weapon designations for your current class profile."),
-      helpCommand("boop weapon <role> <item-id>", "Save a class-scoped weapon designation using a raw GMCP item id such as `scythe 47177`."),
-    },
-    notes = {
-      "Use the config subsections when you want guided toggles; use the direct commands when you already know what you want.",
-      "Target list displays support clickable management for whitelist, blacklist, and tags.",
-      "`pull` uses your configured `boop separator` and the typed mob name directly inside the rage command.",
-      "Enable pull reserve if you want normal rage usage to keep enough rage banked for `pull`.",
-      "Use `boop prefer` if you want to bias standard attack choice within a profile.",
-    },
-  },
-  {
-    key = "party",
-    title = "Party & Leader",
-    summary = "Assist, leader target calls, roster management, and movement coordination.",
-    aliases = { "party", "leader", "assist", "targetcall", "walk", "roster", "combos", "combo" },
-    commands = {
-      helpCommand("boop party", "Open the party dashboard with leader, assist, walk, target-call, auto-call, and roster state."),
-      helpCommand("boop preset party", "Apply the default party baseline without leader gating."),
-      helpCommand("boop preset leader", "Apply the leader baseline; boop will automatically party-call each new target it engages."),
-      helpCommand("boop preset leader-call", "Apply the leader-call baseline; requires an assist leader to already be set."),
-      helpCommand("boop mode solo|assist|leader|leader-call", "Switch between solo hunting, assist mode, leader auto-calling, and leader-following target mode."),
-      helpCommand("boop assist <leader>", "Set the assist leader boop should follow for assist-mode attacks."),
-      helpCommand("boop assist on|off|clear", "Enable, disable, or clear assist mode without changing other party settings."),
-      helpCommand("boop targetcall on|off", "Require a leader-called target before boop starts attacking when following another leader."),
-      helpCommand("boop affcalls on|off", "Enable or suppress battlerage affliction party callouts."),
-      helpCommand("boop walk [status|start|stop|move]", "Inspect or control external autowalker integration; stop halts in the current room."),
-      helpCommand("boop walk install", "Install the required demonnicAutoWalker package into Mudlet."),
-      helpCommand("boop roster", "Show the stored party roster and your combo-relevant party composition."),
-      helpCommand("boop roster <class...>", "Set the party roster classes used for combo and conditional help."),
-      helpCommand("boop roster clear", "Clear the stored party roster."),
-      helpCommand("boop combos", "Show combo/conditional information using your current roster and class."),
-      helpCommand("boop combos <class...>", "Inspect combo and conditional relationships for an explicit set of classes."),
-      helpCommand("boop combos list", "List known class names supported by the combo helper."),
-    },
-    notes = {
-      "Use `boop party` as the party dashboard; it consolidates leader, assist, walk, target-call, auto-call, and roster state.",
-      "Use `boop roster` to store party classes for combo/conditional assistance.",
-      "If the walker package is missing, use `boop walk install` from inside Mudlet.",
-      "Use quotes for multi-word classes when needed.",
-    },
-  },
-  {
-    key = "stats",
-    title = "Stats & Optimization",
-    summary = "Trip, session, lifetime, area, ability, target, and rage analytics.",
-    aliases = { "stats", "trip", "records", "areas", "targets", "abilities", "crits", "compare" },
-    commands = {
-      helpCommand("boop stats", "Open the stats dashboard with current summaries and drill-down suggestions."),
-      helpCommand("boop stats help", "Show the dedicated stats command overview."),
-      helpCommand("boop stats session|login|trip|lifetime", "Show totals and efficiency for a specific stats scope."),
-      helpCommand("boop stats lasttrip", "Show the snapshot of the most recently completed trip."),
-      helpCommand("boop stats compare [left] [right]", "Compare two scopes, defaulting to trip versus lasttrip."),
-      helpCommand("boop stats areas [scope] [limit] [metric]", "Rank or inspect hunting areas by the chosen metric."),
-      helpCommand("boop stats targets [scope] [limit]", "Inspect per-target kill efficiency and profitability."),
-      helpCommand("boop stats abilities [scope] [limit]", "Inspect per-ability usage, damage, crits, and kills."),
-      helpCommand("boop stats crits [scope]", "Show crit distributions and crit-rate summaries."),
-      helpCommand("boop stats rage [scope]", "Show rage-usage and rage-mode behavior summaries."),
-      helpCommand("boop stats records [scope]", "Show best-hit, fastest-kill, and similar record values."),
-      helpCommand("boop trip start", "Start an explicit trip timer and trip bucket for a hunt."),
-      helpCommand("boop trip stop", "Stop the current trip and show its final summary."),
-      helpCommand("boop stats reset session|login|trip|lifetime|all", "Reset one or more stats scopes."),
-    },
-    notes = {
-      "Start with `boop stats` for the dashboard, then drill into the specific view that answers your optimization question.",
-      "Use `compare`, `areas`, `targets`, and `abilities` when you want to choose a better hunting setup instead of just reading totals.",
-    },
-  },
-  {
-    key = "diagnostics",
-    title = "Diagnostics & Advanced",
-    summary = "Trace, gagging, debug tools, imports, and direct configuration.",
-    aliases = { "diagnostics", "debug", "trace", "gag", "advanced", "set", "get", "import", "foxhunt" },
-    commands = {
-      helpCommand("boop config debug", "Open the guided diagnostics and debug settings screen."),
-      helpCommand("boop debug", "Show the debug snapshot for current runtime state."),
-      helpCommand("boop debug attacks", "Show the currently loaded attack profile and attack options."),
-      helpCommand("boop debug skills", "Show current skill knowledge and skill-state summaries."),
-      helpCommand("boop debug skills dump", "Dump the raw skill tables boop is using."),
-      helpCommand("boop trace on|off|show [n]|clear", "Control or inspect the boop trace buffer used for decision-flow debugging."),
-      helpCommand("boop gag on|off|own|others|all", "Control attack-line gagging behavior."),
-      helpCommand("boop gag colors [own|others]", "Open the interactive gag palette browser for your own or other players' gag lines."),
-      helpCommand("boop gag color [own|others] <who|ability|target|meta|separator|bg> <color|off>", "Set one gag color role directly; use `boop gag color [own|others] <role>` to open the picker."),
-      helpCommand("boop get", "Inspect raw config values when you need to verify the stored state directly."),
-      helpCommand("boop set <key> <value>", "Set a raw config value directly when there is no better guided control for it yet."),
-      helpCommand("boop help audit", "Dump every help topic, alias, command, and note into a review-friendly audit view."),
-      helpCommand("boop import foxhunt [merge|overwrite|dryrun]", "Import whitelist and blacklist data from Foxhunt."),
-      helpCommand("boop pack test", "Queue a look-in command for the current configured gold pack."),
-      helpCommand("boop theme <name|auto|list>", "Inspect or change the active UI theme; list includes boop + built-in ADB palette names."),
-    },
-    notes = {
-      "Use trace when you need decision-flow debugging; use the debug snapshot when you need current-state debugging.",
-      "This is also the place for lower-level commands that do not fit the main control/config/party/stats flow, including raw `boop get` / `boop set` access.",
-    },
-  },
-}
-
-boop.ui.helpTopics = boop.ui.helpTopics or HELP_TOPICS
-HELP_TOPICS = boop.ui.helpTopics
-
 local function helpResolveTopic(raw)
   local token = boop.util.safeLower(boop.util.trim(raw or ""))
   if token == "" then return nil end
 
+  local helpTopics = helpTopicRegistry()
   local idx = tonumber(token)
-  if idx and HELP_TOPICS[idx] then
-    return HELP_TOPICS[idx]
+  if idx and helpTopics[idx] then
+    return helpTopics[idx]
   end
 
-  for _, topic in ipairs(HELP_TOPICS) do
+  for _, topic in ipairs(helpTopics) do
     for _, alias in ipairs(topic.aliases or {}) do
       if token == alias then
         return topic
@@ -3845,6 +3259,7 @@ local function helpEntryDescription(entry)
 end
 
 local function helpRenderHome()
+  local helpTopics = helpTopicRegistry()
   if cecho then
     uiPrintHeader("help")
     uiPrintSection("start here")
@@ -3866,11 +3281,11 @@ local function helpRenderHome()
 
     uiPrintSection("topics")
     local rows = {}
-    for i, topic in ipairs(HELP_TOPICS) do
+    for i, topic in ipairs(helpTopics) do
       rows[#rows + 1] = { index = i, label = topic.title }
     end
     local labelWidth = uiComputeLabelWidth(rows, UI_LABEL_COL_WIDTH, 100)
-    for i, topic in ipairs(HELP_TOPICS) do
+    for i, topic in ipairs(helpTopics) do
       local key = topic.key
       uiPrintRow(i + 5, topic.title, "OPEN", "cyan", function()
         boop.ui.help(key)
@@ -3883,7 +3298,7 @@ local function helpRenderHome()
   boop.util.echo("HELP")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Start: boop | boop control | boop config | boop party | boop stats")
-  for i, topic in ipairs(HELP_TOPICS) do
+  for i, topic in ipairs(helpTopics) do
     boop.util.echo(string.format("[%d] %s -> %s", i, topic.title, tostring(topic.summary or "")))
   end
   boop.util.echo("----------------------------------------")
@@ -3894,12 +3309,13 @@ local function helpRenderHome()
 end
 
 local function helpRenderAudit()
+  local helpTopics = helpTopicRegistry()
   boop.util.echo("HELP AUDIT")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Review prompts: title fit | first useful command | command discoverability | next-step clarity")
   boop.util.echo("Use one real user goal per topic and verify the first 1-3 commands actually get you there.")
 
-  for i, topic in ipairs(HELP_TOPICS) do
+  for i, topic in ipairs(helpTopics) do
     boop.util.echo("")
     boop.util.echo(string.format("[%d] %s", i, tostring(topic.title or "")))
     boop.util.echo("Summary: " .. tostring(topic.summary or ""))
@@ -4634,155 +4050,27 @@ local function configRenderSection(key)
   configRenderHome()
 end
 
+local function configActionRegistry()
+  local screens = boop.ui.screens or {}
+  return screens.configActions or {}
+end
+
 local function configApplySectionOption(sectionKey, option)
   local n = tonumber(option)
   if not n then return false end
-
-  if sectionKey == "combat" then
-    if n == 1 then
-      boop.ui.setEnabled(not boop.config.enabled, true)
-      return "refresh"
-    elseif n == 2 then
-      configRememberReturnScreen("combat")
-      boop.ui.showRageModeMenu()
-      return "handled"
-    elseif n == 3 then
-      boop.ui.diag()
-      return "refresh"
-    elseif n == 4 then
-      boop.ui.toggleConfigBool("useQueueing", true)
-      return "refresh"
-    elseif n == 5 then
-      boop.ui.setPrequeueEnabled(not boop.config.prequeueEnabled)
-      return "refresh"
-    elseif n == 6 then
-      configRememberReturnScreen("combat", "boop lead ")
-      uiSetCommandLine("boop lead ")
-      return "seed"
-    elseif n == 7 then
-      configRememberReturnScreen("combat", "boop set diagtimeout ")
-      uiSetCommandLine("boop set diagtimeout ")
-      return "seed"
-    elseif n == 8 then
-      configRememberReturnScreen("combat", "boop set tempoRageWindowSeconds ")
-      uiSetCommandLine("boop set tempoRageWindowSeconds ")
-      return "seed"
-    elseif n == 9 then
-      configRememberReturnScreen("combat", "boop set tempoSqueezeEtaSeconds ")
-      uiSetCommandLine("boop set tempoSqueezeEtaSeconds ")
-      return "seed"
-    elseif n == 10 then
-      configRememberReturnScreen("combat", "boop assist ")
-      uiSetCommandLine("boop assist ")
-      return "seed"
-    elseif n == 11 then
-      boop.ui.toggleConfigBool("rageAffCalloutsEnabled", true)
-      return "refresh"
-    elseif n == 12 then
-      boop.ui.toggleConfigBool("pullRageReserve", true)
-      return "refresh"
-    elseif n == 13 then
-      boop.ui.fleeCommand((boop.config and boop.config.fleeEnabled) and "off" or "on")
-      return "refresh"
-    elseif n == 14 then
-      configRememberReturnScreen("combat", "boop flee ")
-      uiSetCommandLine("boop flee ")
-      return "seed"
-    elseif n == 15 then
-      configRememberReturnScreen("combat", "boop focus ")
-      uiSetCommandLine("boop focus ")
-      return "seed"
-    end
+  local action = configActionRegistry()[sectionKey]
+  action = action and action[n] or nil
+  if not action then
     return false
   end
 
-  if sectionKey == "targeting" then
-    if n == 1 then
-      cycleTargetingMode(1, true)
-      return "refresh"
-    elseif n == 2 then
-      boop.ui.toggleConfigBool("whitelistPriorityOrder", true)
-      return "refresh"
-    elseif n == 3 then
-      boop.ui.cycleTargetOrder(1, true)
-      return "refresh"
-    elseif n == 4 then
-      boop.ui.toggleConfigBool("retargetOnPriority", true)
-      return "refresh"
-    elseif n == 5 then
-      boop.ui.targetCallCommand(boop.config.targetCall and "off" or "on")
-      return "refresh"
-    elseif n == 6 then
-      boop.targets.displayWhitelist()
-      return "handled"
-    elseif n == 7 then
-      boop.targets.displayWhitelistBrowse()
-      return "handled"
-    elseif n == 8 then
-      boop.targets.displayBlacklist()
-      return "handled"
-    end
-    return false
-  end
-
-  if sectionKey == "loot" then
-    if n == 1 then
-      boop.ui.toggleAutoGrabGold()
-      return "refresh"
-    elseif n == 2 then
-      configRememberReturnScreen("loot", "boop pack ")
-      uiSetCommandLine("boop pack ")
-      return "seed"
-    elseif n == 3 then
-      boop.ui.setGoldPack("")
-      return "refresh"
-    elseif n == 4 then
-      boop.ui.testGoldPack()
-      return "refresh"
-    end
-    return false
-  end
-
-  if sectionKey == "debug" then
-    if n == 1 then
-      boop.ui.setTraceEnabled(not boop.config.traceEnabled)
-      return "refresh"
-    elseif n == 2 then
-      boop.ui.debug()
-      return "handled"
-    elseif n == 3 then
-      if boop.trace and boop.trace.show then
-        boop.trace.show()
-      else
-        boop.util.echo("trace unavailable")
-      end
-      return "handled"
-    elseif n == 4 then
-      if boop.trace and boop.trace.clear then
-        boop.trace.clear()
-      else
-        boop.util.echo("trace unavailable")
-      end
-      return "refresh"
-    elseif n == 5 then
-      boop.gag.setOwn(not boop.config.gagOwnAttacks)
-      return "refresh"
-    elseif n == 6 then
-      boop.gag.setOthers(not boop.config.gagOthersAttacks)
-      return "refresh"
-    elseif n == 7 then
-      configRememberReturnScreen("debug")
-      boop.gag.showColors("own")
-      return "handled"
-    elseif n == 8 then
-      configRememberReturnScreen("debug")
-      boop.gag.showColors("others")
-      return "handled"
-    end
-    return false
-  end
-
-  return false
+  return action({
+    rememberReturn = configRememberReturnScreen,
+    seed = function(screen, prefix)
+      configRememberReturnScreen(screen, prefix)
+      uiSetCommandLine(prefix)
+    end,
+  }) or "handled"
 end
 
 function boop.ui.toggleConfigBool(key, noRefresh)
