@@ -356,6 +356,7 @@ flushPendingGold = function(reason)
 end
 
 boop.flushPendingGold = flushPendingGold
+boop.maybeFlushPendingGold = maybeFlushPendingGold
 
 local function autoGrabRoomItem(item)
   if not isGoldItem(item) then return end
@@ -892,91 +893,22 @@ function boop.canUseRage()
 end
 
 function boop.tick()
-  if not boop.config.enabled then return end
-  if boop.state.diagHold then return end
-  if maybeFlushPendingGold("tick pending age") then return end
-  if boop.state.goldGetPending or boop.state.goldPutPending then return end
-
-  if boop.safety and boop.safety.shouldFlee and boop.safety.shouldFlee() then
-    boop.safety.flee()
+  if boop.runtime and boop.runtime.step and boop.runtime.applyEffects then
+    local context = boop.runtime.context()
+    local result = boop.runtime.step({ type = "tick", context = context })
+    boop.state.attacking = boop.runtime.applyEffects(result, context)
     return
   end
-
-  local targetId = boop.targets.choose()
-  if not targetId or targetId == "" then
-    boop.state.attacking = false
-    if boop.config.useQueueing and boop.state.autoGrabGoldPending then
-      flushPendingGold("tick no target")
-    end
-    if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
-      boop.trace.log("tick: waiting for leader target call")
-      return
-    end
-    boop.trace.log("tick: no target")
-    if boop.walk and boop.walk.maybeAdvance then
-      boop.walk.maybeAdvance("tick no target")
-    end
-    return
-  end
-
-  if boop.state.currentTargetId ~= targetId then
-    boop.targets.setTarget(targetId)
-  end
-
-  local actions = boop.attacks.choose()
-  local didAction = false
-
-  if actions.standard and actions.standard ~= "" then
-    if not boop.state.prequeuedStandard and boop.canAct() then
-      boop.executeAction(actions.standard)
-      if actions.standardIsOpener and boop.attacks and boop.attacks.markOpenerUsed then
-        boop.attacks.markOpenerUsed(classKeyForOpener(), targetId)
-      end
-      if actions.standardShieldbreak and boop.targets and boop.targets.onShieldbreakAttempt then
-        boop.targets.onShieldbreakAttempt()
-      end
-      didAction = true
-    end
-  end
-
-  if actions.rage and actions.rage ~= "" then
-    if boop.canUseRage() then
-      boop.executeRageAction(actions.rage)
-      if boop.stats and boop.stats.onRageExecuted then
-        boop.stats.onRageExecuted(actions.rageAbility, actions.rageDecision)
-      end
-      if actions.rageAbility and actions.rageAbility.desc == "Shieldbreak" and boop.targets and boop.targets.onShieldbreakAttempt then
-        boop.targets.onShieldbreakAttempt()
-      end
-      if boop.rage and boop.rage.onRageUsed then
-        boop.rage.onRageUsed(actions.rageAbility)
-      end
-      didAction = true
-    end
-  end
-
-  boop.state.attacking = didAction
 end
 
 function boop.onPrompt()
-  if boop.state and boop.state.diagHold then
-    if boop.state.diagAwaitPrompt then
-      local label = boop.state.diagLabel ~= "" and boop.state.diagLabel or "diag"
-      boop.state.diagHold = false
-      boop.state.diagAwaitPrompt = false
-      boop.state.diagLabel = ""
-      if boop.state.diagTimeoutTimer then
-        killTimer(boop.state.diagTimeoutTimer)
-        boop.state.diagTimeoutTimer = nil
-      end
-      boop.util.ok(label .. " complete; attacks resumed")
-      boop.trace.log(label .. " complete")
-    else
-      return
+  if boop.runtime and boop.runtime.step and boop.runtime.applyEffects then
+    local context = boop.runtime.context()
+    local result = boop.runtime.step({ type = "prompt", context = context })
+    boop.runtime.applyEffects(result, context)
+    if result.runTick then
+      boop.tick()
     end
+    return
   end
-  if boop.gag and boop.gag.onPrompt then
-    boop.gag.onPrompt()
-  end
-  boop.tick()
 end
