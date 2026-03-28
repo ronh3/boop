@@ -28,16 +28,16 @@
     "isFolder": "no"
   },
   {
-    "name": "Boop Pack Set",
+    "name": "Boop Pack Test",
     "isActive": "yes",
-    "regex": "^(?i)boop\\s+pack\\s+(.+)$",
+    "regex": "^(?i)boop\\s+pack\\s+test$",
     "script": "",
     "isFolder": "no"
   },
   {
-    "name": "Boop Pack Test",
+    "name": "Boop Pack Set",
     "isActive": "yes",
-    "regex": "^(?i)boop\\s+pack\\s+test$",
+    "regex": "^(?i)boop\\s+pack\\s+(.+)$",
     "script": "",
     "isFolder": "no"
   }
