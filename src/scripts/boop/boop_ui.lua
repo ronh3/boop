@@ -14,23 +14,33 @@ local function saveConfigValue(key, value)
 end
 
 local function configSchema()
-  return (boop.config and boop.config.schema) or {}
+  return (boop.config and boop.config.schema)
+    or (boop.registry and boop.registry.config and boop.registry.config.schema)
+    or {}
 end
 
 local function modeRegistry()
-  return boop.ui and boop.ui.modes or {}
+  return (boop.ui and boop.ui.modes)
+    or (boop.registry and boop.registry.ui and boop.registry.ui.modes)
+    or {}
 end
 
 local function presetRegistry()
-  return boop.ui and boop.ui.presets or {}
+  return (boop.ui and boop.ui.presets)
+    or (boop.registry and boop.registry.ui and boop.registry.ui.presets)
+    or {}
 end
 
 local function helpTopicRegistry()
-  return boop.ui and boop.ui.helpTopics or {}
+  return (boop.ui and boop.ui.helpTopics)
+    or (boop.registry and boop.registry.ui and boop.registry.ui.helpTopics)
+    or {}
 end
 
 local function configSetterRegistry()
-  return boop.config and boop.config.setters or {}
+  return (boop.config and boop.config.setters)
+    or (boop.registry and boop.registry.config and boop.registry.config.setters)
+    or {}
 end
 
 local function boolText(value)
@@ -4051,7 +4061,9 @@ local function configRenderSection(key)
 end
 
 local function configActionRegistry()
-  local screens = boop.ui.screens or {}
+  local screens = (boop.ui and boop.ui.screens)
+    or (boop.registry and boop.registry.ui and boop.registry.ui.screens)
+    or {}
   return screens.configActions or {}
 end
 
