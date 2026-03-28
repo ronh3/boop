@@ -1,6 +1,73 @@
 boop.attacks = boop.attacks or {}
 boop.attacks.registry = boop.attacks.registry or {}
 
+local planningContext = nil
+
+local function withContext(context, fn)
+  local previous = planningContext
+  planningContext = context
+  local ok, a, b, c, d, e, f = pcall(fn)
+  planningContext = previous
+  if not ok then
+    error(a)
+  end
+  return a, b, c, d, e, f
+end
+
+local function planningState()
+  if planningContext and planningContext.state then
+    return planningContext.state
+  end
+  return boop.state or {}
+end
+
+local function planningConfig()
+  if planningContext and planningContext.config then
+    return planningContext.config
+  end
+  return boop.config or {}
+end
+
+local function planningSpec()
+  local state = planningState()
+  return state and state.spec or ""
+end
+
+local function planningTargetId()
+  if planningContext and planningContext.target and planningContext.target.id ~= nil then
+    return boop.util.trim(tostring(planningContext.target.id or ""))
+  end
+  local state = planningState()
+  return boop.util.trim(tostring(state and state.currentTargetId or ""))
+end
+
+local function planningTargetShield()
+  if planningContext and planningContext.target and planningContext.target.shield ~= nil then
+    return planningContext.target.shield
+  end
+  local state = planningState()
+  return state and state.targetShield or false
+end
+
+local function planningWieldedItem(hand)
+  if planningContext and planningContext.inventory then
+    if hand == "left" then
+      return planningContext.inventory.wieldedLeft
+    end
+    if hand == "right" then
+      return planningContext.inventory.wieldedRight
+    end
+  end
+  if boop.getWieldedItem then
+    return boop.getWieldedItem(hand)
+  end
+  local state = planningState()
+  if hand == "left" then
+    return state and state.wieldedLeft or nil
+  end
+  return state and state.wieldedRight or nil
+end
+
 function boop.attacks.register(class, profile)
   if not class or class == "" then return end
   local key = boop.util.safeLower(class)
@@ -27,15 +94,16 @@ local function standardPreferenceKey(classKey, section, spec)
 end
 
 local function standardPreferenceValue(classKey, section)
-  local spec = boop.state and boop.state.spec or ""
+  local spec = planningSpec()
   local specKey = standardPreferenceKey(classKey, section, spec)
-  if specKey ~= "" and boop.config and boop.config[specKey] and boop.config[specKey] ~= "" then
-    return boop.config[specKey], specKey
+  local config = planningConfig()
+  if specKey ~= "" and config[specKey] and config[specKey] ~= "" then
+    return config[specKey], specKey
   end
 
   local fallbackKey = standardPreferenceKey(classKey, section, "")
-  if fallbackKey ~= "" and boop.config and boop.config[fallbackKey] and boop.config[fallbackKey] ~= "" then
-    return boop.config[fallbackKey], fallbackKey
+  if fallbackKey ~= "" and config[fallbackKey] and config[fallbackKey] ~= "" then
+    return config[fallbackKey], fallbackKey
   end
 
   return "", specKey ~= "" and specKey or fallbackKey
@@ -112,7 +180,7 @@ local function appendStandardOptions(entry, out, seen)
   end
 
   if entry.bySpec then
-    local spec = boop.state and boop.state.spec or ""
+    local spec = planningSpec()
     local specEntry = entry.bySpec[spec]
     if not specEntry then
       specEntry = entry.default or entry.bySpec.default
@@ -228,8 +296,9 @@ function boop.attacks.rageReady(ability, rage)
     end
   end
   if key == "" then return true end
-  if boop.state and boop.state.rageReady and boop.state.rageReady[key] ~= nil then
-    return boop.state.rageReady[key]
+  local state = planningState()
+  if state and state.rageReady and state.rageReady[key] ~= nil then
+    return state.rageReady[key]
   end
   return true
 end
@@ -255,6 +324,9 @@ local function findByDescList(profile, descs, rage)
 end
 
 function boop.attacks.getRage()
+  if planningContext and planningContext.rage and planningContext.rage.amount ~= nil then
+    return tonumber(planningContext.rage.amount) or 0
+  end
   if gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.charstats then
     for _, stat in ipairs(gmcp.Char.Vitals.charstats) do
       local name, val = stat:match("^(%w+):%s*(%d+)")
@@ -267,6 +339,10 @@ function boop.attacks.getRage()
 end
 
 function boop.attacks.getTargetHpPerc()
+  if planningContext and planningContext.target and planningContext.target.hpperc ~= nil then
+    local num = tostring(planningContext.target.hpperc or ""):gsub("%%", "")
+    return tonumber(num) or 100
+  end
   if gmcp and gmcp.IRE and gmcp.IRE.Target and gmcp.IRE.Target.Info and gmcp.IRE.Target.Info.hpperc then
     local num = gmcp.IRE.Target.Info.hpperc:gsub("%%", "")
     return tonumber(num) or 100
@@ -275,12 +351,27 @@ function boop.attacks.getTargetHpPerc()
 end
 
 function boop.attacks.getTargetHpPercKnown()
+  if planningContext and planningContext.target then
+    local infoTargetId = boop.util.trim(tostring(planningContext.target.id or ""))
+    local currentTargetId = planningTargetId()
+    if currentTargetId ~= "" and infoTargetId ~= "" and infoTargetId ~= currentTargetId then
+      return nil
+    end
+    local hp = tostring(planningContext.target.hpperc or "")
+    if hp ~= "" then
+      local num = hp:gsub("%%", "")
+      local val = tonumber(num)
+      if val then
+        return val
+      end
+    end
+  end
   if not gmcp or not gmcp.IRE or not gmcp.IRE.Target or not gmcp.IRE.Target.Info then
     return nil
   end
 
   local info = gmcp.IRE.Target.Info
-  local currentTargetId = boop.util.trim(tostring(boop.state and boop.state.currentTargetId or ""))
+  local currentTargetId = planningTargetId()
   local infoTargetId = boop.util.trim(tostring(info.id or ""))
   if currentTargetId ~= "" then
     if infoTargetId == "" or infoTargetId ~= currentTargetId then
@@ -335,7 +426,8 @@ local function pullReserveAbility(profile)
 end
 
 local function pullReserveCost(profile)
-  if not boop.config or not boop.config.pullRageReserve then
+  local config = planningConfig()
+  if not config.pullRageReserve then
     return 0
   end
   local ability = pullReserveAbility(profile)
@@ -367,7 +459,8 @@ local function rosterClassKeys(selfClassKey)
   end
 
   addClass(selfClassKey)
-  local partyRaw = boop.util.trim((boop.config and boop.config.partyRoster) or "")
+  local config = planningConfig()
+  local partyRaw = boop.util.trim(config.partyRoster or "")
   for token in partyRaw:gmatch("([^,]+)") do
     addClass(token)
   end
@@ -450,7 +543,8 @@ local function conditionalNeedsProviderSupport(selfClassKey, ability)
 end
 
 local function traceComboDecision(classKey, reason)
-  if not boop.config or not boop.config.traceEnabled then
+  local config = planningConfig()
+  if not config.traceEnabled then
     return
   end
   if not boop.trace or not boop.trace.log then
@@ -459,7 +553,7 @@ local function traceComboDecision(classKey, reason)
 
   local cls = boop.util.safeLower(boop.util.trim(classKey or ""))
   if cls == "" then cls = "unknown" end
-  local targetId = boop.util.trim(tostring(boop.state and boop.state.currentTargetId or ""))
+  local targetId = planningTargetId()
   if targetId == "" then targetId = "none" end
   local why = boop.util.trim(reason or "")
   if why == "" then why = "unknown" end
@@ -964,7 +1058,8 @@ function boop.attacks.markOpenerUsed(classKey, targetId)
 end
 
 local function traceOpenerDecision(classKey, targetId, reason)
-  if not boop.config or not boop.config.traceEnabled then
+  local config = planningConfig()
+  if not config.traceEnabled then
     return
   end
   if not boop.trace or not boop.trace.log then
@@ -978,17 +1073,17 @@ local function traceOpenerDecision(classKey, targetId, reason)
   if tid == "" then tid = "none" end
   if why == "" then why = "unknown" end
 
-  boop.state = boop.state or {}
+  local state = planningState()
   local key = string.format("%s|%s|%s", cls, tid, why)
-  if boop.state.lastOpenerTraceKey == key then
+  if state.lastOpenerTraceKey == key then
     return
   end
-  boop.state.lastOpenerTraceKey = key
+  state.lastOpenerTraceKey = key
   boop.trace.log(string.format("opener %s (%s:%s)", why, cls, tid))
 end
 
 local function isTwoHandedSpec()
-  local spec = boop.util.safeLower(boop.state and boop.state.spec or "")
+  local spec = boop.util.safeLower(planningSpec())
   spec = boop.util.trim(spec)
   return spec == "two handed" or spec == "two-handed" or spec == "2h"
 end
@@ -1004,7 +1099,7 @@ local function focusKnown()
 end
 
 local function normalizedFocusVerb()
-  local raw = boop.config and boop.config.focusVerb or "speed"
+  local raw = planningConfig().focusVerb or "speed"
   local value = boop.util.safeLower(boop.util.trim(raw or ""))
   if value ~= "precision" then
     return "speed"
@@ -1092,8 +1187,8 @@ local function wieldedNameContains(fragment)
     return false
   end
 
-  local left = boop.getWieldedItem and boop.getWieldedItem("left") or (boop.state and boop.state.wieldedLeft) or nil
-  local right = boop.getWieldedItem and boop.getWieldedItem("right") or (boop.state and boop.state.wieldedRight) or nil
+  local left = planningWieldedItem("left")
+  local right = planningWieldedItem("right")
   local items = {}
   if left then items[#items + 1] = left end
   if right then items[#items + 1] = right end
@@ -1114,8 +1209,8 @@ local function wieldedMatchesDesignation(designation)
 
   local wantedLower = boop.util.safeLower(wanted)
   local compactWanted = wantedLower:gsub("[^%w]+", "")
-  local left = boop.getWieldedItem and boop.getWieldedItem("left") or (boop.state and boop.state.wieldedLeft) or nil
-  local right = boop.getWieldedItem and boop.getWieldedItem("right") or (boop.state and boop.state.wieldedRight) or nil
+  local left = planningWieldedItem("left")
+  local right = planningWieldedItem("right")
   local items = {}
   if left then items[#items + 1] = left end
   if right then items[#items + 1] = right end
@@ -1233,7 +1328,7 @@ end
 function boop.attacks.selectStandard(profile, classKey)
   if not profile then return "", false, false end
 
-  local targetId = boop.util.trim(tostring(boop.state and boop.state.currentTargetId or ""))
+  local targetId = planningTargetId()
   local opener = selectOpenerEntry(profile.openerAt100, classKey, targetId, true)
   if opener ~= "" then
     return opener, false, true
@@ -1244,8 +1339,9 @@ function boop.attacks.selectStandard(profile, classKey)
     return opener, false, true
   end
 
-  if boop.state.targetShield
-    and (type(boop.state.targetShield) ~= "table" or not boop.state.targetShield.attempted)
+  local targetShield = planningTargetShield()
+  if targetShield
+    and (type(targetShield) ~= "table" or not targetShield.attempted)
     and profile.shield
   then
     local cmd = standardCommand(profile.shield, boop.attacks.getStandardPreference(classKey, "shield"))
@@ -1254,71 +1350,149 @@ function boop.attacks.selectStandard(profile, classKey)
   if profile.dam then
       local cmd = standardCommand(profile.dam, boop.attacks.getStandardPreference(classKey, "dam"))
       if cmd ~= "" then
-        if isTwoHandedSpec() and focusKnown() then
-          cmd = prependFocusVerb(cmd)
-        end
         return cmd, false, false
       end
   end
   return "", false, false
 end
 
-function boop.attacks.choose()
-  if not gmcp or not gmcp.Char or not gmcp.Char.Status then
+function boop.attacks.plan(context)
+  return withContext(context, function()
+    local class = planningContext and planningContext.class or ""
+    if class == "" and gmcp and gmcp.Char and gmcp.Char.Status then
+      class = boop.util.safeLower(gmcp.Char.Status.class)
+    end
+    if class == "" then
+      return { standard = "", rage = "" }
+    end
+
+    local profile = boop.attacks.registry[class]
+    if not profile then
+      return { standard = "", rage = "" }
+    end
+
+    local standard = ""
+    local standardShieldbreak = false
+    local standardIsOpener = false
+    if profile.standard then
+      standard, standardShieldbreak, standardIsOpener = boop.attacks.selectStandard(profile.standard, class)
+    end
+
+    local rageAction = ""
+    local rageAbility = nil
+    local rageDecision = nil
+    if profile.rage then
+      local rage = boop.attacks.getRage()
+      local ability, decision = boop.attacks.selectRage(profile.rage, rage, class, standardShieldbreak)
+      if ability and ability.cmd and ability.cmd ~= "" then
+        rageAction = ability.cmd
+        rageAbility = ability
+      end
+      rageDecision = decision
+    end
+
+    return {
+      class = class,
+      standard = standard,
+      standardShieldbreak = standardShieldbreak,
+      standardIsOpener = standardIsOpener,
+      rage = rageAction,
+      rageAbility = rageAbility,
+      rageDecision = rageDecision
+    }
+  end)
+end
+
+function boop.attacks.applyModifiers(plan, context)
+  if type(plan) ~= "table" then
     return { standard = "", rage = "" }
   end
-  local class = boop.util.safeLower(gmcp.Char.Status.class)
-  if class == "" then return { standard = "", rage = "" } end
 
-  local profile = boop.attacks.registry[class]
-  if not profile then return { standard = "", rage = "" } end
-
-  local standard = ""
-  local standardShieldbreak = false
-  local standardIsOpener = false
-  if profile.standard then
-    standard, standardShieldbreak, standardIsOpener = boop.attacks.selectStandard(profile.standard, class)
-  end
-
-  if standard ~= "" and class == "unnamable" and unnamableMaulKnown() and unnamableMaulReady() then
-    standard = prependUnnamableMaul(standard)
-  end
-  if standard ~= "" and class == "infernal" and infernalMaulKnown() and infernalMaulReady() then
-    standard = prependInfernalHyenaMaul(standard)
-  end
-  if standard ~= "" and class == "depthswalker" then
-    standard = prependDepthswalkerWeapon(standard, standardShieldbreak)
-  end
-
-  local rageAction = ""
-  local rageAbility = nil
-  local rageDecision = nil
-  if profile.rage then
-    local rage = boop.attacks.getRage()
-    local ability, decision = boop.attacks.selectRage(profile.rage, rage, class, standardShieldbreak)
-    if ability and ability.cmd and ability.cmd ~= "" then
-      rageAction = ability.cmd
-      rageAbility = ability
+  return withContext(context, function()
+    local resolved = {}
+    for key, value in pairs(plan) do
+      resolved[key] = value
     end
-    rageDecision = decision
+
+    local standard = resolved.standard or ""
+    local class = boop.util.safeLower(resolved.class or "")
+    if standard ~= "" and isTwoHandedSpec() and focusKnown() and not resolved.standardShieldbreak then
+      standard = prependFocusVerb(standard)
+    end
+    if standard ~= "" and class == "unnamable" and unnamableMaulKnown() and unnamableMaulReady() then
+      standard = prependUnnamableMaul(standard)
+    end
+    if standard ~= "" and class == "infernal" and infernalMaulKnown() and infernalMaulReady() then
+      standard = prependInfernalHyenaMaul(standard)
+    end
+    if standard ~= "" and class == "depthswalker" then
+      standard = prependDepthswalkerWeapon(standard, resolved.standardShieldbreak)
+    end
+
+    local targetId = planningTargetId()
+    if standard ~= "" then
+      standard = boop.util.formatTarget(standard, targetId)
+    end
+
+    local rageAction = resolved.rage or ""
+    if rageAction ~= "" then
+      rageAction = boop.util.formatTarget(rageAction, targetId)
+    end
+
+    resolved.standard = standard
+    resolved.rage = rageAction
+    return resolved
+  end)
+end
+
+function boop.attacks.choose(context)
+  local activeContext = context
+  if not activeContext and boop.runtime and boop.runtime.context then
+    activeContext = boop.runtime.context()
+  end
+  local plan = boop.attacks.plan(activeContext)
+  return boop.attacks.applyModifiers(plan, activeContext)
+end
+
+function boop.attacks.execute(plan, context)
+  if type(plan) ~= "table" then
+    return false
   end
 
-  local targetId = boop.state.currentTargetId or ""
-  if standard ~= "" then
-    standard = boop.util.formatTarget(standard, targetId)
-  end
-  if rageAction ~= "" then
-    rageAction = boop.util.formatTarget(rageAction, targetId)
+  local activeContext = context or (boop.runtime and boop.runtime.context and boop.runtime.context()) or nil
+  local didAction = false
+
+  if plan.standard and plan.standard ~= "" then
+    local prequeued = activeContext and activeContext.queue and activeContext.queue.prequeuedStandard or false
+    if not prequeued and boop.canAct and boop.canAct() then
+      boop.executeAction(plan.standard)
+      if plan.standardIsOpener and boop.attacks and boop.attacks.markOpenerUsed then
+        boop.attacks.markOpenerUsed(plan.class or "", activeContext and activeContext.target and activeContext.target.id or "")
+      end
+      if plan.standardShieldbreak and boop.targets and boop.targets.onShieldbreakAttempt then
+        boop.targets.onShieldbreakAttempt()
+      end
+      didAction = true
+    end
   end
 
-  return {
-    standard = standard,
-    standardShieldbreak = standardShieldbreak,
-    standardIsOpener = standardIsOpener,
-    rage = rageAction,
-    rageAbility = rageAbility,
-    rageDecision = rageDecision
-  }
+  if plan.rage and plan.rage ~= "" then
+    if boop.canUseRage and boop.canUseRage() then
+      boop.executeRageAction(plan.rage)
+      if boop.stats and boop.stats.onRageExecuted then
+        boop.stats.onRageExecuted(plan.rageAbility, plan.rageDecision)
+      end
+      if plan.rageAbility and plan.rageAbility.desc == "Shieldbreak" and boop.targets and boop.targets.onShieldbreakAttempt then
+        boop.targets.onShieldbreakAttempt()
+      end
+      if boop.rage and boop.rage.onRageUsed then
+        boop.rage.onRageUsed(plan.rageAbility)
+      end
+      didAction = true
+    end
+  end
+
+  return didAction
 end
 
 function boop.attacks.choosePullRage(targetToken)

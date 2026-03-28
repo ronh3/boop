@@ -16,6 +16,10 @@ Current coverage:
   Confirms `openerAt100` behavior for all profiles that define one.
 - `boop_tick_spec.lua`
   Confirms `boop.tick()` sets target and sends the expected actions.
+- `boop_runtime_spec.lua`
+  Confirms the runtime coordinator exposes owned state domains, emits tick effects, and resolves prompt/diag hold effects.
+- `boop_planner_spec.lua`
+  Confirms the combat planner returns unexecuted plan data, applies modifiers separately, and executes a prepared plan.
 - `boop_rage_modes_spec.lua`
   Confirms rage-mode decisions for `combo`, `tempo`, `aff`, `small`, `big`, and `none`.
 - `boop_rage_contract_spec.lua`
@@ -62,6 +66,8 @@ Current coverage:
   Confirms DB guard paths degrade to warnings instead of throwing when optional Mudlet sheets are missing in an older local profile DB.
 - `boop_ui_spec.lua`
   Confirms the bare `boop` command shows the home dashboard with mode/blocker guidance, plus the control, party, roster, and related UI flows.
+- `boop_ui_registry_spec.lua`
+  Confirms the shared config, screen, mode, preset, and help registries exist and drive the corresponding UI commands.
 - `boop_stats_spec.lua`
   Confirms gold/xp accumulation across session/login/trip/lifetime scopes, party-size-aware mob xp bucketing, stats help output, per-target efficiency and profitability summaries, richer area rankings, trip comparison output, rage-efficiency summaries, per-ability damage/crit/kill summaries, crit/record rollups, reset behavior, whitelist rendering, and human-readable stats summaries.
 

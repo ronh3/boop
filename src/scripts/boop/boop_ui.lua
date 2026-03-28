@@ -13,6 +13,18 @@ local function saveConfigValue(key, value)
   end
 end
 
+local function configSchema()
+  return (boop.config and boop.config.schema) or {}
+end
+
+local function modeRegistry()
+  return boop.ui and boop.ui.modes or {}
+end
+
+local function presetRegistry()
+  return boop.ui and boop.ui.presets or {}
+end
+
 local function boolText(value)
   return value and "ON" or "OFF"
 end
@@ -1437,90 +1449,9 @@ end
 
 local function canonConfigKey(raw)
   local key = boop.util.safeLower(boop.util.trim(raw or ""))
-  local map = {
-    enabled = "enabled",
-    targeting = "targetingMode",
-    targetingmode = "targetingMode",
-    usequeueing = "useQueueing",
-    queueing = "useQueueing",
-    prequeue = "prequeueEnabled",
-    prequeueenabled = "prequeueEnabled",
-    lead = "attackLeadSeconds",
-    attacklead = "attackLeadSeconds",
-    attackleadseconds = "attackLeadSeconds",
-    autogold = "autoGrabGold",
-    autograbgold = "autoGrabGold",
-    pack = "goldPack",
-    goldpack = "goldPack",
-    whitelistpriorityorder = "whitelistPriorityOrder",
-    retargetonpriority = "retargetOnPriority",
-    retargetpriority = "retargetOnPriority",
-    stickytarget = "retargetOnPriority",
-    stickyoncurrent = "retargetOnPriority",
-    targetorder = "targetOrder",
-    ragemode = "attackMode",
-    attackmode = "attackMode",
-    trace = "traceEnabled",
-    traceenabled = "traceEnabled",
-    gag = "gagOwnAttacks",
-    gagown = "gagOwnAttacks",
-    gagownattacks = "gagOwnAttacks",
-    gagothers = "gagOthersAttacks",
-    gagothersattacks = "gagOthersAttacks",
-    gagcolorwho = "gagColorWho",
-    gagcolorability = "gagColorAbility",
-    gagcolortarget = "gagColorTarget",
-    gagcolormeta = "gagColorMeta",
-    gagcolorseparator = "gagColorSeparator",
-    gagcolorbg = "gagColorBackground",
-    gagcolorbackground = "gagColorBackground",
-    gagothercolorwho = "gagOtherColorWho",
-    gagothercolorability = "gagOtherColorAbility",
-    gagothercolortarget = "gagOtherColorTarget",
-    gagothercolormeta = "gagOtherColorMeta",
-    gagothercolorseparator = "gagOtherColorSeparator",
-    gagothercolorbg = "gagOtherColorBackground",
-    gagothercolorbackground = "gagOtherColorBackground",
-    diagtimeout = "diagTimeoutSeconds",
-    diagtimeoutseconds = "diagTimeoutSeconds",
-    partysize = "partySize",
-    partycount = "partySize",
-    groupsize = "partySize",
-    party = "partyRoster",
-    partyroster = "partyRoster",
-    assist = "assistEnabled",
-    assistenabled = "assistEnabled",
-    assistleader = "assistLeader",
-    leader = "assistLeader",
-    autotargetcall = "autoTargetCall",
-    autocall = "autoTargetCall",
-    leaderautocall = "autoTargetCall",
-    leadermode = "autoTargetCall",
-    leadtargets = "autoTargetCall",
-    pullreserve = "pullRageReserve",
-    pullragereserve = "pullRageReserve",
-    flee = "fleeEnabled",
-    fleeenabled = "fleeEnabled",
-    fleeat = "fleeAt",
-    theme = "uiTheme",
-    uitheme = "uiTheme",
-    targetcall = "targetCall",
-    leadertargetcall = "targetCall",
-    affcalls = "rageAffCalloutsEnabled",
-    rageaffcalls = "rageAffCalloutsEnabled",
-    rageaffcallouts = "rageAffCalloutsEnabled",
-    partyaffcalls = "rageAffCalloutsEnabled",
-    tempowindow = "tempoRageWindowSeconds",
-    temporagewindow = "tempoRageWindowSeconds",
-    temporagewindowseconds = "tempoRageWindowSeconds",
-    tempoeta = "tempoSqueezeEtaSeconds",
-    temposqueezeeta = "tempoSqueezeEtaSeconds",
-    temposqueezeetaseconds = "tempoSqueezeEtaSeconds",
-    gameseparator = "gameSeparator",
-    focus = "focusVerb",
-    focusverb = "focusVerb",
-  }
-  return map[key] or ""
+  local schema = configSchema()
+  local aliases = schema.aliases or {}
+  return aliases[key] or ""
 end
 
 function boop.ui.getConfigValue(key)
@@ -1534,50 +1465,8 @@ function boop.ui.getConfigValue(key)
 end
 
 function boop.ui.listConfigValues()
-  local keys = {
-    "enabled",
-    "targetingMode",
-    "useQueueing",
-    "prequeueEnabled",
-    "attackLeadSeconds",
-    "autoGrabGold",
-    "goldPack",
-    "whitelistPriorityOrder",
-    "retargetOnPriority",
-    "targetOrder",
-    "attackMode",
-    "pullRageReserve",
-    "fleeEnabled",
-    "fleeAt",
-    "tempoRageWindowSeconds",
-    "tempoSqueezeEtaSeconds",
-    "focusVerb",
-    "traceEnabled",
-    "gagOwnAttacks",
-    "gagOthersAttacks",
-    "gagColorWho",
-    "gagColorAbility",
-    "gagColorTarget",
-    "gagColorMeta",
-    "gagColorSeparator",
-    "gagColorBackground",
-    "gagOtherColorWho",
-    "gagOtherColorAbility",
-    "gagOtherColorTarget",
-    "gagOtherColorMeta",
-    "gagOtherColorSeparator",
-    "gagOtherColorBackground",
-    "diagTimeoutSeconds",
-    "partySize",
-    "partyRoster",
-    "targetCall",
-    "autoTargetCall",
-    "rageAffCalloutsEnabled",
-    "assistEnabled",
-    "assistLeader",
-    "uiTheme",
-    "gameSeparator",
-  }
+  local schema = configSchema()
+  local keys = schema.order or {}
   boop.util.info("config keys:")
   for _, key in ipairs(keys) do
     boop.util.echo("  " .. key .. ": " .. tostring(boop.config[key]))
@@ -2042,54 +1931,36 @@ function boop.ui.modeCommand(raw)
     return
   end
 
-  if cmd == "solo" then
-    saveConfigValue("autoTargetCall", false)
-    saveConfigValue("targetCall", false)
-    if boop.targets and boop.targets.clearTargetCall then
-      boop.targets.clearTargetCall("mode solo")
+  local modes = modeRegistry()
+  local selected = modes[cmd]
+  if not selected then
+    for _, entry in pairs(modes) do
+      for _, alias in ipairs(entry.aliases or {}) do
+        if alias == cmd then
+          selected = entry
+          break
+        end
+      end
+      if selected then
+        break
+      end
     end
-    saveConfigValue("assistEnabled", false)
-    boop.util.ok("mode: solo")
-    return
   end
 
-  if cmd == "assist" then
+  if selected then
     local leader = assistLeader()
-    if leader == "" then
-      boop.util.warn("assist mode needs a leader; use: boop assist <name>")
+    if selected.requiresLeader and leader == "" then
+      boop.util.warn(selected.key .. " mode needs a leader; use: boop assist <name>")
       return
     end
-    saveConfigValue("assistEnabled", true)
-    saveConfigValue("autoTargetCall", false)
-    saveConfigValue("targetCall", false)
-    if boop.targets and boop.targets.clearTargetCall then
-      boop.targets.clearTargetCall("mode assist")
+    for key, value in pairs(selected.values or {}) do
+      saveConfigValue(key, value)
     end
-    boop.util.ok("mode: assist -> " .. leader)
-    return
-  end
-
-  if cmd == "leader" or cmd == "leading" then
-    saveConfigValue("assistEnabled", false)
-    saveConfigValue("autoTargetCall", true)
-    saveConfigValue("targetCall", false)
-    if boop.targets and boop.targets.clearTargetCall then
-      boop.targets.clearTargetCall("mode leader")
+    if selected.clearTargetCall and boop.targets and boop.targets.clearTargetCall then
+      boop.targets.clearTargetCall("mode " .. tostring(selected.key))
     end
-    boop.util.ok("mode: leader")
-    return
-  end
-
-  if cmd == "leader-call" or cmd == "leadercall" or cmd == "lead" then
-    local leader = assistLeader()
-    if leader == "" then
-      boop.util.warn("leader-call mode needs a leader; use: boop assist <name>")
-      return
-    end
-    saveConfigValue("assistEnabled", true)
-    saveConfigValue("autoTargetCall", false)
-    saveConfigValue("targetCall", true)
-    boop.util.ok("mode: leader-call -> " .. leader)
+    local message = selected.message and selected.message(leader) or ("mode: " .. tostring(selected.key))
+    boop.util.ok(message)
     return
   end
 
@@ -2166,6 +2037,9 @@ local PRESET_DEFS = {
     },
   },
 }
+
+boop.ui.presets = boop.ui.presets or PRESET_DEFS
+PRESET_DEFS = boop.ui.presets
 
 local function canonicalPresetName(raw)
   local cmd = boop.util.safeLower(boop.util.trim(raw or ""))
@@ -3934,6 +3808,9 @@ local HELP_TOPICS = {
   },
 }
 
+boop.ui.helpTopics = boop.ui.helpTopics or HELP_TOPICS
+HELP_TOPICS = boop.ui.helpTopics
+
 local function helpResolveTopic(raw)
   local token = boop.util.safeLower(boop.util.trim(raw or ""))
   if token == "" then return nil end
@@ -4207,7 +4084,7 @@ function boop.ui.home()
   boop.util.echo("Quick: boop control | boop party | boop roster | boop mode | boop stats")
 end
 
-local CONFIG_SECTIONS = {
+local CONFIG_SECTIONS = (boop.ui.screens and boop.ui.screens.configSections) or {
   { id = 1, key = "combat", label = "Hunting", aliases = { "combat", "hunting", "queueing", "queue" } },
   { id = 2, key = "targeting", label = "Targeting", aliases = { "targeting", "targets" } },
   { id = 3, key = "loot", label = "Loot", aliases = { "loot", "gold", "import" } },
@@ -4269,26 +4146,30 @@ local function configResolveSection(token)
 end
 
 local function configGetScreen()
+  local state = boop.runtime and boop.runtime.state and boop.runtime.state() or boop.state or {}
   boop.ui = boop.ui or {}
-  local key = boop.ui.configScreen or (boop.state and boop.state.configScreen) or "home"
+  local key = boop.ui.configScreen or (state and state.configScreen) or "home"
   if key ~= "home" and not configSectionByKey(key) then
     key = "home"
   end
   boop.ui.configScreen = key
-  boop.state = boop.state or {}
-  boop.state.configScreen = key
+  if state then
+    state.configScreen = key
+  end
   return key
 end
 
 local function configSetScreen(key)
   boop.ui = boop.ui or {}
-  boop.state = boop.state or {}
+  local state = boop.runtime and boop.runtime.state and boop.runtime.state() or boop.state or {}
   local screen = boop.util.safeLower(boop.util.trim(key or "home"))
   if screen ~= "home" and not configSectionByKey(screen) then
     screen = "home"
   end
   boop.ui.configScreen = screen
-  boop.state.configScreen = screen
+  if state then
+    state.configScreen = screen
+  end
   return screen
 end
 
@@ -4297,16 +4178,22 @@ boop.ui._setScreen = configSetScreen
 local function configRememberReturnScreen(key, prefix)
   local screen = boop.util.safeLower(boop.util.trim(key or ""))
   if screen ~= "" and configSectionByKey(screen) then
+    local state = boop.runtime and boop.runtime.state and boop.runtime.state() or boop.state or {}
     boop.ui = boop.ui or {}
     boop.ui.configReturnScreen = screen
     boop.ui.configReturnPrefix = prefix or ""
+    if state then
+      state.configReturnScreen = screen
+      state.configReturnPrefix = prefix or ""
+    end
   end
 end
 
 function boop.ui.consumeConfigReturnScreen(expected, prefix)
+  local state = boop.runtime and boop.runtime.state and boop.runtime.state() or boop.state or {}
   boop.ui = boop.ui or {}
-  local screen = boop.ui.configReturnScreen or ""
-  local storedPrefix = boop.ui.configReturnPrefix or ""
+  local screen = boop.ui.configReturnScreen or (state and state.configReturnScreen) or ""
+  local storedPrefix = boop.ui.configReturnPrefix or (state and state.configReturnPrefix) or ""
   if expected and screen ~= expected then
     return ""
   end
@@ -4315,6 +4202,10 @@ function boop.ui.consumeConfigReturnScreen(expected, prefix)
   end
   boop.ui.configReturnScreen = nil
   boop.ui.configReturnPrefix = nil
+  if state then
+    state.configReturnScreen = nil
+    state.configReturnPrefix = nil
+  end
   return screen
 end
 
@@ -4380,27 +4271,29 @@ local function configHomeRoute(token)
   if key == "" then
     return false
   end
-  if key == "5" or key == "party" or key == "assist" or key == "leader" then
+  local routeMap = boop.ui.screens and boop.ui.screens.configHomeRoutes or {}
+  local route = routeMap[key]
+  if route == "party" then
     boop.ui.partyCommand("")
     return true
   end
-  if key == "6" or key == "roster" then
+  if route == "roster" then
     boop.ui.rosterCommand("")
     return true
   end
-  if key == "7" or key == "theme" or key == "appearance" then
+  if route == "theme" then
     boop.ui.themeCommand("")
     return true
   end
-  if key == "8" or key == "control" then
+  if route == "control" then
     boop.ui.controlCommand("")
     return true
   end
-  if key == "9" or key == "stats" then
+  if route == "stats" then
     boop.stats.command("")
     return true
   end
-  if key == "mode" then
+  if route == "mode" then
     boop.ui.modeCommand("")
     return true
   end
