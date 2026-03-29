@@ -50,14 +50,14 @@ describe("boop rage ingestion", function()
 
     boop.rage.onRageUsed({ name = "Harry" })
 
-    assert.is_false(boop.state.rageReady.harry)
-    assert.are.equal(45, boop.state.rageTimers.harry)
+    assert.is_false(boop.state.rage.ready.harry)
+    assert.are.equal(45, boop.state.rage.timers.harry)
     assert.is_function(restore_callback)
 
     restore_callback()
 
-    assert.is_true(boop.state.rageReady.harry)
-    assert.is_nil(boop.state.rageTimers.harry)
+    assert.is_true(boop.state.rage.ready.harry)
+    assert.is_nil(boop.state.rage.timers.harry)
   end)
 
   it("records rage samples and computes gain rate and eta from them", function()

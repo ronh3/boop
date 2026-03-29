@@ -25,10 +25,10 @@ describe("boop runtime coordinator", function()
 
     state.targeting.currentTargetId = "42"
     state.queue.prequeuedStandard = true
-    boop.state.calledTargetId = "99"
+    boop.state.targeting.calledTargetId = "99"
 
-    assert.are.equal("42", boop.state.currentTargetId)
-    assert.is_true(boop.state.prequeuedStandard)
+    assert.are.equal("42", boop.state.targeting.currentTargetId)
+    assert.is_true(boop.state.queue.prequeuedStandard)
     assert.are.equal("99", state.targeting.calledTargetId)
   end)
 
@@ -59,17 +59,17 @@ describe("boop runtime coordinator", function()
   end)
 
   it("releases diagnose hold from prompt effects", function()
-    boop.state.diagHold = true
-    boop.state.diagAwaitPrompt = true
-    boop.state.diagLabel = "matic"
-    boop.state.diagTimeoutTimer = 44
+    boop.state.diag.hold = true
+    boop.state.diag.awaitPrompt = true
+    boop.state.diag.label = "matic"
+    boop.state.diag.timeoutTimer = 44
 
     local result = boop.runtime.step({ type = "prompt", context = boop.runtime.context() })
     boop.runtime.applyEffects(result, boop.runtime.context())
 
-    assert.is_false(boop.state.diagHold)
-    assert.is_false(boop.state.diagAwaitPrompt)
-    assert.are.equal("", boop.state.diagLabel)
+    assert.is_false(boop.state.diag.hold)
+    assert.is_false(boop.state.diag.awaitPrompt)
+    assert.are.equal("", boop.state.diag.label)
     assert.stub(kill_timer_stub).was_called_with(44)
   end)
 end)

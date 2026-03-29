@@ -43,34 +43,34 @@ describe("boop gold handling", function()
 
     assert.stub(send_stub).was_called_with("queue add balance get sovereigns", false)
     assert.stub(send_stub).was_called_with("queue add balance put sovereigns in pack", false)
-    assert.is_true(boop.state.goldGetPending)
-    assert.is_true(boop.state.goldPutPending)
-    assert.are.equal("pack", boop.state.goldPackTarget)
+    assert.is_true(boop.state.gold.getPending)
+    assert.is_true(boop.state.gold.putPending)
+    assert.are.equal("pack", boop.state.gold.packTarget)
   end)
 
   it("flushes pending gold when tick finds no target under queueing", function()
     boop.config.useQueueing = true
     boop.config.goldPack = "pack"
-    boop.state.autoGrabGoldPending = true
-    boop.state.autoGrabGoldPendingAt = -1
-    boop.state.goldDropped = true
+    boop.state.gold.autoGrabPending = true
+    boop.state.gold.autoGrabPendingAt = -1
+    boop.state.gold.dropped = true
 
     boop.tick()
 
     assert.stub(send_stub).was_called_with("queue add balance get sovereigns", false)
     assert.stub(send_stub).was_called_with("queue add balance put sovereigns in pack", false)
-    assert.is_false(boop.state.autoGrabGoldPending)
-    assert.is_false(boop.state.goldDropped)
-    assert.is_true(boop.state.goldGetPending)
-    assert.is_true(boop.state.goldPutPending)
+    assert.is_false(boop.state.gold.autoGrabPending)
+    assert.is_false(boop.state.gold.dropped)
+    assert.is_true(boop.state.gold.getPending)
+    assert.is_true(boop.state.gold.putPending)
   end)
 
   it("flushes aged pending gold during tick even if combat is ongoing", function()
     boop.config.useQueueing = true
     boop.config.goldPack = "pack"
-    boop.state.autoGrabGoldPending = true
-    boop.state.autoGrabGoldPendingAt = -1
-    boop.state.goldDropped = true
+    boop.state.gold.autoGrabPending = true
+    boop.state.gold.autoGrabPendingAt = -1
+    boop.state.gold.dropped = true
     helper.setClass("Occultist")
     helper.learnSkills({
       { name = "Warp", group = "Occultism" },
@@ -85,26 +85,26 @@ describe("boop gold handling", function()
 
     assert.stub(send_stub).was_called_with("queue add balance get sovereigns", false)
     assert.stub(send_stub).was_called_with("queue add balance put sovereigns in pack", false)
-    assert.is_false(boop.state.autoGrabGoldPending)
-    assert.is_true(boop.state.goldGetPending)
-    assert.is_true(boop.state.goldPutPending)
+    assert.is_false(boop.state.gold.autoGrabPending)
+    assert.is_true(boop.state.gold.getPending)
+    assert.is_true(boop.state.gold.putPending)
   end)
 
   it("prepends gold pickup to the next queued combat action when queueing sees pending gold", function()
     boop.config.useQueueing = true
     boop.config.goldPack = "pack"
-    boop.state.autoGrabGoldPending = true
-    boop.state.autoGrabGoldPendingAt = -1
-    boop.state.goldDropped = true
+    boop.state.gold.autoGrabPending = true
+    boop.state.gold.autoGrabPendingAt = -1
+    boop.state.gold.dropped = true
 
     boop.executeAction("warp 42")
 
     assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK get sovereigns/put sovereigns in pack/warp 42", false)
     assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
-    assert.is_false(boop.state.autoGrabGoldPending)
-    assert.is_nil(boop.state.autoGrabGoldPendingAt)
-    assert.is_false(boop.state.goldDropped)
-    assert.is_true(boop.state.goldGetPending)
-    assert.is_true(boop.state.goldPutPending)
+    assert.is_false(boop.state.gold.autoGrabPending)
+    assert.is_nil(boop.state.gold.autoGrabPendingAt)
+    assert.is_false(boop.state.gold.dropped)
+    assert.is_true(boop.state.gold.getPending)
+    assert.is_true(boop.state.gold.putPending)
   end)
 end)

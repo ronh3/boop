@@ -9,7 +9,7 @@ local function classKeyForOpener()
   if gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class then
     return gmcp.Char.Status.class
   end
-  return boop.state and boop.state.class or ""
+  return boop.state and boop.state.combat.class or ""
 end
 
 local function isGoldItem(item)
@@ -137,13 +137,13 @@ local function updateWieldedFromInvItem(item, reason)
   local tracked = copyInvItem(item)
   local id = tostring(tracked.id or "")
   if id ~= "" then
-    boop.state.inventoryItemsById = boop.state.inventoryItemsById or {}
-    boop.state.inventoryItemsById[id] = tracked
+    boop.state.inventory.itemsById = boop.state.inventory.itemsById or {}
+    boop.state.inventory.itemsById[id] = tracked
   end
 
   local isLeft, isRight = parseWieldAttrib(tracked.attrib)
-  local currentLeft = boop.state.wieldedLeft
-  local currentRight = boop.state.wieldedRight
+  local currentLeft = boop.state.inventory.wieldedLeft
+  local currentRight = boop.state.inventory.wieldedRight
   if currentLeft and tostring(currentLeft.id or "") == id and not isLeft then
     setWieldedHand("left", false, reason or "attrib cleared")
   end
@@ -162,20 +162,20 @@ local function removeInvItem(item, reason)
   boop.state = boop.state or {}
   if type(item) ~= "table" then return end
   local id = tostring(item.id or "")
-  if id ~= "" and boop.state.inventoryItemsById then
-    boop.state.inventoryItemsById[id] = nil
+  if id ~= "" and boop.state.inventory.itemsById then
+    boop.state.inventory.itemsById[id] = nil
   end
-  if boop.state.wieldedLeft and tostring(boop.state.wieldedLeft.id or "") == id then
+  if boop.state.inventory.wieldedLeft and tostring(boop.state.inventory.wieldedLeft.id or "") == id then
     setWieldedHand("left", false, reason or "removed")
   end
-  if boop.state.wieldedRight and tostring(boop.state.wieldedRight.id or "") == id then
+  if boop.state.inventory.wieldedRight and tostring(boop.state.inventory.wieldedRight.id or "") == id then
     setWieldedHand("right", false, reason or "removed")
   end
 end
 
 local function rebuildWieldedFromInventory(items, reason)
   boop.state = boop.state or {}
-  boop.state.inventoryItemsById = {}
+  boop.state.inventory.itemsById = {}
   local leftItem = false
   local rightItem = false
   if type(items) == "table" then
@@ -184,7 +184,7 @@ local function rebuildWieldedFromInventory(items, reason)
       if tracked then
         local id = tostring(tracked.id or "")
         if id ~= "" then
-          boop.state.inventoryItemsById[id] = tracked
+          boop.state.inventory.itemsById[id] = tracked
         end
         local isLeft, isRight = parseWieldAttrib(tracked.attrib)
         if isLeft then leftItem = tracked end
@@ -206,38 +206,38 @@ end
 
 function boop.clearGoldQueueIntent()
   boop.state = boop.state or {}
-  if boop.state.autoGrabGoldTimer then
-    killTimer(boop.state.autoGrabGoldTimer)
-    boop.state.autoGrabGoldTimer = nil
+  if boop.state.gold.autoGrabTimer then
+    killTimer(boop.state.gold.autoGrabTimer)
+    boop.state.gold.autoGrabTimer = nil
   end
-  boop.state.autoGrabGoldPending = false
-  boop.state.autoGrabGoldPendingAt = nil
-  boop.state.goldDropped = false
-  if boop.state.goldPendingTimer then
-    killTimer(boop.state.goldPendingTimer)
-    boop.state.goldPendingTimer = nil
+  boop.state.gold.autoGrabPending = false
+  boop.state.gold.autoGrabPendingAt = nil
+  boop.state.gold.dropped = false
+  if boop.state.gold.pendingTimer then
+    killTimer(boop.state.gold.pendingTimer)
+    boop.state.gold.pendingTimer = nil
   end
-  boop.state.goldGetPending = false
-  boop.state.goldPutPending = false
-  boop.state.goldGetRetries = 0
-  boop.state.goldPutRetries = 0
-  boop.state.goldPackTarget = ""
+  boop.state.gold.getPending = false
+  boop.state.gold.putPending = false
+  boop.state.gold.getRetries = 0
+  boop.state.gold.putRetries = 0
+  boop.state.gold.packTarget = ""
 end
 
 local function stopGoldPendingTimeout()
   boop.state = boop.state or {}
-  if boop.state.goldPendingTimer then
-    killTimer(boop.state.goldPendingTimer)
-    boop.state.goldPendingTimer = nil
+  if boop.state.gold.pendingTimer then
+    killTimer(boop.state.gold.pendingTimer)
+    boop.state.gold.pendingTimer = nil
   end
 end
 
 local function armGoldPendingTimeout()
   boop.state = boop.state or {}
   stopGoldPendingTimeout()
-  boop.state.goldPendingTimer = tempTimer(4, function()
-    boop.state.goldPendingTimer = nil
-    if not (boop.state.goldGetPending or boop.state.goldPutPending) then
+  boop.state.gold.pendingTimer = tempTimer(4, function()
+    boop.state.gold.pendingTimer = nil
+    if not (boop.state.gold.getPending or boop.state.gold.putPending) then
       return
     end
     boop.trace.log("gold pending timeout: clearing stale state")
@@ -254,11 +254,11 @@ end
 function boop.markGoldQueueIntent(pack)
   boop.state = boop.state or {}
   local target = boop.util.trim(pack or "")
-  boop.state.goldGetPending = true
-  boop.state.goldPutPending = target ~= ""
-  boop.state.goldGetRetries = 0
-  boop.state.goldPutRetries = 0
-  boop.state.goldPackTarget = target
+  boop.state.gold.getPending = true
+  boop.state.gold.putPending = target ~= ""
+  boop.state.gold.getRetries = 0
+  boop.state.gold.putRetries = 0
+  boop.state.gold.packTarget = target
   armGoldPendingTimeout()
 end
 
@@ -279,13 +279,13 @@ local flushPendingGold
 
 local function clearPendingGoldDrop(reason)
   boop.state = boop.state or {}
-  if not boop.state.autoGrabGoldPending then
+  if not boop.state.gold.autoGrabPending then
     return false
   end
   cancelAutoGrabGoldTimer()
-  boop.state.autoGrabGoldPending = false
-  boop.state.autoGrabGoldPendingAt = nil
-  boop.state.goldDropped = false
+  boop.state.gold.autoGrabPending = false
+  boop.state.gold.autoGrabPendingAt = nil
+  boop.state.gold.dropped = false
   if reason then
     boop.trace.log("gold pending clear: " .. tostring(reason))
   end
@@ -294,9 +294,9 @@ end
 
 local function maybeFlushPendingGold(reason)
   boop.state = boop.state or {}
-  if not boop.state.autoGrabGoldPending then return false end
-  if boop.state.goldGetPending or boop.state.goldPutPending then return false end
-  local startedAt = tonumber(boop.state.autoGrabGoldPendingAt) or 0
+  if not boop.state.gold.autoGrabPending then return false end
+  if boop.state.gold.getPending or boop.state.gold.putPending then return false end
+  local startedAt = tonumber(boop.state.gold.autoGrabPendingAt) or 0
   if startedAt <= 0 then return false end
   if (nowSeconds() - startedAt) < AUTO_GOLD_FLUSH_SECONDS then return false end
   return flushPendingGold(reason or "pending age exceeded")
@@ -310,18 +310,18 @@ local function onGoldDetected(source)
   boop.trace.log("gold drop detected" .. (source and (": " .. source) or ""))
 
   if boop.config.useQueueing then
-    boop.state.autoGrabGoldPending = true
-    boop.state.autoGrabGoldPendingAt = nowSeconds()
-    boop.state.goldDropped = true
+    boop.state.gold.autoGrabPending = true
+    boop.state.gold.autoGrabPendingAt = nowSeconds()
+    boop.state.gold.dropped = true
 
-    local denizenCount = boop.state.denizens and #boop.state.denizens or 0
+    local denizenCount = boop.state.targeting.denizens and #boop.state.targeting.denizens or 0
     if denizenCount <= 0 then
       flushPendingGold("room clear on drop")
       return
     end
 
     cancelAutoGrabGoldTimer()
-    boop.state.autoGrabGoldTimer = tempTimer(AUTO_GOLD_FLUSH_SECONDS, function()
+    boop.state.gold.autoGrabTimer = tempTimer(AUTO_GOLD_FLUSH_SECONDS, function()
       if not boop.config or not boop.config.enabled or not boop.config.autoGrabGold then
         cancelAutoGrabGoldTimer()
         return
@@ -329,7 +329,7 @@ local function onGoldDetected(source)
       flushPendingGold("fallback timer")
     end)
   else
-    if boop.state.goldGetPending or boop.state.goldPutPending then
+    if boop.state.gold.getPending or boop.state.gold.putPending then
       return
     end
     queueGoldCommands()
@@ -337,19 +337,19 @@ local function onGoldDetected(source)
 end
 
 cancelAutoGrabGoldTimer = function()
-  if boop.state and boop.state.autoGrabGoldTimer then
-    killTimer(boop.state.autoGrabGoldTimer)
-    boop.state.autoGrabGoldTimer = nil
+  if boop.state and boop.state.gold.autoGrabTimer then
+    killTimer(boop.state.gold.autoGrabTimer)
+    boop.state.gold.autoGrabTimer = nil
   end
 end
 
 flushPendingGold = function(reason)
   boop.state = boop.state or {}
-  if not boop.state.autoGrabGoldPending then return false end
+  if not boop.state.gold.autoGrabPending then return false end
   cancelAutoGrabGoldTimer()
-  boop.state.autoGrabGoldPending = false
-  boop.state.autoGrabGoldPendingAt = nil
-  boop.state.goldDropped = false
+  boop.state.gold.autoGrabPending = false
+  boop.state.gold.autoGrabPendingAt = nil
+  boop.state.gold.dropped = false
   boop.trace.log("gold pending flush: " .. tostring(reason or "unspecified"))
   queueGoldCommands()
   return true
@@ -372,66 +372,66 @@ end
 
 local function retryGoldGet(reason)
   boop.state = boop.state or {}
-  if not boop.state.goldGetPending then return end
-  local retries = boop.state.goldGetRetries or 0
+  if not boop.state.gold.getPending then return end
+  local retries = boop.state.gold.getRetries or 0
   if retries >= 2 then
     boop.trace.log("gold get failed; giving up: " .. tostring(reason))
     boop.util.err("auto gold: unable to get sovereigns; check room loot/line timing")
-    boop.state.goldGetPending = false
-    boop.state.goldPutPending = false
-    boop.state.goldPackTarget = ""
+    boop.state.gold.getPending = false
+    boop.state.gold.putPending = false
+    boop.state.gold.packTarget = ""
     stopGoldPendingTimeout()
     return
   end
-  boop.state.goldGetRetries = retries + 1
+  boop.state.gold.getRetries = retries + 1
   armGoldPendingTimeout()
   send("queue add balance get sovereigns", false)
-  boop.trace.log("gold get retry " .. tostring(boop.state.goldGetRetries) .. ": " .. tostring(reason))
+  boop.trace.log("gold get retry " .. tostring(boop.state.gold.getRetries) .. ": " .. tostring(reason))
 end
 
 local function retryGoldPut(reason)
   boop.state = boop.state or {}
-  if not boop.state.goldPutPending then return end
-  local pack = boop.state.goldPackTarget or ""
+  if not boop.state.gold.putPending then return end
+  local pack = boop.state.gold.packTarget or ""
   if pack == "" then
-    boop.state.goldPutPending = false
+    boop.state.gold.putPending = false
     return
   end
 
-  local retries = boop.state.goldPutRetries or 0
+  local retries = boop.state.gold.putRetries or 0
   if retries >= 1 then
     boop.trace.log("gold put failed for pack " .. pack .. "; giving up: " .. tostring(reason))
     boop.util.err("auto gold: unable to put sovereigns in " .. pack .. "; use `boop pack test`")
-    boop.state.goldPutPending = false
+    boop.state.gold.putPending = false
     stopGoldPendingTimeout()
     return
   end
-  boop.state.goldPutRetries = retries + 1
+  boop.state.gold.putRetries = retries + 1
   armGoldPendingTimeout()
   send("queue add balance put sovereigns in " .. pack, false)
-  boop.trace.log("gold put retry " .. tostring(boop.state.goldPutRetries) .. " for " .. pack .. ": " .. tostring(reason))
+  boop.trace.log("gold put retry " .. tostring(boop.state.gold.putRetries) .. " for " .. pack .. ": " .. tostring(reason))
 end
 
 function boop.onGoldGetSuccess()
   boop.state = boop.state or {}
-  if not boop.state.goldGetPending then return end
-  boop.state.goldGetPending = false
-  boop.state.goldGetRetries = 0
-  if not boop.state.goldPutPending then
-    boop.state.goldPutPending = false
+  if not boop.state.gold.getPending then return end
+  boop.state.gold.getPending = false
+  boop.state.gold.getRetries = 0
+  if not boop.state.gold.putPending then
+    boop.state.gold.putPending = false
     stopGoldPendingTimeout()
   end
   boop.trace.log("gold get success")
-  if not boop.state.goldPutPending and boop.walk and boop.walk.maybeAdvance then
+  if not boop.state.gold.putPending and boop.walk and boop.walk.maybeAdvance then
     boop.walk.maybeAdvance("gold get success")
   end
 end
 
 function boop.onGoldPutSuccess()
   boop.state = boop.state or {}
-  if not boop.state.goldPutPending then return end
-  boop.state.goldPutPending = false
-  boop.state.goldPutRetries = 0
+  if not boop.state.gold.putPending then return end
+  boop.state.gold.putPending = false
+  boop.state.gold.putRetries = 0
   stopGoldPendingTimeout()
   boop.trace.log("gold put success")
   if boop.walk and boop.walk.maybeAdvance then
@@ -442,16 +442,16 @@ end
 function boop.onGoldCommandFailure(line)
   boop.state = boop.state or {}
   local reason = boop.util.trim(line or "")
-  if boop.state.goldGetPending then
+  if boop.state.gold.getPending then
     retryGoldGet(reason)
-    if not boop.state.goldGetPending and not boop.state.goldPutPending and boop.walk and boop.walk.maybeAdvance then
+    if not boop.state.gold.getPending and not boop.state.gold.putPending and boop.walk and boop.walk.maybeAdvance then
       boop.walk.maybeAdvance("gold get failed closed")
     end
     return
   end
-  if boop.state.goldPutPending then
+  if boop.state.gold.putPending then
     retryGoldPut(reason)
-    if not boop.state.goldPutPending and boop.walk and boop.walk.maybeAdvance then
+    if not boop.state.gold.putPending and boop.walk and boop.walk.maybeAdvance then
       boop.walk.maybeAdvance("gold put failed closed")
     end
     return
@@ -462,8 +462,8 @@ function boop.onGoldCommandFailure(line)
 end
 
 function boop.onDiagReadyLine()
-  if not boop.state or not boop.state.diagHold then return end
-  boop.state.diagAwaitPrompt = true
+  if not boop.state or not boop.state.diag.hold then return end
+  boop.state.diag.awaitPrompt = true
   boop.trace.log("diag ready line seen")
 end
 
@@ -526,7 +526,7 @@ function boop.onRoomItemsList()
   traceRoomItemsList(items, goldItem)
   if goldItem then
     boop.state = boop.state or {}
-    if not (boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending) then
+    if not (boop.state.gold.autoGrabPending or boop.state.gold.getPending or boop.state.gold.putPending) then
       autoGrabRoomItem(goldItem)
     end
   end
@@ -564,16 +564,16 @@ function boop.onRoomItemsRemove()
 
   if removedWasGold then
     boop.state = boop.state or {}
-    if boop.state.autoGrabGoldPending then
+    if boop.state.gold.autoGrabPending then
       clearPendingGoldDrop("gold removed before flush")
     end
-    if boop.state.goldGetPending or boop.state.goldPutPending then
+    if boop.state.gold.getPending or boop.state.gold.putPending then
       boop.trace.log("gold room item removed while pending: clearing stale gold state")
       boop.clearGoldQueueIntent()
     end
   end
 
-  if removedId ~= "" and boop.targets and boop.targets.clearTargetCall and tostring(boop.state.calledTargetId or "") == removedId then
+  if removedId ~= "" and boop.targets and boop.targets.clearTargetCall and tostring(boop.state.targeting.calledTargetId or "") == removedId then
     boop.targets.clearTargetCall("called target removed")
   end
 
@@ -582,7 +582,7 @@ function boop.onRoomItemsRemove()
   end
 
   boop.state = boop.state or {}
-  local current = tostring(boop.state.currentTargetId or "")
+  local current = tostring(boop.state.targeting.currentTargetId or "")
   if current == "" or current ~= removedId then
     return
   end
@@ -590,10 +590,10 @@ function boop.onRoomItemsRemove()
   if boop.stats and boop.stats.onTargetRemoved then
     boop.stats.onTargetRemoved(removedId, removedName)
   end
-  boop.state.currentTargetId = ""
-  boop.state.targetName = ""
-  boop.state.prequeuedStandard = false
-  boop.state.queueAliasDirty = true
+  boop.state.targeting.currentTargetId = ""
+  boop.state.targeting.targetName = ""
+  boop.state.queue.prequeuedStandard = false
+  boop.state.queue.aliasDirty = true
 
   if boop.targets and boop.targets.clearTargetShield then
     boop.targets.clearTargetShield("target removed")
@@ -602,7 +602,7 @@ function boop.onRoomItemsRemove()
     boop.afflictions.clearTarget()
   end
 
-  if not boop.config or not boop.config.enabled or boop.state.diagHold then
+  if not boop.config or not boop.config.enabled or boop.state.diag.hold then
     return
   end
 
@@ -702,22 +702,22 @@ end
 function boop.onTargetSet()
   if not gmcp or not gmcp.IRE or not gmcp.IRE.Target or not gmcp.IRE.Target.Set then return end
   local newId = tostring(gmcp.IRE.Target.Set or "")
-  local oldId = tostring(boop.state.currentTargetId or "")
+  local oldId = tostring(boop.state.targeting.currentTargetId or "")
   if oldId ~= "" and newId ~= "" and oldId ~= newId and boop.targets and boop.targets.clearTargetShield then
     boop.targets.clearTargetShield("target gmcp set changed")
   end
-  boop.state.currentTargetId = newId
+  boop.state.targeting.currentTargetId = newId
 end
 
 function boop.onTargetInfo()
   if not gmcp or not gmcp.IRE or not gmcp.IRE.Target or not gmcp.IRE.Target.Info then return end
   if gmcp.IRE.Target.Info.id then
     local newId = tostring(gmcp.IRE.Target.Info.id or "")
-    local oldId = tostring(boop.state.currentTargetId or "")
+    local oldId = tostring(boop.state.targeting.currentTargetId or "")
     if oldId ~= "" and newId ~= "" and oldId ~= newId and boop.targets and boop.targets.clearTargetShield then
       boop.targets.clearTargetShield("target gmcp info changed")
     end
-    boop.state.currentTargetId = newId
+    boop.state.targeting.currentTargetId = newId
   end
 end
 
@@ -731,8 +731,8 @@ function boop.onCharStatus()
   end
   if gmcp.Char.Status.class then
     local newClass = gmcp.Char.Status.class
-    if boop.state.class ~= newClass then
-      boop.state.class = newClass
+    if boop.state.combat.class ~= newClass then
+      boop.state.combat.class = newClass
       if boop.skills and boop.skills.requestAll then
         boop.skills.requestAll()
       end
@@ -757,7 +757,7 @@ function boop.onVitals()
         break
       end
     end
-    boop.state.spec = spec
+    boop.state.combat.spec = spec
   end
   boop.tick()
 end
@@ -768,36 +768,36 @@ function boop.onBalanceUsed(kind, seconds)
   local key = boop.util.safeLower(kind or "")
   local readyAt = nowSeconds() + duration
   if key == "balance" then
-    boop.state.balanceReadyAt = readyAt
+    boop.state.queue.balanceReadyAt = readyAt
   elseif key == "equilibrium" then
-    boop.state.equilibriumReadyAt = readyAt
+    boop.state.queue.equilibriumReadyAt = readyAt
   else
     return
   end
-  boop.state.prequeuedStandard = false
+  boop.state.queue.prequeuedStandard = false
   boop.schedulePrequeue()
 end
 
 function boop.schedulePrequeue()
   if not boop.config.prequeueEnabled then
-    if boop.state.prequeueTimer then
-      killTimer(boop.state.prequeueTimer)
-      boop.state.prequeueTimer = nil
+    if boop.state.queue.prequeueTimer then
+      killTimer(boop.state.queue.prequeueTimer)
+      boop.state.queue.prequeueTimer = nil
     end
     return
   end
 
   local lead = tonumber(boop.config.attackLeadSeconds) or 0
   if lead <= 0 or not boop.config.enabled then
-    if boop.state.prequeueTimer then
-      killTimer(boop.state.prequeueTimer)
-      boop.state.prequeueTimer = nil
+    if boop.state.queue.prequeueTimer then
+      killTimer(boop.state.queue.prequeueTimer)
+      boop.state.queue.prequeueTimer = nil
     end
     return
   end
 
-  local bal = boop.state.balanceReadyAt or 0
-  local eq = boop.state.equilibriumReadyAt or 0
+  local bal = boop.state.queue.balanceReadyAt or 0
+  local eq = boop.state.queue.equilibriumReadyAt or 0
   local readyAt = math.max(bal, eq)
   if readyAt <= 0 then return end
 
@@ -805,11 +805,11 @@ function boop.schedulePrequeue()
   if delay < 0 then delay = 0 end
   boop.trace.log(string.format("prequeue scheduled in %.2fs (lead %.2fs)", delay, lead))
 
-  if boop.state.prequeueTimer then
-    killTimer(boop.state.prequeueTimer)
+  if boop.state.queue.prequeueTimer then
+    killTimer(boop.state.queue.prequeueTimer)
   end
-  boop.state.prequeueTimer = tempTimer(delay, function()
-    boop.state.prequeueTimer = nil
+  boop.state.queue.prequeueTimer = tempTimer(delay, function()
+    boop.state.queue.prequeueTimer = nil
     boop.prequeueStandard()
   end)
 end
@@ -817,9 +817,9 @@ end
 function boop.prequeueStandard()
   if not boop.config.enabled then return end
   if not boop.config.prequeueEnabled then return end
-  if boop.state.diagHold then return end
-  if boop.state.goldGetPending or boop.state.goldPutPending then return end
-  if boop.state.prequeuedStandard then return end
+  if boop.state.diag.hold then return end
+  if boop.state.gold.getPending or boop.state.gold.putPending then return end
+  if boop.state.queue.prequeuedStandard then return end
   if gmcp and gmcp.Char and gmcp.Char.Vitals then
     if gmcp.Char.Vitals.bal == "1" and gmcp.Char.Vitals.eq == "1" then
       return
@@ -832,7 +832,7 @@ function boop.prequeueStandard()
 
   local targetId = boop.targets.choose()
   if not targetId or targetId == "" then
-    if boop.config.useQueueing and boop.state.autoGrabGoldPending then
+    if boop.config.useQueueing and boop.state.gold.autoGrabPending then
       flushPendingGold("prequeue no target")
     end
     if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
@@ -841,7 +841,7 @@ function boop.prequeueStandard()
     return
   end
 
-  if boop.state.currentTargetId ~= targetId then
+  if boop.state.targeting.currentTargetId ~= targetId then
     boop.targets.setTarget(targetId)
   end
 
@@ -854,7 +854,7 @@ function boop.prequeueStandard()
     if actions.standardShieldbreak and boop.targets and boop.targets.onShieldbreakAttempt then
       boop.targets.onShieldbreakAttempt()
     end
-    boop.state.prequeuedStandard = true
+    boop.state.queue.prequeuedStandard = true
     boop.trace.log("prequeue sent standard")
   end
 end
@@ -862,9 +862,9 @@ end
 function boop.refreshPrequeuedStandard(reason)
   if not boop.config.enabled then return false end
   if not boop.config.prequeueEnabled then return false end
-  if not boop.state.prequeuedStandard then return false end
-  if boop.state.diagHold then return false end
-  if boop.state.goldGetPending or boop.state.goldPutPending then return false end
+  if not boop.state.queue.prequeuedStandard then return false end
+  if boop.state.diag.hold then return false end
+  if boop.state.gold.getPending or boop.state.gold.putPending then return false end
   if gmcp and gmcp.Char and gmcp.Char.Vitals then
     if gmcp.Char.Vitals.bal == "1" and gmcp.Char.Vitals.eq == "1" then
       return false
@@ -873,7 +873,7 @@ function boop.refreshPrequeuedStandard(reason)
 
   local targetId = boop.targets.choose()
   if not targetId or targetId == "" then return false end
-  if tostring(boop.state.currentTargetId or "") ~= tostring(targetId) then
+  if tostring(boop.state.targeting.currentTargetId or "") ~= tostring(targetId) then
     return false
   end
 
@@ -890,21 +890,21 @@ function boop.refreshPrequeuedStandard(reason)
 end
 
 function boop.canAct()
-  if boop.state.limiters.hunting then return false end
+  if boop.state.combat.limiters.hunting then return false end
   if gmcp and gmcp.Char and gmcp.Char.Vitals then
     if gmcp.Char.Vitals.bal ~= "1" or gmcp.Char.Vitals.eq ~= "1" then
       return false
     end
   end
-  boop.state.limiters.hunting = true
-  tempTimer(0.4, function() boop.state.limiters.hunting = false end)
+  boop.state.combat.limiters.hunting = true
+  tempTimer(0.4, function() boop.state.combat.limiters.hunting = false end)
   return true
 end
 
 function boop.canUseRage()
-  if boop.state.limiters.rage then return false end
-  boop.state.limiters.rage = true
-  tempTimer(0.6, function() boop.state.limiters.rage = false end)
+  if boop.state.combat.limiters.rage then return false end
+  boop.state.combat.limiters.rage = true
+  tempTimer(0.6, function() boop.state.combat.limiters.rage = false end)
   return true
 end
 
@@ -912,7 +912,7 @@ function boop.tick()
   if boop.runtime and boop.runtime.step and boop.runtime.applyEffects then
     local context = boop.runtime.context()
     local result = boop.runtime.step({ type = "tick", context = context })
-    boop.state.attacking = boop.runtime.applyEffects(result, context)
+    boop.state.combat.attacking = boop.runtime.applyEffects(result, context)
     return
   end
 end

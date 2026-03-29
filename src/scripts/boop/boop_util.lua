@@ -110,11 +110,11 @@ function boop.trace.log(msg)
   if not boop.config or not boop.config.traceEnabled then return end
 
   boop.state = boop.state or {}
-  boop.state.traceBuffer = boop.state.traceBuffer or {}
+  boop.state.trace.buffer = boop.state.trace.buffer or {}
 
   local ts = os.date("%H:%M:%S")
   local line = string.format("%s | %s", ts, tostring(msg))
-  local buf = boop.state.traceBuffer
+  local buf = boop.state.trace.buffer
   buf[#buf + 1] = line
 
   local limit = 100
@@ -125,8 +125,8 @@ end
 
 function boop.trace.show(count)
   boop.state = boop.state or {}
-  boop.state.traceBuffer = boop.state.traceBuffer or {}
-  local buf = boop.state.traceBuffer
+  boop.state.trace.buffer = boop.state.trace.buffer or {}
+  local buf = boop.state.trace.buffer
   local total = #buf
   if total == 0 then
     boop.util.info("trace: (empty)")
@@ -144,7 +144,7 @@ end
 
 function boop.trace.clear()
   boop.state = boop.state or {}
-  boop.state.traceBuffer = {}
+  boop.state.trace.buffer = {}
   boop.util.ok("trace: cleared")
 end
 
@@ -201,7 +201,7 @@ function boop.executeAction(action, forceQueue)
 
   if boop.config.useQueueing or forceQueue then
     boop.state = boop.state or {}
-    if boop.config.useQueueing and boop.state.autoGrabGoldPending then
+    if boop.config.useQueueing and boop.state.gold.autoGrabPending then
       local queuedAction = action
       local normalized = boop.util.safeLower(boop.util.trim(queuedAction))
       if normalized ~= "get sovereigns" and not boop.util.starts(normalized, "get sovereigns/") then
@@ -215,44 +215,44 @@ function boop.executeAction(action, forceQueue)
         end
         queuedAction = prefix .. "/" .. queuedAction
       end
-      if boop.state.autoGrabGoldTimer then
-        killTimer(boop.state.autoGrabGoldTimer)
-        boop.state.autoGrabGoldTimer = nil
+      if boop.state.gold.autoGrabTimer then
+        killTimer(boop.state.gold.autoGrabTimer)
+        boop.state.gold.autoGrabTimer = nil
       end
-      boop.state.autoGrabGoldPending = false
-      boop.state.autoGrabGoldPendingAt = nil
-      boop.state.goldDropped = false
+      boop.state.gold.autoGrabPending = false
+      boop.state.gold.autoGrabPendingAt = nil
+      boop.state.gold.dropped = false
 
-      if boop.state.queueAliasDirty == nil then
-        boop.state.queueAliasDirty = true
+      if boop.state.queue.aliasDirty == nil then
+        boop.state.queue.aliasDirty = true
       end
 
-      local lastAction = boop.state.queueAliasAction or ""
-      if boop.state.queueAliasDirty or lastAction ~= queuedAction then
+      local lastAction = boop.state.queue.aliasAction or ""
+      if boop.state.queue.aliasDirty or lastAction ~= queuedAction then
         send("setalias BOOP_ATTACK " .. queuedAction, false)
-        boop.state.queueAliasAction = queuedAction
-        boop.state.queueAliasDirty = false
+        boop.state.queue.aliasAction = queuedAction
+        boop.state.queue.aliasDirty = false
       end
       send("queue addclearfull freestand BOOP_ATTACK", false)
       boop.trace.log("std queue: " .. queuedAction)
       markUnnamableMaulUsed(queuedAction)
       return
     end
-    if boop.config.useQueueing and (boop.state.goldGetPending or boop.state.goldPutPending) then
+    if boop.config.useQueueing and (boop.state.gold.getPending or boop.state.gold.putPending) then
       boop.trace.log("std queue blocked: gold pending")
       return
     end
     local queuedAction = action
 
-    if boop.state.queueAliasDirty == nil then
-      boop.state.queueAliasDirty = true
+    if boop.state.queue.aliasDirty == nil then
+      boop.state.queue.aliasDirty = true
     end
 
-    local lastAction = boop.state.queueAliasAction or ""
-    if boop.state.queueAliasDirty or lastAction ~= queuedAction then
+    local lastAction = boop.state.queue.aliasAction or ""
+    if boop.state.queue.aliasDirty or lastAction ~= queuedAction then
       send("setalias BOOP_ATTACK " .. queuedAction, false)
-      boop.state.queueAliasAction = queuedAction
-      boop.state.queueAliasDirty = false
+      boop.state.queue.aliasAction = queuedAction
+      boop.state.queue.aliasDirty = false
     end
     send("queue addclearfull freestand BOOP_ATTACK", false)
     boop.trace.log("std queue: " .. queuedAction)

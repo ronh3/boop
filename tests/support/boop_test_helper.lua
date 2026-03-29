@@ -169,7 +169,7 @@ end
 
 function M.setClass(className)
   gmcp.Char.Status.class = className
-  boop.state.class = className
+  boop.state.combat.class = className
 end
 
 function M.setSpec(spec)
@@ -180,7 +180,7 @@ function M.setSpec(spec)
   else
     table.insert(gmcp.Char.Vitals.charstats, value)
   end
-  boop.state.spec = spec
+  boop.state.combat.spec = spec
 end
 
 function M.setRage(rage)
@@ -195,8 +195,8 @@ end
 
 function M.setTarget(id, name, hpperc)
   local targetId = tostring(id or "")
-  boop.state.currentTargetId = targetId
-  boop.state.targetName = tostring(name or "")
+  boop.state.targeting.currentTargetId = targetId
+  boop.state.targeting.targetName = tostring(name or "")
   gmcp.IRE.Target.Set = targetId
   gmcp.IRE.Target.Info.id = targetId
   if hpperc ~= nil then
@@ -209,9 +209,9 @@ function M.setTargetHp(hpperc)
 end
 
 function M.setDenizens(denizens)
-  boop.state.denizens = {}
+  boop.state.targeting.denizens = {}
   for _, denizen in ipairs(denizens or {}) do
-    boop.state.denizens[#boop.state.denizens + 1] = {
+    boop.state.targeting.denizens[#boop.state.targeting.denizens + 1] = {
       id = tostring(denizen.id),
       name = denizen.name,
       attrib = denizen.attrib or "m",

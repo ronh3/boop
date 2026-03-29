@@ -34,22 +34,22 @@ describe("boop pull command", function()
 
   it("uses the configured game separator and typed mob name", function()
     boop.config.enabled = true
-    boop.state.room = "1"
+    boop.state.targeting.room = "1"
     boop.ui.gameSeparatorCommand("|")
 
     boop.ui.pullCommand("mage", "north")
 
     assert.is_false(boop.config.enabled)
-    assert.is_truthy(boop.state.pullState)
-    assert.are.equal("1", boop.state.pullState.originRoom)
-    assert.are.equal("outbound", boop.state.pullState.phase)
+    assert.is_truthy(boop.state.combat.pullState)
+    assert.are.equal("1", boop.state.combat.pullState.originRoom)
+    assert.are.equal("outbound", boop.state.combat.pullState.phase)
     assert.stub(send_stub).was_called_with("north|harry mage|leap south", false)
     assert.is_true(table.concat(echoes, "\n"):find("%[OK%] pull queued: north|harry mage|leap south", 1, true) ~= nil)
   end)
 
   it("restores boop after gmcp confirms the return to the origin room", function()
     boop.config.enabled = true
-    boop.state.room = "1"
+    boop.state.targeting.room = "1"
     boop.ui.gameSeparatorCommand("|")
 
     boop.ui.pullCommand("mage", "north")
@@ -57,12 +57,12 @@ describe("boop pull command", function()
     gmcp.Room.Info.num = "2"
     boop.onRoomInfo()
     assert.is_false(boop.config.enabled)
-    assert.are.equal("away", boop.state.pullState.phase)
+    assert.are.equal("away", boop.state.combat.pullState.phase)
 
     gmcp.Room.Info.num = "1"
     boop.onRoomInfo()
     assert.is_true(boop.config.enabled)
-    assert.is_false(boop.state.pullState)
+    assert.is_false(boop.state.combat.pullState)
     assert.is_true(table.concat(echoes, "\n"):find("%[OK%] pull complete; boop resumed", 1, true) ~= nil)
   end)
 

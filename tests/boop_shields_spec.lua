@@ -39,14 +39,14 @@ describe("boop shield tracking", function()
   it("tracks a shield when it is seen on the current target", function()
     boop.targets.onShielded("a test denizen")
 
-    assert.is_table(boop.state.targetShield)
-    assert.is_false(boop.state.targetShield.attempted)
-    assert.are.equal(101, boop.state.targetShield.timer)
+    assert.is_table(boop.state.targeting.targetShield)
+    assert.is_false(boop.state.targeting.targetShield.attempted)
+    assert.are.equal(101, boop.state.targeting.targetShield.timer)
     assert.stub(refresh_stub).was_called_with("shield seen")
   end)
 
   it("clears tracked shield state when a matching shield-down trigger fires", function()
-    boop.state.targetShield = { attempted = false, timer = 77 }
+    boop.state.targeting.targetShield = { attempted = false, timer = 77 }
 
     local cleared = boop.targets.onShieldDownTrigger({
       source = "test shield trigger",
@@ -54,16 +54,16 @@ describe("boop shield tracking", function()
     }, { "line", "a test denizen" }, "the shield falls away")
 
     assert.is_true(cleared)
-    assert.is_false(boop.state.targetShield)
+    assert.is_false(boop.state.targeting.targetShield)
     assert.stub(kill_timer_stub).was_called_with(77)
   end)
 
   it("marks the tracked shield as attempted after a shieldbreak try", function()
-    boop.state.targetShield = { attempted = false }
+    boop.state.targeting.targetShield = { attempted = false }
 
     boop.targets.onShieldbreakAttempt()
 
-    assert.is_true(boop.state.targetShield.attempted)
-    assert.is_number(boop.state.targetShield.lastAttempt)
+    assert.is_true(boop.state.targeting.targetShield.attempted)
+    assert.is_number(boop.state.targeting.targetShield.lastAttempt)
   end)
 end)

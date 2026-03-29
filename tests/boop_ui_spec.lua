@@ -90,7 +90,7 @@ describe("boop ui home", function()
     helper.setClass("occultist")
     helper.setArea("Test Area")
     helper.setTarget("42", "a vicious gnoll soldier", "100%")
-    boop.state.denizens = {
+    boop.state.targeting.denizens = {
       { id = "42", name = "a vicious gnoll soldier" },
       { id = "43", name = "a lesser gnoll" },
     }
@@ -145,14 +145,14 @@ describe("boop ui home", function()
     helper.setClass("occultist")
     helper.setArea("Test Area")
     helper.setTarget("42", "a vicious gnoll soldier", "100%")
-    boop.state.denizens = {
+    boop.state.targeting.denizens = {
       { id = "42", name = "a vicious gnoll soldier" },
       { id = "43", name = "a lesser gnoll" },
     }
     boop.ui.setEnabled(true, true)
     boop.ui.assistCommand("Leader")
     boop.ui.modeCommand("leader-call")
-    boop.state.calledTargetId = "42"
+    boop.state.targeting.calledTargetId = "42"
     boop.ui.setConfigValue("partySize", "3")
     boop.stats.trip.stopwatch = 88
     boop.stats.trip.kills = 3
@@ -174,14 +174,14 @@ describe("boop ui home", function()
   it("shows a cleaner configuration hub", function()
     helper.setClass("occultist")
     helper.setTarget("42", "a vicious gnoll soldier", "100%")
-    boop.state.denizens = {
+    boop.state.targeting.denizens = {
       { id = "42", name = "a vicious gnoll soldier" },
       { id = "43", name = "a lesser gnoll" },
     }
     boop.ui.setEnabled(true, true)
     boop.ui.assistCommand("Leader")
     boop.ui.modeCommand("leader-call")
-    boop.state.calledTargetId = "42"
+    boop.state.targeting.calledTargetId = "42"
     boop.ui.setConfigValue("partySize", "3")
 
     echoes = {}
@@ -246,7 +246,7 @@ describe("boop ui home", function()
       { id = "43", name = "a lesser gnoll" },
     })
     boop.ui.setEnabled(true, true)
-    boop.state.calledTargetId = "43"
+    boop.state.targeting.calledTargetId = "43"
 
     echoes = {}
     boop.ui.config("targeting")
@@ -470,7 +470,7 @@ describe("boop ui home", function()
     boop.ui.modeCommand("leader-call")
     boop.ui.setConfigValue("partySize", "3")
     boop.ui.rosterCommand("occultist infernal")
-    boop.state.calledTargetId = "43"
+    boop.state.targeting.calledTargetId = "43"
 
     echoes = {}
     boop.ui.partyCommand("")

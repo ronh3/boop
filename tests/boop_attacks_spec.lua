@@ -37,7 +37,7 @@ describe("boop attack selection", function()
   it("chooses a rage shieldbreak when the target is shielded", function()
     helper.setTargetHp("80%")
     helper.setRage(17)
-    boop.state.targetShield = { gained = os.clock(), attempted = false }
+    boop.state.targeting.targetShield = { gained = os.clock(), attempted = false }
 
     local actions = boop.attacks.choose()
 

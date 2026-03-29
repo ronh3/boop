@@ -560,10 +560,10 @@ local function traceComboDecision(classKey, reason)
 
   boop.state = boop.state or {}
   local key = string.format("%s|%s|%s", cls, targetId, why)
-  if boop.state.lastComboTraceKey == key then
+  if boop.state.combat.lastComboTraceKey == key then
     return
   end
-  boop.state.lastComboTraceKey = key
+  boop.state.combat.lastComboTraceKey = key
   boop.trace.log("combo mode: " .. why)
 end
 
@@ -573,7 +573,7 @@ local function finalizeRageDecision(mode, outcome, ability)
     mode = canonicalMode ~= "" and canonicalMode or "simple",
     outcome = boop.util.safeLower(boop.util.trim(outcome or "")),
     ability = ability,
-    targetId = boop.util.trim(tostring(boop.state and boop.state.currentTargetId or "")),
+    targetId = boop.util.trim(tostring(boop.state and boop.state.targeting.currentTargetId or "")),
   }
   if boop.stats and boop.stats.onRageDecision then
     boop.stats.onRageDecision(decision)
@@ -907,7 +907,7 @@ end
 function boop.attacks.selectRage(profile, rage, classKey, standardShieldbreak)
   if not profile then return nil, nil end
 
-  if boop.state.targetShield and (type(boop.state.targetShield) ~= "table" or not boop.state.targetShield.attempted) then
+  if boop.state.targeting.targetShield and (type(boop.state.targeting.targetShield) ~= "table" or not boop.state.targeting.targetShield.attempted) then
     if boop.config and boop.config.pullRageReserve and standardShieldbreak then
       return finalizeRageDecision("shieldbreak", "pull_reserve", nil)
     end
@@ -981,7 +981,7 @@ end
 local function standardCommand(entry, preference)
   if type(entry) == "table" then
     if entry.bySpec then
-      local spec = boop.state and boop.state.spec or ""
+      local spec = boop.state and boop.state.combat.spec or ""
       local specEntry = entry.bySpec[spec]
       if not specEntry then
         specEntry = entry.default or entry.bySpec.default
@@ -1042,8 +1042,8 @@ function boop.attacks.openerUsedForTarget(classKey, targetId)
     return false
   end
   boop.state = boop.state or {}
-  boop.state.openerUsedByClass = boop.state.openerUsedByClass or {}
-  return tostring(boop.state.openerUsedByClass[cls] or "") == tid
+  boop.state.combat.openerUsedByClass = boop.state.combat.openerUsedByClass or {}
+  return tostring(boop.state.combat.openerUsedByClass[cls] or "") == tid
 end
 
 function boop.attacks.markOpenerUsed(classKey, targetId)
@@ -1053,8 +1053,8 @@ function boop.attacks.markOpenerUsed(classKey, targetId)
     return
   end
   boop.state = boop.state or {}
-  boop.state.openerUsedByClass = boop.state.openerUsedByClass or {}
-  boop.state.openerUsedByClass[cls] = tid
+  boop.state.combat.openerUsedByClass = boop.state.combat.openerUsedByClass or {}
+  boop.state.combat.openerUsedByClass[cls] = tid
 end
 
 local function traceOpenerDecision(classKey, targetId, reason)

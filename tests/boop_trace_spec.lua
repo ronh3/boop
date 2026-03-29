@@ -36,7 +36,7 @@ describe("boop trace gmcp events", function()
     }
     boop.onRoomItemsRemove()
 
-    local trace = table.concat(boop.state.traceBuffer or {}, "\n")
+    local trace = table.concat(boop.state.trace.buffer or {}, "\n")
     assert.is_true(trace:find("gmcp room info:", 1, true) ~= nil)
     assert.is_true(trace:find("| area=Test Area | exits=2 | moved=yes", 1, true) ~= nil)
     assert.is_true(trace:find("gmcp room items list: count=2 | gold=yes | gold=a gold sovereign (1)", 1, true) ~= nil)

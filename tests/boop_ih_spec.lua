@@ -90,8 +90,8 @@ describe("boop ih", function()
   it("arms and disarms ih capture triggers only around boop ih capture", function()
     boop.ih.start()
 
-    assert.is_true(boop.state.ihRequested)
-    assert.is_false(boop.state.ihActive)
+    assert.is_true(boop.state.ih.requested)
+    assert.is_false(boop.state.ih.active)
     assert.are.same({
       { op = "enable", name = "IH End" },
       { op = "enable", name = "IH Line" },
@@ -99,8 +99,8 @@ describe("boop ih", function()
 
     boop.ih.stop()
 
-    assert.is_false(boop.state.ihRequested)
-    assert.is_false(boop.state.ihActive)
+    assert.is_false(boop.state.ih.requested)
+    assert.is_false(boop.state.ih.active)
     assert.are.same({
       { op = "enable", name = "IH End" },
       { op = "enable", name = "IH Line" },
@@ -113,8 +113,8 @@ describe("boop ih", function()
     boop.ih.start()
     boop.ih.handleLine("2026/03/24", "00:55:30 - test", "2026/03/24 00:55:30 - test")
 
-    assert.is_true(boop.state.ihRequested)
-    assert.is_false(boop.state.ihActive)
+    assert.is_true(boop.state.ih.requested)
+    assert.is_false(boop.state.ih.active)
     assert.are.equal(0, #echoes)
   end)
 
@@ -122,8 +122,8 @@ describe("boop ih", function()
     boop.ih.start()
     boop.ih.handleLine("dockworker79858", "a swarthy troll dockworker", "dockworker79858     a swarthy troll dockworker")
 
-    assert.is_true(boop.state.ihRequested)
-    assert.is_true(boop.state.ihActive)
+    assert.is_true(boop.state.ih.requested)
+    assert.is_true(boop.state.ih.active)
     assert.are.equal("dockworker79858     a swarthy troll dockworker [+whitelist] [+blacklist]", echoes[1])
   end)
 

@@ -39,10 +39,10 @@ end
 
 local function storeCalledTarget(caller, targetId)
   boop.state = boop.state or {}
-  boop.state.calledTargetId = targetId
-  boop.state.calledTargetRoom = currentRoomId()
-  boop.state.calledTargetBy = caller
-  boop.state.calledTargetAt = os.clock()
+  boop.state.targeting.calledTargetId = targetId
+  boop.state.targeting.calledTargetRoom = currentRoomId()
+  boop.state.targeting.calledTargetBy = caller
+  boop.state.targeting.calledTargetAt = os.clock()
 end
 
 local function sameName(a, b)
@@ -84,7 +84,7 @@ end
 
 function boop.targets.isDenizenName(name)
   if not name or name == "" then return false end
-  for _, v in ipairs(boop.state.denizens or {}) do
+  for _, v in ipairs(boop.state.targeting.denizens or {}) do
     if sameName(v.name, name) then
       return true
     end
@@ -93,11 +93,11 @@ function boop.targets.isDenizenName(name)
 end
 
 function boop.targets.updateRoomItems(items)
-  boop.state.denizens = {}
+  boop.state.targeting.denizens = {}
   if not items then return end
   for _, item in ipairs(items) do
     if boop.targets.isValidDenizen(item) then
-      boop.state.denizens[#boop.state.denizens + 1] = {
+      boop.state.targeting.denizens[#boop.state.targeting.denizens + 1] = {
         id = tostring(item.id),
         name = item.name,
         attrib = item.attrib,
@@ -109,10 +109,10 @@ end
 function boop.targets.addRoomItem(item)
   if not boop.targets.isValidDenizen(item) then return end
   local id = tostring(item.id)
-  for _, v in ipairs(boop.state.denizens) do
+  for _, v in ipairs(boop.state.targeting.denizens) do
     if v.id == id then return end
   end
-  boop.state.denizens[#boop.state.denizens + 1] = {
+  boop.state.targeting.denizens[#boop.state.targeting.denizens + 1] = {
     id = id,
     name = item.name,
     attrib = item.attrib,
@@ -121,9 +121,9 @@ end
 
 function boop.targets.removeRoomItem(item)
   local id = tostring(item.id)
-  for i, v in ipairs(boop.state.denizens) do
+  for i, v in ipairs(boop.state.targeting.denizens) do
     if v.id == id then
-      table.remove(boop.state.denizens, i)
+      table.remove(boop.state.targeting.denizens, i)
       break
     end
   end
@@ -132,7 +132,7 @@ end
 function boop.targets.setTarget(id)
   if not id or id == "" then return end
   local nextId = tostring(id)
-  local prevId = tostring(boop.state.currentTargetId or "")
+  local prevId = tostring(boop.state.targeting.currentTargetId or "")
   local changed = (prevId ~= "" and prevId ~= nextId) or (prevId == "" and nextId ~= "")
   if changed and boop.targets.clearTargetShield then
     boop.targets.clearTargetShield("target changed")
@@ -143,40 +143,40 @@ function boop.targets.setTarget(id)
       boop.trace.log("target afflictions cleared: target changed")
     end
   end
-  boop.state.currentTargetId = nextId
-  for _, v in ipairs(boop.state.denizens) do
-    if v.id == boop.state.currentTargetId then
-      boop.state.targetName = v.name
+  boop.state.targeting.currentTargetId = nextId
+  for _, v in ipairs(boop.state.targeting.denizens) do
+    if v.id == boop.state.targeting.currentTargetId then
+      boop.state.targeting.targetName = v.name
       break
     end
   end
 
   if changed and boop.stats and boop.stats.onTargetSet then
-    boop.stats.onTargetSet(boop.state.currentTargetId, boop.state.targetName or "")
+    boop.stats.onTargetSet(boop.state.targeting.currentTargetId, boop.state.targeting.targetName or "")
   end
 
   if changed and send then
-    send("settarget " .. boop.state.currentTargetId, false)
+    send("settarget " .. boop.state.targeting.currentTargetId, false)
   end
   if changed and autoTargetCallEnabled() and send then
     local caller = selfName()
     if caller == "" then
       caller = "self"
     end
-    storeCalledTarget(caller, boop.state.currentTargetId)
-    send("pt Target: " .. boop.state.currentTargetId .. ".", false)
+    storeCalledTarget(caller, boop.state.targeting.currentTargetId)
+    send("pt Target: " .. boop.state.targeting.currentTargetId .. ".", false)
     if boop.trace and boop.trace.log then
-      boop.trace.log(string.format("auto target call: %s -> %s", caller, boop.state.currentTargetId))
+      boop.trace.log(string.format("auto target call: %s -> %s", caller, boop.state.targeting.currentTargetId))
     end
   end
 end
 
 function boop.targets.clearTargetCall(reason)
   boop.state = boop.state or {}
-  boop.state.calledTargetId = ""
-  boop.state.calledTargetRoom = ""
-  boop.state.calledTargetBy = ""
-  boop.state.calledTargetAt = nil
+  boop.state.targeting.calledTargetId = ""
+  boop.state.targeting.calledTargetRoom = ""
+  boop.state.targeting.calledTargetBy = ""
+  boop.state.targeting.calledTargetAt = nil
   if reason and boop.trace and boop.trace.log then
     boop.trace.log("target call cleared: " .. tostring(reason))
   end
@@ -187,18 +187,18 @@ function boop.targets.waitingForTargetCall()
     return false
   end
 
-  local calledId = tostring(boop.state and boop.state.calledTargetId or "")
+  local calledId = tostring(boop.state and boop.state.targeting.calledTargetId or "")
   if calledId == "" then
     return true
   end
 
-  local calledRoom = tostring(boop.state and boop.state.calledTargetRoom or "")
+  local calledRoom = tostring(boop.state and boop.state.targeting.calledTargetRoom or "")
   local roomId = currentRoomId()
   if calledRoom ~= "" and roomId ~= "" and calledRoom ~= roomId then
     return true
   end
 
-  return findDenizenById(boop.state and boop.state.denizens or {}, calledId) == nil
+  return findDenizenById(boop.state and boop.state.targeting.denizens or {}, calledId) == nil
 end
 
 function boop.targets.onPartyTargetCall(speaker, targetId, _rawLine)
@@ -226,7 +226,7 @@ function boop.targets.onPartyTargetCall(speaker, targetId, _rawLine)
     boop.util.info(string.format("leader target: %s (%s)", calledId, caller))
   end
 
-  if boop.config and boop.config.enabled and not (boop.state and boop.state.diagHold) and tempTimer then
+  if boop.config and boop.config.enabled and not (boop.state and boop.state.diag.hold) and tempTimer then
     tempTimer(0, function()
       if boop and boop.tick then
         boop.tick()
@@ -403,7 +403,7 @@ end
 
 local function sortedDenizens(order)
   local denizens = {}
-  for _, v in ipairs(boop.state.denizens) do
+  for _, v in ipairs(boop.state.targeting.denizens) do
     denizens[#denizens + 1] = v
   end
 
@@ -420,7 +420,7 @@ local function sortedDenizens(order)
 end
 
 local function currentTargetEligible(mode, area, denizens)
-  local currentId = tostring(boop.state.currentTargetId or "")
+  local currentId = tostring(boop.state.targeting.currentTargetId or "")
   if currentId == "" then return "" end
 
   local current = findDenizenById(denizens, currentId)
@@ -458,12 +458,12 @@ local function calledTargetEligible(mode, area, denizens)
     return ""
   end
 
-  local calledId = tostring(boop.state and boop.state.calledTargetId or "")
+  local calledId = tostring(boop.state and boop.state.targeting.calledTargetId or "")
   if calledId == "" then
     return ""
   end
 
-  local calledRoom = tostring(boop.state and boop.state.calledTargetRoom or "")
+  local calledRoom = tostring(boop.state and boop.state.targeting.calledTargetRoom or "")
   local roomId = currentRoomId()
   if calledRoom ~= "" and roomId ~= "" and calledRoom ~= roomId then
     return ""
@@ -506,7 +506,7 @@ function boop.targets.choose()
   local denizens = sortedDenizens(boop.config.targetOrder)
 
   if mode == "manual" then
-    return boop.state.currentTargetId
+    return boop.state.targeting.currentTargetId
   end
 
   if targetCallEnabled() then
@@ -1011,18 +1011,18 @@ function boop.targets.onShielded(name)
   local captured = boop.util.trim(tostring(name))
   if captured == "" then return end
 
-  local current = boop.util.trim(boop.state.targetName or "")
-  if current == "" and (boop.state.currentTargetId or "") ~= "" then
-    boop.state.targetName = captured
+  local current = boop.util.trim(boop.state.targeting.targetName or "")
+  if current == "" and (boop.state.targeting.currentTargetId or "") ~= "" then
+    boop.state.targeting.targetName = captured
     current = captured
   end
 
   if current ~= "" and sameName(current, captured) then
-    if boop.state.targetShield and boop.state.targetShield.timer then
-      killTimer(boop.state.targetShield.timer)
+    if boop.state.targeting.targetShield and boop.state.targeting.targetShield.timer then
+      killTimer(boop.state.targeting.targetShield.timer)
     end
-    boop.state.targetShield = { gained = os.clock(), attempted = false }
-    boop.state.targetShield.timer = tempTimer(3, function() boop.state.targetShield = false end)
+    boop.state.targeting.targetShield = { gained = os.clock(), attempted = false }
+    boop.state.targeting.targetShield.timer = tempTimer(3, function() boop.state.targeting.targetShield = false end)
     if boop.trace and boop.trace.log then
       boop.trace.log("shield seen: " .. captured)
     end
@@ -1047,7 +1047,7 @@ end
 
 local function findTargetNameFromMatches(matchTable)
   if type(matchTable) ~= "table" then return "" end
-  local current = boop.util.trim(boop.state and boop.state.targetName or "")
+  local current = boop.util.trim(boop.state and boop.state.targeting.targetName or "")
   if current == "" then return "" end
   for i = 2, #matchTable do
     local text = boop.util.trim(tostring(matchTable[i] or ""))
@@ -1060,8 +1060,8 @@ end
 
 function boop.targets.onShieldDownTrigger(spec, matchTable, rawLine)
   boop.state = boop.state or {}
-  local current = boop.util.trim(boop.state.targetName or "")
-  if current == "" and (boop.state.currentTargetId or "") == "" then
+  local current = boop.util.trim(boop.state.targeting.targetName or "")
+  if current == "" and (boop.state.targeting.currentTargetId or "") == "" then
     return false
   end
 
@@ -1074,9 +1074,9 @@ function boop.targets.onShieldDownTrigger(spec, matchTable, rawLine)
     candidate = findTargetNameFromMatches(matchTable)
   end
 
-  if current == "" and candidate ~= "" and (boop.state.currentTargetId or "") ~= "" then
+  if current == "" and candidate ~= "" and (boop.state.targeting.currentTargetId or "") ~= "" then
     if boop.targets.isDenizenName and boop.targets.isDenizenName(candidate) then
-      boop.state.targetName = candidate
+      boop.state.targeting.targetName = candidate
       current = candidate
     end
   end
@@ -1099,19 +1099,19 @@ function boop.targets.onShieldDownTrigger(spec, matchTable, rawLine)
 end
 
 function boop.targets.onShieldbreakAttempt()
-  if not boop.state.targetShield then return end
-  if type(boop.state.targetShield) ~= "table" then
-    boop.state.targetShield = { gained = os.clock() }
+  if not boop.state.targeting.targetShield then return end
+  if type(boop.state.targeting.targetShield) ~= "table" then
+    boop.state.targeting.targetShield = { gained = os.clock() }
   end
-  boop.state.targetShield.attempted = true
-  boop.state.targetShield.lastAttempt = os.clock()
+  boop.state.targeting.targetShield.attempted = true
+  boop.state.targeting.targetShield.lastAttempt = os.clock()
 end
 
 function boop.targets.clearTargetShield(reason)
-  if boop.state and type(boop.state.targetShield) == "table" and boop.state.targetShield.timer then
-    killTimer(boop.state.targetShield.timer)
+  if boop.state and type(boop.state.targeting.targetShield) == "table" and boop.state.targeting.targetShield.timer then
+    killTimer(boop.state.targeting.targetShield.timer)
   end
-  boop.state.targetShield = false
+  boop.state.targeting.targetShield = false
   if reason and boop.trace and boop.trace.log then
     boop.trace.log("shield cleared: " .. tostring(reason))
   end

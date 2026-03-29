@@ -266,8 +266,8 @@ end
 
 local function current_class()
   local class = ""
-  if boop and boop.state and boop.state.class then
-    class = boop.state.class
+  if boop and boop.state and boop.state.combat.class then
+    class = boop.state.combat.class
   elseif gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class then
     class = gmcp.Char.Status.class
   end

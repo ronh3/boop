@@ -65,9 +65,9 @@ describe("boop prequeue", function()
   it("schedules a prequeue timer based on balance recovery and lead time", function()
     boop.onBalanceUsed("balance", 3)
 
-    assert.are.equal(103, boop.state.balanceReadyAt)
+    assert.are.equal(103, boop.state.queue.balanceReadyAt)
     assert.are.equal(1, last_delay)
-    assert.are.equal(55, boop.state.prequeueTimer)
+    assert.are.equal(55, boop.state.queue.prequeueTimer)
     assert.is_function(last_callback)
   end)
 
@@ -80,7 +80,7 @@ describe("boop prequeue", function()
     assert.stub(send_stub).was_called_with("settarget 42", false)
     assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK command hound at 42", false)
     assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
-    assert.is_true(boop.state.prequeuedStandard)
+    assert.is_true(boop.state.queue.prequeuedStandard)
   end)
 
   it("rebuilds a queued standard as shieldbreak when the target shields after prequeue", function()
@@ -108,19 +108,19 @@ describe("boop prequeue", function()
     assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK warp 42", false)
     assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK touch hammer 42", false)
     assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
-    assert.is_true(boop.state.prequeuedStandard)
-    assert.is_true(type(boop.state.targetShield) == "table" and boop.state.targetShield.attempted)
+    assert.is_true(boop.state.queue.prequeuedStandard)
+    assert.is_true(type(boop.state.targeting.targetShield) == "table" and boop.state.targeting.targetShield.attempted)
   end)
 
   it("does not prequeue attacks while gold commands are pending", function()
     gmcp.Char.Vitals.bal = "0"
     gmcp.Char.Vitals.eq = "0"
-    boop.state.goldGetPending = true
+    boop.state.gold.getPending = true
 
     boop.prequeueStandard()
 
     assert.stub(send_stub).was_not_called()
-    assert.is_false(boop.state.prequeuedStandard)
+    assert.is_false(boop.state.queue.prequeuedStandard)
   end)
 
 end)

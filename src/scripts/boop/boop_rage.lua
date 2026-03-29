@@ -11,16 +11,16 @@ local function nowSeconds()
 end
 
 function boop.rage.init()
-  boop.state.rageReady = boop.state.rageReady or {}
-  boop.state.rageTimers = boop.state.rageTimers or {}
-  boop.state.rageSamples = boop.state.rageSamples or {}
+  boop.state.rage.ready = boop.state.rage.ready or {}
+  boop.state.rage.timers = boop.state.rage.timers or {}
+  boop.state.rage.samples = boop.state.rage.samples or {}
 end
 
 function boop.rage.setReady(name, ready)
   if not name or name == "" then return end
   local key = boop.util.safeLower(name)
-  boop.state.rageReady = boop.state.rageReady or {}
-  boop.state.rageReady[key] = ready and true or false
+  boop.state.rage.ready = boop.state.rage.ready or {}
+  boop.state.rage.ready[key] = ready and true or false
 end
 
 function boop.rage.onRageUsed(ability)
@@ -37,15 +37,15 @@ function boop.rage.onRageUsed(ability)
   local seconds = tonumber(boop.config.rageFallbackSeconds) or 26
   if seconds <= 0 then return end
 
-  local timers = boop.state.rageTimers or {}
+  local timers = boop.state.rage.timers or {}
   if timers[key] then
     killTimer(timers[key])
   end
   timers[key] = tempTimer(seconds, function()
     boop.rage.setReady(key, true)
-    boop.state.rageTimers[key] = nil
+    boop.state.rage.timers[key] = nil
   end)
-  boop.state.rageTimers = timers
+  boop.state.rage.timers = timers
 end
 
 function boop.rage.onReadyList(list)
@@ -59,8 +59,8 @@ function boop.rage.onRageObserved(value)
   if not rage then return end
 
   boop.state = boop.state or {}
-  boop.state.rageSamples = boop.state.rageSamples or {}
-  local samples = boop.state.rageSamples
+  boop.state.rage.samples = boop.state.rage.samples or {}
+  local samples = boop.state.rage.samples
   local now = nowSeconds()
 
   if #samples > 0 and math.abs((samples[#samples].t or 0) - now) < 0.05 then
@@ -79,7 +79,7 @@ function boop.rage.getGainRate(windowSeconds)
   local window = tonumber(windowSeconds) or 10
   if window <= 0 then return 0 end
 
-  local samples = boop.state and boop.state.rageSamples or {}
+  local samples = boop.state and boop.state.rage.samples or {}
   if not samples or #samples < 2 then return 0 end
 
   local cutoff = nowSeconds() - window
@@ -200,10 +200,10 @@ local function shouldTrackTarget(targetName)
   if captured == "" then return true end
 
   boop.state = boop.state or {}
-  local current = boop.util.trim(boop.state.targetName or "")
-  if current == "" and (boop.state.currentTargetId or "") ~= "" then
+  local current = boop.util.trim(boop.state.targeting.targetName or "")
+  if current == "" and (boop.state.targeting.currentTargetId or "") ~= "" then
     -- Populate when we have an id but no name yet; this avoids dropping early lines.
-    boop.state.targetName = captured
+    boop.state.targeting.targetName = captured
     current = captured
   end
   if current == "" then return false end
@@ -219,7 +219,7 @@ local function sendAffCallout(mode, aff)
     key = "stun"
   end
   if key == "" then return end
-  local targetId = boop.util.trim(tostring((boop.state and boop.state.currentTargetId) or ""))
+  local targetId = boop.util.trim(tostring((boop.state and boop.state.targeting.currentTargetId) or ""))
   if targetId == "" then return end
 
   local text

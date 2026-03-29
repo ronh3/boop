@@ -28,8 +28,8 @@ local function currentClass()
       return class
     end
   end
-  if boop and boop.state and boop.state.class then
-    local class = boop.util.safeLower(boop.state.class)
+  if boop and boop.state and boop.state.combat.class then
+    local class = boop.util.safeLower(boop.state.combat.class)
     if class ~= "" then
       return class
     end
@@ -1494,7 +1494,7 @@ local function rageDecisionFingerprint(info)
   return table.concat({
     tostring(info.mode or ""),
     tostring(info.outcome or ""),
-    tostring(info.targetId or (boop.state and boop.state.currentTargetId) or ""),
+    tostring(info.targetId or (boop.state and boop.state.targeting.currentTargetId) or ""),
     tostring(ability),
   }, "|")
 end

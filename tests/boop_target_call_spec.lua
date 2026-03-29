@@ -81,7 +81,7 @@ describe("boop leader target call mode", function()
     gmcp.Room.Info.num = 2
     boop.onRoomInfo()
 
-    assert.are.equal("", boop.state.calledTargetId)
+    assert.are.equal("", boop.state.targeting.calledTargetId)
     assert.are.equal("", boop.targets.choose())
   end)
 
@@ -95,6 +95,6 @@ describe("boop leader target call mode", function()
     assert.stub(send_stub).was_called_with("settarget 42", false)
     assert.stub(send_stub).was_called_with("pt Target: 42.", false)
     assert.stub(send_stub).was_called_with("warp 42", false)
-    assert.are.equal("42", boop.state.calledTargetId)
+    assert.are.equal("42", boop.state.targeting.calledTargetId)
   end)
 end)

@@ -117,112 +117,6 @@ local DOMAIN_DEFAULTS = {
   },
 }
 
-local LEGACY_STATE_MAP = {
-  hunting = { "combat", "hunting" },
-  attacking = { "combat", "attacking" },
-  fleeing = { "combat", "fleeing" },
-  class = { "combat", "class" },
-  spec = { "combat", "spec" },
-  limiters = { "combat", "limiters" },
-  openerUsedByClass = { "combat", "openerUsedByClass" },
-  pullState = { "combat", "pullState" },
-  lastComboTraceKey = { "combat", "lastComboTraceKey" },
-  lastOpenerTraceKey = { "combat", "lastOpenerTraceKey" },
-  lastRageDecision = { "combat", "lastRageDecision" },
-  currentTargetId = { "targeting", "currentTargetId" },
-  targetName = { "targeting", "targetName" },
-  targetShield = { "targeting", "targetShield" },
-  denizens = { "targeting", "denizens" },
-  room = { "targeting", "room" },
-  lastRoom = { "targeting", "lastRoom" },
-  lastRoomDir = { "targeting", "lastRoomDir" },
-  movedRooms = { "targeting", "movedRooms" },
-  calledTargetId = { "targeting", "calledTargetId" },
-  calledTargetRoom = { "targeting", "calledTargetRoom" },
-  calledTargetBy = { "targeting", "calledTargetBy" },
-  calledTargetAt = { "targeting", "calledTargetAt" },
-  goldDropped = { "gold", "dropped" },
-  shardsDropped = { "gold", "shardsDropped" },
-  autoGrabGoldPending = { "gold", "autoGrabPending" },
-  autoGrabGoldPendingAt = { "gold", "autoGrabPendingAt" },
-  autoGrabGoldTimer = { "gold", "autoGrabTimer" },
-  goldGetPending = { "gold", "getPending" },
-  goldPutPending = { "gold", "putPending" },
-  goldGetRetries = { "gold", "getRetries" },
-  goldPutRetries = { "gold", "putRetries" },
-  goldPackTarget = { "gold", "packTarget" },
-  goldPendingTimer = { "gold", "pendingTimer" },
-  balanceReadyAt = { "queue", "balanceReadyAt" },
-  equilibriumReadyAt = { "queue", "equilibriumReadyAt" },
-  prequeueTimer = { "queue", "prequeueTimer" },
-  prequeuedStandard = { "queue", "prequeuedStandard" },
-  queueAliasAction = { "queue", "aliasAction" },
-  queueAliasDirty = { "queue", "aliasDirty" },
-  walkActive = { "walk", "active" },
-  walkOwned = { "walk", "owned" },
-  walkRoomSettled = { "walk", "roomSettled" },
-  walkMoveQueued = { "walk", "moveQueued" },
-  walkArrivalRoom = { "walk", "arrivalRoom" },
-  walkArrivalTimer = { "walk", "arrivalTimer" },
-  diagHold = { "diag", "hold" },
-  diagAwaitPrompt = { "diag", "awaitPrompt" },
-  diagTimeoutTimer = { "diag", "timeoutTimer" },
-  diagLabel = { "diag", "label" },
-  traceBuffer = { "trace", "buffer" },
-  configScreen = { "ui", "configScreen" },
-  configReturnScreen = { "ui", "configReturnScreen" },
-  configReturnPrefix = { "ui", "configReturnPrefix" },
-  rageReady = { "rage", "ready" },
-  rageTimers = { "rage", "timers" },
-  rageSamples = { "rage", "samples" },
-  inventoryItemsById = { "inventory", "itemsById" },
-  wieldedLeft = { "inventory", "wieldedLeft" },
-  wieldedRight = { "inventory", "wieldedRight" },
-  ihActive = { "ih", "active" },
-  ihRequested = { "ih", "requested" },
-  ihTimer = { "ih", "timer" },
-  lastGagRawLine = { "gag", "lastRawLine" },
-  lastGagAt = { "gag", "lastAt" },
-  gagPendingAttack = { "gag", "pendingAttack" },
-  gagPendingAttackTimer = { "gag", "pendingAttackTimer" },
-  gagPendingKill = { "gag", "pendingKill" },
-  gagPendingKillTimer = { "gag", "pendingKillTimer" },
-}
-
-local function installStateMetatable(state)
-  local meta = getmetatable(state) or {}
-  if meta.__boop_runtime_installed then
-    return
-  end
-
-  meta.__boop_runtime_installed = true
-  meta.__index = function(tbl, key)
-    local mapping = LEGACY_STATE_MAP[key]
-    if mapping then
-      local domain = rawget(tbl, mapping[1])
-      if type(domain) == "table" then
-        return domain[mapping[2]]
-      end
-    end
-    return nil
-  end
-  meta.__newindex = function(tbl, key, value)
-    local mapping = LEGACY_STATE_MAP[key]
-    if mapping then
-      local domain = rawget(tbl, mapping[1])
-      if type(domain) ~= "table" then
-        domain = {}
-        rawset(tbl, mapping[1], domain)
-      end
-      domain[mapping[2]] = value
-      return
-    end
-    rawset(tbl, key, value)
-  end
-
-  setmetatable(state, meta)
-end
-
 function boop.runtime.ensureState()
   boop.state = boop.state or {}
   local state = boop.state
@@ -239,17 +133,6 @@ function boop.runtime.ensureState()
       end
     end
   end
-
-  for legacyKey, mapping in pairs(LEGACY_STATE_MAP) do
-    local rawValue = rawget(state, legacyKey)
-    local domain = rawget(state, mapping[1])
-    if rawValue ~= nil then
-      domain[mapping[2]] = rawValue
-      rawset(state, legacyKey, nil)
-    end
-  end
-
-  installStateMetatable(state)
   return state
 end
 

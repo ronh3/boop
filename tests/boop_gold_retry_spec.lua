@@ -45,38 +45,38 @@ describe("boop gold retry handling", function()
   end)
 
   it("retries a failed gold get command up to the retry limit", function()
-    boop.state.goldGetPending = true
+    boop.state.gold.getPending = true
 
     boop.onGoldCommandFailure("missing sovereigns")
 
     assert.stub(send_stub).was_called_with("queue add balance get sovereigns", false)
-    assert.are.equal(1, boop.state.goldGetRetries)
-    assert.is_true(boop.state.goldGetPending)
+    assert.are.equal(1, boop.state.gold.getRetries)
+    assert.is_true(boop.state.gold.getPending)
   end)
 
   it("gives up on gold get after the retry limit is reached", function()
-    boop.state.goldGetPending = true
-    boop.state.goldGetRetries = 2
-    boop.state.goldPutPending = true
-    boop.state.goldPackTarget = "pack"
+    boop.state.gold.getPending = true
+    boop.state.gold.getRetries = 2
+    boop.state.gold.putPending = true
+    boop.state.gold.packTarget = "pack"
 
     boop.onGoldCommandFailure("still missing sovereigns")
 
-    assert.is_false(boop.state.goldGetPending)
-    assert.is_false(boop.state.goldPutPending)
-    assert.are.equal("", boop.state.goldPackTarget)
+    assert.is_false(boop.state.gold.getPending)
+    assert.is_false(boop.state.gold.putPending)
+    assert.are.equal("", boop.state.gold.packTarget)
     assert.stub(err_stub).was_called_with("auto gold: unable to get sovereigns; check room loot/line timing")
   end)
 
   it("retries a failed gold put command once for the configured pack", function()
-    boop.state.goldPutPending = true
-    boop.state.goldPackTarget = "pack"
+    boop.state.gold.putPending = true
+    boop.state.gold.packTarget = "pack"
 
     boop.onGoldCommandFailure("pack closed")
 
     assert.stub(send_stub).was_called_with("queue add balance put sovereigns in pack", false)
-    assert.are.equal(1, boop.state.goldPutRetries)
-    assert.is_true(boop.state.goldPutPending)
+    assert.are.equal(1, boop.state.gold.putRetries)
+    assert.is_true(boop.state.gold.putPending)
   end)
 
   it("clears stale pending gold state if no completion trigger arrives", function()
@@ -85,9 +85,9 @@ describe("boop gold retry handling", function()
     assert.is_function(scheduled[1])
     scheduled[1]()
 
-    assert.is_false(boop.state.goldGetPending)
-    assert.is_false(boop.state.goldPutPending)
-    assert.are.equal("", boop.state.goldPackTarget)
+    assert.is_false(boop.state.gold.getPending)
+    assert.is_false(boop.state.gold.putPending)
+    assert.are.equal("", boop.state.gold.packTarget)
     assert.stub(warn_stub).was_called_with("auto gold: clearing stale pending state")
   end)
 end)

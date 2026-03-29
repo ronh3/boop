@@ -42,7 +42,7 @@ local function firstExpectedCommand(entry)
   end
 
   if entry.bySpec then
-    local spec = boop.state and boop.state.spec or ""
+    local spec = boop.state and boop.state.combat.spec or ""
     local specEntry = entry.bySpec[spec]
     if not specEntry then
       specEntry = entry.default or entry.bySpec.default
@@ -110,7 +110,7 @@ describe("boop class profile matrix", function()
         helper.setTarget("42", "a test denizen", "80%")
         helper.setSkillKnown("Focus", false, "Weaponmastery")
         learnEntrySkills(case.standard)
-        boop.state.targetShield = { attempted = false }
+        boop.state.targeting.targetShield = { attempted = false }
 
         local actions = boop.attacks.choose()
 

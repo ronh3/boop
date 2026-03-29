@@ -61,7 +61,7 @@ describe("boop tick", function()
   end)
 
   it("does not send attacks while gold commands are pending", function()
-    boop.state.goldGetPending = true
+    boop.state.gold.getPending = true
 
     boop.tick()
 

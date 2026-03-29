@@ -96,13 +96,13 @@ local function shouldSuppressDuplicate(rawLine)
   boop.state = boop.state or {}
   local lineText = tostring(rawLine or "")
   local ts = nowSeconds()
-  local prevLine = boop.state.lastGagRawLine or ""
-  local prevTs = tonumber(boop.state.lastGagAt) or 0
+  local prevLine = boop.state.gag.lastRawLine or ""
+  local prevTs = tonumber(boop.state.gag.lastAt) or 0
   if prevLine == lineText and (ts - prevTs) <= 0.05 then
     return true
   end
-  boop.state.lastGagRawLine = lineText
-  boop.state.lastGagAt = ts
+  boop.state.gag.lastRawLine = lineText
+  boop.state.gag.lastAt = ts
   return false
 end
 
@@ -694,9 +694,9 @@ end
 
 local function cancelAttackSummaryTimer()
   boop.state = boop.state or {}
-  if boop.state.gagPendingAttackTimer then
-    killTimer(boop.state.gagPendingAttackTimer)
-    boop.state.gagPendingAttackTimer = nil
+  if boop.state.gag.pendingAttackTimer then
+    killTimer(boop.state.gag.pendingAttackTimer)
+    boop.state.gag.pendingAttackTimer = nil
   end
 end
 
@@ -704,9 +704,9 @@ local flushPendingKill
 
 local function flushPendingAttack()
   boop.state = boop.state or {}
-  local pending = boop.state.gagPendingAttack
+  local pending = boop.state.gag.pendingAttack
   if not pending then return end
-  boop.state.gagPendingAttack = nil
+  boop.state.gag.pendingAttack = nil
   cancelAttackSummaryTimer()
   emitAttackSummary(pending)
   if flushPendingKill then
@@ -716,11 +716,11 @@ end
 
 local function setPendingAttack(who, ability, target)
   boop.state = boop.state or {}
-  if boop.state.gagPendingAttack then
+  if boop.state.gag.pendingAttack then
     flushPendingAttack()
   end
 
-  boop.state.gagPendingAttack = {
+  boop.state.gag.pendingAttack = {
     who = boop.util.trim(who or "You"),
     ability = boop.util.trim(ability or "Attack"),
     target = boop.util.trim(target or "(none)"),
@@ -730,25 +730,25 @@ local function setPendingAttack(who, ability, target)
   }
 
   cancelAttackSummaryTimer()
-  boop.state.gagPendingAttackTimer = tempTimer(1.2, function()
-    boop.state.gagPendingAttackTimer = nil
+  boop.state.gag.pendingAttackTimer = tempTimer(1.2, function()
+    boop.state.gag.pendingAttackTimer = nil
     flushPendingAttack()
   end)
 end
 
 local function cancelKillSummaryTimer()
   boop.state = boop.state or {}
-  if boop.state.gagPendingKillTimer then
-    killTimer(boop.state.gagPendingKillTimer)
-    boop.state.gagPendingKillTimer = nil
+  if boop.state.gag.pendingKillTimer then
+    killTimer(boop.state.gag.pendingKillTimer)
+    boop.state.gag.pendingKillTimer = nil
   end
 end
 
 local function scheduleKillSummaryRetry()
   boop.state = boop.state or {}
   cancelKillSummaryTimer()
-  boop.state.gagPendingKillTimer = tempTimer(0.25, function()
-    boop.state.gagPendingKillTimer = nil
+  boop.state.gag.pendingKillTimer = tempTimer(0.25, function()
+    boop.state.gag.pendingKillTimer = nil
     if flushPendingKill then
       flushPendingKill()
     end
@@ -757,26 +757,26 @@ end
 
 flushPendingKill = function()
   boop.state = boop.state or {}
-  local pending = boop.state.gagPendingKill
+  local pending = boop.state.gag.pendingKill
   if not pending then return end
-  if boop.state.gagPendingAttack then
+  if boop.state.gag.pendingAttack then
     scheduleKillSummaryRetry()
     return
   end
-  boop.state.gagPendingKill = nil
+  boop.state.gag.pendingKill = nil
   cancelKillSummaryTimer()
   emitKillSummary(pending.target or "", pending.xp or "")
 end
 
 local function setPendingKill(target)
   boop.state = boop.state or {}
-  boop.state.gagPendingKill = {
+  boop.state.gag.pendingKill = {
     target = boop.util.trim(target or ""),
     xp = "",
   }
   cancelKillSummaryTimer()
-  boop.state.gagPendingKillTimer = tempTimer(1.2, function()
-    boop.state.gagPendingKillTimer = nil
+  boop.state.gag.pendingKillTimer = tempTimer(1.2, function()
+    boop.state.gag.pendingKillTimer = nil
     flushPendingKill()
   end)
 end
@@ -846,7 +846,7 @@ function boop.gag.onAttackLine(spec, matchTable, rawLine)
     victim = findLikelyTarget(matchTable, actor)
   end
   if victim == "" and selfActor then
-    victim = boop.state and boop.state.targetName or ""
+    victim = boop.state and boop.state.targeting.targetName or ""
   end
 
   local ability = boop.util.trim(spec and spec.ability or "")
@@ -898,7 +898,7 @@ function boop.gag.onDamageLine(amount, dtype, _rawLine)
   deleteCurrent()
 
   boop.state = boop.state or {}
-  local pending = boop.state.gagPendingAttack
+  local pending = boop.state.gag.pendingAttack
   if not pending then
     return
   end
@@ -923,7 +923,7 @@ function boop.gag.onCriticalLine(critLabel, _rawLine)
   end
 
   boop.state = boop.state or {}
-  local pending = boop.state.gagPendingAttack
+  local pending = boop.state.gag.pendingAttack
   if not pending then
     return
   end
@@ -943,7 +943,7 @@ function boop.gag.onCompanionMaulFlavor(target, _rawLine)
   end
 
   boop.state = boop.state or {}
-  local pending = boop.state.gagPendingAttack
+  local pending = boop.state.gag.pendingAttack
   if not pending then
     return
   end
@@ -972,7 +972,7 @@ function boop.gag.onBalanceUsed(seconds, _rawLine)
   deleteCurrent()
 
   boop.state = boop.state or {}
-  local pending = boop.state.gagPendingAttack
+  local pending = boop.state.gag.pendingAttack
   if not pending then
     return
   end
@@ -1015,7 +1015,7 @@ function boop.gag.onExperienceLine(xp, _rawLine)
   end
 
   boop.state = boop.state or {}
-  local pending = boop.state.gagPendingKill
+  local pending = boop.state.gag.pendingKill
   if not pending then
     return
   end
@@ -1031,9 +1031,9 @@ function boop.gag.onPrompt()
   end
 
   boop.state = boop.state or {}
-  if boop.state.gagPendingAttack then
+  if boop.state.gag.pendingAttack then
     flushPendingAttack()
-  elseif boop.state.gagPendingKill then
+  elseif boop.state.gag.pendingKill then
     flushPendingKill()
   end
 end

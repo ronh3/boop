@@ -52,7 +52,7 @@ local function boolColor(value)
 end
 
 local function currentClass()
-  return boop.state.class or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class) or "unknown"
+  return boop.state.combat.class or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class) or "unknown"
 end
 
 local function assistLeader()
@@ -319,13 +319,13 @@ local function currentBlocker()
   if not boop.config.enabled then
     return "boop disabled", "boop on"
   end
-  if boop.state and boop.state.diagHold then
+  if boop.state and boop.state.diag.hold then
     return "diagnose pause active", "wait for diag or use diag"
   end
-  if boop.state and boop.state.fleeing then
+  if boop.state and boop.state.combat.fleeing then
     return "flee in progress", "let flee resolve"
   end
-  if boop.state and (boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending) then
+  if boop.state and (boop.state.gold.autoGrabPending or boop.state.gold.getPending or boop.state.gold.putPending) then
     return "loot handling pending", "wait for gold queue"
   end
   if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
@@ -346,11 +346,11 @@ local function currentBlocker()
       return reason, "boop walk status"
     end
   end
-  local targetId = tostring(boop.state and boop.state.currentTargetId or "")
+  local targetId = tostring(boop.state and boop.state.targeting.currentTargetId or "")
   if targetId ~= "" then
     return "engaged target", "let boop attack"
   end
-  local denizenCount = boop.state and boop.state.denizens and #boop.state.denizens or 0
+  local denizenCount = boop.state and boop.state.targeting.denizens and #boop.state.targeting.denizens or 0
   if denizenCount <= 0 then
     if boop.walk and boop.walk.isActive and boop.walk.isActive() then
       return "room clear", "autowalk should advance"
@@ -388,13 +388,13 @@ local function renderStatusDashboard()
     partyCount = partyCount + 1
   end
   local shownPack = pack ~= "" and pack or "(off)"
-  local denizenCount = boop.state and boop.state.denizens and #boop.state.denizens or 0
-  local targetId = boop.state and boop.state.currentTargetId or ""
-  local targetName = boop.state and boop.state.targetName or ""
+  local denizenCount = boop.state and boop.state.targeting.denizens and #boop.state.targeting.denizens or 0
+  local targetId = boop.state and boop.state.targeting.currentTargetId or ""
+  local targetName = boop.state and boop.state.targeting.targetName or ""
   local targetShown = targetId ~= "" and targetId or "(none)"
   local targetNameShown = targetName ~= "" and targetName or "(none)"
   local assistShown = assistStatusText()
-  local calledTargetShown = tostring((boop.state and boop.state.calledTargetId) or "")
+  local calledTargetShown = tostring((boop.state and boop.state.targeting.calledTargetId) or "")
   local modeShown = operatingModeLabel()
   local themeShown = activeThemeLabel()
   local blocker, nextAction = currentBlocker()
@@ -603,9 +603,9 @@ function boop.ui.controlCommand(raw)
   local targetingMode = tostring(boop.config.targetingMode or "whitelist")
   local rageMode = tostring(boop.config.attackMode or "simple")
   local enabled = boop.config.enabled and "on" or "off"
-  local denizenCount = boop.state and boop.state.denizens and #boop.state.denizens or 0
-  local targetId = boop.state and boop.state.currentTargetId or ""
-  local targetName = boop.state and boop.state.targetName or ""
+  local denizenCount = boop.state and boop.state.targeting.denizens and #boop.state.targeting.denizens or 0
+  local targetId = boop.state and boop.state.targeting.currentTargetId or ""
+  local targetName = boop.state and boop.state.targeting.targetName or ""
   local targetShown = targetId ~= "" and (targetId .. " | " .. (targetName ~= "" and targetName or "(unnamed)")) or "(none)"
   local trip = boop.stats and boop.stats.trip or {}
   local tripRunning = trip and trip.stopwatch and "running" or "idle"
@@ -906,13 +906,13 @@ end
 function boop.ui.setEnabled(value, quiet)
   boop.config.enabled = value and true or false
   if not boop.config.enabled then
-    if boop.state.prequeueTimer then
-      killTimer(boop.state.prequeueTimer)
-      boop.state.prequeueTimer = nil
+    if boop.state.queue.prequeueTimer then
+      killTimer(boop.state.queue.prequeueTimer)
+      boop.state.queue.prequeueTimer = nil
     end
-    boop.state.prequeuedStandard = false
+    boop.state.queue.prequeuedStandard = false
   else
-    boop.state.queueAliasDirty = true
+    boop.state.queue.aliasDirty = true
   end
   if boop.stats and boop.stats.onEnabledChanged then
     boop.stats.onEnabledChanged(boop.config.enabled)
@@ -1018,11 +1018,11 @@ end
 function boop.ui.setPrequeueEnabled(value)
   saveConfigValue("prequeueEnabled", value and true or false)
   if not boop.config.prequeueEnabled then
-    if boop.state.prequeueTimer then
-      killTimer(boop.state.prequeueTimer)
-      boop.state.prequeueTimer = nil
+    if boop.state.queue.prequeueTimer then
+      killTimer(boop.state.queue.prequeueTimer)
+      boop.state.queue.prequeueTimer = nil
     end
-    boop.state.prequeuedStandard = false
+    boop.state.queue.prequeuedStandard = false
   elseif boop.schedulePrequeue then
     boop.schedulePrequeue()
   end
@@ -1098,30 +1098,30 @@ end
 local function queueInterrupt(label, command, opts)
   opts = opts or {}
   boop.state = boop.state or {}
-  if boop.state.prequeueTimer then
-    killTimer(boop.state.prequeueTimer)
-    boop.state.prequeueTimer = nil
+  if boop.state.queue.prequeueTimer then
+    killTimer(boop.state.queue.prequeueTimer)
+    boop.state.queue.prequeueTimer = nil
   end
-  boop.state.prequeuedStandard = false
-  boop.state.diagHold = true
-  boop.state.diagAwaitPrompt = opts.awaitPrompt and true or false
-  boop.state.diagLabel = tostring(label or "interrupt")
-  boop.state.queueAliasDirty = true
+  boop.state.queue.prequeuedStandard = false
+  boop.state.diag.hold = true
+  boop.state.diag.awaitPrompt = opts.awaitPrompt and true or false
+  boop.state.diag.label = tostring(label or "interrupt")
+  boop.state.queue.aliasDirty = true
 
-  if boop.state.diagTimeoutTimer then
-    killTimer(boop.state.diagTimeoutTimer)
-    boop.state.diagTimeoutTimer = nil
+  if boop.state.diag.timeoutTimer then
+    killTimer(boop.state.diag.timeoutTimer)
+    boop.state.diag.timeoutTimer = nil
   end
 
   local timeout = tonumber(boop.config.diagTimeoutSeconds) or 8
   if timeout > 0 then
-    local timeoutLabel = boop.state.diagLabel
-    boop.state.diagTimeoutTimer = tempTimer(timeout, function()
-      boop.state.diagTimeoutTimer = nil
-      if boop.state.diagHold then
-        boop.state.diagHold = false
-        boop.state.diagAwaitPrompt = false
-        boop.state.diagLabel = ""
+    local timeoutLabel = boop.state.diag.label
+    boop.state.diag.timeoutTimer = tempTimer(timeout, function()
+      boop.state.diag.timeoutTimer = nil
+      if boop.state.diag.hold then
+        boop.state.diag.hold = false
+        boop.state.diag.awaitPrompt = false
+        boop.state.diag.label = ""
         boop.util.warn(timeoutLabel .. " timeout; attacks resumed")
         boop.trace.log(timeoutLabel .. " timeout resume")
       end
@@ -1319,7 +1319,7 @@ function boop.ui.pullCommand(mobName, direction)
   end
 
   boop.state = boop.state or {}
-  if boop.state.pullState and boop.state.pullState.active then
+  if boop.state.combat.pullState and boop.state.combat.pullState.active then
     boop.util.warn("pull already in progress")
     return
   end
@@ -1336,7 +1336,7 @@ function boop.ui.pullCommand(mobName, direction)
     return
   end
 
-  local originRoom = boop.util.trim(tostring((boop.state and boop.state.room) or ""))
+  local originRoom = boop.util.trim(tostring((boop.state and boop.state.targeting.room) or ""))
   if originRoom == "" and gmcp and gmcp.Room and gmcp.Room.Info and gmcp.Room.Info.num then
     originRoom = boop.util.trim(tostring(gmcp.Room.Info.num or ""))
   end
@@ -1349,7 +1349,7 @@ function boop.ui.pullCommand(mobName, direction)
   if restoreEnabled then
     boop.ui.setEnabled(false, true)
   end
-  boop.state.pullState = {
+  boop.state.combat.pullState = {
     active = true,
     phase = "outbound",
     originRoom = originRoom,
@@ -1679,9 +1679,9 @@ function boop.ui.presetCommand(raw)
     saveConfigValue(key, value)
   end
 
-  if not preset.values.prequeueEnabled and boop.state and boop.state.prequeueTimer then
-    killTimer(boop.state.prequeueTimer)
-    boop.state.prequeueTimer = nil
+  if not preset.values.prequeueEnabled and boop.state and boop.state.queue.prequeueTimer then
+    killTimer(boop.state.queue.prequeueTimer)
+    boop.state.queue.prequeueTimer = nil
   end
 
   if not preset.values.targetCall and boop.targets and boop.targets.clearTargetCall then
@@ -1740,7 +1740,7 @@ function boop.ui.partyCommand(raw)
   local assistShown = assistStatusText()
   local walkShown = walkStatusLabel()
   local blocker, nextAction = currentBlocker()
-  local calledTarget = tostring((boop.state and boop.state.calledTargetId) or "")
+  local calledTarget = tostring((boop.state and boop.state.targeting.calledTargetId) or "")
   if calledTarget == "" then calledTarget = "(none)" end
   local targetCallShown = boop.config.targetCall and "ON" or "OFF"
   local affCallsShown = boop.config.rageAffCalloutsEnabled and "ON" or "OFF"
@@ -1940,7 +1940,7 @@ function boop.ui.targetCallCommand(raw)
   local cmd = boop.util.safeLower(text)
 
   if cmd == "" or cmd == "status" or cmd == "show" then
-    local calledId = tostring((boop.state and boop.state.calledTargetId) or "")
+    local calledId = tostring((boop.state and boop.state.targeting.calledTargetId) or "")
     if calledId == "" then calledId = "(none)" end
     boop.util.info("leader target call gate: " .. (boop.config.targetCall and "on" or "off"))
     boop.util.info("called target id: " .. calledId)
@@ -2060,7 +2060,7 @@ function boop.ui.attackPreferenceCommand(raw)
   local text = boop.util.trim(raw or "")
   local textLower = boop.util.safeLower(text)
   local classKey = currentAttackPreferenceClass()
-  local spec = boop.util.trim(boop.state and boop.state.spec or "")
+  local spec = boop.util.trim(boop.state and boop.state.combat.spec or "")
 
   if classKey == "" then
     boop.util.warn("No active class profile is loaded yet")
@@ -2639,7 +2639,7 @@ local function comboResolveClassTokens(tokens, aliases, classKeys)
 end
 
 local function comboCurrentClassRaw()
-  return boop.util.trim((boop.state and boop.state.class)
+  return boop.util.trim((boop.state and boop.state.combat.class)
     or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class)
     or "")
 end
@@ -3446,9 +3446,9 @@ function boop.ui.home()
   local targetingMode = tostring(boop.config.targetingMode or "whitelist")
   local rageMode = tostring(boop.config.attackMode or "simple")
   local enabled = boop.config.enabled and "on" or "off"
-  local denizenCount = boop.state and boop.state.denizens and #boop.state.denizens or 0
-  local targetId = boop.state and boop.state.currentTargetId or ""
-  local targetName = boop.state and boop.state.targetName or ""
+  local denizenCount = boop.state and boop.state.targeting.denizens and #boop.state.targeting.denizens or 0
+  local targetId = boop.state and boop.state.targeting.currentTargetId or ""
+  local targetName = boop.state and boop.state.targeting.targetName or ""
   local targetShown = targetId ~= "" and (targetId .. " | " .. (targetName ~= "" and targetName or "(unnamed)")) or "(none)"
   local trip = boop.stats and boop.stats.trip or {}
   local tripRunning = trip and trip.stopwatch and "running" or "idle"
@@ -3729,8 +3729,8 @@ end
 local function configRenderHome()
   configSetScreen("home")
   local blocker, nextAction = currentBlocker()
-  local targetId = boop.state and boop.state.currentTargetId or ""
-  local targetName = boop.state and boop.state.targetName or ""
+  local targetId = boop.state and boop.state.targeting.currentTargetId or ""
+  local targetName = boop.state and boop.state.targeting.targetName or ""
   local targetShown = targetId ~= "" and (targetId .. " | " .. (targetName ~= "" and targetName or "(unnamed)")) or "(none)"
 
   if cecho then
@@ -3810,8 +3810,8 @@ local function configRenderCombatSection()
   local diagTimeout = tonumber(boop.config.diagTimeoutSeconds) or 0
   local fleeShown = boop.config.fleeEnabled and tostring(boop.config.fleeAt or "30%") or "off"
   local blocker, nextAction = currentBlocker()
-  local targetId = boop.state and boop.state.currentTargetId or ""
-  local targetName = boop.state and boop.state.targetName or ""
+  local targetId = boop.state and boop.state.targeting.currentTargetId or ""
+  local targetName = boop.state and boop.state.targeting.targetName or ""
   local targetShown = targetId ~= "" and (targetId .. " | " .. (targetName ~= "" and targetName or "(unnamed)")) or "(none)"
   if cecho then
     uiPrintHeader("configuration > combat")
@@ -3894,8 +3894,8 @@ end
 local function configRenderTargetingSection()
   configSetScreen("targeting")
   local blocker, nextAction = currentBlocker()
-  local denizenCount = boop.state and boop.state.denizens and #boop.state.denizens or 0
-  local calledId = tostring((boop.state and boop.state.calledTargetId) or "")
+  local denizenCount = boop.state and boop.state.targeting.denizens and #boop.state.targeting.denizens or 0
+  local calledId = tostring((boop.state and boop.state.targeting.calledTargetId) or "")
   if calledId == "" then
     calledId = "(none)"
   end
@@ -3957,7 +3957,7 @@ local function configRenderLootSection()
   configSetScreen("loot")
   local pack = boop.util.trim(boop.config.goldPack or "")
   local shownPack = pack ~= "" and pack or "(off)"
-  local pending = (boop.state and (boop.state.autoGrabGoldPending or boop.state.goldGetPending or boop.state.goldPutPending)) and "pending" or "idle"
+  local pending = (boop.state and (boop.state.gold.autoGrabPending or boop.state.gold.getPending or boop.state.gold.putPending)) and "pending" or "idle"
   if cecho then
     uiPrintHeader("configuration > loot")
     uiPrintSection("live")
@@ -3992,7 +3992,7 @@ end
 
 local function configRenderDebugSection()
   configSetScreen("debug")
-  local traceCount = boop.state and boop.state.traceBuffer and #boop.state.traceBuffer or 0
+  local traceCount = boop.state and boop.state.trace.buffer and #boop.state.trace.buffer or 0
   local ownPalette = boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary("own") or "AUTO"
   local othersPalette = boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary("others") or "AUTO"
   if cecho then
@@ -4195,15 +4195,15 @@ end
 function boop.ui.debug()
   local enabled = boop.config.enabled and "on" or "off"
   local mode = boop.config.targetingMode or "unknown"
-  local denizenCount = boop.state.denizens and #boop.state.denizens or 0
-  local currentTargetId = boop.state.currentTargetId or ""
-  local currentTargetName = boop.state.targetName or ""
-  local class = boop.state.class or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class) or "unknown"
+  local denizenCount = boop.state.targeting.denizens and #boop.state.targeting.denizens or 0
+  local currentTargetId = boop.state.targeting.currentTargetId or ""
+  local currentTargetName = boop.state.targeting.targetName or ""
+  local class = boop.state.combat.class or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class) or "unknown"
   local eq = gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.eq or "?"
   local bal = gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.bal or "?"
   local rage = boop.attacks and boop.attacks.getRage and boop.attacks.getRage() or 0
   local blocker, nextAction = currentBlocker()
-  local traceCount = boop.state and boop.state.traceBuffer and #boop.state.traceBuffer or 0
+  local traceCount = boop.state and boop.state.trace.buffer and #boop.state.trace.buffer or 0
   local targetShown = "(none)"
   if currentTargetId ~= "" and currentTargetName ~= "" then
     targetShown = currentTargetId .. " | " .. currentTargetName
@@ -4275,7 +4275,7 @@ local function entrySummary(label, entry)
 end
 
 function boop.ui.debugAttacks()
-  local class = boop.util.safeLower(boop.state.class or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class) or "")
+  local class = boop.util.safeLower(boop.state.combat.class or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class) or "")
   local profile = boop.attacks and boop.attacks.registry and boop.attacks.registry[class] or nil
   if not profile then
     boop.util.echo("debug attacks | no profile for class: " .. tostring(class))

@@ -37,7 +37,7 @@ describe("boop class profile selection", function()
     helper.setClass("Infernal")
     helper.setSpec("Sword and Shield")
     helper.learnSkill("Combination", "Weaponmastery")
-    boop.state.targetShield = { attempted = false }
+    boop.state.targeting.targetShield = { attempted = false }
 
     local actions = boop.attacks.choose()
 
@@ -52,7 +52,7 @@ describe("boop class profile selection", function()
     helper.learnSkill("Combination", "Weaponmastery")
     helper.learnSkill("shiver", "Attainment")
     boop.config.pullRageReserve = true
-    boop.state.targetShield = { attempted = false }
+    boop.state.targeting.targetShield = { attempted = false }
 
     local actions = boop.attacks.choose()
 
@@ -83,7 +83,7 @@ describe("boop class profile selection", function()
   it("does not prepend wield scythe for depthswalker damage when a scythe is already wielded", function()
     helper.setClass("Depthswalker")
     helper.learnSkill("Reap", "Shadowmancy")
-    boop.state.wieldedRight = { id = "11", name = "a practice scythe", attrib = "L", icon = "weapon" }
+    boop.state.inventory.wieldedRight = { id = "11", name = "a practice scythe", attrib = "L", icon = "weapon" }
 
     local actions = boop.attacks.choose()
 
@@ -93,7 +93,7 @@ describe("boop class profile selection", function()
   it("uses designated weapon ids for depthswalker weapon swaps", function()
     helper.setClass("Depthswalker")
     helper.learnSkill("Strike", "Shadowmancy")
-    boop.state.targetShield = { attempted = false }
+    boop.state.targeting.targetShield = { attempted = false }
     local key = boop.attacks.weaponConfigKey("depthswalker", "dagger")
     boop.config[key] = "47177"
 
@@ -107,7 +107,7 @@ describe("boop class profile selection", function()
     helper.learnSkill("Reap", "Shadowmancy")
     local key = boop.attacks.weaponConfigKey("depthswalker", "scythe")
     boop.config[key] = "scythe12345"
-    boop.state.wieldedRight = { id = "12345", name = "a practice scythe", attrib = "L", icon = "weapon" }
+    boop.state.inventory.wieldedRight = { id = "12345", name = "a practice scythe", attrib = "L", icon = "weapon" }
 
     local actions = boop.attacks.choose()
 
@@ -117,9 +117,9 @@ describe("boop class profile selection", function()
   it("prepends wield dagger for depthswalker shieldbreak when no dagger is tracked", function()
     helper.setClass("Depthswalker")
     helper.learnSkill("Strike", "Shadowmancy")
-    boop.state.targetShield = { attempted = false }
-    boop.state.wieldedLeft = { id = "12", name = "a tower shield", attrib = "l", icon = "armour" }
-    boop.state.wieldedRight = { id = "13", name = "a practice scythe", attrib = "L", icon = "weapon" }
+    boop.state.targeting.targetShield = { attempted = false }
+    boop.state.inventory.wieldedLeft = { id = "12", name = "a tower shield", attrib = "l", icon = "armour" }
+    boop.state.inventory.wieldedRight = { id = "13", name = "a practice scythe", attrib = "L", icon = "weapon" }
 
     local actions = boop.attacks.choose()
 

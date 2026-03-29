@@ -53,7 +53,7 @@ describe("boop event-driven state transitions", function()
     boop.config.enabled = true
     boop.config.useQueueing = true
     boop.config.targetingMode = "auto"
-    boop.state.targetShield = { attempted = false, timer = 77 }
+    boop.state.targeting.targetShield = { attempted = false, timer = 77 }
 
     gmcp.Char.Items.Remove = {
       location = "room",
@@ -62,9 +62,9 @@ describe("boop event-driven state transitions", function()
 
     boop.onRoomItemsRemove()
 
-    assert.are.equal("43", boop.state.currentTargetId)
-    assert.are.equal("a second denizen", boop.state.targetName)
-    assert.is_false(boop.state.targetShield)
+    assert.are.equal("43", boop.state.targeting.currentTargetId)
+    assert.are.equal("a second denizen", boop.state.targeting.targetName)
+    assert.is_false(boop.state.targeting.targetShield)
     assert.is_false(boop.afflictions.hasTarget("stupidity"))
     assert.is_function(scheduled_callback)
     assert.stub(kill_timer_stub).was_called_with(77)
@@ -79,37 +79,37 @@ describe("boop event-driven state transitions", function()
 
   it("clears tracked shield state when gmcp target set changes", function()
     helper.setTarget("42", "a test denizen", "80%")
-    boop.state.targetShield = { attempted = false, timer = 55 }
+    boop.state.targeting.targetShield = { attempted = false, timer = 55 }
     gmcp.IRE.Target.Set = "77"
 
     boop.onTargetSet()
 
-    assert.are.equal("77", boop.state.currentTargetId)
-    assert.is_false(boop.state.targetShield)
+    assert.are.equal("77", boop.state.targeting.currentTargetId)
+    assert.is_false(boop.state.targeting.targetShield)
     assert.stub(kill_timer_stub).was_called_with(55)
   end)
 
   it("clears tracked shield state when gmcp target info changes", function()
     helper.setTarget("42", "a test denizen", "80%")
-    boop.state.targetShield = { attempted = false, timer = 56 }
+    boop.state.targeting.targetShield = { attempted = false, timer = 56 }
     gmcp.IRE.Target.Info.id = "78"
 
     boop.onTargetInfo()
 
-    assert.are.equal("78", boop.state.currentTargetId)
-    assert.is_false(boop.state.targetShield)
+    assert.are.equal("78", boop.state.targeting.currentTargetId)
+    assert.is_false(boop.state.targeting.targetShield)
     assert.stub(kill_timer_stub).was_called_with(56)
   end)
 
   it("clears gold intent and remembers the return exit when the room changes", function()
-    boop.state.room = 100
-    boop.state.fleeing = false
-    boop.state.targetShield = { attempted = false, timer = 57 }
-    boop.state.goldGetPending = true
-    boop.state.goldPutPending = true
-    boop.state.goldGetRetries = 1
-    boop.state.goldPutRetries = 1
-    boop.state.goldPackTarget = "pack"
+    boop.state.targeting.room = 100
+    boop.state.combat.fleeing = false
+    boop.state.targeting.targetShield = { attempted = false, timer = 57 }
+    boop.state.gold.getPending = true
+    boop.state.gold.putPending = true
+    boop.state.gold.getRetries = 1
+    boop.state.gold.putRetries = 1
+    boop.state.gold.packTarget = "pack"
 
     gmcp.Room.Info.num = 200
     gmcp.Room.Info.exits = {
@@ -119,27 +119,27 @@ describe("boop event-driven state transitions", function()
 
     boop.onRoomInfo()
 
-    assert.is_true(boop.state.movedRooms)
-    assert.are.equal(100, boop.state.lastRoom)
-    assert.are.equal("north", boop.state.lastRoomDir)
-    assert.are.equal(200, boop.state.room)
-    assert.is_false(boop.state.targetShield)
-    assert.is_false(boop.state.goldGetPending)
-    assert.is_false(boop.state.goldPutPending)
-    assert.are.equal(0, boop.state.goldGetRetries)
-    assert.are.equal(0, boop.state.goldPutRetries)
-    assert.are.equal("", boop.state.goldPackTarget)
+    assert.is_true(boop.state.targeting.movedRooms)
+    assert.are.equal(100, boop.state.targeting.lastRoom)
+    assert.are.equal("north", boop.state.targeting.lastRoomDir)
+    assert.are.equal(200, boop.state.targeting.room)
+    assert.is_false(boop.state.targeting.targetShield)
+    assert.is_false(boop.state.gold.getPending)
+    assert.is_false(boop.state.gold.putPending)
+    assert.are.equal(0, boop.state.gold.getRetries)
+    assert.are.equal(0, boop.state.gold.putRetries)
+    assert.are.equal("", boop.state.gold.packTarget)
     assert.stub(kill_timer_stub).was_called_with(57)
   end)
 
   it("clears stale gold state if room sovereigns disappear mid-handling", function()
     boop.config.enabled = true
-    boop.state.autoGrabGoldPending = true
-    boop.state.autoGrabGoldPendingAt = 1
-    boop.state.goldDropped = true
-    boop.state.goldGetPending = true
-    boop.state.goldPutPending = true
-    boop.state.goldPackTarget = "pack"
+    boop.state.gold.autoGrabPending = true
+    boop.state.gold.autoGrabPendingAt = 1
+    boop.state.gold.dropped = true
+    boop.state.gold.getPending = true
+    boop.state.gold.putPending = true
+    boop.state.gold.packTarget = "pack"
 
     gmcp.Char.Items.Remove = {
       location = "room",
@@ -148,11 +148,11 @@ describe("boop event-driven state transitions", function()
 
     boop.onRoomItemsRemove()
 
-    assert.is_false(boop.state.autoGrabGoldPending)
-    assert.is_nil(boop.state.autoGrabGoldPendingAt)
-    assert.is_false(boop.state.goldGetPending)
-    assert.is_false(boop.state.goldPutPending)
-    assert.are.equal("", boop.state.goldPackTarget)
+    assert.is_false(boop.state.gold.autoGrabPending)
+    assert.is_nil(boop.state.gold.autoGrabPendingAt)
+    assert.is_false(boop.state.gold.getPending)
+    assert.is_false(boop.state.gold.putPending)
+    assert.are.equal("", boop.state.gold.packTarget)
   end)
 
   it("re-announces core gmcp supports on connection-ready events", function()

@@ -17,36 +17,36 @@ local function setCaptureTriggersEnabled(enabled)
 end
 
 local function clearTimer()
-  if boop.state.ihTimer then
-    killTimer(boop.state.ihTimer)
-    boop.state.ihTimer = nil
+  if boop.state.ih.timer then
+    killTimer(boop.state.ih.timer)
+    boop.state.ih.timer = nil
   end
 end
 
 local function armTimeout()
   clearTimer()
-  boop.state.ihTimer = tempTimer(2.5, function()
+  boop.state.ih.timer = tempTimer(2.5, function()
     boop.ih.stop()
   end)
 end
 
 function boop.ih.init()
-  boop.state.ihActive = boop.state.ihActive or false
-  boop.state.ihRequested = boop.state.ihRequested or false
-  boop.state.ihTimer = boop.state.ihTimer or nil
+  boop.state.ih.active = boop.state.ih.active or false
+  boop.state.ih.requested = boop.state.ih.requested or false
+  boop.state.ih.timer = boop.state.ih.timer or nil
   setCaptureTriggersEnabled(false)
 end
 
 function boop.ih.start()
-  boop.state.ihRequested = true
-  boop.state.ihActive = false
+  boop.state.ih.requested = true
+  boop.state.ih.active = false
   setCaptureTriggersEnabled(true)
   armTimeout()
 end
 
 function boop.ih.stop()
-  boop.state.ihRequested = false
-  boop.state.ihActive = false
+  boop.state.ih.requested = false
+  boop.state.ih.active = false
   clearTimer()
   setCaptureTriggersEnabled(false)
 end
@@ -122,15 +122,15 @@ function boop.ih.printLine(id, name, isDenizen, fullLine)
 end
 
 function boop.ih.handleLine(id, name, fullLine)
-  if not boop.state.ihRequested and not boop.state.ihActive then return end
+  if not boop.state.ih.requested and not boop.state.ih.active then return end
   if fullLine and boop.util.starts(fullLine, "Number of objects:") then
     boop.ih.stop()
     return
   end
   if not boop.ih.isObjectId(id) then return end
   if not name or name == "" then return end
-  if not boop.state.ihActive then
-    boop.state.ihActive = true
+  if not boop.state.ih.active then
+    boop.state.ih.active = true
   end
   armTimeout()
   local isDenizen = false

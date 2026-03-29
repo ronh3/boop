@@ -44,27 +44,27 @@ describe("boop diagnose pause and resume", function()
   it("queues diagnose and pauses attacks while on hold", function()
     boop.ui.diag()
 
-    assert.is_true(boop.state.diagHold)
-    assert.is_false(boop.state.diagAwaitPrompt)
+    assert.is_true(boop.state.diag.hold)
+    assert.is_false(boop.state.diag.awaitPrompt)
     assert.stub(send_stub).was_called_with("queue clear", false)
     assert.stub(send_stub).was_called_with("queue addclearfull freestand diagnose", false)
 
     boop.tick()
 
-    assert.is_true(boop.state.diagHold)
-    assert.is_false(boop.state.attacking)
+    assert.is_true(boop.state.diag.hold)
+    assert.is_false(boop.state.combat.attacking)
   end)
 
   it("resumes attacks after the diagnose line and prompt", function()
     boop.ui.diag()
     boop.onDiagReadyLine()
 
-    assert.is_true(boop.state.diagAwaitPrompt)
+    assert.is_true(boop.state.diag.awaitPrompt)
 
     boop.onPrompt()
 
-    assert.is_false(boop.state.diagHold)
-    assert.is_false(boop.state.diagAwaitPrompt)
+    assert.is_false(boop.state.diag.hold)
+    assert.is_false(boop.state.diag.awaitPrompt)
     assert.stub(send_stub).was_called_with("command hound at 42", false)
   end)
 end)

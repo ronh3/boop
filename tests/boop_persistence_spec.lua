@@ -111,14 +111,14 @@ describe("boop config and list persistence paths", function()
   end)
 
   it("persists disabling boop and clears the outstanding prequeue timer", function()
-    boop.state.prequeueTimer = 41
-    boop.state.prequeuedStandard = true
+    boop.state.queue.prequeueTimer = 41
+    boop.state.queue.prequeuedStandard = true
 
     boop.ui.setEnabled(false, true)
 
     assert.is_false(boop.config.enabled)
-    assert.is_nil(boop.state.prequeueTimer)
-    assert.is_false(boop.state.prequeuedStandard)
+    assert.is_nil(boop.state.queue.prequeueTimer)
+    assert.is_false(boop.state.queue.prequeuedStandard)
     assert.stub(kill_timer_stub).was_called_with(41)
     assert.are.same({ key = "enabled", value = false }, saved_configs[1])
   end)
