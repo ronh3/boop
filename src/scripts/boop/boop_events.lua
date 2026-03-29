@@ -496,8 +496,18 @@ function boop.events.register()
   add("gmcp.Char.Skills.Groups", "boop.onSkillsGroups")
   add("gmcp.Char.Skills.List", "boop.onSkillsList")
   add("gmcp.Char.Skills.Info", "boop.onSkillsInfo")
+  add("sysConnectionEvent", "boop.onConnectionEvent")
   add("demonwalker.arrived", "boop.onWalkArrived")
   add("demonwalker.finished", "boop.onWalkFinished")
+end
+
+function boop.onConnectionEvent()
+  if boop.requestCoreSupports then
+    boop.requestCoreSupports({
+      force = true,
+      requestSkills = true,
+    })
+  end
 end
 
 function boop.onRoomItemsList()
@@ -713,6 +723,12 @@ end
 
 function boop.onCharStatus()
   if not gmcp or not gmcp.Char or not gmcp.Char.Status then return end
+  if boop.requestCoreSupports and (not gmcp.IRE or not gmcp.IRE.Target or not gmcp.IRE.Display) then
+    boop.requestCoreSupports({
+      requestSkills = true,
+      minInterval = 2,
+    })
+  end
   if gmcp.Char.Status.class then
     local newClass = gmcp.Char.Status.class
     if boop.state.class ~= newClass then

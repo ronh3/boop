@@ -154,4 +154,24 @@ describe("boop event-driven state transitions", function()
     assert.is_false(boop.state.goldPutPending)
     assert.are.equal("", boop.state.goldPackTarget)
   end)
+
+  it("re-announces core gmcp supports on connection-ready events", function()
+    boop.onConnectionEvent()
+
+    assert.stub(send_gmcp_stub).was_called_with('Core.Supports.Add ["IRE.Target 1"]')
+    assert.stub(send_gmcp_stub).was_called_with('Core.Supports.Add ["IRE.Display 3"]')
+    assert.stub(send_gmcp_stub).was_called_with('Core.Supports.Add ["Char.Skills 1"]')
+    assert.stub(send_gmcp_stub).was_called_with([[Char.Skills.Get]])
+  end)
+
+  it("retries core gmcp support negotiation when char status arrives before IRE gmcp is active", function()
+    gmcp.IRE = nil
+    gmcp.Char.Status.class = "Occultist"
+
+    boop.onCharStatus()
+
+    assert.stub(send_gmcp_stub).was_called_with('Core.Supports.Add ["IRE.Target 1"]')
+    assert.stub(send_gmcp_stub).was_called_with('Core.Supports.Add ["IRE.Display 3"]')
+    assert.stub(send_gmcp_stub).was_called_with('Core.Supports.Add ["Char.Skills 1"]')
+  end)
 end)

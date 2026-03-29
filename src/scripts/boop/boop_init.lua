@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.275"
+boop.version = boop.version or "0.1.276"
 
 boop.defaults = {
   enabled = false,
@@ -56,16 +56,49 @@ boop.lists.globalBlacklist = boop.lists.globalBlacklist or {}
 boop.lists.whitelistTags = boop.lists.whitelistTags or {}
 boop.lists.separator = boop.lists.separator or "/"
 boop.handlers = boop.handlers or {}
+boop.gmcp = boop.gmcp or {}
+
+local function gmcpSupportTimestamp()
+  if getEpoch then
+    return getEpoch() / 1000
+  end
+  return os.clock()
+end
+
+function boop.requestCoreSupports(opts)
+  opts = opts or {}
+  if not sendGMCP then
+    return false
+  end
+
+  local minInterval = tonumber(opts.minInterval)
+  if minInterval == nil then
+    minInterval = 1
+  end
+
+  local now = gmcpSupportTimestamp()
+  local last = tonumber(boop.gmcp.lastSupportAnnounceAt or 0) or 0
+  if not opts.force and last > 0 and (now - last) < minInterval then
+    return false
+  end
+
+  sendGMCP('Core.Supports.Add ["IRE.Target 1"]')
+  sendGMCP('Core.Supports.Add ["IRE.Display 3"]')
+  sendGMCP('Core.Supports.Add ["Char.Skills 1"]')
+  boop.gmcp.lastSupportAnnounceAt = now
+
+  if opts.requestSkills and boop.skills and boop.skills.requestAll then
+    boop.skills.requestAll()
+  end
+
+  return true
+end
 
 boop.bootstrap = boop.bootstrap or function()
   if boop.bootstrapped then return end
   boop.bootstrapped = true
 
-  if sendGMCP then
-    sendGMCP('Core.Supports.Add ["IRE.Target 1"]')
-    sendGMCP('Core.Supports.Add ["IRE.Display 3"]')
-    sendGMCP('Core.Supports.Add ["Char.Skills 1"]')
-  end
+  boop.requestCoreSupports({ force = true })
 
   if boop.db and boop.db.init then
     boop.db.init()
