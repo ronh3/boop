@@ -712,6 +712,7 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
       helpCommand("boop gag color [own|others] <who|ability|target|meta|separator|bg> <color|off>", "Set one gag color role directly; use `boop gag color [own|others] <role>` to open the picker."),
       helpCommand("boop get", "Inspect raw config values when you need to verify the stored state directly."),
       helpCommand("boop set <key> <value>", "Set a raw config value directly when there is no better guided control for it yet."),
+      helpCommand("boop dev [status|path <repo-root>|on|off|restart]", "Development-only local Muddler auto-reload helper for watching boop's repo root `.output` file."),
       helpCommand("boop help audit", "Dump every help topic, alias, command, and note into a review-friendly audit view."),
       helpCommand("boop import foxhunt [merge|overwrite|dryrun]", "Import whitelist and blacklist data from Foxhunt."),
       helpCommand("boop pack test", "Queue a look-in command for the current configured gold pack."),
@@ -720,6 +721,7 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
     notes = {
       "Use trace when you need decision-flow debugging; use the debug snapshot when you need current-state debugging.",
       "This is also the place for lower-level commands that do not fit the main control/config/party/stats flow, including raw `boop get` / `boop set` access.",
+      "The `boop dev` helper is for local package development only; it expects Muddler.mpackage plus a repo-root path where muddler writes `.output`.",
     },
   },
 }

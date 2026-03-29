@@ -49,6 +49,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Dev",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+dev(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Gag",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+gag(?:\\s+(.+))?$",

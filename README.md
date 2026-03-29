@@ -36,6 +36,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop prequeue` / `boop prequeue on` / `boop prequeue off`
 - `boop lead` / `boop lead <seconds>` (prequeue lead timing)
 - `boop get [key]` / `boop set <key> <value>` (advanced raw config inspection/editing; prefer `boop config` for normal setup)
+- `boop dev [status|path <repo-root>|on|off|restart]` (development-only local Muddler auto-reload helper)
 - `boop trace` / `boop trace on|off|show [n]|clear`
 - `boop gag` / `boop gag on|off|own|others|all|<scope> on|off|colors [own|others]|color [own|others] <who|ability|target|meta|separator|bg> <color|off>|color [own|others] reset`
 - `boop targeting <manual|whitelist|blacklist|auto>`
@@ -142,3 +143,4 @@ Standalone Mudlet package for Achaea auto hunting.
 
 ## Build
 - Use Muddler from repo root (see `CODEX.md` for exact guidance).
+- For local live-reload development, install `Muddler.mpackage` in Mudlet, point boop at the repo root with `boop dev path <repo-root>`, then enable it with `boop dev on`. This watches the local `.output` file written by Muddler when `mfile.outputFile` is `true`.

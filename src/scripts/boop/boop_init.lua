@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.273"
+boop.version = boop.version or "0.1.274"
 
 boop.defaults = {
   enabled = false,
@@ -43,6 +43,8 @@ boop.defaults = {
   assistEnabled = false,
   assistLeader = "",
   autoTargetCall = false,
+  devHelperEnabled = false,
+  devHelperPath = "",
   uiTheme = "",
   gameSeparator = "|",
   focusVerb = "speed",
@@ -108,6 +110,10 @@ boop.bootstrap = boop.bootstrap or function()
 
   if boop.skills and boop.skills.requestAll then
     boop.skills.requestAll()
+  end
+
+  if boop.dev and boop.dev.startConfiguredWatcher then
+    boop.dev.startConfiguredWatcher({ quiet = true })
   end
 
   if boop.ui and boop.ui.status then
