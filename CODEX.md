@@ -89,3 +89,30 @@ Guidance for Codex when working in this repository.
 - For gameplay behavior questions, prefer the existing reference implementations (Basher/Bashing/Foxhunt) and our current code as the source of truth unless instructed otherwise.
 - If implementing new commands or flows, update `README.md` and ensure aliases/triggers are registered in the proper manifest JSON.
 - For party/leader/walker behavior, assume `demonnicAutoWalker` remains an external dependency and boop should integrate with it rather than absorb it.
+
+## Session Checkpoint
+- Branch to continue from: `codex/pre-1.0-hardening-pass`
+- Current branch tip after the latest pushed work: `57f94fc` (`Remove legacy flat state compatibility bridge`)
+- Current synchronized package version: `0.1.279`
+- The purposeful pre-1.0 hardening work that is currently in this branch:
+  - runtime/state ownership and coordinator path
+  - combat planner split from execution
+  - UI/config/help registries
+  - UI registry migration follow-up fixes, including `boop pack test` behavior and misleading help numbering on non-action rows
+  - GMCP support re-announcement on reconnect / missing-`gmcp.IRE` fallback
+  - compatibility cleanup: the legacy flat `boop.state.<key>` bridge has been removed
+- Intentionally not in this branch:
+  - the local Muddler/dev auto-update helper (`boop dev`) was rolled back on purpose and should stay out unless explicitly requested again
+- Important compatibility note for any future session:
+  - internal code now uses owned state domains directly: `boop.state.combat`, `targeting`, `gold`, `queue`, `diag`, `trace`, `rage`, `inventory`, `ih`, `gag`
+  - any personal/debug Mudlet scripts that still read old flat keys like `boop.state.currentTargetId`, `boop.state.goldGetPending`, or `boop.state.diagHold` will now break and must be updated
+- Current project status:
+  - the major refactor is considered landed
+  - the package is in release-hardening mode, not broad-architecture mode
+  - next work should be driven by live Mudlet regressions and release polish, not new structural churn
+- Best next-session validation focus after restart:
+  - `boop`, `boop control`, `boop config`, `boop party`, `boop help`
+  - targeting/retarget flow
+  - gold pickup + pack flow
+  - `diag` and one queued interrupt (`matic`/`fly`/etc.)
+  - reconnect/package reload and confirm `gmcp.IRE` returns without manual `sendGMCP`
