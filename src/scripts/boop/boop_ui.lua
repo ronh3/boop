@@ -3361,7 +3361,7 @@ local function helpRenderTopic(topic)
     uiPrintHeader("help > " .. topic.title)
     if topic.summary and topic.summary ~= "" then
       uiPrintSection("what this covers")
-      uiPrintRow(1, topic.summary, "INFO", "cyan")
+      uiPrintRow(nil, topic.summary, "INFO", "cyan")
     end
     local commandRows = {}
     for i, entry in ipairs(topic.commands or {}) do
@@ -3387,7 +3387,7 @@ local function helpRenderTopic(topic)
     if topic.notes and #topic.notes > 0 then
       uiPrintSection("notes")
       for i, note in ipairs(topic.notes) do
-        uiPrintRow(i, note, "INFO", "cyan", nil, note, noteWidth)
+        uiPrintRow(nil, note, "INFO", "cyan", nil, note, noteWidth)
       end
     end
     uiPrintFooter("Type: boop help home | boop help back | boop help <number|topic>")
