@@ -37,7 +37,7 @@
   {
     "name": "Boop Pack Set",
     "isActive": "yes",
-    "regex": "^(?i)boop\\s+pack\\s+(.+)$",
+    "regex": "^(?i)boop\\s+pack\\s+(?!test\\s*$)(.+)$",
     "script": "",
     "isFolder": "no"
   }
