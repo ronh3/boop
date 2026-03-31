@@ -70,6 +70,20 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Whitelist Share",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+whitelist\\s+share(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "Boop Whitelist Receive",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+whitelist\\s+receive(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Whitelist Remove",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+whitelist\\s+remove\\s+(.+)$",

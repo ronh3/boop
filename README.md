@@ -52,6 +52,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop set pullRageReserve on|off` (advanced toggle; keep enough rage reserved for a pull-capable damage battlerage attack)
 - `boop whitelist` / `boop whitelist add <name>` / `boop whitelist remove <name>` (display is clickable: up/down/remove)
 - `boop whitelist browse [tag]` (browse whitelist areas; optional tag filter)
+- `boop whitelist share [area]` (share one area's whitelist to party chat `pt`)
+- `boop whitelist receive [merge|merge-reorder|overwrite|reject]` (review or apply the latest incoming whitelist share)
 - `boop whitelist tags <area>` / `boop whitelist tag list`
 - `boop whitelist tag add <area> | <tag[,tag2,...]>`
 - `boop whitelist tag remove <area> | <tag[,tag2,...]>`
@@ -70,6 +72,10 @@ Standalone Mudlet package for Achaea auto hunting.
 - Denizen name matching for whitelist/blacklist is case-insensitive and normalizes straight/curly apostrophes.
 - Whitelist areas can have multiple tags (for example `continent-a`, `newbie`, `high-end`) for browse/filter workflows.
 - Whitelist tags are normalized to lowercase and `-` separators, so `Mid Level` becomes `mid-level`.
+- `boop whitelist share` currently uses party chat only and transfers the ordered mob list for one area; it does not transfer whitelist tags.
+- Incoming whitelist shares stay pending until you apply `merge`, `merge-reorder`, `overwrite`, or `reject`.
+- `merge` keeps your current order and appends missing incoming entries.
+- `merge-reorder` matches the sender's order for shared entries, appends missing sender entries, then keeps your local-only extras at the bottom in their current order.
 - `ih` shows items too; only denizens get whitelist/blacklist buttons.
 - Denizens on the global blacklist do not show `ih` whitelist/blacklist action labels.
 - `boop walk` integrates with `demonnicAutoWalker`; if it is missing, use `boop walk install`.

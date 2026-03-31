@@ -1747,6 +1747,9 @@ function boop.ui.partyCommand(raw)
   local leaderShown = leader ~= "" and leader or "(unset)"
   local partySizeShown = tostring(tonumber(boop.config.partySize) or 1)
   local rosterSummary = string.format("%d | %s", #roster, rosterShown)
+  local pendingWhitelistShare = boop.targets and boop.targets.getPendingWhitelistShare and boop.targets.getPendingWhitelistShare() or nil
+  local whitelistSyncShown = type(pendingWhitelistShare) == "table" and "PENDING" or "NONE"
+  local whitelistSyncColor = type(pendingWhitelistShare) == "table" and "yellow" or "grey"
 
   if cmd ~= "" and cmd ~= "status" and cmd ~= "show" then
     local head, tail = text:match("^(%S+)%s*(.-)%s*$")
@@ -1838,7 +1841,14 @@ function boop.ui.partyCommand(raw)
     uiPrintRow(15, "Control dashboard", "OPEN", "cyan", function()
       boop.ui.controlCommand("")
     end, "Open the control dashboard")
-    uiPrintFooter("Type: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop party walk <cmd> | boop walk install | boop roster | boop combos")
+    uiPrintRow(16, "Whitelist sync", whitelistSyncShown, whitelistSyncColor, function()
+      if boop.targets and boop.targets.receiveWhitelistShare and type(pendingWhitelistShare) == "table" then
+        boop.targets.receiveWhitelistShare("")
+      elseif boop.targets and boop.targets.displayWhitelist then
+        boop.targets.displayWhitelist()
+      end
+    end, type(pendingWhitelistShare) == "table" and "Review the pending whitelist share" or "Open the current area whitelist")
+    uiPrintFooter("Type: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop whitelist share [area] | boop whitelist receive")
     return
   end
 
@@ -1849,8 +1859,9 @@ function boop.ui.partyCommand(raw)
   boop.util.echo(string.format("Movement: walk %s | blocker %s", walkShown, blocker))
   boop.util.echo("Next: " .. nextAction)
   boop.util.echo(string.format("Party size: %s | roster entries: %d", partySizeShown, #roster))
+  boop.util.echo("Whitelist sync: " .. whitelistSyncShown)
   boop.util.echo("Roster: " .. rosterShown)
-  boop.util.echo("Quick: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop party walk | boop walk install | boop roster | boop combos")
+  boop.util.echo("Quick: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop whitelist share [area] | boop whitelist receive")
 end
 
 function boop.ui.assistCommand(raw)

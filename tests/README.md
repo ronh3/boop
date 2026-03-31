@@ -6,6 +6,8 @@ Current coverage:
 
 - `boop_targets_spec.lua`
   Confirms target choice behavior for whitelist priority and `retargetOnPriority`.
+- `boop_whitelist_share_spec.lua`
+  Confirms whitelist party-share packet output plus `merge`, `merge-reorder`, and `overwrite` apply behavior for incoming shares.
 - `boop_target_call_spec.lua`
   Confirms leader target-call gating waits for a designated party leader to call a room target ID before attacking it.
 - `boop_attacks_spec.lua`

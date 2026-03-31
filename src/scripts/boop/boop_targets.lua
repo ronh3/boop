@@ -37,6 +37,10 @@ local function autoTargetCallEnabled()
   return not not (boop.config and boop.config.autoTargetCall)
 end
 
+local WHITELIST_SHARE_PREFIX = "BOOPWL"
+local WHITELIST_SHARE_VERSION = "1"
+local WHITELIST_SHARE_LINE_LIMIT = 180
+
 local function storeCalledTarget(caller, targetId)
   boop.state = boop.state or {}
   boop.state.targeting.calledTargetId = targetId
@@ -54,6 +58,35 @@ end
 
 local function sameSpeaker(a, b)
   return sameName(a, b)
+end
+
+local function packetEncode(value)
+  local text = tostring(value or "")
+  return (text:gsub("([^%w%-_%.~])", function(ch)
+    return string.format("%%%02X", string.byte(ch))
+  end))
+end
+
+local function packetDecode(value)
+  local text = tostring(value or "")
+  return (text:gsub("%%(%x%x)", function(hex)
+    return string.char(tonumber(hex, 16))
+  end))
+end
+
+local function splitPacket(payload)
+  local parts = {}
+  for part in tostring(payload or ""):gmatch("[^|]+") do
+    parts[#parts + 1] = part
+  end
+  return parts
+end
+
+local function shareState()
+  boop.state = boop.state or {}
+  boop.state.targeting = boop.state.targeting or {}
+  boop.state.targeting.incomingWhitelistShares = boop.state.targeting.incomingWhitelistShares or {}
+  return boop.state.targeting
 end
 
 local function findDenizenById(denizens, id)
@@ -244,6 +277,39 @@ local function listContains(list, name)
   return false
 end
 
+local function copyList(list)
+  local out = {}
+  for _, value in ipairs(list or {}) do
+    out[#out + 1] = value
+  end
+  return out
+end
+
+local function dedupeList(list)
+  local out = {}
+  local seen = {}
+  for _, value in ipairs(list or {}) do
+    local name = boop.util.trim(value or "")
+    local key = normalizeName(name)
+    if key ~= "" and not seen[key] then
+      seen[key] = true
+      out[#out + 1] = name
+    end
+  end
+  return out
+end
+
+local function listKeySet(list)
+  local out = {}
+  for _, value in ipairs(list or {}) do
+    local key = normalizeName(value)
+    if key ~= "" then
+      out[key] = true
+    end
+  end
+  return out
+end
+
 local function normalizeBlacklistArea(area)
   local raw = boop.util.safeLower(boop.util.trim(area or ""))
   if raw == "" then
@@ -295,6 +361,340 @@ local function ensureLists()
   return boop.lists
 end
 
+local findWhitelistArea
+local resolveWhitelistArea
+
+local function pendingWhitelistShare()
+  return shareState().pendingWhitelistShare
+end
+
+local function buildWhitelistShareToken()
+  local stamp
+  if getEpoch then
+    stamp = tostring(math.floor(getEpoch()))
+  else
+    stamp = tostring(math.floor(os.clock() * 1000000))
+  end
+  return stamp
+end
+
+local function buildWhitelistDataPackets(token, list)
+  local packets = {}
+  local prefix = string.format("%s|D|%s|%s", WHITELIST_SHARE_PREFIX, WHITELIST_SHARE_VERSION, token)
+  local current = prefix
+  local count = 0
+
+  for _, name in ipairs(list or {}) do
+    local encoded = packetEncode(name)
+    if count > 0 and (#current + 1 + #encoded) > WHITELIST_SHARE_LINE_LIMIT then
+      packets[#packets + 1] = current
+      current = prefix .. "|" .. encoded
+      count = 1
+    else
+      current = current .. "|" .. encoded
+      count = count + 1
+    end
+  end
+
+  if count > 0 then
+    packets[#packets + 1] = current
+  end
+
+  return packets
+end
+
+local function trustedWhitelistShareSpeaker(speaker)
+  local caller = boop.util.trim(speaker or "")
+  if caller == "" then
+    return false
+  end
+
+  local me = selfName()
+  if me ~= "" and sameSpeaker(caller, me) then
+    return false
+  end
+
+  local leader = configuredLeader()
+  if leader == "" then
+    return true
+  end
+  return sameSpeaker(caller, leader)
+end
+
+local function buildWhitelistApplyResult(mode, currentList, incomingList)
+  local current = dedupeList(currentList or {})
+  local incoming = dedupeList(incomingList or {})
+  local result = {}
+  local stats = {
+    added = 0,
+    extras = 0,
+    shared = 0,
+  }
+
+  if mode == "overwrite" then
+    return copyList(incoming), stats
+  end
+
+  if mode == "merge" then
+    result = copyList(current)
+    local seen = listKeySet(current)
+    for _, name in ipairs(incoming) do
+      local key = normalizeName(name)
+      if key ~= "" and not seen[key] then
+        seen[key] = true
+        result[#result + 1] = name
+        stats.added = stats.added + 1
+      end
+    end
+    return result, stats
+  end
+
+  local currentKeys = listKeySet(current)
+  local seen = {}
+
+  for _, name in ipairs(incoming) do
+    local key = normalizeName(name)
+    if key ~= "" and currentKeys[key] and not seen[key] then
+      seen[key] = true
+      result[#result + 1] = name
+      stats.shared = stats.shared + 1
+    end
+  end
+
+  for _, name in ipairs(incoming) do
+    local key = normalizeName(name)
+    if key ~= "" and not seen[key] then
+      seen[key] = true
+      result[#result + 1] = name
+      stats.added = stats.added + 1
+    end
+  end
+
+  for _, name in ipairs(current) do
+    local key = normalizeName(name)
+    if key ~= "" and not seen[key] then
+      seen[key] = true
+      result[#result + 1] = name
+      stats.extras = stats.extras + 1
+    end
+  end
+
+  return result, stats
+end
+
+local function clearIncomingWhitelistShare(token)
+  if token == nil or token == "" then
+    return
+  end
+  shareState().incomingWhitelistShares[token] = nil
+end
+
+local function showPendingWhitelistShare()
+  local pending = pendingWhitelistShare()
+  if type(pending) ~= "table" then
+    boop.util.info("No pending whitelist share.")
+    return false
+  end
+
+  local sender = boop.util.trim(pending.sender or "")
+  local area = boop.util.trim(pending.area or "")
+  local entries = pending.entries or {}
+  local current = boop.lists and boop.lists.whitelist and boop.lists.whitelist[area] or {}
+
+  if cecho and cechoLink then
+    cecho("\n<green>boop<reset>: <white>Pending whitelist share")
+    cecho("\n  <cyan>From:<reset> <white>" .. sender .. "<reset>")
+    cecho("\n  <cyan>Area:<reset> <white>" .. area .. "<reset>")
+    cecho(string.format("\n  <cyan>Entries:<reset> <white>%d incoming<reset> <grey>| current %d<reset>", #entries, #current))
+    cecho("\n  <cyan>Apply:<reset> ")
+    cechoLink("<green>[merge]<reset>", function() boop.targets.receiveWhitelistShare("merge") end, "Keep your order, append missing leader entries", true)
+    cecho(" ")
+    cechoLink("<yellow>[merge-reorder]<reset>", function() boop.targets.receiveWhitelistShare("merge-reorder") end, "Match shared priorities, append your extras at the bottom", true)
+    cecho(" ")
+    cechoLink("<red>[overwrite]<reset>", function() boop.targets.receiveWhitelistShare("overwrite") end, "Replace your area whitelist with the incoming list", true)
+    cecho(" ")
+    cechoLink("<grey>[reject]<reset>", function() boop.targets.receiveWhitelistShare("reject") end, "Discard the pending whitelist share", true)
+
+    if #entries > 0 then
+      cecho("\n  <cyan>Preview:<reset>")
+      local limit = math.min(#entries, 10)
+      for i = 1, limit do
+        cecho(string.format("\n    <yellow>%d.<reset> <white>%s<reset>", i, entries[i]))
+      end
+      if #entries > limit then
+        cecho(string.format("\n    <grey>... +%d more<reset>", #entries - limit))
+      end
+    end
+    return true
+  end
+
+  boop.util.echo("Pending whitelist share:")
+  boop.util.echo("  from: " .. sender)
+  boop.util.echo("  area: " .. area)
+  boop.util.echo(string.format("  entries: %d incoming | current %d", #entries, #current))
+  boop.util.echo("  apply: boop whitelist receive merge|merge-reorder|overwrite|reject")
+  return true
+end
+
+function boop.targets.getPendingWhitelistShare()
+  return pendingWhitelistShare()
+end
+
+function boop.targets.shareWhitelist(area)
+  local resolved = resolveWhitelistArea(area)
+  if resolved == "" then
+    boop.util.warn("Unknown whitelist area: " .. tostring(area))
+    boop.util.info("Use: boop whitelist browse")
+    return false
+  end
+
+  local list = dedupeList((boop.lists and boop.lists.whitelist and boop.lists.whitelist[resolved]) or {})
+  if #list == 0 then
+    boop.util.warn("Area has no whitelist entries: " .. resolved)
+    return false
+  end
+  if not send then
+    boop.util.err("Cannot share whitelist: send() is unavailable.")
+    return false
+  end
+
+  local token = buildWhitelistShareToken()
+  send(string.format("pt %s|S|%s|%s|%s|%d",
+    WHITELIST_SHARE_PREFIX,
+    WHITELIST_SHARE_VERSION,
+    token,
+    packetEncode(resolved),
+    #list), false)
+  for _, payload in ipairs(buildWhitelistDataPackets(token, list)) do
+    send("pt " .. payload, false)
+  end
+  send(string.format("pt %s|E|%s|%s", WHITELIST_SHARE_PREFIX, WHITELIST_SHARE_VERSION, token), false)
+
+  if boop.trace and boop.trace.log then
+    boop.trace.log(string.format("whitelist share: %s (%d entries)", resolved, #list))
+  end
+  boop.util.ok(string.format("Shared whitelist for %s via pt (%d entries).", resolved, #list))
+  return true
+end
+
+function boop.targets.onPartyWhitelistShare(speaker, payload, _rawLine)
+  local caller = boop.util.trim(speaker or "")
+  local parts = splitPacket(payload)
+  if parts[1] ~= WHITELIST_SHARE_PREFIX then
+    return false
+  end
+
+  local kind = tostring(parts[2] or "")
+  local version = tostring(parts[3] or "")
+  local token = tostring(parts[4] or "")
+  if version ~= WHITELIST_SHARE_VERSION or token == "" then
+    return false
+  end
+  if not trustedWhitelistShareSpeaker(caller) then
+    return false
+  end
+
+  local state = shareState()
+  if kind == "S" then
+    local area = packetDecode(parts[5] or "")
+    local expectedCount = tonumber(parts[6]) or 0
+    if area == "" or expectedCount < 1 then
+      return false
+    end
+    state.incomingWhitelistShares[token] = {
+      token = token,
+      sender = caller,
+      area = area,
+      expectedCount = expectedCount,
+      entries = {},
+    }
+    if boop.trace and boop.trace.log then
+      boop.trace.log(string.format("whitelist share start: %s -> %s (%d)", caller, area, expectedCount))
+    end
+    return true
+  end
+
+  local share = state.incomingWhitelistShares[token]
+  if type(share) ~= "table" or not sameSpeaker(share.sender, caller) then
+    return false
+  end
+
+  if kind == "D" then
+    for i = 5, #parts do
+      share.entries[#share.entries + 1] = packetDecode(parts[i] or "")
+    end
+    return true
+  end
+
+  if kind == "E" then
+    local entries = dedupeList(share.entries)
+    clearIncomingWhitelistShare(token)
+    if #entries ~= share.expectedCount then
+      boop.util.warn(string.format("Ignored incomplete whitelist share from %s for %s (%d/%d entries).",
+        caller, share.area, #entries, share.expectedCount))
+      return false
+    end
+
+    share.entries = entries
+    state.pendingWhitelistShare = share
+    if boop.trace and boop.trace.log then
+      boop.trace.log(string.format("whitelist share ready: %s -> %s (%d)", caller, share.area, #entries))
+    end
+    boop.util.info(string.format("Received whitelist share from %s for %s (%d entries).", caller, share.area, #entries))
+    boop.util.info("Use: boop whitelist receive")
+    return true
+  end
+
+  return false
+end
+
+function boop.targets.receiveWhitelistShare(rawMode)
+  local mode = boop.util.safeLower(boop.util.trim(rawMode or ""))
+  if mode == "" or mode == "show" or mode == "status" then
+    return showPendingWhitelistShare()
+  end
+
+  local pending = pendingWhitelistShare()
+  if type(pending) ~= "table" then
+    boop.util.info("No pending whitelist share.")
+    return false
+  end
+
+  if mode == "reject" or mode == "clear" then
+    shareState().pendingWhitelistShare = nil
+    boop.util.ok(string.format("Rejected whitelist share from %s for %s.", tostring(pending.sender or "unknown"), tostring(pending.area or "UNKNOWN")))
+    return true
+  end
+
+  if mode ~= "merge" and mode ~= "merge-reorder" and mode ~= "overwrite" then
+    boop.util.info("Usage: boop whitelist receive [merge|merge-reorder|overwrite|reject]")
+    return false
+  end
+
+  local area = boop.util.trim(pending.area or "")
+  local current = (boop.lists and boop.lists.whitelist and boop.lists.whitelist[area]) or {}
+  local result, stats = buildWhitelistApplyResult(mode, current, pending.entries or {})
+  boop.lists.whitelist[area] = result
+  if boop.db and boop.db.saveList then
+    boop.db.saveList("whitelist", area, result)
+  end
+  shareState().pendingWhitelistShare = nil
+
+  if boop.trace and boop.trace.log then
+    boop.trace.log(string.format("whitelist share applied: %s mode=%s count=%d", area, mode, #result))
+  end
+
+  if mode == "merge" then
+    boop.util.ok(string.format("Whitelist updated for %s via merge (%d added, %d total).", area, stats.added, #result))
+  elseif mode == "merge-reorder" then
+    boop.util.ok(string.format("Whitelist updated for %s via merge-reorder (%d shared reordered, %d added, %d local extras kept).",
+      area, stats.shared, stats.added, stats.extras))
+  else
+    boop.util.ok(string.format("Whitelist overwritten for %s (%d entries).", area, #result))
+  end
+  return true
+end
+
 local function normalizeTag(tag)
   local t = boop.util.safeLower(boop.util.trim(tag or ""))
   t = t:gsub("%s+", "-")
@@ -302,7 +702,7 @@ local function normalizeTag(tag)
   return t
 end
 
-local function findWhitelistArea(area)
+findWhitelistArea = function(area)
   local lists = ensureLists()
   local raw = boop.util.trim(area or "")
   if raw == "" then
@@ -336,6 +736,14 @@ local function findWhitelistArea(area)
     return partial[1]
   end
   return ""
+end
+
+resolveWhitelistArea = function(area)
+  local raw = boop.util.trim(area or "")
+  if raw == "" then
+    return boop.targets.getArea()
+  end
+  return findWhitelistArea(raw)
 end
 
 local function getAreaTags(area)
@@ -693,7 +1101,16 @@ function boop.targets.displayWhitelist(area)
   area = area or boop.targets.getArea()
   local list = boop.lists.whitelist[area] or {}
   if cecho and cechoLink then
-    cecho("\n<green>boop<reset>: <white>Whitelist for " .. area .. ":")
+    cecho("\n<green>boop<reset>: <white>Whitelist for " .. area .. ": ")
+    cechoLink("<cyan>[share pt]<reset>", function()
+      boop.targets.shareWhitelist(area)
+    end, "Share this area's whitelist to party chat", true)
+    if pendingWhitelistShare() then
+      cecho(" ")
+      cechoLink("<yellow>[receive]<reset>", function()
+        boop.targets.receiveWhitelistShare("")
+      end, "Show the pending whitelist share", true)
+    end
     if #list == 0 then
       cecho("\n  <grey>(empty)<reset>")
       return
@@ -738,6 +1155,10 @@ function boop.targets.displayWhitelist(area)
   end
 
   boop.util.echo("Whitelist for " .. area .. ":")
+  boop.util.echo("  share: boop whitelist share " .. area)
+  if pendingWhitelistShare() then
+    boop.util.echo("  pending: boop whitelist receive")
+  end
   if #list == 0 then
     boop.util.echo("  (empty)")
     return

@@ -48,6 +48,8 @@ local DOMAIN_DEFAULTS = {
     calledTargetRoom = "",
     calledTargetBy = "",
     calledTargetAt = nil,
+    incomingWhitelistShares = {},
+    pendingWhitelistShare = nil,
   },
   gold = {
     dropped = false,
