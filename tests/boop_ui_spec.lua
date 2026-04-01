@@ -237,6 +237,7 @@ describe("boop ui home", function()
     assert.is_true(joined:find("Hunting: ON | rage simple | blocker: engaged target", 1, true) ~= nil)
     assert.is_true(joined:find("Target: 42 | a vicious gnoll soldier | next: let boop attack", 1, true) ~= nil)
     assert.is_true(joined:find("[1] Hunting                  [ ON ] [toggle]", 1, true) ~= nil)
+    assert.is_true(joined:find("[16] Game separator          [ | ] [set]", 1, true) ~= nil)
     assert.is_true(joined:find("Type: boop config home | boop config combat <number> | boop config back", 1, true) ~= nil)
   end)
 

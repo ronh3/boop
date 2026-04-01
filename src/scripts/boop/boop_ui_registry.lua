@@ -815,6 +815,10 @@ boop.registry.ui.screens.configActions = boop.registry.ui.screens.configActions 
         ctx.seed("combat", "boop focus ")
         return "seed"
       end,
+      [16] = function(ctx)
+        ctx.seed("combat", "boop separator ")
+        return "seed"
+      end,
     },
     targeting = {
       [1] = function()

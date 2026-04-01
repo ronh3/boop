@@ -1209,6 +1209,10 @@ function boop.ui.gameSeparatorCommand(raw)
 
   saveConfigValue("gameSeparator", value)
   boop.util.ok("game separator: " .. value)
+  local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat", "boop separator ") or ""
+  if returnScreen == "combat" and boop.ui and boop.ui.config then
+    boop.ui.config("combat")
+  end
 end
 
 function boop.ui.focusVerbCommand(raw)
@@ -3876,6 +3880,9 @@ local function configRenderCombatSection()
     uiPrintActionControl(15, "Focus verb", tostring(boop.config.focusVerb or "speed"), "yellow", "[set]", "info", function()
       boop.ui.config("combat 15")
     end, "Set the two-handed battlefury focus verb")
+    uiPrintActionControl(16, "Game separator", tostring(boop.config.gameSeparator or "|"), "yellow", "[set]", "info", function()
+      boop.ui.config("combat 16")
+    end, "Set the game-side command separator used by pull")
     uiPrintFooter("Type: boop config home | boop config combat <number> | boop config back")
     return
   end
@@ -3898,6 +3905,7 @@ local function configRenderCombatSection()
   boop.util.echo("[13] Auto flee               [ " .. boolText(not not boop.config.fleeEnabled) .. " ] [toggle]")
   boop.util.echo("[14] Flee at                 [ " .. fleeShown .. " ] [set]")
   boop.util.echo("[15] Focus verb              [ " .. tostring(boop.config.focusVerb or "speed") .. " ] [set]")
+  boop.util.echo("[16] Game separator          [ " .. tostring(boop.config.gameSeparator or "|") .. " ] [set]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config home | boop config combat <number> | boop config back")
 end
