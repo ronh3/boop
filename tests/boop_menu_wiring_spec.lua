@@ -47,6 +47,7 @@ describe("boop menu wiring", function()
       "matic",
       "catarin",
       "fly",
+      "ts",
       "leap <direction>",
       "pull <mobname> <direction>",
       "boop separator <text>",

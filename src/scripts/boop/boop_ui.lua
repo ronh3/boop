@@ -1168,6 +1168,14 @@ function boop.ui.fly()
   })
 end
 
+function boop.ui.touchShield()
+  queueInterrupt("ts", "touch shield", {
+    clearQueue = false,
+    awaitPrompt = true,
+    infoMessage = "touch shield queued; attacks paused until next prompt",
+  })
+end
+
 function boop.ui.leap(direction)
   local dir = boop.util.trim(direction or "")
   if dir == "" then

@@ -44,6 +44,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `matic` (queues `ldeck draw matic` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
 - `catarin` (queues `ldeck draw catarin` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
 - `fly` (queues `fly` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
+- `ts` (queues `touch shield` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
 - `leap <direction>` (queues `leap <direction>` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
 - `pull <mobname> <direction>` (pauses boop, sends `<direction><sep><damage rage on mobname><sep>leap <opposite direction>`, then resumes boop when GMCP confirms you returned)
 - `boop separator <text>` (sets the game-side command separator used by `pull`; for example `|`)

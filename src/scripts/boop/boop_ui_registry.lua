@@ -621,6 +621,7 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
       helpCommand("matic", "Queue `ldeck draw matic` on the attack queue and pause attacking until the next prompt or timeout."),
       helpCommand("catarin", "Queue `ldeck draw catarin` on the attack queue and pause attacking until the next prompt or timeout."),
       helpCommand("fly", "Queue `fly` on the attack queue and pause attacking until the next prompt or timeout."),
+      helpCommand("ts", "Queue `touch shield` on the attack queue and pause attacking until the next prompt or timeout."),
       helpCommand("leap <direction>", "Queue `leap <direction>` on the attack queue and pause attacking until the next prompt or timeout."),
       helpCommand("pull <mobname> <direction>", "Send `<direction><sep><damage rage><sep>leap <opposite>` using your configured game separator and the typed mob name as the rage target."),
       helpCommand("boop separator <text>", "Set the game-side command separator used by `pull`, such as `|`."),

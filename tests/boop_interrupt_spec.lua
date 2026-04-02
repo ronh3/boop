@@ -101,6 +101,22 @@ describe("boop queued interrupts", function()
     assert.stub(send_stub).was_called_with("command hound at 42", false)
   end)
 
+  it("queues touch shield on the attack queue and resumes after the next prompt", function()
+    boop.ui.touchShield()
+
+    assert.is_true(boop.state.diag.hold)
+    assert.is_true(boop.state.diag.awaitPrompt)
+    assert.are.equal("ts", boop.state.diag.label)
+    assert.stub(send_stub).was_called_with("queue addclearfull freestand touch shield", false)
+
+    boop.onPrompt()
+
+    assert.is_false(boop.state.diag.hold)
+    assert.is_false(boop.state.diag.awaitPrompt)
+    assert.are.equal("", boop.state.diag.label)
+    assert.stub(send_stub).was_called_with("command hound at 42", false)
+  end)
+
   it("queues leap on the attack queue and resumes after the next prompt", function()
     boop.ui.leap("north")
 

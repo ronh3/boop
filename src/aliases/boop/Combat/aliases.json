@@ -70,6 +70,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Touch Shield",
+    "isActive": "yes",
+    "regex": "^(?i)ts$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Leap",
     "isActive": "yes",
     "regex": "^(?i)leap\\s+(.+)$",
