@@ -690,20 +690,39 @@ local function deleteCurrent()
   if deleteLine then
     deleteLine()
   end
+  if deselect then
+    deselect()
+  end
+end
+
+local function scheduleGagTimer(seconds, fn)
+  if type(tempTimer) ~= "function" then
+    return nil
+  end
+  local ok, timerId = pcall(tempTimer, seconds, fn)
+  if not ok then
+    if boop.trace and boop.trace.log then
+      boop.trace.log("gag timer failed: " .. tostring(timerId or "unknown error"))
+    end
+    return nil
+  end
+  return timerId
 end
 
 local function cancelAttackSummaryTimer()
   boop.state = boop.state or {}
-  if boop.state.gag.pendingAttackTimer then
+  boop.state.gag = boop.state.gag or {}
+  if boop.state.gag.pendingAttackTimer and type(killTimer) == "function" then
     killTimer(boop.state.gag.pendingAttackTimer)
-    boop.state.gag.pendingAttackTimer = nil
   end
+  boop.state.gag.pendingAttackTimer = nil
 end
 
 local flushPendingKill
 
 local function flushPendingAttack()
   boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
   local pending = boop.state.gag.pendingAttack
   if not pending then return end
   boop.state.gag.pendingAttack = nil
@@ -716,6 +735,7 @@ end
 
 local function setPendingAttack(who, ability, target)
   boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
   if boop.state.gag.pendingAttack then
     flushPendingAttack()
   end
@@ -730,24 +750,27 @@ local function setPendingAttack(who, ability, target)
   }
 
   cancelAttackSummaryTimer()
-  boop.state.gag.pendingAttackTimer = tempTimer(1.2, function()
+  boop.state.gag.pendingAttackTimer = scheduleGagTimer(1.2, function()
     boop.state.gag.pendingAttackTimer = nil
     flushPendingAttack()
   end)
+  return boop.state.gag.pendingAttackTimer == nil
 end
 
 local function cancelKillSummaryTimer()
   boop.state = boop.state or {}
-  if boop.state.gag.pendingKillTimer then
+  boop.state.gag = boop.state.gag or {}
+  if boop.state.gag.pendingKillTimer and type(killTimer) == "function" then
     killTimer(boop.state.gag.pendingKillTimer)
-    boop.state.gag.pendingKillTimer = nil
   end
+  boop.state.gag.pendingKillTimer = nil
 end
 
 local function scheduleKillSummaryRetry()
   boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
   cancelKillSummaryTimer()
-  boop.state.gag.pendingKillTimer = tempTimer(0.25, function()
+  boop.state.gag.pendingKillTimer = scheduleGagTimer(0.25, function()
     boop.state.gag.pendingKillTimer = nil
     if flushPendingKill then
       flushPendingKill()
@@ -757,6 +780,7 @@ end
 
 flushPendingKill = function()
   boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
   local pending = boop.state.gag.pendingKill
   if not pending then return end
   if boop.state.gag.pendingAttack then
@@ -770,15 +794,17 @@ end
 
 local function setPendingKill(target)
   boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
   boop.state.gag.pendingKill = {
     target = boop.util.trim(target or ""),
     xp = "",
   }
   cancelKillSummaryTimer()
-  boop.state.gag.pendingKillTimer = tempTimer(1.2, function()
+  boop.state.gag.pendingKillTimer = scheduleGagTimer(1.2, function()
     boop.state.gag.pendingKillTimer = nil
     flushPendingKill()
   end)
+  return boop.state.gag.pendingKillTimer == nil
 end
 
 local function resolveCritText(rawCrit)
@@ -867,11 +893,14 @@ function boop.gag.onAttackLine(spec, matchTable, rawLine)
     return
   end
 
-  deleteCurrent()
-
   if selfActor then
-    setPendingAttack("You", ability, victim)
+    local flushNow = setPendingAttack("You", ability, victim)
+    deleteCurrent()
+    if flushNow then
+      flushPendingAttack()
+    end
   else
+    deleteCurrent()
     emitReplacement(actor, ability, victim, false)
   end
 
@@ -1005,8 +1034,11 @@ function boop.gag.onSlainLine(target, rawLine, killer)
   if not boop.config or not boop.config.gagOwnAttacks then
     return
   end
+  local flushNow = setPendingKill(target or "")
   deleteCurrent()
-  setPendingKill(target or "")
+  if flushNow then
+    flushPendingKill()
+  end
 end
 
 function boop.gag.onExperienceLine(xp, _rawLine)

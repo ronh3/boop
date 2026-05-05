@@ -131,6 +131,24 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("a test denizen", 1, true) ~= nil)
   end)
 
+  it("emits an own attack summary immediately if the fallback timer cannot be armed", function()
+    timer_stub:revert()
+    timer_stub = stub(_G, "tempTimer", function(_, _)
+      error("timer unavailable")
+    end)
+
+    boop.gag.onAttackLine({
+      ability = "Jab",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, { "line", "a test denizen" }, "You jab a test denizen.")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("You", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Jab", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a test denizen", 1, true) ~= nil)
+  end)
+
   it("applies custom separator and background gag colors", function()
     boop.gag.setColor("own", "who", "yellow")
     boop.gag.setColor("own", "separator", "dark_grey")
