@@ -632,12 +632,26 @@ local function emitAttackSummary(entry)
   local bal = boop.util.trim(entry.balanceText or "")
 
   local suffix = ""
-  if damage ~= "" and crit ~= "" then
-    suffix = suffix .. " (" .. damage .. " - " .. crit .. ")"
-  elseif damage ~= "" then
-    suffix = suffix .. " (" .. damage .. ")"
-  elseif crit ~= "" then
-    suffix = suffix .. " (" .. crit .. ")"
+  if type(entry.damageParts) == "table" and #entry.damageParts > 0 then
+    for _, part in ipairs(entry.damageParts) do
+      local partDamage = boop.util.trim(part and part.damageText or "")
+      local partCrit = boop.util.trim(part and part.critText or "")
+      if partDamage ~= "" and partCrit ~= "" then
+        suffix = suffix .. " (" .. partDamage .. " - " .. partCrit .. ")"
+      elseif partDamage ~= "" then
+        suffix = suffix .. " (" .. partDamage .. ")"
+      elseif partCrit ~= "" then
+        suffix = suffix .. " (" .. partCrit .. ")"
+      end
+    end
+  else
+    if damage ~= "" and crit ~= "" then
+      suffix = suffix .. " (" .. damage .. " - " .. crit .. ")"
+    elseif damage ~= "" then
+      suffix = suffix .. " (" .. damage .. ")"
+    elseif crit ~= "" then
+      suffix = suffix .. " (" .. crit .. ")"
+    end
   end
   if bal ~= "" then
     suffix = suffix .. " (Bal: " .. bal .. ")"
@@ -733,17 +747,57 @@ local function flushPendingAttack()
   end
 end
 
+local function samePendingAttack(pending, who, ability, target)
+  if type(pending) ~= "table" then
+    return false
+  end
+  if normName(pending.who or "") ~= normName(who or "") then
+    return false
+  end
+  if normName(pending.target or "") ~= normName(target or "") then
+    return false
+  end
+  if boop.util.trim(pending.balanceText or "") ~= "" then
+    return false
+  end
+
+  local pendingAbility = normName(pending.ability or "")
+  local nextAbility = normName(ability or "")
+  return (pendingAbility == "jab" or pendingAbility == "dsl")
+    and (nextAbility == "jab" or nextAbility == "dsl")
+end
+
 local function setPendingAttack(who, ability, target)
   boop.state = boop.state or {}
   boop.state.gag = boop.state.gag or {}
+  local normalizedWho = boop.util.trim(who or "You")
+  local normalizedAbility = boop.util.trim(ability or "Attack")
+  local normalizedTarget = boop.util.trim(target or "(none)")
+
+  if samePendingAttack(boop.state.gag.pendingAttack, normalizedWho, normalizedAbility, normalizedTarget) then
+    boop.state.gag.pendingAttack.hitCount = (tonumber(boop.state.gag.pendingAttack.hitCount) or 1) + 1
+    boop.state.gag.pendingAttack.currentHitHasDamage = false
+    boop.state.gag.pendingAttack.ability = "DSL"
+    cancelAttackSummaryTimer()
+    boop.state.gag.pendingAttackTimer = scheduleGagTimer(1.2, function()
+      boop.state.gag.pendingAttackTimer = nil
+      flushPendingAttack()
+    end)
+    return boop.state.gag.pendingAttackTimer == nil
+  end
+
   if boop.state.gag.pendingAttack then
     flushPendingAttack()
   end
 
   boop.state.gag.pendingAttack = {
-    who = boop.util.trim(who or "You"),
-    ability = boop.util.trim(ability or "Attack"),
-    target = boop.util.trim(target or "(none)"),
+    who = normalizedWho,
+    ability = normalizedAbility,
+    target = normalizedTarget,
+    hitCount = 1,
+    currentHitHasDamage = false,
+    damageParts = {},
+    nextCritText = "",
     damageText = "",
     critText = "",
     balanceText = "",
@@ -941,6 +995,18 @@ function boop.gag.onDamageLine(amount, dtype, _rawLine)
   elseif kind ~= "" then
     pending.damageText = kind
   end
+
+  local critText = boop.util.trim(pending.nextCritText or "")
+  pending.nextCritText = ""
+  pending.damageParts = pending.damageParts or {}
+  pending.damageParts[#pending.damageParts + 1] = {
+    damageText = pending.damageText,
+    critText = critText,
+  }
+  pending.currentHitHasDamage = true
+  if critText ~= "" then
+    pending.critText = critText
+  end
 end
 
 function boop.gag.onCriticalLine(critLabel, _rawLine)
@@ -963,6 +1029,13 @@ function boop.gag.onCriticalLine(critLabel, _rawLine)
   end
 
   deleteCurrent()
+  pending.damageParts = pending.damageParts or {}
+  local last = pending.damageParts[#pending.damageParts]
+  if pending.currentHitHasDamage and last and boop.util.trim(last.critText or "") == "" then
+    last.critText = critText
+  else
+    pending.nextCritText = critText
+  end
   pending.critText = critText
 end
 

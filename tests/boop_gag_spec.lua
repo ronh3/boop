@@ -67,9 +67,9 @@ describe("boop gag summaries", function()
       actor = { kind = "literal", value = "You" },
       target = { kind = "match", index = 2 },
     }, {
-      "You command your hound to rend the flesh of a test denizen.",
+      "You command your hound to rend the flesh of a test denizen again.",
       "a test denizen",
-    }, "You command your hound to rend the flesh of a test denizen.")
+    }, "You command your hound to rend the flesh of a test denizen again.")
     boop.gag.onDamageLine("1,234", "cutting", "Damage line")
     boop.gag.onCriticalLine("world shattering critical", "Crit line")
     boop.gag.onBalanceUsed("2.5", "Balance line")
@@ -80,6 +80,96 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("a test denizen", 1, true) ~= nil)
     assert.is_true(outputs[1]:find("1234 cutting - 32xCRIT", 1, true) ~= nil)
     assert.is_true(outputs[1]:find("Bal: 2.5s", 1, true) ~= nil)
+  end)
+
+  it("condenses two pre-balance self jab-shaped hits as one DSL summary", function()
+    boop.gag.onAttackLine({
+      ability = "Jab",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "You swing a broad-bladed sword of hardship at a Vertani guard with all your might.",
+      "a Vertani guard",
+    }, "You swing a broad-bladed sword of hardship at a Vertani guard with all your might.")
+    boop.gag.onDamageLine("356", "physical cutting", "Damage dealt: 356 (physical cutting).")
+    boop.gag.onAttackLine({
+      ability = "Jab",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "You slash into a Vertani guard with a curved blade of broken chains.",
+      "a Vertani guard",
+    }, "You slash into a Vertani guard with a curved blade of broken chains.")
+    boop.gag.onCriticalLine("OBLITERATING CRITICAL", "You have scored an OBLITERATING CRITICAL hit!")
+    boop.gag.onDamageLine("2854", "physical cutting", "Damage dealt: 2854 (physical cutting).")
+    boop.gag.onBalanceUsed("1.9", "Balance used: 1.9s.")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("You", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("DSL", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a Vertani guard", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("356 physical cutting", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("2854 physical cutting - 8xCRIT", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Bal: 1.9s", 1, true) ~= nil)
+  end)
+
+  it("keeps a first-hit crit when two jab-shaped hits become a DSL summary", function()
+    boop.gag.onAttackLine({
+      ability = "Jab",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "You swing a broad-bladed sword of hardship at a Vertani guard with all your might.",
+      "a Vertani guard",
+    }, "You swing a broad-bladed sword of hardship at a Vertani guard with all your might.")
+    boop.gag.onCriticalLine("OBLITERATING CRITICAL", "You have scored an OBLITERATING CRITICAL hit!")
+    boop.gag.onDamageLine("2854", "physical cutting", "Damage dealt: 2854 (physical cutting).")
+    boop.gag.onAttackLine({
+      ability = "Jab",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "You slash into a Vertani guard with a curved blade of broken chains.",
+      "a Vertani guard",
+    }, "You slash into a Vertani guard with a curved blade of broken chains.")
+    boop.gag.onDamageLine("356", "physical cutting", "Damage dealt: 356 (physical cutting).")
+    boop.gag.onBalanceUsed("1.9", "Balance used: 1.9s.")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("DSL", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a Vertani guard", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("2854 physical cutting - 8xCRIT", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("356 physical cutting", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Bal: 1.9s", 1, true) ~= nil)
+  end)
+
+  it("does not merge unrelated repeated own attack summaries before balance", function()
+    boop.gag.onAttackLine({
+      ability = "Lycantha",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "You command your hound to rend the flesh of a test denizen.",
+      "a test denizen",
+    }, "You command your hound to rend the flesh of a test denizen.")
+    boop.gag.onDamageLine("111", "cutting", "Damage line")
+    boop.gag.onAttackLine({
+      ability = "Lycantha",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "You command your hound to rend the flesh of a test denizen.",
+      "a test denizen",
+    }, "You command your hound to rend the flesh of a test denizen.")
+    boop.gag.onDamageLine("222", "cutting", "Damage line")
+    boop.gag.onBalanceUsed("2.5", "Balance line")
+
+    assert.are.equal(2, #outputs)
+    assert.is_true(outputs[1]:find("Lycantha", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("111 cutting", 1, true) ~= nil)
+    assert.is_true(outputs[2]:find("Lycantha", 1, true) ~= nil)
+    assert.is_true(outputs[2]:find("222 cutting", 1, true) ~= nil)
+    assert.is_true(outputs[2]:find("Bal: 2.5s", 1, true) ~= nil)
   end)
 
   it("captures the alternate Unnamable destroy attack wording", function()
