@@ -1088,6 +1088,21 @@ function boop.gag.onCompanionMaulFlavor(target, _rawLine)
   boop.state = boop.state or {}
   local pending = boop.state.gag.pendingAttack
   if not pending then
+    local lineText = boop.util.safeLower(boop.util.trim(_rawLine or ""))
+    local inferredAbility = ""
+    if lineText:find("hyena", 1, true) then
+      inferredAbility = "Hyena Maul"
+    elseif lineText:find("hound", 1, true) then
+      inferredAbility = "Hound Maul"
+    end
+    if inferredAbility == "" then
+      return
+    end
+    local flushNow = setPendingAttack("You", inferredAbility, target)
+    deleteCurrent()
+    if flushNow then
+      flushPendingAttack()
+    end
     return
   end
 

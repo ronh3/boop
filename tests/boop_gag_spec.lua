@@ -275,6 +275,35 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("900 physical cutting", 1, true) ~= nil)
   end)
 
+  it("starts a hyena maul summary from flavor if the command line was missed", function()
+    boop.gag.onCompanionMaulFlavor(
+      "a Vertani guard",
+      "A daemonic hyena snarls as she hurls herself at a Vertani guard, raking her claws across his face."
+    )
+    boop.gag.onCriticalLine("CRUSHING CRITICAL", "You have scored a CRUSHING CRITICAL hit!")
+    boop.gag.onDamageLine("3388", "physical cutting", "Damage dealt: 3388 (physical cutting).")
+    boop.gag.onPrompt()
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("Hyena Maul", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a Vertani guard", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("3388 physical cutting - 4xCRIT", 1, true) ~= nil)
+  end)
+
+  it("starts a hound maul summary from flavor if the command line was missed", function()
+    boop.gag.onCompanionMaulFlavor(
+      "a ghost bat",
+      "A chaos hound lunges at a ghost bat with a baying howl, ripping into it with its distended jaws."
+    )
+    boop.gag.onDamageLine("777", "physical cutting", "Damage dealt: 777 (physical cutting).")
+    boop.gag.onPrompt()
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("Hound Maul", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a ghost bat", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("777 physical cutting", 1, true) ~= nil)
+  end)
+
   it("captures the alternate Unnamable destroy attack wording", function()
     boop.gag.onAttackLine({
       ability = "Destroy",
