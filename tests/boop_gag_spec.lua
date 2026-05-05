@@ -172,6 +172,41 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[2]:find("Bal: 2.5s", 1, true) ~= nil)
   end)
 
+  it("combines a sent razeslash shield line and jab-shaped hit as one summary", function()
+    boop.gag.noteStandardIntent("rsl 42")
+    boop.gag.onAttackLine({
+      ability = "Raze",
+      actor = { kind = "match", index = 2 },
+      target = { kind = "match", index = 3 },
+    }, {
+      "You raze a Vertani guard's magical shield with a broad-bladed sword of hardship.",
+      "You",
+      "a Vertani guard",
+    }, "You raze a Vertani guard's magical shield with a broad-bladed sword of hardship.")
+    boop.gag.onBalanceUsed("2.1", "Balance used: 2.1s.")
+
+    assert.are.equal(0, #outputs)
+
+    boop.gag.onAttackLine({
+      ability = "Jab",
+      actor = { kind = "match", index = 2 },
+      target = { kind = "match", index = 3 },
+    }, {
+      "Lightning-quick, you jab a Vertani guard with a curved blade of broken chains.",
+      "you",
+      "a Vertani guard",
+    }, "Lightning-quick, you jab a Vertani guard with a curved blade of broken chains.")
+    boop.gag.onDamageLine("356", "physical cutting", "Damage dealt: 356 (physical cutting).")
+    boop.gag.onPrompt()
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("Razeslash", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a Vertani guard", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("356 physical cutting", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Bal: 2.1s", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("DSL", 1, true) == nil)
+  end)
+
   it("captures the alternate Unnamable destroy attack wording", function()
     boop.gag.onAttackLine({
       ability = "Destroy",

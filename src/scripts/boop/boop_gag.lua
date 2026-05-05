@@ -757,12 +757,14 @@ local function samePendingAttack(pending, who, ability, target)
   if normName(pending.target or "") ~= normName(target or "") then
     return false
   end
-  if boop.util.trim(pending.balanceText or "") ~= "" then
-    return false
-  end
-
   local pendingAbility = normName(pending.ability or "")
   local nextAbility = normName(ability or "")
+  if boop.util.trim(pending.balanceText or "") ~= "" then
+    return pendingAbility == "razeslash" and nextAbility == "jab"
+  end
+  if pendingAbility == "razeslash" and nextAbility == "jab" then
+    return true
+  end
   return (pendingAbility == "jab" or pendingAbility == "dsl")
     and (nextAbility == "jab" or nextAbility == "dsl")
 end
@@ -777,7 +779,9 @@ local function setPendingAttack(who, ability, target)
   if samePendingAttack(boop.state.gag.pendingAttack, normalizedWho, normalizedAbility, normalizedTarget) then
     boop.state.gag.pendingAttack.hitCount = (tonumber(boop.state.gag.pendingAttack.hitCount) or 1) + 1
     boop.state.gag.pendingAttack.currentHitHasDamage = false
-    boop.state.gag.pendingAttack.ability = "DSL"
+    if normName(boop.state.gag.pendingAttack.ability or "") ~= "razeslash" then
+      boop.state.gag.pendingAttack.ability = "DSL"
+    end
     cancelAttackSummaryTimer()
     boop.state.gag.pendingAttackTimer = scheduleGagTimer(1.2, function()
       boop.state.gag.pendingAttackTimer = nil
@@ -879,6 +883,40 @@ local function resolveCritText(rawCrit)
   return map[key] or ""
 end
 
+local function commandIncludesRazeslash(action)
+  local separator = boop.lists and boop.lists.separator or "/"
+  for _, part in ipairs(boop.util.split(action or "", separator)) do
+    local command = boop.util.safeLower(boop.util.trim(part))
+    local verb = command:match("^(%S+)")
+    if verb == "rsl" or verb == "razeslash" then
+      return true
+    end
+  end
+  return false
+end
+
+function boop.gag.noteStandardIntent(action)
+  if not commandIncludesRazeslash(action) then
+    return
+  end
+  boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
+  boop.state.gag.razeslashIntent = {
+    at = nowSeconds(),
+  }
+end
+
+local function consumeRazeslashIntent()
+  boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
+  local intent = boop.state.gag.razeslashIntent
+  if type(intent) ~= "table" then
+    return false
+  end
+  boop.state.gag.razeslashIntent = nil
+  return (nowSeconds() - (tonumber(intent.at) or 0)) <= 20
+end
+
 function boop.gag.showStatus()
   boop.util.info("gag own attacks: " .. (boop.config.gagOwnAttacks and "on" or "off"))
   boop.util.info("gag others attacks: " .. (boop.config.gagOthersAttacks and "on" or "off"))
@@ -930,6 +968,9 @@ function boop.gag.onAttackLine(spec, matchTable, rawLine)
   end
 
   local ability = boop.util.trim(spec and spec.ability or "")
+  if selfActor and normName(ability) == "raze" and consumeRazeslashIntent() then
+    ability = "Razeslash"
+  end
 
   if boop.stats and boop.stats.onAttackLine then
     boop.stats.onAttackLine(actor, selfActor, ability, victim)
@@ -1082,6 +1123,16 @@ function boop.gag.onBalanceUsed(seconds, _rawLine)
   local sec = boop.util.trim(tostring(seconds or ""))
   if sec ~= "" then
     pending.balanceText = sec .. "s"
+  end
+  if normName(pending.ability or "") == "razeslash" then
+    cancelAttackSummaryTimer()
+    boop.state.gag.pendingAttackTimer = scheduleGagTimer(1.2, function()
+      boop.state.gag.pendingAttackTimer = nil
+      flushPendingAttack()
+    end)
+    if boop.state.gag.pendingAttackTimer ~= nil then
+      return
+    end
   end
   flushPendingAttack()
 end

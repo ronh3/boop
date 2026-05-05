@@ -116,6 +116,7 @@ local DOMAIN_DEFAULTS = {
     pendingAttackTimer = nil,
     pendingKill = nil,
     pendingKillTimer = nil,
+    razeslashIntent = nil,
   },
 }
 

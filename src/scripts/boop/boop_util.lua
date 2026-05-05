@@ -198,6 +198,9 @@ end
 function boop.executeAction(action, forceQueue)
   if not action or action == "" then return end
   action = prependAssist(action)
+  if boop.gag and boop.gag.noteStandardIntent then
+    boop.gag.noteStandardIntent(action)
+  end
 
   if boop.config.useQueueing or forceQueue then
     boop.state = boop.state or {}
