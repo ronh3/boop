@@ -12,7 +12,7 @@ boop.attacks.register("blue dragon", {
     ["abilities"] = {
       ["ague"] = {
         ["aff"] = "clumsiness",
-        ["cmd"] = "auge &tar",
+        ["cmd"] = "ague &tar",
         ["desc"] = "Gives Affliction",
         ["name"] = "ague",
         ["rage"] = 28
