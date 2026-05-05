@@ -65,4 +65,30 @@ describe("boop attack selection", function()
 
     assert.are.equal("command hound at 42", actions.standard)
   end)
+
+  it("lists Infernal spec-specific Weaponmastery options for boop prefer", function()
+    helper.setClass("Infernal")
+    helper.setSpec("Dual Cutting")
+
+    local options = boop.attacks.standardOptions("infernal", "dam")
+    local labels = {}
+    for _, option in ipairs(options) do
+      labels[#labels + 1] = option.label
+    end
+    local joined = table.concat(labels, "\n")
+
+    assert.is_true(joined:find("Duality", 1, true) ~= nil)
+    assert.is_true(joined:find("dsl &tar", 1, true) ~= nil)
+    assert.is_true(joined:find("Swordplay", 1, true) ~= nil)
+    assert.is_true(joined:find("jab &tar", 1, true) ~= nil)
+  end)
+
+  it("matches Warrior spec names case-insensitively for preference options", function()
+    helper.setClass("Infernal")
+    helper.setSpec("dual cutting")
+
+    local options = boop.attacks.standardOptions("infernal", "dam")
+
+    assert.are.equal("Duality -> dsl &tar", options[1].label)
+  end)
 end)

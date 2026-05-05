@@ -29,8 +29,14 @@ local function planningConfig()
 end
 
 local function planningSpec()
+  if planningContext and planningContext.spec ~= nil then
+    return boop.util.trim(tostring(planningContext.spec or ""))
+  end
   local state = planningState()
-  return state and state.spec or ""
+  if state and state.combat and state.combat.spec ~= nil then
+    return boop.util.trim(tostring(state.combat.spec or ""))
+  end
+  return boop.util.trim(tostring(state and state.spec or ""))
 end
 
 local function planningTargetId()
@@ -91,6 +97,28 @@ local function standardPreferenceKey(classKey, section, spec)
     return ""
   end
   return string.format("attackPreference.%s.%s.%s", cls, normalizedSpecKey(spec), sec)
+end
+
+local function bySpecEntry(entry, spec)
+  if type(entry) ~= "table" or type(entry.bySpec) ~= "table" then
+    return nil
+  end
+
+  local rawSpec = boop.util.trim(tostring(spec or ""))
+  if rawSpec ~= "" and entry.bySpec[rawSpec] then
+    return entry.bySpec[rawSpec]
+  end
+
+  local wanted = normalizedSpecKey(rawSpec)
+  if wanted ~= "default" then
+    for candidate, specEntry in pairs(entry.bySpec) do
+      if normalizedSpecKey(candidate) == wanted then
+        return specEntry
+      end
+    end
+  end
+
+  return entry.default or entry.bySpec.default
 end
 
 local function standardPreferenceValue(classKey, section)
@@ -181,10 +209,7 @@ local function appendStandardOptions(entry, out, seen)
 
   if entry.bySpec then
     local spec = planningSpec()
-    local specEntry = entry.bySpec[spec]
-    if not specEntry then
-      specEntry = entry.default or entry.bySpec.default
-    end
+    local specEntry = bySpecEntry(entry, spec)
     if specEntry then
       appendStandardOptions(specEntry, out, seen)
     end
@@ -981,11 +1006,7 @@ end
 local function standardCommand(entry, preference)
   if type(entry) == "table" then
     if entry.bySpec then
-      local spec = boop.state and boop.state.combat.spec or ""
-      local specEntry = entry.bySpec[spec]
-      if not specEntry then
-        specEntry = entry.default or entry.bySpec.default
-      end
+      local specEntry = bySpecEntry(entry, planningSpec())
       if specEntry then
         return standardCommand(specEntry, preference)
       end
