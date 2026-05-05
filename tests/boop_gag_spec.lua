@@ -207,6 +207,53 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("DSL", 1, true) == nil)
   end)
 
+  it("suppresses hyena maul flavor and preserves the following DSL summary", function()
+    boop.gag.onAttackLine({
+      ability = "Hyena Maul",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "You command your hyena to maul a Vertani guard.",
+      "a Vertani guard",
+    }, "You command your hyena to maul a Vertani guard.")
+    boop.gag.onCompanionMaulFlavor(
+      "a Vertani guard",
+      "A daemonic hyena lets loose a wooping cackle as she lunges at a Vertani guard, sinking her fangs into his flesh."
+    )
+    boop.gag.onCriticalLine("CRUSHING CRITICAL", "You have scored a CRUSHING CRITICAL hit!")
+    boop.gag.onDamageLine("3388", "physical cutting", "Damage dealt: 3388 (physical cutting).")
+    boop.gag.onAttackLine({
+      ability = "Jab",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "You swing a broad-bladed sword of hardship at a Vertani guard with all your might.",
+      "a Vertani guard",
+    }, "You swing a broad-bladed sword of hardship at a Vertani guard with all your might.")
+    boop.gag.onDamageLine("356", "physical cutting", "Damage dealt: 356 (physical cutting).")
+    boop.gag.onAttackLine({
+      ability = "Jab",
+      actor = { kind = "match", index = 2 },
+      target = { kind = "match", index = 3 },
+    }, {
+      "Lightning-quick, you jab a Vertani guard with a curved blade of broken chains.",
+      "you",
+      "a Vertani guard",
+    }, "Lightning-quick, you jab a Vertani guard with a curved blade of broken chains.")
+    boop.gag.onCriticalLine("OBLITERATING CRITICAL", "You have scored an OBLITERATING CRITICAL hit!")
+    boop.gag.onDamageLine("2854", "physical cutting", "Damage dealt: 2854 (physical cutting).")
+    boop.gag.onBalanceUsed("1.9", "Balance used: 1.9s.")
+
+    assert.are.equal(2, #outputs)
+    assert.is_true(outputs[1]:find("Hyena Maul", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a Vertani guard", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("3388 physical cutting - 4xCRIT", 1, true) ~= nil)
+    assert.is_true(outputs[2]:find("DSL", 1, true) ~= nil)
+    assert.is_true(outputs[2]:find("356 physical cutting", 1, true) ~= nil)
+    assert.is_true(outputs[2]:find("2854 physical cutting - 8xCRIT", 1, true) ~= nil)
+    assert.is_true(outputs[2]:find("Bal: 1.9s", 1, true) ~= nil)
+  end)
+
   it("captures the alternate Unnamable destroy attack wording", function()
     boop.gag.onAttackLine({
       ability = "Destroy",

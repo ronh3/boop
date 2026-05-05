@@ -103,6 +103,10 @@
       {
         "pattern": "^A chaos hound lunges at (.+) with a baying howl, ripping into \\w+ with its distended jaws\\.$",
         "type": "regex"
+      },
+      {
+        "pattern": "^A daemonic hyena lets loose a wh?ooping cackle as she lunges at (.+), sinking her fangs into \\w+ flesh\\.$",
+        "type": "regex"
       }
     ],
     "script": ""
