@@ -254,6 +254,27 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[2]:find("Bal: 1.9s", 1, true) ~= nil)
   end)
 
+  it("suppresses the alternate hyena maul claw flavor", function()
+    boop.gag.onAttackLine({
+      ability = "Hyena Maul",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "You command your hyena to maul a Vertani guard.",
+      "a Vertani guard",
+    }, "You command your hyena to maul a Vertani guard.")
+    boop.gag.onCompanionMaulFlavor(
+      "a Vertani guard",
+      "A daemonic hyena snarls as she hurls herself at a Vertani guard, raking her claws across his face."
+    )
+    boop.gag.onDamageLine("900", "physical cutting", "Damage dealt: 900 (physical cutting).")
+    boop.gag.onPrompt()
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("Hyena Maul", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("900 physical cutting", 1, true) ~= nil)
+  end)
+
   it("captures the alternate Unnamable destroy attack wording", function()
     boop.gag.onAttackLine({
       ability = "Destroy",
