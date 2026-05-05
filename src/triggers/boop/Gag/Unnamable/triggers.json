@@ -105,11 +105,11 @@
         "type": "regex"
       },
       {
-        "pattern": "^A daemonic hyena lets loose a wh?ooping cackle as she lunges at (.+), sinking her fangs into \\w+ flesh\\.$",
+        "pattern": "^A daemonic hyena lets loose a wh?ooping cackle as she lunges at (.+), sinking her fangs .+\\.$",
         "type": "regex"
       },
       {
-        "pattern": "^A daemonic hyena snarls as she hurls herself at (.+), raking her claws across \\w+ face\\.$",
+        "pattern": "^A daemonic hyena snarls as she hurls herself at (.+), raking her claws .+\\.$",
         "type": "regex"
       }
     ],

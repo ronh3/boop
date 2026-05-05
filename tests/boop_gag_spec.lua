@@ -304,6 +304,28 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("777 physical cutting", 1, true) ~= nil)
   end)
 
+  it("starts a hyena maul summary from flavor if a non-maul attack was pending", function()
+    boop.gag.onAttackLine({
+      ability = "Jab",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "You swing a broad-bladed sword of hardship at a Vertani guard with all your might.",
+      "a Vertani guard",
+    }, "You swing a broad-bladed sword of hardship at a Vertani guard with all your might.")
+    boop.gag.onCompanionMaulFlavor(
+      "a Vertani guard",
+      "A daemonic hyena lets loose a wooping cackle as she lunges at a Vertani guard, sinking her fangs into his flesh."
+    )
+    boop.gag.onDamageLine("3388", "physical cutting", "Damage dealt: 3388 (physical cutting).")
+    boop.gag.onPrompt()
+
+    assert.are.equal(2, #outputs)
+    assert.is_true(outputs[1]:find("Jab", 1, true) ~= nil)
+    assert.is_true(outputs[2]:find("Hyena Maul", 1, true) ~= nil)
+    assert.is_true(outputs[2]:find("3388 physical cutting", 1, true) ~= nil)
+  end)
+
   it("captures the alternate Unnamable destroy attack wording", function()
     boop.gag.onAttackLine({
       ability = "Destroy",
