@@ -70,8 +70,10 @@ Current coverage:
   Confirms the bare `boop` command shows the home dashboard with mode/blocker guidance, plus the control, party, roster, and related UI flows.
 - `boop_ui_registry_spec.lua`
   Confirms the shared config, screen, mode, preset, and help registries exist and drive the corresponding UI commands.
+- `boop_menu_wiring_spec.lua`
+  Confirms rich Mudlet dashboard/help callbacks seed commands or route to the expected UI functions.
 - `boop_stats_spec.lua`
-  Confirms gold/xp accumulation across session/login/trip/lifetime scopes, party-size-aware mob xp bucketing, stats help output, per-target efficiency and profitability summaries, richer area rankings, trip comparison output, rage-efficiency summaries, per-ability damage/crit/kill summaries, crit/record rollups, reset behavior, whitelist rendering, and human-readable stats summaries.
+  Confirms gold/xp accumulation across session/login/trip/lifetime scopes, party-size-aware mob xp bucketing, workflow-style stats help output, per-target efficiency and profitability summaries, richer area rankings, trip comparison output, rage-efficiency summaries, per-ability damage/crit/kill summaries, crit/record rollups, reset behavior, whitelist rendering, and human-readable stats summaries.
 
 Good candidates for future additions:
 

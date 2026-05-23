@@ -9,107 +9,26 @@ describe("boop menu wiring", function()
   local calls
   local active_stubs
 
-  local HELP_TOPIC_COMMANDS = {
-    { key = "start", commands = {
-      "boop",
-      "boop control",
-      "boop on",
-      "boop off",
-      "boop status",
-      "boop config",
-      "boop config home",
-      "boop party",
-      "boop preset <solo|party|leader|leader-call>",
-      "boop help <topic>",
-    } },
-    { key = "control", commands = {
-      "boop control",
-      "boop config",
-      "boop config home",
-      "boop config combat",
-      "boop config targeting",
-      "boop config loot",
-      "boop config debug",
-      "boop preset <solo|party|leader|leader-call>",
-    } },
-    { key = "hunting", commands = {
-      "boop config combat",
-      "boop config targeting",
-      "boop ragemode",
-      "boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>",
-      "boop prequeue [on|off]",
-      "boop lead <seconds>",
-      "boop targeting <manual|whitelist|blacklist|auto>",
-      "boop whitelist",
-      "boop whitelist browse [tag]",
-      "boop blacklist",
-      "diag",
-      "matic",
-      "catarin",
-      "fly",
-      "ts",
-      "leap <direction>",
-      "pull <mobname> <direction>",
-      "boop separator <text>",
-      "boop focus <speed|precision>",
-      "boop flee <on|off|toggle|percent>",
-      "boop prefer",
-      "boop prefer <dam|shield> <option>",
-      "boop weapon",
-      "boop weapon <role> <item-id>",
-    } },
-    { key = "party", commands = {
-      "boop party",
-      "boop preset party",
-      "boop preset leader",
-      "boop preset leader-call",
-      "boop mode solo|assist|leader|leader-call",
-      "boop assist <leader>",
-      "boop assist on|off|clear",
-      "boop targetcall on|off",
-      "boop affcalls on|off",
-      "boop walk [status|start|stop|move]",
-      "boop walk install",
-      "boop roster",
-      "boop roster <class...>",
-      "boop roster clear",
-      "boop combos",
-      "boop combos <class...>",
-      "boop combos list",
-    } },
-    { key = "stats", commands = {
-      "boop stats",
-      "boop stats help",
-      "boop stats session|login|trip|lifetime",
-      "boop stats lasttrip",
-      "boop stats compare [left] [right]",
-      "boop stats areas [scope] [limit] [metric]",
-      "boop stats targets [scope] [limit]",
-      "boop stats abilities [scope] [limit]",
-      "boop stats crits [scope]",
-      "boop stats rage [scope]",
-      "boop stats records [scope]",
-      "boop trip start",
-      "boop trip stop",
-      "boop stats reset session|login|trip|lifetime|all",
-    } },
-    { key = "diagnostics", commands = {
-      "boop config debug",
-      "boop debug",
-      "boop debug attacks",
-      "boop debug skills",
-      "boop debug skills dump",
-      "boop trace on|off|show [n]|clear",
-      "boop gag on|off|own|others|all",
-      "boop gag colors [own|others]",
-      "boop gag color [own|others] <who|ability|target|meta|separator|bg> <color|off>",
-      "boop get",
-      "boop set <key> <value>",
-      "boop import foxhunt [merge|overwrite|dryrun]",
-      "boop pack test",
-      "boop theme <name|auto|list>",
-    } },
-  }
+  local function helpTopicCommands(topic)
+    local commands = {}
+    for _, section in ipairs({ topic.steps or {}, topic.commands or {}, topic.advanced or {} }) do
+      for _, entry in ipairs(section) do
+        commands[#commands + 1] = tostring((type(entry) == "table" and entry.command) or entry or "")
+      end
+    end
+    return commands
+  end
+
+  local function helpTopics()
+    local topics = {}
+    for _, topic in ipairs(boop.ui.helpTopics or {}) do
+      topics[#topics + 1] = {
+        key = topic.key,
+        commands = helpTopicCommands(topic),
+      }
+    end
+    return topics
+  end
 
   local function clearCalls()
     calls = {}
@@ -441,47 +360,49 @@ describe("boop menu wiring", function()
       boop.ui.help("")
     end)
 
-    assert.are.equal(13, #callbacks)
+    assert.are.equal(16, #callbacks)
 
     addStub(boop.ui, "help", "help")
     addStub(_G, "appendCmdLine", "appendCmdLine")
     addStub(_G, "clearCmdLine", "clearCmdLine")
 
-    expectCallback(callbacks[1].callback, seedExpectation("boop"))
-    expectCallback(callbacks[2].callback, seedExpectation("boop control"))
-    expectCallback(callbacks[3].callback, seedExpectation("boop config"))
-    expectCallback(callbacks[4].callback, seedExpectation("boop party"))
-    expectCallback(callbacks[5].callback, seedExpectation("boop stats"))
+    expectCallback(callbacks[1].callback, { { label = "help", args = { "start" } } })
+    expectCallback(callbacks[2].callback, { { label = "help", args = { "control" } } })
+    expectCallback(callbacks[3].callback, { { label = "help", args = { "solo" } } })
+    expectCallback(callbacks[4].callback, { { label = "help", args = { "targeting" } } })
+    expectCallback(callbacks[5].callback, { { label = "help", args = { "combat" } } })
+    expectCallback(callbacks[6].callback, { { label = "help", args = { "interrupts" } } })
+    expectCallback(callbacks[7].callback, { { label = "help", args = { "party" } } })
+    expectCallback(callbacks[8].callback, { { label = "help", args = { "stats" } } })
+    expectCallback(callbacks[9].callback, { { label = "help", args = { "diagnostics" } } })
 
-    expectCallback(callbacks[6].callback, { { label = "help", args = { "start" } } })
-    expectCallback(callbacks[7].callback, { { label = "help", args = { "control" } } })
-    expectCallback(callbacks[8].callback, { { label = "help", args = { "hunting" } } })
-    expectCallback(callbacks[9].callback, { { label = "help", args = { "party" } } })
-    expectCallback(callbacks[10].callback, { { label = "help", args = { "stats" } } })
-    expectCallback(callbacks[11].callback, { { label = "help", args = { "diagnostics" } } })
+    expectCallback(callbacks[10].callback, seedExpectation("boop"))
+    expectCallback(callbacks[11].callback, seedExpectation("boop control"))
+    expectCallback(callbacks[12].callback, seedExpectation("boop config"))
+    expectCallback(callbacks[13].callback, seedExpectation("boop party"))
+    expectCallback(callbacks[14].callback, seedExpectation("boop stats"))
 
-    expectCallback(callbacks[12].callback, seedExpectation("boop help home"))
-    expectCallback(callbacks[13].callback, seedExpectation("boop help"))
+    expectCallback(callbacks[15].callback, seedExpectation("boop help"))
+    expectCallback(callbacks[16].callback, seedExpectation("boop help diagnostics"))
   end)
 
   it("wires every help topic command row to its seeded command", function()
     addStub(_G, "appendCmdLine", "appendCmdLine")
     addStub(_G, "clearCmdLine", "clearCmdLine")
 
-    for _, topic in ipairs(HELP_TOPIC_COMMANDS) do
+    for _, topic in ipairs(helpTopics()) do
       captureCallbacks(function()
         boop.ui.help(topic.key)
       end)
 
-      assert.are.equal(#topic.commands + 3, #callbacks)
+      assert.are.equal(#topic.commands + 2, #callbacks)
 
       for i, command in ipairs(topic.commands) do
         expectCallback(callbacks[i].callback, seedExpectation(command))
       end
 
       expectCallback(callbacks[#topic.commands + 1].callback, seedExpectation("boop help home"))
-      expectCallback(callbacks[#topic.commands + 2].callback, seedExpectation("boop help back"))
-      expectCallback(callbacks[#topic.commands + 3].callback, seedExpectation("boop help"))
+      expectCallback(callbacks[#topic.commands + 2].callback, seedExpectation("boop help"))
     end
   end)
 

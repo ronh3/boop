@@ -21,7 +21,7 @@ Current product state
 - `boop config` is the guided settings hub.
 - `boop party` is the party dashboard for leader, assist, and walk state.
 - `boop stats` is the optimization/stats dashboard.
-- `boop help` is a curated workflow-oriented help surface.
+- `boop help` is a workflow-first help surface: common goals first, then topic pages with first steps, common commands, advanced commands, and notes.
 - `boop roster` is separate from `boop party`.
 - `boop preset solo|party|leader|leader-call` exists as a shortcut for recommended baseline setups.
 
@@ -59,7 +59,7 @@ Related top-level surfaces
 - `boop stats`
   - Stats dashboard and drill-down entrypoint.
 - `boop help`
-  - Reference/help entrypoint.
+  - Workflow/help entrypoint.
 
 Navigation
 - `boop config <section>`
@@ -122,6 +122,8 @@ Current visual language expectations
 - Rich Mudlet screens should prefer concise rows with hover hints over long visible prose.
 - Plain-text fallback should remain readable and deterministic for tests.
 - Older raw/debug-dump output should be treated as technical debt and cleaned up when touched.
+- Help topics should not be flat command dumps. Use the common shape: what this covers, first steps, common commands, advanced commands, then notes.
+- Internal review helpers such as `boop help audit` should stay discoverable from advanced/troubleshooting help, not the normal help footer.
 
 Button rendering
 - Format: `[ <value> ]`
@@ -218,7 +220,7 @@ Release-phase guidance
 
 - New UX changes should bias toward discoverability, consistency, and operator clarity.
 - Avoid introducing parallel menu systems or one-off layouts when an existing dashboard pattern fits.
-- If a new command changes the operator workflow, update `boop help`, `README.md`, and the relevant dashboard entrypoints together.
+- If a new command changes the operator workflow, update `boop help`, `boop stats help` when relevant, `README.md`, and the relevant dashboard entrypoints together.
 - After the current config-surface homogenization pass settles, do a dedicated footer polish pass rather than changing footer behavior piecemeal.
 
 Implementation Order

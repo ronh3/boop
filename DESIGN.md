@@ -94,7 +94,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `boop ih` re-renders Info-Here lines and adds clickable whitelist/blacklist buttons for denizens.
 - `boop`, `boop control`, `boop config`, `boop party`, and `boop stats` are now distinct operator surfaces rather than one large menu tree.
 - `boop config` renders a clickable configuration hub with subsection dashboards for combat, targeting, loot, and diagnostics.
-- `boop help` is now a curated workflow-oriented help surface, not a flat command index.
+- `boop help` is now a workflow-first help surface, not a flat command index: common goals lead to topic pages with first steps, common commands, advanced commands, and notes.
 - `boop config` and `boop help` use a shared sectioned row layout (`HEADER > section`, divider, aligned `[ value ]` action buttons).
 - `boop whitelist` and `boop blacklist` render clickable list managers (`up`/`down`/`remove`).
 - `boop whitelist browse [tag]` browses area-level whitelist entries with optional tag filter.
@@ -115,7 +115,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Unnamable standards prepend `maul &tar/` when `Maul` is known (Dominion) and ready, with readiness tracked through the existing ability-ready trigger lines.
 - Standard attacks and rage actions are independent; standard builds rage and there is no mode toggle.
 - Skill gating issues `Char.Skills.Get` requests per skill (group-aware).
-- `boop preset solo|party|leader-call` applies recommended baseline config bundles; `leader-call` requires an assist leader to already be configured.
+- `boop preset solo|party|leader|leader-call` applies recommended baseline config bundles; `leader-call` requires an assist leader to already be configured.
 - Party-size is intentionally session-local and defaults to `1` on load; it is used by stats/mob XP telemetry and is not persisted.
 - External autowalking is integrated through `demonnicAutoWalker` as a separate package; boop decides when a room is clear, the external walker decides where to move next.
 

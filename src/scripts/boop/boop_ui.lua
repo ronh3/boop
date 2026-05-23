@@ -3295,24 +3295,7 @@ local function helpRenderHome()
   local helpTopics = helpTopicRegistry()
   if cecho then
     uiPrintHeader("help")
-    uiPrintSection("start here")
-    uiPrintRow(nil, "Open boop", "boop", "cyan", function()
-      uiSetCommandLine("boop")
-    end, "Prepare: boop")
-    uiPrintRow(nil, "Control dashboard", "boop control", "cyan", function()
-      uiSetCommandLine("boop control")
-    end, "Prepare: boop control")
-    uiPrintRow(nil, "Settings hub", "boop config", "cyan", function()
-      uiSetCommandLine("boop config")
-    end, "Prepare: boop config")
-    uiPrintRow(nil, "Party dashboard", "boop party", "cyan", function()
-      uiSetCommandLine("boop party")
-    end, "Prepare: boop party")
-    uiPrintRow(nil, "Stats dashboard", "boop stats", "cyan", function()
-      uiSetCommandLine("boop stats")
-    end, "Prepare: boop stats")
-
-    uiPrintSection("topics")
+    uiPrintSection("common goals")
     local rows = {}
     for i, topic in ipairs(helpTopics) do
       rows[#rows + 1] = { index = i, label = topic.title }
@@ -3324,21 +3307,38 @@ local function helpRenderHome()
         boop.ui.help(key)
       end, topic.summary or ("Open help for " .. topic.title), labelWidth)
     end
-    uiPrintFooter("Type: boop help home | boop help <number|topic> | boop help audit")
+
+    uiPrintSection("dashboards")
+    uiPrintRow(nil, "Home", "OPEN", "cyan", function()
+      uiSetCommandLine("boop")
+    end, "Prepare: boop")
+    uiPrintRow(nil, "Control dashboard", "OPEN", "cyan", function()
+      uiSetCommandLine("boop control")
+    end, "Prepare: boop control")
+    uiPrintRow(nil, "Settings hub", "OPEN", "cyan", function()
+      uiSetCommandLine("boop config")
+    end, "Prepare: boop config")
+    uiPrintRow(nil, "Party dashboard", "OPEN", "cyan", function()
+      uiSetCommandLine("boop party")
+    end, "Prepare: boop party")
+    uiPrintRow(nil, "Stats dashboard", "OPEN", "cyan", function()
+      uiSetCommandLine("boop stats")
+    end, "Prepare: boop stats")
+    uiPrintFooter("Type: boop help <number|topic> | boop help diagnostics")
     return
   end
 
   boop.util.echo("HELP")
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Start: boop | boop control | boop config | boop party | boop stats")
+  boop.util.echo("Common goals:")
   for i, topic in ipairs(helpTopics) do
     boop.util.echo(string.format("[%d] %s -> %s", i, topic.title, tostring(topic.summary or "")))
   end
+  boop.util.echo("")
+  boop.util.echo("Dashboards: boop | boop control | boop config | boop party | boop stats")
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Type: boop help home")
-  boop.util.echo("Type: boop help <number>  (example: boop help 2)")
+  boop.util.echo("Type: boop help <number>  (example: boop help 4)")
   boop.util.echo("Type: boop help <topic>   (example: boop help targeting)")
-  boop.util.echo("Type: boop help audit")
 end
 
 local function helpRenderAudit()
@@ -3353,13 +3353,22 @@ local function helpRenderAudit()
     boop.util.echo(string.format("[%d] %s", i, tostring(topic.title or "")))
     boop.util.echo("Summary: " .. tostring(topic.summary or ""))
     boop.util.echo("Aliases: " .. table.concat(topic.aliases or {}, ", "))
-    boop.util.echo("Commands:")
-    for _, entry in ipairs(topic.commands or {}) do
-      local cmd = helpEntryCommand(entry)
-      local description = helpEntryDescription(entry)
-      boop.util.echo("  " .. cmd)
-      if description ~= "" then
-        boop.util.echo("    " .. description)
+    local sections = {
+      { label = "First steps", entries = topic.steps or {} },
+      { label = "Commands", entries = topic.commands or {} },
+      { label = "Advanced", entries = topic.advanced or {} },
+    }
+    for _, section in ipairs(sections) do
+      if section.entries and #section.entries > 0 then
+        boop.util.echo(section.label .. ":")
+        for _, entry in ipairs(section.entries) do
+          local cmd = helpEntryCommand(entry)
+          local description = helpEntryDescription(entry)
+          boop.util.echo("  " .. cmd)
+          if description ~= "" then
+            boop.util.echo("    " .. description)
+          end
+        end
       end
     end
     if topic.notes and #topic.notes > 0 then
@@ -3380,40 +3389,49 @@ local function helpRenderTopic(topic)
     return
   end
 
+  local function renderCommandSection(title, entries, buttonText, color, minWidth, maxWidth)
+    if not entries or #entries == 0 then
+      return
+    end
+    uiPrintSection(title)
+    local commandRows = {}
+    for i, entry in ipairs(entries) do
+      local cmd = helpEntryCommand(entry)
+      commandRows[#commandRows + 1] = { index = i, label = cmd }
+    end
+    local commandWidth = uiComputeLabelWidth(commandRows, minWidth or 56, maxWidth or 92)
+    for i, entry in ipairs(entries) do
+      local value = helpEntryCommand(entry)
+      local description = helpEntryDescription(entry)
+      local hint = description ~= "" and (description .. " | Click to seed this command.") or ("Prepare command: " .. value)
+      uiPrintRow(i, value, buttonText or "TYPE", color or "yellow", function()
+        uiSetCommandLine(value)
+      end, hint, commandWidth)
+    end
+  end
+
   if cecho then
     uiPrintHeader("help > " .. topic.title)
     if topic.summary and topic.summary ~= "" then
       uiPrintSection("what this covers")
       uiPrintRow(nil, topic.summary, "INFO", "cyan")
     end
-    local commandRows = {}
-    for i, entry in ipairs(topic.commands or {}) do
-      local cmd = type(entry) == "table" and entry.command or tostring(entry or "")
-      commandRows[#commandRows + 1] = { index = i, label = cmd }
-    end
+    renderCommandSection("first steps", topic.steps, "TYPE", "green", 56, 92)
+    renderCommandSection("common commands", topic.commands, "TYPE", "yellow", 56, 92)
+    renderCommandSection("advanced", topic.advanced, "TYPE", "yellow", 56, 92)
     local noteRows = {}
     for i, note in ipairs(topic.notes or {}) do
       noteRows[#noteRows + 1] = { index = i, label = note }
     end
-    local commandWidth = uiComputeLabelWidth(commandRows, 56, 92)
     local noteWidth = uiComputeLabelWidth(noteRows, 56, 110)
 
-    uiPrintSection("commands")
-    for i, entry in ipairs(topic.commands or {}) do
-      local value = helpEntryCommand(entry)
-      local description = helpEntryDescription(entry)
-      local hint = description ~= "" and (description .. " | Click to seed this command.") or ("Copy command: " .. value)
-      uiPrintRow(i, value, "COPY", "yellow", function()
-        uiSetCommandLine(value)
-      end, hint, commandWidth)
-    end
     if topic.notes and #topic.notes > 0 then
       uiPrintSection("notes")
       for i, note in ipairs(topic.notes) do
         uiPrintRow(nil, note, "INFO", "cyan", nil, note, noteWidth)
       end
     end
-    uiPrintFooter("Type: boop help home | boop help back | boop help <number|topic>")
+    uiPrintFooter("Type: boop help home | boop help <number|topic>")
     return
   end
 
@@ -3423,12 +3441,23 @@ local function helpRenderTopic(topic)
     boop.util.echo(topic.summary)
     boop.util.echo("")
   end
-  for _, entry in ipairs(topic.commands or {}) do
-    local cmd = helpEntryCommand(entry)
-    local description = helpEntryDescription(entry)
-    boop.util.echo("  " .. cmd)
-    if description ~= "" then
-      boop.util.echo("    " .. description)
+  local sections = {
+    { label = "First steps", entries = topic.steps or {} },
+    { label = "Common commands", entries = topic.commands or {} },
+    { label = "Advanced", entries = topic.advanced or {} },
+  }
+  for _, section in ipairs(sections) do
+    if section.entries and #section.entries > 0 then
+      boop.util.echo(section.label .. ":")
+      for _, entry in ipairs(section.entries) do
+        local cmd = helpEntryCommand(entry)
+        local description = helpEntryDescription(entry)
+        boop.util.echo("  " .. cmd)
+        if description ~= "" then
+          boop.util.echo("    " .. description)
+        end
+      end
+      boop.util.echo("")
     end
   end
   if topic.notes and #topic.notes > 0 then
@@ -3438,7 +3467,7 @@ local function helpRenderTopic(topic)
     end
   end
   boop.util.echo("----------------------------------------")
-  boop.util.echo("Type: boop help home | boop help back")
+  boop.util.echo("Type: boop help home | boop help <topic>")
 end
 
 function boop.ui.help(topic)

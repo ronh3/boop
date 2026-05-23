@@ -57,16 +57,17 @@ Guidance for Codex when working in this repository.
 - Avoid surfacing legacy/old command behavior in user-facing help or docs unless the user explicitly asks for backwards-compat details.
 - `boop` by itself should open the home dashboard. `boop help` should show help only.
 - `bh` and `boop on/off` should use the compact boop aesthetic summary, not the full dashboard.
-- Preserve the newer, streamlined boop UI direction: fewer broader help/config sections rather than many tiny topics.
+- Preserve the newer, streamlined boop UI direction: workflow-first help, fewer broader config sections, and direct paths from common goals to commands.
 - Prefer runtime-safe refactors over aggressive cleanup.
 - The user is aiming for a 1.0 release; prefer polish, clarity, and release-readiness work over broad feature expansion unless a real usage gap is identified.
 - Future party/dashboard follow-up: add reporting for the current area's whitelist on `boop party`.
-- If the command surface changes, update aliases, help text, `README.md`, and `UIDESIGN.md` together so the shipped contract stays consistent.
+- If the command surface changes, update aliases, help text, `boop stats help` when relevant, `README.md`, and `UIDESIGN.md` together so the shipped contract stays consistent.
 
 ## Current UI / UX Conventions
 - Keep boop output in the established styled format using `cecho` color tags and sectioned headers where appropriate.
 - Help and config should share the same overall visual language.
 - Status is the place for current settings; help is the place for reference/documentation.
+- Help should start from user goals and first steps before listing reference commands.
 - New user-facing command output should acknowledge success/failure clearly and should not silently fail.
 - `boop control`, `boop config`, `boop party`, and `boop stats` are now primary surfaces and should be treated as the canonical operator workflow.
 - Footer breadcrumb/help commands should remain clickable in rich Mudlet rendering.
@@ -93,7 +94,7 @@ Guidance for Codex when working in this repository.
 ## Session Checkpoint
 - Branch to continue from: `codex/pre-1.0-hardening-pass`
 - Current branch tip after the latest pushed work: `57f94fc` (`Remove legacy flat state compatibility bridge`)
-- Current synchronized package version: `0.1.279`
+- Current synchronized package version: `0.1.292`
 - The purposeful pre-1.0 hardening work that is currently in this branch:
   - runtime/state ownership and coordinator path
   - combat planner split from execution
@@ -111,7 +112,7 @@ Guidance for Codex when working in this repository.
   - the package is in release-hardening mode, not broad-architecture mode
   - next work should be driven by live Mudlet regressions and release polish, not new structural churn
 - Best next-session validation focus after restart:
-  - `boop`, `boop control`, `boop config`, `boop party`, `boop help`
+  - `boop`, `boop control`, `boop config`, `boop party`, `boop help`, `boop stats help`
   - targeting/retarget flow
   - gold pickup + pack flow
   - `diag` and one queued interrupt (`matic`/`fly`/etc.)

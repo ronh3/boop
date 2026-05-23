@@ -10,7 +10,11 @@ local commands = {
   "boop help home",
   "boop help start",
   "boop help control",
+  "boop help solo",
   "boop help hunting",
+  "boop help targeting",
+  "boop help combat",
+  "boop help interrupts",
   "boop help party",
   "boop help stats",
   "boop help diagnostics",
@@ -349,120 +353,23 @@ local function withWrappedPaths(fn)
   return ok, err, events
 end
 
-local HELP_TOPICS = {
-  start = {
-    title = "HELP > START HERE",
-    commands = {
-      "boop",
-      "boop control",
-      "boop on",
-      "boop off",
-      "boop status",
-      "boop config",
-      "boop config home",
-      "boop party",
-      "boop preset <solo|party|leader|leader-call>",
-      "boop help <topic>",
-    },
-  },
-  control = {
-    title = "HELP > CONTROL & CONFIG",
-    commands = {
-      "boop control",
-      "boop config",
-      "boop config home",
-      "boop config combat",
-      "boop config targeting",
-      "boop config loot",
-      "boop config debug",
-      "boop preset <solo|party|leader|leader-call>",
-      "boop get",
-      "boop set <key> <value>",
-    },
-  },
-  hunting = {
-    title = "HELP > HUNTING & TARGETING",
-    commands = {
-      "boop config combat",
-      "boop config targeting",
-      "boop ragemode",
-      "boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>",
-      "boop prequeue [on|off]",
-      "boop lead <seconds>",
-      "boop targeting <manual|whitelist|blacklist|auto>",
-      "boop whitelist",
-      "boop whitelist browse [tag]",
-      "boop blacklist",
-      "diag",
-      "boop prefer",
-      "boop prefer <dam|shield> <option>",
-    },
-  },
-  party = {
-    title = "HELP > PARTY & LEADER",
-    commands = {
-      "boop party",
-      "boop preset party",
-      "boop preset leader",
-      "boop preset leader-call",
-      "boop mode solo|assist|leader|leader-call",
-      "boop assist <leader>",
-      "boop assist on|off|clear",
-      "boop targetcall on|off",
-      "boop affcalls on|off",
-      "boop walk [status|start|stop|move]",
-      "boop walk install",
-      "boop roster",
-      "boop roster <class...>",
-      "boop roster clear",
-      "boop combos",
-      "boop combos <class...>",
-      "boop combos list",
-    },
-    required = {
-      "boop walk install",
-    },
-    hintOverrides = {
-      ["boop walk install"] = "Install the required demonnicAutoWalker package into Mudlet.",
-    },
-  },
-  stats = {
-    title = "HELP > STATS & OPTIMIZATION",
-    commands = {
-      "boop stats",
-      "boop stats help",
-      "boop stats session|login|trip|lifetime",
-      "boop stats lasttrip",
-      "boop stats compare [left] [right]",
-      "boop stats areas [scope] [limit] [metric]",
-      "boop stats targets [scope] [limit]",
-      "boop stats abilities [scope] [limit]",
-      "boop stats crits [scope]",
-      "boop stats rage [scope]",
-      "boop stats records [scope]",
-      "boop trip start",
-      "boop trip stop",
-      "boop stats reset session|login|trip|lifetime|all",
-    },
-  },
-  diagnostics = {
-    title = "HELP > DIAGNOSTICS & ADVANCED",
-    commands = {
-      "boop config debug",
-      "boop debug",
-      "boop debug attacks",
-      "boop debug skills",
-      "boop debug skills dump",
-      "boop trace on|off|show [n]|clear",
-      "boop gag on|off|own|others|all",
-      "boop get",
-      "boop set <key> <value>",
-      "boop import foxhunt [merge|overwrite|dryrun]",
-      "boop pack test",
-      "boop theme <name|auto|list>",
-    },
-  },
-}
+local function helpTopicCommands(topic)
+  local commands = {}
+  for _, section in ipairs({ topic.steps or {}, topic.commands or {}, topic.advanced or {} }) do
+    for _, entry in ipairs(section) do
+      commands[#commands + 1] = tostring((type(entry) == "table" and entry.command) or entry or "")
+    end
+  end
+  return commands
+end
+
+local HELP_TOPICS = {}
+for _, topic in ipairs(boop.ui.helpTopics or {}) do
+  HELP_TOPICS[topic.key] = {
+    title = "HELP > " .. string.upper(tostring(topic.title or "")),
+    commands = helpTopicCommands(topic),
+  }
+end
 
 local function helpTopicExpectation(topic)
   local callbacks = {}
@@ -476,10 +383,6 @@ local function helpTopicExpectation(topic)
   callbacks[#callbacks + 1] = {
     source = "boop help home",
     actions = seedActions("boop help home"),
-  }
-  callbacks[#callbacks + 1] = {
-    source = "boop help back",
-    actions = seedActions("boop help back"),
   }
   callbacks[#callbacks + 1] = {
     source = "boop help <number|topic>",
@@ -639,21 +542,24 @@ local expectedByCommand = {
     },
   },
   ["boop help home"] = {
-    required = { "HELP", "TOPICS" },
+    required = { "HELP", "COMMON GOALS" },
     callbacks = {
-      { source = "[1] Open boop", actions = seedActions("boop") },
-      { source = "[2] Control dashboard", actions = seedActions("boop control") },
-      { source = "[3] Settings hub", actions = seedActions("boop config") },
-      { source = "[4] Party dashboard", actions = seedActions("boop party") },
-      { source = "[5] Stats dashboard", actions = seedActions("boop stats") },
-      { source = "[6] Start Here", actions = { action("boop.ui.help", "start") } },
-      { source = "[7] Control & Config", actions = { action("boop.ui.help", "control") } },
-      { source = "[8] Hunting & Targeting", actions = { action("boop.ui.help", "hunting") } },
-      { source = "[9] Party & Leader", actions = { action("boop.ui.help", "party") } },
-      { source = "[10] Stats & Optimization", actions = { action("boop.ui.help", "stats") } },
-      { source = "[11] Diagnostics & Advanced", actions = { action("boop.ui.help", "diagnostics") } },
-      { source = "boop help home", actions = seedActions("boop help home") },
+      { source = "[1] Start Here", actions = { action("boop.ui.help", "start") } },
+      { source = "[2] Dashboards & Settings", actions = { action("boop.ui.help", "control") } },
+      { source = "[3] Start Solo Hunting", actions = { action("boop.ui.help", "solo") } },
+      { source = "[4] Targeting & Lists", actions = { action("boop.ui.help", "targeting") } },
+      { source = "[5] Combat, Rage & Queueing", actions = { action("boop.ui.help", "combat") } },
+      { source = "[6] Interrupts & Recovery", actions = { action("boop.ui.help", "interrupts") } },
+      { source = "[7] Party & Leader", actions = { action("boop.ui.help", "party") } },
+      { source = "[8] Stats & Optimization", actions = { action("boop.ui.help", "stats") } },
+      { source = "[9] Troubleshooting & Advanced", actions = { action("boop.ui.help", "diagnostics") } },
+      { source = "Home", actions = seedActions("boop") },
+      { source = "Control dashboard", actions = seedActions("boop control") },
+      { source = "Settings hub", actions = seedActions("boop config") },
+      { source = "Party dashboard", actions = seedActions("boop party") },
+      { source = "Stats dashboard", actions = seedActions("boop stats") },
       { source = "boop help <number|topic>", actions = seedActions("boop help") },
+      { source = "boop help diagnostics", actions = seedActions("boop help diagnostics") },
     },
   },
   ["boop stats"] = function(renderedText)
@@ -666,7 +572,11 @@ local expectedByCommand = {
 
 expectedByCommand["boop help start"] = helpTopicExpectation(HELP_TOPICS.start)
 expectedByCommand["boop help control"] = helpTopicExpectation(HELP_TOPICS.control)
-expectedByCommand["boop help hunting"] = helpTopicExpectation(HELP_TOPICS.hunting)
+expectedByCommand["boop help solo"] = helpTopicExpectation(HELP_TOPICS.solo)
+expectedByCommand["boop help hunting"] = helpTopicExpectation(HELP_TOPICS.solo)
+expectedByCommand["boop help targeting"] = helpTopicExpectation(HELP_TOPICS.targeting)
+expectedByCommand["boop help combat"] = helpTopicExpectation(HELP_TOPICS.combat)
+expectedByCommand["boop help interrupts"] = helpTopicExpectation(HELP_TOPICS.interrupts)
 expectedByCommand["boop help party"] = helpTopicExpectation(HELP_TOPICS.party)
 expectedByCommand["boop help stats"] = helpTopicExpectation(HELP_TOPICS.stats)
 expectedByCommand["boop help diagnostics"] = helpTopicExpectation(HELP_TOPICS.diagnostics)
