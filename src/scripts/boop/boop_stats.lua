@@ -2738,7 +2738,7 @@ function boop.stats.showHelp()
   boop.util.info("stats help:")
   boop.util.info("  Start")
   boop.util.info("    boop stats                 -> dashboard and suggested drill-downs")
-  boop.util.info("    boop trip start            -> start a deliberate trip bucket")
+  boop.util.info("    boop trip start            -> start a tracked hunt")
   boop.util.info("    boop trip stop             -> stop the current trip and show its summary")
   boop.util.info("  Totals")
   boop.util.info("    boop stats session         -> current enabled session totals and rates")
@@ -2747,7 +2747,8 @@ function boop.stats.showHelp()
   boop.util.info("    boop stats lifetime        -> persisted lifetime totals")
   boop.util.info("    boop stats lasttrip        -> last completed trip snapshot")
   boop.util.info("  Optimize")
-  boop.util.info("    boop stats areas [scope] [limit] [metric]     -> ranked area performance")
+  boop.util.info("    boop stats areas [scope] [limit]              -> ranked area performance")
+  boop.util.info("    boop stats areas <scope> <limit> <metric>     -> rank by gold, xp, goldhr, xphr, ttk")
   boop.util.info("    boop stats mobs [area] [limit]                -> learned mob XP values")
   boop.util.info("    boop stats targets [scope] [limit]            -> target efficiency and profit")
   boop.util.info("    boop stats abilities [scope] [limit]          -> attack usage, damage, crits, kills")
@@ -2755,7 +2756,8 @@ function boop.stats.showHelp()
   boop.util.info("    boop stats crits [scope]                      -> crit distribution and rates")
   boop.util.info("    boop stats records [scope]                    -> best hit, fastest kill, records")
   boop.util.info("  Compare and maintain")
-  boop.util.info("    boop stats compare [left] [right]             -> compare two scopes; default trip vs lasttrip")
+  boop.util.info("    boop stats compare                            -> compare trip vs lasttrip")
+  boop.util.info("    boop stats compare <left> <right>             -> compare two explicit scopes")
   boop.util.info("    boop stats reset session|login|trip|lifetime|all")
   boop.util.info("    boop help stats                               -> workflow help for stats")
 end
@@ -2881,11 +2883,15 @@ function boop.stats.command(raw)
       boop.stats.showCompare(left, right)
       return
     end
+    if arg ~= "" then
+      boop.util.warn("Usage: boop stats compare | boop stats compare <left> <right>")
+      return
+    end
     boop.stats.showCompare("trip", "lasttrip")
     return
   end
 
-  boop.util.info("Usage: boop stats [help|session|login|trip|lifetime|lasttrip|areas [scope] [limit] [metric]|mobs [area] [limit]|targets [scope] [limit]|abilities [scope] [limit]|crits [scope]|rage [scope]|records [scope]|compare [left] [right]|reset <session|login|trip|lifetime|all>]")
+  boop.util.info("Usage: boop stats [help|session|login|trip|lifetime|lasttrip|areas [scope] [limit]|areas <scope> <limit> <metric>|mobs [area] [limit]|targets [scope] [limit]|abilities [scope] [limit]|crits [scope]|rage [scope]|records [scope]|compare|compare <left> <right>|reset <session|login|trip|lifetime|all>]")
 end
 
 function boop.stats.startTrip()

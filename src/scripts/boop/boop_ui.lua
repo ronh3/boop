@@ -3789,44 +3789,44 @@ local function configRenderHome()
     uiPrintHeader("configuration")
 
     uiPrintSection("overview")
-    uiPrintRow(1, "Combat", configHuntingSummary(), boop.config.enabled and "green" or "yellow", function()
+    uiPrintRow(nil, "Combat", configHuntingSummary(), boop.config.enabled and "green" or "yellow", function()
       boop.ui.config("combat")
     end, "Open combat settings")
-    uiPrintRow(2, "Targeting", configTargetingSummary(), "cyan", function()
+    uiPrintRow(nil, "Targeting", configTargetingSummary(), "cyan", function()
       boop.ui.config("targeting")
     end, "Open targeting settings")
-    uiPrintRow(3, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
-    uiPrintRow(4, "Next action", nextAction, "cyan")
-    uiPrintRow(5, "Target", targetShown, "cyan")
+    uiPrintRow(nil, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
+    uiPrintRow(nil, "Next action", nextAction, "cyan")
+    uiPrintRow(nil, "Target", targetShown, "cyan")
 
     uiPrintSection("settings")
-    uiPrintRow(6, "Combat settings", "OPEN", "cyan", function()
+    uiPrintRow(1, "Combat settings", "OPEN", "cyan", function()
       boop.ui.config("combat")
     end, "Open combat settings")
-    uiPrintRow(7, "Targeting settings", "OPEN", "cyan", function()
+    uiPrintRow(2, "Targeting settings", "OPEN", "cyan", function()
       boop.ui.config("targeting")
     end, "Open targeting settings")
-    uiPrintRow(8, "Loot settings", configLootSummary(), "yellow", function()
+    uiPrintRow(3, "Loot settings", configLootSummary(), "yellow", function()
       boop.ui.config("loot")
     end, "Open loot settings")
-    uiPrintRow(9, "Diagnostics", configDebugSummary(), "yellow", function()
+    uiPrintRow(4, "Diagnostics", configDebugSummary(), "yellow", function()
       boop.ui.config("debug")
     end, "Open diagnostics settings")
 
     uiPrintSection("related controls")
-    uiPrintRow(10, "Party dashboard", configPartySummary(), "cyan", function()
+    uiPrintRow(5, "Party dashboard", configPartySummary(), "cyan", function()
       boop.ui.partyCommand("")
     end, "Open the party dashboard")
-    uiPrintRow(11, "Roster manager", tostring(#partyRosterMembers()) .. " entries", "cyan", function()
+    uiPrintRow(6, "Roster manager", tostring(#partyRosterMembers()) .. " entries", "cyan", function()
       boop.ui.rosterCommand("")
     end, "Open saved party roster")
-    uiPrintRow(12, "Appearance", configThemeSummary(), "cyan", function()
+    uiPrintRow(7, "Appearance", configThemeSummary(), "cyan", function()
       boop.ui.themeCommand("")
     end, "Open theme controls")
-    uiPrintRow(13, "Control dashboard", "OPEN", "cyan", function()
+    uiPrintRow(8, "Control dashboard", "OPEN", "cyan", function()
       boop.ui.controlCommand("")
     end, "Open the control dashboard")
-    uiPrintRow(14, "Stats dashboard", "OPEN", "cyan", function()
+    uiPrintRow(9, "Stats dashboard", "OPEN", "cyan", function()
       boop.stats.command("")
     end, "Open the stats dashboard")
     uiPrintFooter("Type: boop config home | boop config <number> | boop config <name> | boop party | boop theme | boop control")
@@ -4218,14 +4218,14 @@ function boop.ui.config(arg)
       configRenderSection(requestedByName.key)
       return
     end
-    if tonumber(token) and configHomeRoute(token) then
-      return
-    end
     local result = configApplySectionOption(current, token)
     if result then
       if result == "refresh" then
         configRenderSection(current)
       end
+      return
+    end
+    if tonumber(token) and configHomeRoute(token) then
       return
     end
     boop.util.echo("Unknown option for " .. tostring(current) .. ": " .. tostring(arg))

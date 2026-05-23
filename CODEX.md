@@ -67,7 +67,7 @@ Guidance for Codex when working in this repository.
 - Keep boop output in the established styled format using `cecho` color tags and sectioned headers where appropriate.
 - Help and config should share the same overall visual language.
 - Status is the place for current settings; help is the place for reference/documentation.
-- Help should start from user goals and first steps before listing reference commands.
+- Help should start from user goals and first steps before listing reference commands; normal workflows should get normal topics rather than being hidden in diagnostics.
 - New user-facing command output should acknowledge success/failure clearly and should not silently fail.
 - `boop control`, `boop config`, `boop party`, and `boop stats` are now primary surfaces and should be treated as the canonical operator workflow.
 - Footer breadcrumb/help commands should remain clickable in rich Mudlet rendering.
@@ -93,13 +93,14 @@ Guidance for Codex when working in this repository.
 
 ## Session Checkpoint
 - Branch to continue from: `codex/pre-1.0-hardening-pass`
-- Current branch tip after the latest pushed work: `57f94fc` (`Remove legacy flat state compatibility bridge`)
-- Current synchronized package version: `0.1.292`
+- The branch tip moves with normal hardening commits; rely on git history rather than this file for the exact latest hash.
+- Current synchronized package version: `0.1.293`
 - The purposeful pre-1.0 hardening work that is currently in this branch:
   - runtime/state ownership and coordinator path
   - combat planner split from execution
   - UI/config/help registries
   - UI registry migration follow-up fixes, including `boop pack test` behavior and misleading help numbering on non-action rows
+  - workflow-first in-game help, including dedicated loot/import, targeting, combat, party, and stats topics
   - GMCP support re-announcement on reconnect / missing-`gmcp.IRE` fallback
   - compatibility cleanup: the legacy flat `boop.state.<key>` bridge has been removed
 - Intentionally not in this branch:

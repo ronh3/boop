@@ -15,6 +15,7 @@ local commands = {
   "boop help targeting",
   "boop help combat",
   "boop help interrupts",
+  "boop help loot",
   "boop help party",
   "boop help stats",
   "boop help diagnostics",
@@ -436,17 +437,17 @@ local expectedByCommand = {
   ["boop config"] = {
     required = { "CONFIGURATION", "RELATED CONTROLS" },
     callbacks = {
-      { source = "[1] Hunting", actions = { action("boop.ui.config", "combat") } },
-      { source = "[2] Targeting", actions = { action("boop.ui.config", "targeting") } },
-      { source = "[6] Hunting settings", actions = { action("boop.ui.config", "combat") } },
-      { source = "[7] Targeting settings", actions = { action("boop.ui.config", "targeting") } },
-      { source = "[8] Loot settings", actions = { action("boop.ui.config", "loot") } },
-      { source = "[9] Diagnostics", actions = { action("boop.ui.config", "debug") } },
-      { source = "[10] Party dashboard", actions = { action("boop.ui.partyCommand", "") } },
-      { source = "[11] Roster manager", actions = { action("boop.ui.rosterCommand", "") } },
-      { source = "[12] Appearance", actions = { action("boop.ui.themeCommand", "") } },
-      { source = "[13] Control dashboard", actions = { action("boop.ui.controlCommand", "") } },
-      { source = "[14] Stats dashboard", actions = { action("boop.stats.command", "") } },
+      { source = "Combat", actions = { action("boop.ui.config", "combat") } },
+      { source = "Targeting", actions = { action("boop.ui.config", "targeting") } },
+      { source = "[1] Combat settings", actions = { action("boop.ui.config", "combat") } },
+      { source = "[2] Targeting settings", actions = { action("boop.ui.config", "targeting") } },
+      { source = "[3] Loot settings", actions = { action("boop.ui.config", "loot") } },
+      { source = "[4] Diagnostics", actions = { action("boop.ui.config", "debug") } },
+      { source = "[5] Party dashboard", actions = { action("boop.ui.partyCommand", "") } },
+      { source = "[6] Roster manager", actions = { action("boop.ui.rosterCommand", "") } },
+      { source = "[7] Appearance", actions = { action("boop.ui.themeCommand", "") } },
+      { source = "[8] Control dashboard", actions = { action("boop.ui.controlCommand", "") } },
+      { source = "[9] Stats dashboard", actions = { action("boop.stats.command", "") } },
       { source = "boop config home", actions = seedActions("boop config home") },
       { source = "boop config <number>", actions = seedActions("boop config") },
       { source = "boop config <name>", actions = seedActions("boop config") },
@@ -550,9 +551,10 @@ local expectedByCommand = {
       { source = "[4] Targeting & Lists", actions = { action("boop.ui.help", "targeting") } },
       { source = "[5] Combat, Rage & Queueing", actions = { action("boop.ui.help", "combat") } },
       { source = "[6] Interrupts & Recovery", actions = { action("boop.ui.help", "interrupts") } },
-      { source = "[7] Party & Leader", actions = { action("boop.ui.help", "party") } },
-      { source = "[8] Stats & Optimization", actions = { action("boop.ui.help", "stats") } },
-      { source = "[9] Troubleshooting & Advanced", actions = { action("boop.ui.help", "diagnostics") } },
+      { source = "[7] Loot, Packs & Import", actions = { action("boop.ui.help", "loot") } },
+      { source = "[8] Party & Leader", actions = { action("boop.ui.help", "party") } },
+      { source = "[9] Stats & Optimization", actions = { action("boop.ui.help", "stats") } },
+      { source = "[10] Troubleshooting & Advanced", actions = { action("boop.ui.help", "diagnostics") } },
       { source = "Home", actions = seedActions("boop") },
       { source = "Control dashboard", actions = seedActions("boop control") },
       { source = "Settings hub", actions = seedActions("boop config") },
@@ -577,6 +579,7 @@ expectedByCommand["boop help hunting"] = helpTopicExpectation(HELP_TOPICS.solo)
 expectedByCommand["boop help targeting"] = helpTopicExpectation(HELP_TOPICS.targeting)
 expectedByCommand["boop help combat"] = helpTopicExpectation(HELP_TOPICS.combat)
 expectedByCommand["boop help interrupts"] = helpTopicExpectation(HELP_TOPICS.interrupts)
+expectedByCommand["boop help loot"] = helpTopicExpectation(HELP_TOPICS.loot)
 expectedByCommand["boop help party"] = helpTopicExpectation(HELP_TOPICS.party)
 expectedByCommand["boop help stats"] = helpTopicExpectation(HELP_TOPICS.stats)
 expectedByCommand["boop help diagnostics"] = helpTopicExpectation(HELP_TOPICS.diagnostics)

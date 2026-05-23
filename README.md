@@ -14,7 +14,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop control` (live control dashboard)
 - `bh` (toggle on/off)
 - `boop on` / `boop off`
-- `boop help` / `boop help <number|topic|home>` (workflow help; examples: `boop help 4`, `boop help targeting`, `boop help rage`; `boop help audit` is an advanced review dump)
+- `boop help` / `boop help <number|topic|home>` (workflow help; examples: `boop help targeting`, `boop help rage`, `boop help gold`; `boop help audit` is an advanced review dump)
 - `boop status` (status summary)
 - `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow)
 - `boop preset <solo|party|leader|leader-call>` (apply recommended baseline settings)
@@ -131,7 +131,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop ragemode tempo` is aff-first, but can spend on damage when rolling rage gain predicts quick recovery (10s window).
 - Tune tempo behavior with `boop set tempoRageWindowSeconds <seconds>` and `boop set tempoSqueezeEtaSeconds <seconds>`.
 - `boop stats login` shows current-login totals across boop on/off toggles; unlike `lifetime`, it is not persisted between logins.
-- `boop help` is workflow-first: it starts from common goals, then each topic shows first steps, common commands, advanced commands, and notes.
+- `boop help` is workflow-first: it starts from common goals, then each topic shows first steps, common commands, advanced commands, and notes. Normal workflows include solo hunting, targeting, combat, interrupts, loot/gold, party, stats, and diagnostics.
 - `boop targeting` and `boop ragemode` now show current value + usage when called without arguments, and clear errors for invalid values.
 - Targeting now supports `retargetOnPriority` (default `on`); set it `off` to keep your current target instead of swapping when higher-priority mobs enter.
 - Command feedback now uses consistent tags for quick scanning: `[OK]`, `[INFO]`, `[WARN]`, `[ERR]`.

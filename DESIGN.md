@@ -94,7 +94,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `boop ih` re-renders Info-Here lines and adds clickable whitelist/blacklist buttons for denizens.
 - `boop`, `boop control`, `boop config`, `boop party`, and `boop stats` are now distinct operator surfaces rather than one large menu tree.
 - `boop config` renders a clickable configuration hub with subsection dashboards for combat, targeting, loot, and diagnostics.
-- `boop help` is now a workflow-first help surface, not a flat command index: common goals lead to topic pages with first steps, common commands, advanced commands, and notes.
+- `boop help` is now a workflow-first help surface, not a flat command index: common goals lead to topic pages with first steps, common commands, advanced commands, and notes. Loot/gold/import has its own normal workflow topic rather than being buried under diagnostics.
 - `boop config` and `boop help` use a shared sectioned row layout (`HEADER > section`, divider, aligned `[ value ]` action buttons).
 - `boop whitelist` and `boop blacklist` render clickable list managers (`up`/`down`/`remove`).
 - `boop whitelist browse [tag]` browses area-level whitelist entries with optional tag filter.

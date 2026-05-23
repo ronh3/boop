@@ -21,7 +21,7 @@ Current product state
 - `boop config` is the guided settings hub.
 - `boop party` is the party dashboard for leader, assist, and walk state.
 - `boop stats` is the optimization/stats dashboard.
-- `boop help` is a workflow-first help surface: common goals first, then topic pages with first steps, common commands, advanced commands, and notes.
+- `boop help` is a workflow-first help surface: common goals first, then topic pages with first steps, common commands, advanced commands, and notes. Routine operator workflows, including loot/gold/import, should get normal topics instead of being hidden in troubleshooting.
 - `boop roster` is separate from `boop party`.
 - `boop preset solo|party|leader|leader-call` exists as a shortcut for recommended baseline setups.
 
@@ -123,6 +123,7 @@ Current visual language expectations
 - Plain-text fallback should remain readable and deterministic for tests.
 - Older raw/debug-dump output should be treated as technical debt and cleaned up when touched.
 - Help topics should not be flat command dumps. Use the common shape: what this covers, first steps, common commands, advanced commands, then notes.
+- Help syntax should match the parser exactly. If a command only accepts either no args or two args, avoid optional-looking placeholders like `[left] [right]`.
 - Internal review helpers such as `boop help audit` should stay discoverable from advanced/troubleshooting help, not the normal help footer.
 
 Button rendering
