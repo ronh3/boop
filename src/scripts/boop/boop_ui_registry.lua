@@ -731,6 +731,7 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
       "`none` disables rage attacks only; it does not disable standard attacks.",
       "Queueing and prequeue are different: queueing changes how actions are sent; prequeue controls when the next standard attack is prepared.",
       "`pull` uses your configured separator and the typed mob name directly inside the rage command.",
+      "`pull` clears a stuck in-progress state after the interrupt timeout; it only resumes boop automatically when the current room still matches the origin.",
     },
   },
   {

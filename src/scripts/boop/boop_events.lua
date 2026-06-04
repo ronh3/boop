@@ -674,7 +674,11 @@ function boop.onRoomInfo()
         pull.phase = "away"
         boop.trace.log("pull: away room " .. currentRoom)
       elseif pull.phase == "away" and currentRoom == originRoom then
-        vars.pullState = false
+        if boop.ui and boop.ui.clearPullState then
+          boop.ui.clearPullState("returned to origin")
+        else
+          vars.pullState = false
+        end
         if pull.restoreEnabled then
           boop.ui.setEnabled(true, true)
           boop.util.ok("pull complete; boop resumed")

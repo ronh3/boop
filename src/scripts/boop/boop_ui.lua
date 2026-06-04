@@ -1207,6 +1207,70 @@ local function inverseDirection(direction)
   return opposite[dir] or ""
 end
 
+local function currentRoomId()
+  local room = boop.util.trim(tostring((boop.state and boop.state.targeting and boop.state.targeting.room) or ""))
+  if room == "" and gmcp and gmcp.Room and gmcp.Room.Info and gmcp.Room.Info.num then
+    room = boop.util.trim(tostring(gmcp.Room.Info.num or ""))
+  end
+  return room
+end
+
+local function stopPullTimeout(pull)
+  if type(pull) == "table" and pull.timeoutTimer and type(killTimer) == "function" then
+    killTimer(pull.timeoutTimer)
+  end
+  if type(pull) == "table" then
+    pull.timeoutTimer = nil
+  end
+end
+
+function boop.ui.clearPullState(reason)
+  boop.state = boop.state or {}
+  local pull = boop.state.combat and boop.state.combat.pullState or nil
+  if type(pull) == "table" then
+    stopPullTimeout(pull)
+  end
+  if boop.state.combat then
+    boop.state.combat.pullState = false
+  end
+  if reason and reason ~= "" then
+    boop.trace.log("pull: cleared " .. tostring(reason))
+  end
+end
+
+local function armPullTimeout(pull)
+  if type(pull) ~= "table" or type(tempTimer) ~= "function" then
+    return
+  end
+
+  local timeout = tonumber(boop.config and boop.config.diagTimeoutSeconds) or 8
+  if timeout <= 0 then
+    return
+  end
+
+  pull.timeoutTimer = tempTimer(timeout, function()
+    local active = boop.state and boop.state.combat and boop.state.combat.pullState or nil
+    if type(active) ~= "table" or not active.active then
+      return
+    end
+
+    local originRoom = boop.util.trim(tostring(active.originRoom or ""))
+    local here = currentRoomId()
+    local shouldRestore = active.restoreEnabled and originRoom ~= "" and here == originRoom
+    active.timeoutTimer = nil
+    boop.ui.clearPullState("timeout")
+
+    if shouldRestore then
+      boop.ui.setEnabled(true, true)
+      boop.util.warn("pull timeout; boop resumed at origin")
+    elseif active.restoreEnabled then
+      boop.util.warn("pull timeout; boop remains paused")
+    else
+      boop.util.warn("pull timeout")
+    end
+  end)
+end
+
 function boop.ui.gameSeparatorCommand(raw)
   local value = raw ~= nil and boop.util.trim(raw) or ""
   if value == "" then
@@ -1329,6 +1393,14 @@ function boop.ui.pullCommand(mobName, direction)
     boop.util.warn("pull needs a game separator; use `boop separator <text>`")
     return
   end
+  if separator:find("\n", 1, true) or separator:find("\r", 1, true) then
+    boop.util.warn("pull: game separator cannot contain newlines")
+    return
+  end
+  if mob:find("\n", 1, true) or mob:find("\r", 1, true) or mob:find(separator, 1, true) then
+    boop.util.warn("pull: mob name cannot contain the game separator or newlines")
+    return
+  end
 
   boop.state = boop.state or {}
   if boop.state.combat.pullState and boop.state.combat.pullState.active then
@@ -1348,10 +1420,7 @@ function boop.ui.pullCommand(mobName, direction)
     return
   end
 
-  local originRoom = boop.util.trim(tostring((boop.state and boop.state.targeting.room) or ""))
-  if originRoom == "" and gmcp and gmcp.Room and gmcp.Room.Info and gmcp.Room.Info.num then
-    originRoom = boop.util.trim(tostring(gmcp.Room.Info.num or ""))
-  end
+  local originRoom = currentRoomId()
   if originRoom == "" then
     boop.util.warn("pull needs a known current room before it can pause and resume boop safely")
     return
@@ -1369,6 +1438,7 @@ function boop.ui.pullCommand(mobName, direction)
     returnDirection = back,
     restoreEnabled = restoreEnabled,
   }
+  armPullTimeout(boop.state.combat.pullState)
 
   local command = table.concat({ dir, rageAction, "leap " .. back }, separator)
   send(command, false)

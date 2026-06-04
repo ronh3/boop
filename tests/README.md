@@ -48,6 +48,8 @@ Current coverage:
   Confirms diagnose timeout resumes attacks if the expected confirmation never arrives.
 - `boop_interrupt_spec.lua`
   Confirms prompt-resume queued interrupt commands such as `matic` pause attacks, queue their action, and resume on prompt.
+- `boop_pull_spec.lua`
+  Confirms pull command construction, GMCP return completion, timeout cleanup for stuck pull state, and separator safety.
 - `boop_event_transitions_spec.lua`
   Confirms room and target gmcp transitions clear stale combat state and retarget correctly.
 - `boop_wield_spec.lua`

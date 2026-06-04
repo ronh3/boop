@@ -46,7 +46,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `fly` (queues `fly` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
 - `ts` (queues `touch shield` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
 - `leap <direction>` (queues `leap <direction>` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
-- `pull <mobname> <direction>` (pauses boop, sends `<direction><sep><damage rage on mobname><sep>leap <opposite direction>`, then resumes boop when GMCP confirms you returned)
+- `pull <mobname> <direction>` (pauses boop, sends `<direction><sep><damage rage on mobname><sep>leap <opposite direction>`, then resumes boop when GMCP confirms you returned; timeout clears stuck pull state)
 - `boop separator <text>` (sets the game-side command separator used by `pull`; for example `|`)
 - `boop focus <speed|precision>` (sets which battlefury focus verb two-handed standards use when `Focus` is known)
 - `boop flee <on|off|toggle|percent>` (controls auto-flee and sets its threshold; example: `boop flee 25%`)
@@ -96,6 +96,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `leap <direction>` queues `leap <direction>` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
 - `pull <mobname> <direction>` uses the configured `boop separator` to send one chained game command: move in, use the highest available damage battlerage attack against the typed mob name, then `leap` back using the opposite direction.
 - When boop is already enabled, `pull` pauses it before the chained move starts and resumes it only after GMCP confirms you returned to the origin room.
+- If the return confirmation is missed, `pull` clears its in-progress state after the interrupt timeout; it only resumes boop automatically when the current room still matches the origin room.
 - If there is no ready damage battlerage attack or not enough rage to use one, `pull` aborts before movement.
 - `pullRageReserve` optionally makes normal battlerage spending hold back enough rage to preserve a pull-capable damage hit.
 - With `pullRageReserve` on, rage shieldbreak also yields to a standard shieldbreak when the class/profile already has one available.
