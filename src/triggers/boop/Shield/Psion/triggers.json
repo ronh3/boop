@@ -61,7 +61,7 @@
     "highlightBG": "#ffff00",
     "patterns": [
       {
-        "pattern": " ^Charging forward, (you) drive a translucent spear into (.+)\\.$",
+        "pattern": "^Charging forward, (you) drive a translucent spear into (.+)\\.$",
         "type": "regex"
       },
       {
