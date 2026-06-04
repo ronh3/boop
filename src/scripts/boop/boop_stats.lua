@@ -2746,6 +2746,7 @@ function boop.stats.showHelp()
   boop.util.info("    boop stats trip            -> current explicit trip totals")
   boop.util.info("    boop stats lifetime        -> persisted lifetime totals")
   boop.util.info("    boop stats lasttrip        -> last completed trip snapshot")
+  boop.util.info("    boop stats show <scope>    -> explicit route for a named totals scope")
   boop.util.info("  Optimize")
   boop.util.info("    boop stats areas [scope] [limit]              -> ranked area performance")
   boop.util.info("    boop stats areas <scope> <limit> <metric>     -> rank by gold, xp, goldhr, xphr, ttk")
@@ -2891,7 +2892,7 @@ function boop.stats.command(raw)
     return
   end
 
-  boop.util.info("Usage: boop stats [help|session|login|trip|lifetime|lasttrip|areas [scope] [limit]|areas <scope> <limit> <metric>|mobs [area] [limit]|targets [scope] [limit]|abilities [scope] [limit]|crits [scope]|rage [scope]|records [scope]|compare|compare <left> <right>|reset <session|login|trip|lifetime|all>]")
+  boop.util.info("Usage: boop stats [help|show <scope>|session|login|trip|lifetime|lasttrip|areas [scope] [limit]|areas <scope> <limit> <metric>|mobs [area] [limit]|targets [scope] [limit]|abilities [scope] [limit]|crits [scope]|rage [scope]|records [scope]|compare|compare <left> <right>|reset <session|login|trip|lifetime|all>]")
 end
 
 function boop.stats.startTrip()

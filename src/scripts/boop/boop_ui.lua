@@ -1737,7 +1737,7 @@ function boop.ui.presetCommand(raw)
 
   if cmd == "" or cmd == "status" or cmd == "show" or cmd == "list" then
     boop.util.info("presets: solo | party | leader | leader-call")
-    boop.util.info("Usage: boop preset <solo|party|leader|leader-call>")
+    boop.util.info("Usage: boop preset [list|solo|party|leader|leader-call]")
     boop.util.echo("  solo        -> " .. presets.solo.summary)
     boop.util.echo("  party       -> " .. presets.party.summary)
     boop.util.echo("  leader      -> " .. presets.leader.summary)
@@ -1748,7 +1748,7 @@ function boop.ui.presetCommand(raw)
   local preset = presets[cmd]
   if not preset then
     boop.util.warn("unknown preset: " .. tostring(raw))
-    boop.util.info("Usage: boop preset <solo|party|leader|leader-call>")
+    boop.util.info("Usage: boop preset [list|solo|party|leader|leader-call]")
     return
   end
 

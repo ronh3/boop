@@ -93,7 +93,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Denizen filtering: attrib includes `m` and excludes `x` and `d`.
 - `boop ih` re-renders Info-Here lines and adds clickable whitelist/blacklist buttons for denizens.
 - `boop`, `boop control`, `boop config`, `boop party`, and `boop stats` are now distinct operator surfaces rather than one large menu tree.
-- `boop config` renders a clickable configuration hub with subsection dashboards for combat, targeting, loot, and diagnostics.
+- `boop config` renders a clickable configuration hub with subsection dashboards for combat, targeting, loot, and diagnostics, plus direct routes back to party, roster, theme, control, stats, and mode surfaces.
 - `boop help` is now a workflow-first help surface, not a flat command index: common goals lead to topic pages with first steps, common commands, advanced commands, and notes. Loot/gold/import has its own normal workflow topic rather than being buried under diagnostics.
 - `boop config` and `boop help` use a shared sectioned row layout (`HEADER > section`, divider, aligned `[ value ]` action buttons).
 - `boop whitelist` and `boop blacklist` render clickable list managers (`up`/`down`/`remove`).
@@ -109,6 +109,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - If a standard attack is already prequeued and the current target gains shield before it fires, boop rebuilds `BOOP_ATTACK` immediately to the current shieldbreak standard when appropriate.
 - `diag` clears queue, queues `diagnose`, and temporarily blocks attacks until a diagnose result line plus prompt.
 - `diag` includes a timeout fallback to release attack hold if diagnose result lines are missed.
+- `pull <mobname> <direction>` temporarily pauses boop, sends the configured separator-delimited move/ready-damage-rage/leap-back chain, resumes only after GMCP confirms the origin room, and clears its in-progress state on the interrupt timeout if confirmation is missed.
 - `boop get/set` provides scriptable config access, and `boop trace` exposes a rolling decision/command buffer.
 - `boop trace` now includes compact GMCP room/info/item/gold-related room events for debugging movement and loot timing.
 - Two-handed standards prepend `battlefury focus speed/` when `Focus` is known (Weaponmastery), excluding shieldbreaker paths.

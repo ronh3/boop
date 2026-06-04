@@ -922,7 +922,7 @@ function boop.gag.showStatus()
   boop.util.info("gag others attacks: " .. (boop.config.gagOthersAttacks and "on" or "off"))
   boop.util.info("gag own palette: " .. boop.gag.paletteSummary("own"))
   boop.util.info("gag others palette: " .. boop.gag.paletteSummary("others"))
-  boop.util.info("Use: boop gag colors [own|others] | boop gag color [own|others] <role> <color|off>")
+  boop.util.info("Use: boop gag colors [own|others] | boop gag color [own|others] <role> [<color|off>]")
 end
 
 function boop.gag.setOwn(value)

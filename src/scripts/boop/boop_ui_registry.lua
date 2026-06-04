@@ -891,7 +891,8 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
       helpCommand("boop trace on|off|show [n]|clear", "Control or inspect the boop trace buffer used for decision-flow debugging."),
       helpCommand("boop gag on|off|own|others|all", "Control attack-line gagging behavior."),
       helpCommand("boop gag colors [own|others]", "Open the interactive gag palette browser for your own or other players' gag lines."),
-      helpCommand("boop gag color [own|others] <who|ability|target|meta|separator|bg> <color|off>", "Set one gag color role directly; use `boop gag color [own|others] <role>` to open the picker."),
+      helpCommand("boop gag color [own|others] <who|ability|target|meta|separator|bg> <color|off>", "Set one gag color role directly."),
+      helpCommand("boop gag color [own|others] <role>", "Open the picker for one gag color role."),
     },
     advanced = {
       helpCommand("boop get", "List raw config values."),

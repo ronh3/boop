@@ -11,14 +11,14 @@ Standalone Mudlet package for Achaea auto hunting.
 
 ## Commands
 - `boop` (home dashboard)
-- `boop control` (live control dashboard)
+- `boop control` / `boop control <status|config|combat|targeting|loot|debug|party|roster|stats|theme|mode>` (live control dashboard and route shortcuts)
 - `bh` (toggle on/off)
 - `boop on` / `boop off`
 - `boop help` / `boop help <number|topic|home>` (workflow help; examples: `boop help targeting`, `boop help rage`, `boop help gold`; `boop help audit` is an advanced review dump)
 - `boop status` (status summary)
-- `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow)
-- `boop preset <solo|party|leader|leader-call>` (apply recommended baseline settings)
-- `boop party` (party dashboard)
+- `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow; core sections are `combat`, `targeting`, `loot`, and `debug`)
+- `boop preset` / `boop preset list` / `boop preset <solo|party|leader|leader-call>` (show or apply recommended baseline settings)
+- `boop party` / `boop party <status|mode ...|walk ...|assist ...|targetcall ...|affcalls ...|size <n>|roster ...|combos>` (party dashboard and coordination shortcuts)
 - `boop mode solo|assist|leader|leader-call` (`leader` auto-calls your targets; `leader-call` follows another leader)
 - `boop assist <leader>` / `boop assist on|off|clear`
 - `boop targetcall on|off`
@@ -37,7 +37,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop lead` / `boop lead <seconds>` (prequeue lead timing)
 - `boop get [key]` / `boop set <key> <value>` (advanced raw config inspection/editing; prefer `boop config` for normal setup)
 - `boop trace` / `boop trace on|off|show [n]|clear`
-- `boop gag` / `boop gag on|off|own|others|all|<scope> on|off|colors [own|others]|color [own|others] <who|ability|target|meta|separator|bg> <color|off>|color [own|others] reset`
+- `boop gag` / `boop gag on|off|own|others|all|<scope> on|off|colors [own|others]|color [own|others] <who|ability|target|meta|separator|bg> [<color|off>]|color [own|others] reset`
 - `boop targeting <manual|whitelist|blacklist|auto>`
 - `boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>` (default: `simple`)
 - `diag` (queue-clear + diagnose; temporarily pauses boop attacks until diagnose result + prompt)
@@ -63,7 +63,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop aff` / `boop aff add <a/b>` / `boop aff remove <a/b>` / `boop aff clear`
 - `boop debug` / `boop debug attacks` / `boop debug skills` / `boop debug skills dump`
 - `boop trip start` / `boop trip stop`
-- `boop stats [help|session|login|trip|lifetime|lasttrip|areas|mobs|targets|abilities|crits|rage|records|compare|reset]`
+- `boop stats [help|show <scope>|session|login|trip|lifetime|lasttrip|areas|mobs|targets|abilities|crits|rage|records|compare|reset]`
 - `bflee`
 
 ## Notes
