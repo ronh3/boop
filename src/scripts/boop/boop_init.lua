@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.297"
+boop.version = boop.version or "0.1.298"
 
 boop.defaults = {
   enabled = false,
@@ -57,6 +57,23 @@ boop.lists.whitelistTags = boop.lists.whitelistTags or {}
 boop.lists.separator = boop.lists.separator or "/"
 boop.handlers = boop.handlers or {}
 boop.gmcp = boop.gmcp or {}
+boop.triggers = boop.triggers or {}
+
+local BOOP_TRIGGER_FOLDER = "boop"
+
+function boop.triggers.setEnabled(enabled)
+  local fn = enabled and enableTrigger or disableTrigger
+  if type(fn) ~= "function" then
+    return false
+  end
+
+  local ok = pcall(fn, BOOP_TRIGGER_FOLDER)
+  return ok and true or false
+end
+
+function boop.triggers.syncEnabled()
+  return boop.triggers.setEnabled(boop.config and boop.config.enabled)
+end
 
 local function gmcpSupportTimestamp()
   if getEpoch then
@@ -118,6 +135,10 @@ boop.bootstrap = boop.bootstrap or function()
 
   if boop.ih and boop.ih.init then
     boop.ih.init()
+  end
+
+  if boop.triggers and boop.triggers.syncEnabled then
+    boop.triggers.syncEnabled()
   end
 
   if boop.skills and boop.skills.init then

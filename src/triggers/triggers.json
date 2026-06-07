@@ -1,7 +1,7 @@
 [
   {
     "name": "boop",
-    "isActive": "yes",
+    "isActive": "no",
     "isFolder": "yes",
     "script": ""
   }

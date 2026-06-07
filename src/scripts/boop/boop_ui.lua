@@ -911,8 +911,20 @@ function boop.ui.setEnabled(value, quiet)
       boop.state.queue.prequeueTimer = nil
     end
     boop.state.queue.prequeuedStandard = false
+    if boop.clearGoldQueueIntent then
+      boop.clearGoldQueueIntent()
+    end
+    if boop.ih and boop.ih.stop then
+      boop.ih.stop()
+    end
+    if boop.gag and boop.gag.clearPending then
+      boop.gag.clearPending()
+    end
   else
     boop.state.queue.aliasDirty = true
+  end
+  if boop.triggers and boop.triggers.syncEnabled then
+    boop.triggers.syncEnabled()
   end
   if boop.stats and boop.stats.onEnabledChanged then
     boop.stats.onEnabledChanged(boop.config.enabled)

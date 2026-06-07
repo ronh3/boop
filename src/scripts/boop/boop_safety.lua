@@ -23,6 +23,18 @@ end
 function boop.safety.flee()
   boop.state.combat.attacking = false
   boop.config.enabled = false
+  if boop.clearGoldQueueIntent then
+    boop.clearGoldQueueIntent()
+  end
+  if boop.ih and boop.ih.stop then
+    boop.ih.stop()
+  end
+  if boop.gag and boop.gag.clearPending then
+    boop.gag.clearPending()
+  end
+  if boop.triggers and boop.triggers.syncEnabled then
+    boop.triggers.syncEnabled()
+  end
   if boop.stats and boop.stats.onEnabledChanged then
     boop.stats.onEnabledChanged(false)
   end

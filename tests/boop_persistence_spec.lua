@@ -8,15 +8,29 @@ describe("boop config and list persistence paths", function()
   local ok_stub
   local warn_stub
   local kill_timer_stub
+  local saved_enable_trigger
+  local saved_disable_trigger
   local saved_configs
   local saved_lists
   local saved_tags
+  local trigger_calls
+
+  local function boop_folder_trigger_calls()
+    local calls = {}
+    for _, call in ipairs(trigger_calls) do
+      if call.name == "boop" then
+        calls[#calls + 1] = call
+      end
+    end
+    return calls
+  end
 
   before_each(function()
     helper.reset()
     saved_configs = {}
     saved_lists = {}
     saved_tags = {}
+    trigger_calls = {}
 
     save_config_stub = stub(boop.db, "saveConfig", function(key, value)
       saved_configs[#saved_configs + 1] = { key = key, value = value }
@@ -41,9 +55,19 @@ describe("boop config and list persistence paths", function()
     ok_stub = stub(boop.util, "ok", function(_) end)
     warn_stub = stub(boop.util, "warn", function(_) end)
     kill_timer_stub = stub(_G, "killTimer", function(_) end)
+    saved_enable_trigger = _G.enableTrigger
+    saved_disable_trigger = _G.disableTrigger
+    _G.enableTrigger = function(name)
+      trigger_calls[#trigger_calls + 1] = { op = "enable", name = name }
+    end
+    _G.disableTrigger = function(name)
+      trigger_calls[#trigger_calls + 1] = { op = "disable", name = name }
+    end
   end)
 
   after_each(function()
+    _G.enableTrigger = saved_enable_trigger
+    _G.disableTrigger = saved_disable_trigger
     if save_config_stub then
       save_config_stub:revert()
       save_config_stub = nil
@@ -121,6 +145,16 @@ describe("boop config and list persistence paths", function()
     assert.is_false(boop.state.queue.prequeuedStandard)
     assert.stub(kill_timer_stub).was_called_with(41)
     assert.are.same({ key = "enabled", value = false }, saved_configs[1])
+  end)
+
+  it("syncs the boop trigger folder with the saved enabled state", function()
+    boop.ui.setEnabled(true, true)
+    boop.ui.setEnabled(false, true)
+
+    assert.are.same({
+      { op = "enable", name = "boop" },
+      { op = "disable", name = "boop" },
+    }, boop_folder_trigger_calls())
   end)
 
   it("persists whitelist add, remove, and reorder edits", function()

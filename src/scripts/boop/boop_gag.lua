@@ -865,6 +865,16 @@ local function setPendingKill(target)
   return boop.state.gag.pendingKillTimer == nil
 end
 
+function boop.gag.clearPending()
+  boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
+  cancelAttackSummaryTimer()
+  cancelKillSummaryTimer()
+  boop.state.gag.pendingAttack = nil
+  boop.state.gag.pendingKill = nil
+  boop.state.gag.razeslashIntent = nil
+end
+
 local function resolveCritText(rawCrit)
   local key = boop.util.safeLower(boop.util.trim(rawCrit or ""))
   if key == "" then return "" end

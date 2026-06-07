@@ -65,7 +65,7 @@ Current coverage:
 - `boop_trace_spec.lua`
   Confirms `boop trace` captures compact GMCP room, item, and gold-related item events for debugging live hunting flow.
 - `boop_persistence_spec.lua`
-  Confirms public config, including rage affliction callout settings, with party size intentionally kept session-local, plus whitelist/blacklist and whitelist-tag edits through the DB hooks.
+  Confirms public config, including rage affliction callout settings, with party size intentionally kept session-local, trigger-folder sync for hunting on/off, plus whitelist/blacklist and whitelist-tag edits through the DB hooks.
 - `boop_db_spec.lua`
   Confirms DB guard paths degrade to warnings instead of throwing when optional Mudlet sheets are missing in an older local profile DB.
 - `boop_ui_spec.lua`

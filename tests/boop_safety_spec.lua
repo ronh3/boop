@@ -4,19 +4,37 @@ describe("boop safety", function()
   local send_stub
   local timer_stub
   local save_config_stub
+  local saved_disable_trigger
+  local trigger_calls
+
+  local function boop_folder_trigger_calls()
+    local calls = {}
+    for _, call in ipairs(trigger_calls) do
+      if call.name == "boop" then
+        calls[#calls + 1] = call
+      end
+    end
+    return calls
+  end
 
   before_each(function()
     helper.reset()
     boop.config.enabled = true
+    trigger_calls = {}
 
     send_stub = stub(_G, "send", function(_, _) end)
     timer_stub = stub(_G, "tempTimer", function(_, _)
       return 1
     end)
     save_config_stub = stub(boop.db, "saveConfig", function(_, _) end)
+    saved_disable_trigger = _G.disableTrigger
+    _G.disableTrigger = function(name)
+      trigger_calls[#trigger_calls + 1] = { op = "disable", name = name }
+    end
   end)
 
   after_each(function()
+    _G.disableTrigger = saved_disable_trigger
     if send_stub then
       send_stub:revert()
       send_stub = nil
@@ -53,6 +71,7 @@ describe("boop safety", function()
     assert.is_false(boop.config.enabled)
     assert.is_true(boop.state.combat.fleeing)
     assert.is_false(boop.state.combat.attacking)
+    assert.are.same({ { op = "disable", name = "boop" } }, boop_folder_trigger_calls())
   end)
 
   it("does not auto-flee when auto flee is disabled", function()
