@@ -49,7 +49,7 @@ describe("boop gold retry handling", function()
 
     boop.onGoldCommandFailure("missing sovereigns")
 
-    assert.stub(send_stub).was_called_with("queue add balance get sovereigns", false)
+    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
     assert.are.equal(1, boop.state.gold.getRetries)
     assert.is_true(boop.state.gold.getPending)
   end)
@@ -74,7 +74,7 @@ describe("boop gold retry handling", function()
 
     boop.onGoldCommandFailure("pack closed")
 
-    assert.stub(send_stub).was_called_with("queue add balance put sovereigns in pack", false)
+    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
     assert.are.equal(1, boop.state.gold.putRetries)
     assert.is_true(boop.state.gold.putPending)
   end)

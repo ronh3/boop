@@ -29,7 +29,7 @@ Current coverage:
 - `boop_skill_gating_spec.lua`
   Confirms attack selection falls back correctly when required skills are unknown.
 - `boop_gold_spec.lua`
-  Confirms auto-gold queueing and pending-gold flush behavior.
+  Confirms auto-gold freestand queueing and pending-gold flush behavior.
 - `boop_gold_retry_spec.lua`
   Confirms gold get/put retry and give-up behavior after command failures.
 - `boop_safety_spec.lua`

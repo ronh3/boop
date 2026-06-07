@@ -785,7 +785,7 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
     },
     notes = {
       "Autogold only reacts to room items whose names contain `gold sovereign`.",
-      "With queueing on, pickup is prepended to the next queued standard attack; otherwise boop falls back to the game-side balance queue.",
+      "With queueing on, pickup is prepended to the next queued standard attack; otherwise boop falls back to the game-side freestand queue.",
       "`merge` is the normal Foxhunt import mode. Use `dryrun` first if you want counts without changing boop lists.",
     },
   },

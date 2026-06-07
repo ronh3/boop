@@ -84,8 +84,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop walk stop` halts in the current room; it does not return you to the start of the loop.
 - Auto gold pickup grabs newly dropped room items whose names contain `gold sovereign`.
 - In queueing mode, auto gold pickup is prepended to the next queued standard attack as `get sovereigns/<attack>`.
-- If no standard attack follows quickly, boop falls back to the game-side balance queue for `get sovereigns` so off-balance kills still loot cleanly.
-- Non-queueing mode uses the same balance-queue fallback path.
+- If no standard attack follows quickly, boop falls back to the game-side `freestand` queue for `get sovereigns`.
+- Non-queueing mode uses the same freestand queue fallback path.
 - If `boop pack <container>` is set, boop follows pickup with `put sovereigns in <container>`.
 - Gold get/put has trigger-based success/failure tracking with limited retries and warning output when retries are exhausted.
 - For `Two Handed` spec with `Focus` known in `Weaponmastery`, boop prepends `battlefury focus <speed|precision>/` to standard damage attacks (never shieldbreakers); configure it with `boop focus`.

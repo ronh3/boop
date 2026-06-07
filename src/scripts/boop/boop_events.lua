@@ -31,6 +31,11 @@ local function findRoomGoldItem(items)
 end
 
 local AUTO_GOLD_FLUSH_SECONDS = 0.35
+local GOLD_READY_QUEUE = "freestand"
+
+local function queueGoldCommand(command)
+  send("queue add " .. GOLD_READY_QUEUE .. " " .. command, false)
+end
 
 local function traceRoomInfo(info, moved, previousRoom)
   if not boop.trace or not boop.trace.log then return end
@@ -265,11 +270,11 @@ end
 local function queueGoldCommands()
   local pack = boop.util.trim(boop.config.goldPack or "")
   boop.markGoldQueueIntent(pack)
-  send("queue add balance get sovereigns", false)
+  queueGoldCommand("get sovereigns")
   boop.trace.log("gold queue: get sovereigns")
 
   if pack ~= "" then
-    send("queue add balance put sovereigns in " .. pack, false)
+    queueGoldCommand("put sovereigns in " .. pack)
     boop.trace.log("gold queue: put sovereigns in " .. pack)
   end
 end
@@ -385,7 +390,7 @@ local function retryGoldGet(reason)
   end
   boop.state.gold.getRetries = retries + 1
   armGoldPendingTimeout()
-  send("queue add balance get sovereigns", false)
+  queueGoldCommand("get sovereigns")
   boop.trace.log("gold get retry " .. tostring(boop.state.gold.getRetries) .. ": " .. tostring(reason))
 end
 
@@ -408,7 +413,7 @@ local function retryGoldPut(reason)
   end
   boop.state.gold.putRetries = retries + 1
   armGoldPendingTimeout()
-  send("queue add balance put sovereigns in " .. pack, false)
+  queueGoldCommand("put sovereigns in " .. pack)
   boop.trace.log("gold put retry " .. tostring(boop.state.gold.putRetries) .. " for " .. pack .. ": " .. tostring(reason))
 end
 

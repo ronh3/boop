@@ -100,7 +100,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `boop whitelist browse [tag]` browses area-level whitelist entries with optional tag filter.
 - `boop whitelist share [area]` emits structured party-chat packets for one area's ordered whitelist; incoming shares stay pending until explicitly applied as `merge`, `merge-reorder`, `overwrite`, or `reject`.
 - Whitelist areas support multi-tag metadata via `boop whitelist tag add/remove`, with `boop whitelist tag list` summary and per-area `boop whitelist tags <area>`.
-- `boop autogold` toggles automatic pickup of newly dropped gold sovereigns; in queueing mode it prepends `get sovereigns/` to the next queued standard attack, with a short fallback timer that places `get sovereigns` on the game's balance queue if no attack follows quickly (non-queueing mode uses the same balance-queue fallback path).
+- `boop autogold` toggles automatic pickup of newly dropped gold sovereigns; in queueing mode it prepends `get sovereigns/` to the next queued standard attack, with a short fallback timer that places `get sovereigns` on the game's `freestand` queue if no attack follows quickly (non-queueing mode uses the same freestand queue fallback path).
 - `boop pack <container>` sets an optional auto-stash container (`put sovereigns in <container>`) used after auto gold pickup.
 - `boop import foxhunt [merge|overwrite|dryrun]` imports area list data from Foxhunt's `hunting` DB into boop lists.
 - Gold get/put tracking now listens for success/failure lines and performs bounded retries before warning.

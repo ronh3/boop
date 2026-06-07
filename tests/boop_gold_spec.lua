@@ -35,14 +35,14 @@ describe("boop gold handling", function()
     end
   end)
 
-  it("queues gold pickup on the balance queue when queueing is disabled", function()
+  it("queues gold pickup on the freestand queue when queueing is disabled", function()
     boop.config.useQueueing = false
     boop.config.goldPack = "pack"
 
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
 
-    assert.stub(send_stub).was_called_with("queue add balance get sovereigns", false)
-    assert.stub(send_stub).was_called_with("queue add balance put sovereigns in pack", false)
+    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
+    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
     assert.is_true(boop.state.gold.getPending)
     assert.is_true(boop.state.gold.putPending)
     assert.are.equal("pack", boop.state.gold.packTarget)
@@ -57,8 +57,8 @@ describe("boop gold handling", function()
 
     boop.tick()
 
-    assert.stub(send_stub).was_called_with("queue add balance get sovereigns", false)
-    assert.stub(send_stub).was_called_with("queue add balance put sovereigns in pack", false)
+    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
+    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
     assert.is_false(boop.state.gold.autoGrabPending)
     assert.is_false(boop.state.gold.dropped)
     assert.is_true(boop.state.gold.getPending)
@@ -83,8 +83,8 @@ describe("boop gold handling", function()
 
     boop.tick()
 
-    assert.stub(send_stub).was_called_with("queue add balance get sovereigns", false)
-    assert.stub(send_stub).was_called_with("queue add balance put sovereigns in pack", false)
+    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
+    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
     assert.is_false(boop.state.gold.autoGrabPending)
     assert.is_true(boop.state.gold.getPending)
     assert.is_true(boop.state.gold.putPending)
