@@ -132,6 +132,12 @@
     "script": ""
   },
   {
+    "name": "Mobs",
+    "isActive": "yes",
+    "isFolder": "yes",
+    "script": ""
+  },
+  {
     "name": "Occultist",
     "isActive": "yes",
     "isFolder": "yes",

@@ -57,7 +57,7 @@ Current coverage:
 - `boop_weapon_spec.lua`
   Confirms `boop weapon` saves and clears class-scoped weapon designations consumed by weapon-dependent profiles.
 - `boop_gag_spec.lua`
-  Confirms condensed gag summaries for attack and kill replay lines.
+  Confirms condensed gag summaries for attack, mob-damage, and kill replay lines.
 - `boop_skills_spec.lua`
   Confirms skill GMCP ingestion, direct skill lookups, and learned/not-learned handling.
 - `boop_rage_ingestion_spec.lua`

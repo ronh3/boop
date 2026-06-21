@@ -513,6 +513,41 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("<tomato>: <reset>", 1, true) ~= nil)
   end)
 
+  it("condenses a known mob attack and health lost line", function()
+    boop.config.gagMobAttacks = true
+
+    boop.gag.onMobAttackLine({
+      actor = { kind = "match", index = 2 },
+    }, {
+      "An agitated ghost floats up behind you and throttles you with a shred of her tattered robe.",
+      "An agitated ghost",
+    }, "An agitated ghost floats up behind you and throttles you with a shred of her tattered robe.")
+    boop.gag.onHealthLostLine("649", "asphyxiation", "Health lost: 649 (asphyxiation).")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("An agitated ghost", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Damage", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("You", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("649 asphyxiation", 1, true) ~= nil)
+  end)
+
+  it("uses a separate palette for mob gag lines", function()
+    boop.config.gagMobAttacks = true
+    boop.gag.setColor("mobs", "who", "orange")
+    boop.gag.setColor("mobs", "ability", "tomato")
+
+    outputs = {}
+    boop.gag.onMobAttackLine({
+      actor = { kind = "literal", value = "Mob" },
+    }, { "line" }, "Mob hits you.")
+    boop.gag.onHealthLostLine("1,234", "fire", "Health lost: 1,234 (fire).")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("<orange>Mob<reset>", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("<tomato>Damage<reset>", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("1234 fire", 1, true) ~= nil)
+  end)
+
   it("captures the third-person Occultist hound line as an others gag", function()
     boop.config.gagOwnAttacks = false
     boop.config.gagOthersAttacks = true

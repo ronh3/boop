@@ -112,6 +112,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `pull <mobname> <direction>` temporarily pauses boop, sends the configured separator-delimited move/ready-damage-rage/leap-back chain, resumes only after GMCP confirms the origin room, and clears its in-progress state on the interrupt timeout if confirmation is missed.
 - `boop get/set` provides scriptable config access, and `boop trace` exposes a rolling decision/command buffer.
 - `boop trace` now includes compact GMCP room/info/item/gold-related room events for debugging movement and loot timing.
+- `boop gag mobs` condenses known mob attack flavor lines plus following `Health lost` lines into `Mob: Damage -> You (#### damagetype)` summaries with their own configurable gag palette.
 - Two-handed standards prepend `battlefury focus speed/` when `Focus` is known (Weaponmastery), excluding shieldbreaker paths.
 - Unnamable standards prepend `maul &tar/` when `Maul` is known (Dominion) and ready, with readiness tracked through the existing ability-ready trigger lines.
 - Standard attacks and rage actions are independent; standard builds rage and there is no mode toggle.

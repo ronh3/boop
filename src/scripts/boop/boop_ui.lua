@@ -478,6 +478,8 @@ local function renderStatusDashboard()
     uiPrintRow(row, "Gag own attacks", boolText(not not boop.config.gagOwnAttacks), boolColor(not not boop.config.gagOwnAttacks))
     row = row + 1
     uiPrintRow(row, "Gag others attacks", boolText(not not boop.config.gagOthersAttacks), boolColor(not not boop.config.gagOthersAttacks))
+    row = row + 1
+    uiPrintRow(row, "Gag mob attacks", boolText(not not boop.config.gagMobAttacks), boolColor(not not boop.config.gagMobAttacks))
 
     uiPrintFooter("Type: boop config | boop help | boop config debug")
     return
@@ -516,6 +518,7 @@ local function renderStatusDashboard()
   boop.util.echo("  traceEnabled: " .. tostring(boop.config.traceEnabled))
   boop.util.echo("  gagOwnAttacks: " .. tostring(boop.config.gagOwnAttacks))
   boop.util.echo("  gagOthersAttacks: " .. tostring(boop.config.gagOthersAttacks))
+  boop.util.echo("  gagMobAttacks: " .. tostring(boop.config.gagMobAttacks))
 end
 
 local function renderStateSummary()
@@ -1473,8 +1476,8 @@ function boop.ui.gagCommand(raw)
     return
   end
 
-  local scope, state = token:match("^(own|others|all)%s+(on|off)$")
-  if scope and state then
+  local scope, state = token:match("^(%S+)%s+(%S+)$")
+  if scope and (state == "on" or state == "off") and (scope == "own" or scope == "others" or scope == "mob" or scope == "mobs" or scope == "incoming" or scope == "all") then
     local enabled = (state == "on")
     if scope == "own" then
       boop.gag.setOwn(enabled)
@@ -1484,7 +1487,11 @@ function boop.ui.gagCommand(raw)
       boop.gag.setOthers(enabled)
       return
     end
-    boop.gag.setBoth(enabled)
+    if scope == "mob" or scope == "mobs" or scope == "incoming" then
+      boop.gag.setMobs(enabled)
+      return
+    end
+    boop.gag.setAll(enabled)
     return
   end
 
@@ -1496,17 +1503,21 @@ function boop.ui.gagCommand(raw)
     boop.gag.setOthers(not boop.config.gagOthersAttacks)
     return
   end
+  if token == "mob" or token == "mobs" or token == "incoming" then
+    boop.gag.setMobs(not boop.config.gagMobAttacks)
+    return
+  end
   if token == "all" then
-    local nextValue = not (boop.config.gagOwnAttacks and boop.config.gagOthersAttacks)
-    boop.gag.setBoth(nextValue)
+    local nextValue = not (boop.config.gagOwnAttacks and boop.config.gagOthersAttacks and boop.config.gagMobAttacks)
+    boop.gag.setAll(nextValue)
     return
   end
   if token == "on" then
-    boop.gag.setBoth(true)
+    boop.gag.setAll(true)
     return
   end
   if token == "off" then
-    boop.gag.setBoth(false)
+    boop.gag.setAll(false)
     return
   end
 
@@ -1536,7 +1547,7 @@ function boop.ui.gagCommand(raw)
     end
 
     local scope, role, value = colorArgs:match("^(%S+)%s+(%S+)%s+(.+)$")
-    if scope and role and value and (scope == "own" or scope == "self" or scope == "others" or scope == "other") then
+    if scope and role and value and (scope == "own" or scope == "self" or scope == "others" or scope == "other" or scope == "mob" or scope == "mobs" or scope == "incoming") then
       boop.gag.setColor(scope, role, value)
       return
     end
@@ -1548,7 +1559,7 @@ function boop.ui.gagCommand(raw)
     end
 
     local pickerScope, pickerRole = colorArgs:match("^(%S+)%s+(%S+)$")
-    if pickerScope and pickerRole and (pickerScope == "own" or pickerScope == "self" or pickerScope == "others" or pickerScope == "other") and boop.gag and boop.gag.showColorPicker then
+    if pickerScope and pickerRole and (pickerScope == "own" or pickerScope == "self" or pickerScope == "others" or pickerScope == "other" or pickerScope == "mob" or pickerScope == "mobs" or pickerScope == "incoming") and boop.gag and boop.gag.showColorPicker then
       boop.gag.showColorPicker(pickerScope, pickerRole)
       return
     end
@@ -1560,7 +1571,7 @@ function boop.ui.gagCommand(raw)
     end
   end
 
-  boop.util.info("Usage: boop gag [status|on|off|own|others|all|<scope> on|off|colors [own|others]|color [own|others] <role> <color|off>|color [own|others] <role>|color [own|others] reset]")
+  boop.util.info("Usage: boop gag [status|on|off|own|others|mobs|all|<scope> on|off|colors [own|others|mobs]|color [own|others|mobs] <role> <color|off>|color [own|others|mobs] <role>|color [own|others|mobs] reset]")
 end
 
 local function canonConfigKey(raw)
@@ -3802,10 +3813,11 @@ end
 
 local function configDebugSummary()
   return string.format(
-    "trace %s | gag own %s | gag others %s",
+    "trace %s | gag own %s | gag others %s | gag mobs %s",
     boolText(not not boop.config.traceEnabled),
     boolText(not not boop.config.gagOwnAttacks),
-    boolText(not not boop.config.gagOthersAttacks)
+    boolText(not not boop.config.gagOthersAttacks),
+    boolText(not not boop.config.gagMobAttacks)
   )
 end
 
@@ -4133,6 +4145,7 @@ local function configRenderDebugSection()
   local traceCount = boop.state and boop.state.trace.buffer and #boop.state.trace.buffer or 0
   local ownPalette = boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary("own") or "AUTO"
   local othersPalette = boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary("others") or "AUTO"
+  local mobsPalette = boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary("mobs") or "AUTO"
   if cecho then
     uiPrintHeader("configuration > debug")
     uiPrintSection("settings")
@@ -4154,26 +4167,34 @@ local function configRenderDebugSection()
     uiPrintToggleControl(6, "Gag others", not not boop.config.gagOthersAttacks, function()
       boop.ui.config("debug 6")
     end, "Toggle gagging other players' attack lines")
-    uiPrintActionControl(7, "Gag own palette", ownPalette, "cyan", "[color]", "info", function()
+    uiPrintToggleControl(7, "Gag mobs", not not boop.config.gagMobAttacks, function()
       boop.ui.config("debug 7")
-    end, "Show own gag color roles and sample output")
-    uiPrintActionControl(8, "Gag others palette", othersPalette, "cyan", "[color]", "info", function()
+    end, "Toggle gagging known mob damage lines")
+    uiPrintActionControl(8, "Gag own palette", ownPalette, "cyan", "[color]", "info", function()
       boop.ui.config("debug 8")
+    end, "Show own gag color roles and sample output")
+    uiPrintActionControl(9, "Gag others palette", othersPalette, "cyan", "[color]", "info", function()
+      boop.ui.config("debug 9")
     end, "Show other-player gag color roles and sample output")
+    uiPrintActionControl(10, "Gag mobs palette", mobsPalette, "cyan", "[color]", "info", function()
+      boop.ui.config("debug 10")
+    end, "Show mob gag color roles and sample output")
     uiPrintFooter("Type: boop config home | boop config debug <number> | boop config back")
     return
   end
   boop.util.echo("CONFIGURATION > Debug")
   boop.util.echo("----------------------------------------")
-  boop.util.echo(string.format("Trace: %s | entries: %d | gag own %s | gag others %s | own palette %s | others palette %s", boolText(not not boop.config.traceEnabled), traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks), ownPalette, othersPalette))
+  boop.util.echo(string.format("Trace: %s | entries: %d | gag own %s | gag others %s | gag mobs %s | own palette %s | others palette %s | mobs palette %s", boolText(not not boop.config.traceEnabled), traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks), boolText(not not boop.config.gagMobAttacks), ownPalette, othersPalette, mobsPalette))
   boop.util.echo("[1] Trace logging             [ " .. boolText(not not boop.config.traceEnabled) .. " ] [toggle]")
   boop.util.echo("[2] Debug snapshot            [ ready ] [open]")
   boop.util.echo("[3] Trace buffer              [ " .. tostring(traceCount) .. " ] [open]")
   boop.util.echo("[4] Clear trace               [ " .. tostring(traceCount) .. " ] [clear]")
   boop.util.echo("[5] Gag own attacks           [ " .. boolText(not not boop.config.gagOwnAttacks) .. " ] [toggle]")
   boop.util.echo("[6] Gag others                [ " .. boolText(not not boop.config.gagOthersAttacks) .. " ] [toggle]")
-  boop.util.echo("[7] Gag own palette           [ " .. ownPalette .. " ] [color]")
-  boop.util.echo("[8] Gag others palette        [ " .. othersPalette .. " ] [color]")
+  boop.util.echo("[7] Gag mobs                  [ " .. boolText(not not boop.config.gagMobAttacks) .. " ] [toggle]")
+  boop.util.echo("[8] Gag own palette           [ " .. ownPalette .. " ] [color]")
+  boop.util.echo("[9] Gag others palette        [ " .. othersPalette .. " ] [color]")
+  boop.util.echo("[10] Gag mobs palette         [ " .. mobsPalette .. " ] [color]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config home | boop config debug <number> | boop config back")
 end
@@ -4370,6 +4391,7 @@ function boop.ui.debug()
     uiPrintRow(10, "Trace entries", tostring(traceCount), "cyan")
     uiPrintRow(11, "Gag own", boolText(not not boop.config.gagOwnAttacks), boolColor(not not boop.config.gagOwnAttacks))
     uiPrintRow(12, "Gag others", boolText(not not boop.config.gagOthersAttacks), boolColor(not not boop.config.gagOthersAttacks))
+    uiPrintRow(13, "Gag mobs", boolText(not not boop.config.gagMobAttacks), boolColor(not not boop.config.gagMobAttacks))
     uiPrintFooter("Type: boop config home | boop config debug | boop trace show | boop debug attacks")
     return
   end
@@ -4380,7 +4402,7 @@ function boop.ui.debug()
   boop.util.echo(string.format("Flow: blocker %s | next %s", blocker, nextAction))
   boop.util.echo(string.format("Combat: eq/bal %s/%s | rage %s | denizens %s", tostring(eq), tostring(bal), tostring(rage), tostring(denizenCount)))
   boop.util.echo("Target: " .. targetShown)
-  boop.util.echo(string.format("Diagnostics: trace %d | gag own %s | gag others %s", traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks)))
+  boop.util.echo(string.format("Diagnostics: trace %d | gag own %s | gag others %s | gag mobs %s", traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks), boolText(not not boop.config.gagMobAttacks)))
   boop.util.echo("Quick: boop config home | boop config debug | boop trace show | boop debug attacks")
 end
 

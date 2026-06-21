@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.302"
+boop.version = boop.version or "0.1.303"
 
 boop.defaults = {
   enabled = false,
@@ -16,6 +16,7 @@ boop.defaults = {
   traceEnabled = false,
   gagOwnAttacks = false,
   gagOthersAttacks = false,
+  gagMobAttacks = false,
   gagColorWho = "",
   gagColorAbility = "",
   gagColorTarget = "",
@@ -28,6 +29,12 @@ boop.defaults = {
   gagOtherColorMeta = "",
   gagOtherColorSeparator = "",
   gagOtherColorBackground = "",
+  gagMobColorWho = "",
+  gagMobColorAbility = "",
+  gagMobColorTarget = "",
+  gagMobColorMeta = "",
+  gagMobColorSeparator = "",
+  gagMobColorBackground = "",
   attackMode = "simple",
   pullRageReserve = false,
   fleeEnabled = true,

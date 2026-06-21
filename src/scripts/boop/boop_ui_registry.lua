@@ -26,6 +26,7 @@ boop.registry.config.schema = boop.registry.config.schema or {
     "traceEnabled",
     "gagOwnAttacks",
     "gagOthersAttacks",
+    "gagMobAttacks",
     "gagColorWho",
     "gagColorAbility",
     "gagColorTarget",
@@ -38,6 +39,12 @@ boop.registry.config.schema = boop.registry.config.schema or {
     "gagOtherColorMeta",
     "gagOtherColorSeparator",
     "gagOtherColorBackground",
+    "gagMobColorWho",
+    "gagMobColorAbility",
+    "gagMobColorTarget",
+    "gagMobColorMeta",
+    "gagMobColorSeparator",
+    "gagMobColorBackground",
     "diagTimeoutSeconds",
     "partySize",
     "partyRoster",
@@ -79,6 +86,11 @@ boop.registry.config.schema = boop.registry.config.schema or {
     gagownattacks = "gagOwnAttacks",
     gagothers = "gagOthersAttacks",
     gagothersattacks = "gagOthersAttacks",
+    gagmob = "gagMobAttacks",
+    gagmobs = "gagMobAttacks",
+    gagmobattacks = "gagMobAttacks",
+    gagmobsattacks = "gagMobAttacks",
+    incominggag = "gagMobAttacks",
     gagcolorwho = "gagColorWho",
     gagcolorability = "gagColorAbility",
     gagcolortarget = "gagColorTarget",
@@ -93,6 +105,13 @@ boop.registry.config.schema = boop.registry.config.schema or {
     gagothercolorseparator = "gagOtherColorSeparator",
     gagothercolorbg = "gagOtherColorBackground",
     gagothercolorbackground = "gagOtherColorBackground",
+    gagmobcolorwho = "gagMobColorWho",
+    gagmobcolorability = "gagMobColorAbility",
+    gagmobcolortarget = "gagMobColorTarget",
+    gagmobcolormeta = "gagMobColorMeta",
+    gagmobcolorseparator = "gagMobColorSeparator",
+    gagmobcolorbg = "gagMobColorBackground",
+    gagmobcolorbackground = "gagMobColorBackground",
     diagtimeout = "diagTimeoutSeconds",
     diagtimeoutseconds = "diagTimeoutSeconds",
     partysize = "partySize",
@@ -444,6 +463,13 @@ boop.registry.config.setters = boop.registry.config.setters or {
       boop.gag.setOthers(parsed)
     end,
   }),
+  gagMobAttacks = configBoolSetter({
+    key = "gagMobAttacks",
+    warn = "gagMobAttacks expects on/off",
+    apply = function(parsed)
+      boop.gag.setMobs(parsed)
+    end,
+  }),
   gagColorWho = gagColorSetter("own", "who"),
   gagColorAbility = gagColorSetter("own", "ability"),
   gagColorTarget = gagColorSetter("own", "target"),
@@ -456,6 +482,12 @@ boop.registry.config.setters = boop.registry.config.setters or {
   gagOtherColorMeta = gagColorSetter("others", "meta"),
   gagOtherColorSeparator = gagColorSetter("others", "separator"),
   gagOtherColorBackground = gagColorSetter("others", "background"),
+  gagMobColorWho = gagColorSetter("mobs", "who"),
+  gagMobColorAbility = gagColorSetter("mobs", "ability"),
+  gagMobColorTarget = gagColorSetter("mobs", "target"),
+  gagMobColorMeta = gagColorSetter("mobs", "meta"),
+  gagMobColorSeparator = gagColorSetter("mobs", "separator"),
+  gagMobColorBackground = gagColorSetter("mobs", "background"),
   diagTimeoutSeconds = configNumberSetter({
     key = "diagTimeoutSeconds",
     warn = "diagTimeoutSeconds expects number >= 0",
@@ -889,10 +921,10 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
       helpCommand("boop debug skills", "Show current skill knowledge and skill-state summaries."),
       helpCommand("boop debug skills dump", "Dump the raw skill tables boop is using."),
       helpCommand("boop trace on|off|show [n]|clear", "Control or inspect the boop trace buffer used for decision-flow debugging."),
-      helpCommand("boop gag on|off|own|others|all", "Control attack-line gagging behavior."),
-      helpCommand("boop gag colors [own|others]", "Open the interactive gag palette browser for your own or other players' gag lines."),
-      helpCommand("boop gag color [own|others] <who|ability|target|meta|separator|bg> <color|off>", "Set one gag color role directly."),
-      helpCommand("boop gag color [own|others] <role>", "Open the picker for one gag color role."),
+      helpCommand("boop gag on|off|own|others|mobs|all", "Control attack-line and known mob damage gagging behavior."),
+      helpCommand("boop gag colors [own|others|mobs]", "Open the interactive gag palette browser for your own, other-player, or mob gag lines."),
+      helpCommand("boop gag color [own|others|mobs] <who|ability|target|meta|separator|bg> <color|off>", "Set one gag color role directly."),
+      helpCommand("boop gag color [own|others|mobs] <role>", "Open the picker for one gag color role."),
     },
     advanced = {
       helpCommand("boop get", "List raw config values."),
@@ -1084,14 +1116,23 @@ boop.registry.ui.screens.configActions = boop.registry.ui.screens.configActions 
         boop.gag.setOthers(not boop.config.gagOthersAttacks)
         return "refresh"
       end,
-      [7] = function(ctx)
+      [7] = function()
+        boop.gag.setMobs(not boop.config.gagMobAttacks)
+        return "refresh"
+      end,
+      [8] = function(ctx)
         ctx.rememberReturn("debug")
         boop.gag.showColors("own")
         return "handled"
       end,
-      [8] = function(ctx)
+      [9] = function(ctx)
         ctx.rememberReturn("debug")
         boop.gag.showColors("others")
+        return "handled"
+      end,
+      [10] = function(ctx)
+        ctx.rememberReturn("debug")
+        boop.gag.showColors("mobs")
         return "handled"
       end,
     },

@@ -123,6 +123,14 @@ local GAG_COLOR_KEYS = {
     separator = "gagOtherColorSeparator",
     background = "gagOtherColorBackground",
   },
+  mobs = {
+    who = "gagMobColorWho",
+    ability = "gagMobColorAbility",
+    target = "gagMobColorTarget",
+    meta = "gagMobColorMeta",
+    separator = "gagMobColorSeparator",
+    background = "gagMobColorBackground",
+  },
 }
 
 local GAG_SCOPE_ALIASES = {
@@ -131,6 +139,9 @@ local GAG_SCOPE_ALIASES = {
   mine = "own",
   others = "others",
   other = "others",
+  mobs = "mobs",
+  mob = "mobs",
+  incoming = "mobs",
 }
 
 local GAG_COLOR_ALIASES = {
@@ -185,6 +196,7 @@ local GAG_COLOR_LABELS = {
 local GAG_SCOPE_LABELS = {
   own = "own",
   others = "others",
+  mobs = "mobs",
 }
 
 local GAG_ROLE_SAMPLE_TEXT = {
@@ -350,6 +362,14 @@ local function gagRoleStatusText(scope, role)
 end
 
 local function gagRoleSample(scope, role)
+  local normalizedScope = normalizeGagScope(scope)
+  if normalizedScope == "mobs" then
+    if role == "who" then return renderSegment(normalizedScope, role, "Mob") end
+    if role == "ability" then return renderSegment(normalizedScope, role, "Damage") end
+    if role == "target" then return renderSegment(normalizedScope, role, "You") end
+    if role == "meta" then return renderSegment(normalizedScope, role, " (649 asphyxiation)") end
+  end
+
   local text = GAG_ROLE_SAMPLE_TEXT[role] or role
   return renderSegment(scope, role, text)
 end
@@ -377,7 +397,7 @@ local function renderGagScopeLinks(currentScope)
   }
 
   cecho("\n  " .. theme.text .. "Scope: " .. theme.reset)
-  for _, scope in ipairs({ "own", "others" }) do
+  for _, scope in ipairs({ "own", "others", "mobs" }) do
     if scope == currentScope then
       cecho(theme.muted .. "[" .. GAG_SCOPE_LABELS[scope] .. "]" .. theme.reset)
     else
@@ -415,6 +435,14 @@ end
 
 function boop.gag.showColors(scope)
   local normalizedScope = normalizeGagScope(scope)
+  if normalizedScope == "" then
+    boop.util.warn("gag color scope: use own|others|mobs")
+    return
+  end
+  local sampleWho = normalizedScope == "own" and "You" or normalizedScope == "mobs" and "Mob" or "Someone"
+  local sampleAbility = normalizedScope == "mobs" and "Damage" or "Attack"
+  local sampleTarget = normalizedScope == "mobs" and "You" or "a denizen"
+  local sampleMeta = normalizedScope == "mobs" and " (649 asphyxiation)" or " (1234 cutting - 8xCRIT) (Bal: 2.1s)"
   if cecho then
     if boop.ui and boop.ui._setScreen then
       boop.ui._setScreen("gag-colors")
@@ -424,18 +452,18 @@ function boop.gag.showColors(scope)
       boop.ui._printSection("sample")
       cecho(
         "\n  "
-        .. renderSegment(normalizedScope, "who", normalizedScope == "own" and "You" or "Someone")
+        .. renderSegment(normalizedScope, "who", sampleWho)
         .. renderSegment(normalizedScope, "separator", ": ")
-        .. renderSegment(normalizedScope, "ability", "Attack")
+        .. renderSegment(normalizedScope, "ability", sampleAbility)
         .. renderSegment(normalizedScope, "separator", " -> ")
-        .. renderSegment(normalizedScope, "target", "a denizen")
-        .. renderSegment(normalizedScope, "meta", " (1234 cutting - 8xCRIT) (Bal: 2.1s)")
+        .. renderSegment(normalizedScope, "target", sampleTarget)
+        .. renderSegment(normalizedScope, "meta", sampleMeta)
       )
       renderGagScopeLinks(normalizedScope)
       boop.ui._printSection("roles")
       renderGagColorRows(normalizedScope)
       if boop.ui and boop.ui._printFooter then
-        boop.ui._printFooter("Type: boop gag colors <own|others> | boop gag color [own|others] <role> <color|off> | boop gag color [own|others] <role> | boop gag color [own|others] reset")
+        boop.ui._printFooter("Type: boop gag colors <own|others|mobs> | boop gag color [own|others|mobs] <role> <color|off> | boop gag color [own|others|mobs] <role> | boop gag color [own|others|mobs] reset")
       end
       return
     end
@@ -448,15 +476,15 @@ function boop.gag.showColors(scope)
   if cecho then
     cecho(
       "\n  sample: "
-      .. renderSegment(normalizedScope, "who", normalizedScope == "own" and "You" or "Someone")
+      .. renderSegment(normalizedScope, "who", sampleWho)
       .. renderSegment(normalizedScope, "separator", ": ")
-      .. renderSegment(normalizedScope, "ability", "Attack")
+      .. renderSegment(normalizedScope, "ability", sampleAbility)
       .. renderSegment(normalizedScope, "separator", " -> ")
-      .. renderSegment(normalizedScope, "target", "a denizen")
-      .. renderSegment(normalizedScope, "meta", " (1234 cutting - 8xCRIT) (Bal: 2.1s)")
+      .. renderSegment(normalizedScope, "target", sampleTarget)
+      .. renderSegment(normalizedScope, "meta", sampleMeta)
     )
   else
-    boop.util.echo("  sample: " .. (normalizedScope == "own" and "You" or "Someone") .. ": Attack -> a denizen (1234 cutting - 8xCRIT) (Bal: 2.1s)")
+    boop.util.echo("  sample: " .. sampleWho .. ": " .. sampleAbility .. " -> " .. sampleTarget .. sampleMeta)
   end
 end
 
@@ -467,6 +495,10 @@ function boop.gag.showColorPicker(scope, role)
   end
   local normalizedScope = normalizeGagScope(scope)
   local normalizedRole = normalizeGagRole(role)
+  if normalizedScope == "" then
+    boop.util.warn("gag color scope: use own|others|mobs")
+    return
+  end
   if normalizedRole == "" then
     boop.util.warn("gag color role: use who|ability|target|meta|separator|bg")
     return
@@ -532,6 +564,10 @@ function boop.gag.setColor(scope, role, rawValue)
   end
   local normalizedScope = normalizeGagScope(scope)
   local normalizedRole = normalizeGagRole(role)
+  if normalizedScope == "" then
+    boop.util.warn("gag color scope: use own|others|mobs")
+    return
+  end
   if normalizedRole == "" then
     boop.util.warn("gag color role: use who|ability|target|meta|separator|bg")
     return
@@ -559,6 +595,10 @@ end
 
 function boop.gag.resetColors(scope)
   local normalizedScope = normalizeGagScope(scope)
+  if normalizedScope == "" then
+    boop.util.warn("gag color scope: use own|others|mobs")
+    return
+  end
   for _, role in ipairs(GAG_COLOR_ORDER) do
     local key = GAG_COLOR_KEYS[normalizedScope] and GAG_COLOR_KEYS[normalizedScope][role]
     boop.config[key] = ""
@@ -620,6 +660,18 @@ local function emitSimple(who, ability)
   else
     echo("\n" .. actor .. ": " .. what)
   end
+end
+
+local function formatDamageText(amount, dtype)
+  local num = boop.util.trim(tostring(amount or "")):gsub(",", "")
+  local kind = boop.util.trim(dtype or "")
+  if num ~= "" and kind ~= "" then
+    return num .. " " .. kind
+  end
+  if num ~= "" then
+    return num
+  end
+  return kind
 end
 
 local function emitAttackSummary(entry)
@@ -703,6 +755,31 @@ local function emitKillSummary(target, xp)
   end
 end
 
+local function emitMobDamageSummary(mob, damageText)
+  local actor = boop.util.trim(mob or "")
+  if actor == "" then actor = "Mob" end
+
+  local damage = boop.util.trim(damageText or "")
+  local suffix = ""
+  if damage ~= "" then
+    suffix = " (" .. damage .. ")"
+  end
+
+  if cecho then
+    cecho(
+      "\n"
+      .. renderSegment("mobs", "who", actor)
+      .. renderSegment("mobs", "separator", ": ")
+      .. renderSegment("mobs", "ability", "Damage")
+      .. renderSegment("mobs", "separator", " -> ")
+      .. renderSegment("mobs", "target", "You")
+      .. renderSegment("mobs", "meta", suffix)
+    )
+  else
+    echo("\n" .. string.format("%s: Damage -> You%s", actor, suffix))
+  end
+end
+
 local function deleteCurrent()
   if selectCurrentLine then
     selectCurrentLine()
@@ -736,6 +813,32 @@ local function cancelAttackSummaryTimer()
     killTimer(boop.state.gag.pendingAttackTimer)
   end
   boop.state.gag.pendingAttackTimer = nil
+end
+
+local function cancelMobDamageTimer()
+  boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
+  if boop.state.gag.pendingMobDamageTimer and type(killTimer) == "function" then
+    killTimer(boop.state.gag.pendingMobDamageTimer)
+  end
+  boop.state.gag.pendingMobDamageTimer = nil
+end
+
+local function clearPendingMobDamage()
+  boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
+  cancelMobDamageTimer()
+  boop.state.gag.pendingMobAttack = nil
+end
+
+local function scheduleMobDamageTimer()
+  boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
+  cancelMobDamageTimer()
+  boop.state.gag.pendingMobDamageTimer = scheduleGagTimer(1.2, function()
+    boop.state.gag.pendingMobDamageTimer = nil
+    boop.state.gag.pendingMobAttack = nil
+  end)
 end
 
 local flushPendingKill
@@ -928,6 +1031,7 @@ function boop.gag.clearPending()
   boop.state.gag = boop.state.gag or {}
   cancelAttackSummaryTimer()
   cancelKillSummaryTimer()
+  clearPendingMobDamage()
   boop.state.gag.pendingAttack = nil
   boop.state.gag.pendingKill = nil
   boop.state.gag.razeslashIntent = nil
@@ -989,9 +1093,11 @@ end
 function boop.gag.showStatus()
   boop.util.info("gag own attacks: " .. (boop.config.gagOwnAttacks and "on" or "off"))
   boop.util.info("gag others attacks: " .. (boop.config.gagOthersAttacks and "on" or "off"))
+  boop.util.info("gag mob attacks: " .. (boop.config.gagMobAttacks and "on" or "off"))
   boop.util.info("gag own palette: " .. boop.gag.paletteSummary("own"))
   boop.util.info("gag others palette: " .. boop.gag.paletteSummary("others"))
-  boop.util.info("Use: boop gag colors [own|others] | boop gag color [own|others] <role> [<color|off>]")
+  boop.util.info("gag mobs palette: " .. boop.gag.paletteSummary("mobs"))
+  boop.util.info("Use: boop gag colors [own|others|mobs] | boop gag color [own|others|mobs] <role> [<color|off>]")
 end
 
 function boop.gag.setOwn(value)
@@ -1012,9 +1118,79 @@ function boop.gag.setOthers(value)
   boop.util.ok("gag others attacks: " .. (enabled and "on" or "off"))
 end
 
+function boop.gag.setMobs(value)
+  local enabled = value and true or false
+  boop.config.gagMobAttacks = enabled
+  if boop.db and boop.db.saveConfig then
+    boop.db.saveConfig("gagMobAttacks", enabled)
+  end
+  boop.util.ok("gag mob attacks: " .. (enabled and "on" or "off"))
+end
+
 function boop.gag.setBoth(value)
   boop.gag.setOwn(value)
   boop.gag.setOthers(value)
+end
+
+function boop.gag.setAll(value)
+  boop.gag.setBoth(value)
+  boop.gag.setMobs(value)
+end
+
+function boop.gag.onMobAttackLine(spec, matchTable, rawLine)
+  if shouldSuppressDuplicate(rawLine) then
+    return
+  end
+  if not boop.config or not boop.config.gagMobAttacks then
+    return
+  end
+
+  local actor = boop.util.trim(resolveCapture(spec and spec.actor, matchTable))
+  if actor == "" then
+    actor = findLikelyActor(matchTable)
+  end
+  if actor == "" then
+    actor = "Mob"
+  end
+
+  boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
+  boop.state.gag.pendingMobAttack = {
+    mob = actor,
+    at = nowSeconds(),
+  }
+  deleteCurrent()
+  scheduleMobDamageTimer()
+
+  if boop.trace and boop.trace.log then
+    boop.trace.log("gag: mob attack | actor=" .. actor)
+  end
+end
+
+function boop.gag.onHealthLostLine(amount, dtype, _rawLine)
+  if not boop.config or not boop.config.gagMobAttacks then
+    return
+  end
+
+  boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
+  local pending = boop.state.gag.pendingMobAttack
+  if type(pending) ~= "table" then
+    return
+  end
+  if (nowSeconds() - (tonumber(pending.at) or 0)) > 5 then
+    clearPendingMobDamage()
+    return
+  end
+
+  deleteCurrent()
+  local actor = boop.util.trim(pending.mob or "Mob")
+  clearPendingMobDamage()
+  emitMobDamageSummary(actor, formatDamageText(amount, dtype))
+
+  if boop.trace and boop.trace.log then
+    boop.trace.log("gag: mob damage | actor=" .. (actor ~= "" and actor or "Mob") .. " | damage=" .. formatDamageText(amount, dtype))
+  end
 end
 
 function boop.gag.onAttackLine(spec, matchTable, rawLine)
@@ -1096,14 +1272,9 @@ function boop.gag.onDamageLine(amount, dtype, _rawLine)
     return
   end
 
-  local num = boop.util.trim(tostring(amount or "")):gsub(",", "")
-  local kind = boop.util.trim(dtype or "")
-  if num ~= "" and kind ~= "" then
-    pending.damageText = num .. " " .. kind
-  elseif num ~= "" then
-    pending.damageText = num
-  elseif kind ~= "" then
-    pending.damageText = kind
+  local damageText = formatDamageText(amount, dtype)
+  if damageText ~= "" then
+    pending.damageText = damageText
   end
 
   local critText = boop.util.trim(pending.nextCritText or "")
@@ -1328,6 +1499,9 @@ function boop.gag.onExperienceLine(xp, _rawLine)
 end
 
 function boop.gag.onPrompt()
+  if boop.config and boop.config.gagMobAttacks then
+    clearPendingMobDamage()
+  end
   if not boop.config or not boop.config.gagOwnAttacks then
     return
   end
