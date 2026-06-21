@@ -1309,6 +1309,16 @@ local function prependDepthswalkerWeapon(cmd, standardShieldbreak)
   return "wield " .. wieldTarget .. "/" .. trimmed
 end
 
+local function prependPsionTranscendShatter(cmd)
+  local trimmed = boop.util.trim(cmd)
+  if trimmed == "" then return "" end
+  local normalized = boop.util.safeLower(trimmed)
+  if boop.util.starts(normalized, "psi transcend shatter/") then
+    return trimmed
+  end
+  return "psi transcend shatter/" .. trimmed
+end
+
 local function selectOpenerEntry(entry, classKey, targetId, requireFullHp)
   if not entry then
     return ""
@@ -1449,6 +1459,9 @@ function boop.attacks.applyModifiers(plan, context)
     if standard ~= "" and class == "depthswalker" then
       standard = prependDepthswalkerWeapon(standard, resolved.standardShieldbreak)
     end
+    if standard ~= "" and class == "psion" then
+      standard = prependPsionTranscendShatter(standard)
+    end
 
     local targetId = planningTargetId()
     if standard ~= "" then
@@ -1456,6 +1469,9 @@ function boop.attacks.applyModifiers(plan, context)
     end
 
     local rageAction = resolved.rage or ""
+    if rageAction ~= "" and class == "psion" then
+      rageAction = prependPsionTranscendShatter(rageAction)
+    end
     if rageAction ~= "" then
       rageAction = boop.util.formatTarget(rageAction, targetId)
     end
@@ -1542,5 +1558,10 @@ function boop.attacks.choosePullRage(targetToken)
     return "", nil
   end
 
-  return boop.util.formatTarget(ability.cmd, target), ability
+  local cmd = ability.cmd
+  if class == "psion" then
+    cmd = prependPsionTranscendShatter(cmd)
+  end
+
+  return boop.util.formatTarget(cmd, target), ability
 end

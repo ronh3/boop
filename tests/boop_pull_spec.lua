@@ -59,6 +59,19 @@ describe("boop pull command", function()
     assert.is_true(table.concat(echoes, "\n"):find("%[OK%] pull queued: north|harry mage|leap south", 1, true) ~= nil)
   end)
 
+  it("prepends psion transcend shatter to pull rage commands", function()
+    helper.setClass("Psion")
+    helper.setRage(25)
+    helper.learnSkill("whirlwind", "Attainment")
+    boop.config.enabled = true
+    boop.state.targeting.room = "1"
+    boop.ui.gameSeparatorCommand("|")
+
+    boop.ui.pullCommand("mage", "north")
+
+    assert.stub(send_stub).was_called_with("north|psi transcend shatter/weave whirlwind mage|leap south", false)
+  end)
+
   it("restores boop after gmcp confirms the return to the origin room", function()
     boop.config.enabled = true
     boop.state.targeting.room = "1"

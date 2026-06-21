@@ -127,6 +127,20 @@ describe("boop class profile selection", function()
     assert.is_true(actions.standardShieldbreak)
   end)
 
+  it("prepends psi transcend shatter to psion standard and rage commands", function()
+    helper.setClass("Psion")
+    helper.setRage(14)
+    helper.learnSkills({
+      { name = "Charge", group = "Weaving" },
+      { name = "barbedblade", group = "Attainment" },
+    })
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("psi transcend shatter/weave charge 42", actions.standard)
+    assert.are.equal("psi transcend shatter/weave barbedblade 42", actions.rage)
+  end)
+
   it("prefers deteriorate for depthswalker when the target matches its affliction bucket", function()
     helper.setClass("Depthswalker")
     helper.learnSkill("Deteriorate", "Aeonics")
