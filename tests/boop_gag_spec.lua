@@ -108,6 +108,36 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("Bal: 2.1s", 1, true) ~= nil)
   end)
 
+  it("keeps psion shatter prefix damage with the following same-target attack", function()
+    boop.gag.onAttackLine({
+      ability = "Shatter",
+      actor = nil,
+      target = { kind = "match", index = 3 },
+    }, {
+      "You reach out with grim intent, seeking to shatter the psyche of an agitated ghost.",
+      "You",
+      "an agitated ghost",
+    }, "You reach out with grim intent, seeking to shatter the psyche of an agitated ghost.")
+    boop.gag.onDamageLine("200", "psychic", "Damage dealt: 200 (psychic).")
+    boop.gag.onAttackLine({
+      ability = "Charge",
+      actor = { kind = "match", index = 2 },
+      target = { kind = "match", index = 3 },
+    }, {
+      "Charging forward, you drive a translucent spear into an agitated ghost.",
+      "you",
+      "an agitated ghost",
+    }, "Charging forward, you drive a translucent spear into an agitated ghost.")
+    boop.gag.onDamageLine("2,478", "physical cutting", "Damage dealt: 2,478 (physical cutting).")
+    boop.gag.onPrompt()
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("Shatter + Charge", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("an agitated ghost", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Shatter: 200 psychic", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Charge: 2478 physical cutting", 1, true) ~= nil)
+  end)
+
   it("splits target-changing proc damage before the next prompt", function()
     boop.gag.onProcLine("Tumble", "(room)", "You tumble violently into your surroundings, obliterating them with all the force of a rolling boulder.")
     boop.gag.onCriticalLine("CRUSHING CRITICAL", "You have scored a CRUSHING CRITICAL hit!")

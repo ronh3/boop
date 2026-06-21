@@ -796,6 +796,26 @@ local function addPendingAbilityPart(pending, ability)
   pending.ability = table.concat(pending.abilityParts, " + ")
 end
 
+local function canAppendPsionShatterPrefix(pending, who, ability, target)
+  if type(pending) ~= "table" then
+    return false
+  end
+  if normName(pending.who or "") ~= normName(who or "") then
+    return false
+  end
+  if normName(pending.target or "") ~= normName(target or "") then
+    return false
+  end
+  if boop.util.trim(pending.balanceText or "") ~= "" then
+    return false
+  end
+
+  local firstAbility = pending.abilityParts and pending.abilityParts[1] or pending.ability
+  local pendingAbility = normName(firstAbility or "")
+  local nextAbility = normName(ability or "")
+  return pendingAbility == "shatter" and nextAbility ~= "" and nextAbility ~= "shatter"
+end
+
 local function rescheduleAttackSummaryTimer()
   cancelAttackSummaryTimer()
   boop.state.gag.pendingAttackTimer = scheduleGagTimer(1.2, function()
@@ -820,6 +840,14 @@ local function setPendingAttack(who, ability, target)
       boop.state.gag.pendingAttack.abilityParts = { "DSL" }
       boop.state.gag.pendingAttack.currentSource = "DSL"
     end
+    return rescheduleAttackSummaryTimer()
+  end
+
+  if canAppendPsionShatterPrefix(boop.state.gag.pendingAttack, normalizedWho, normalizedAbility, normalizedTarget) then
+    boop.state.gag.pendingAttack.hitCount = (tonumber(boop.state.gag.pendingAttack.hitCount) or 1) + 1
+    boop.state.gag.pendingAttack.currentHitHasDamage = false
+    addPendingAbilityPart(boop.state.gag.pendingAttack, normalizedAbility)
+    boop.state.gag.pendingAttack.currentSource = normalizedAbility
     return rescheduleAttackSummaryTimer()
   end
 
