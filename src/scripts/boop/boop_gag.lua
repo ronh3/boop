@@ -632,16 +632,22 @@ local function emitAttackSummary(entry)
   local bal = boop.util.trim(entry.balanceText or "")
 
   local suffix = ""
+  local showPartSources = type(entry.abilityParts) == "table" and #entry.abilityParts > 1
   if type(entry.damageParts) == "table" and #entry.damageParts > 0 then
     for _, part in ipairs(entry.damageParts) do
       local partDamage = boop.util.trim(part and part.damageText or "")
       local partCrit = boop.util.trim(part and part.critText or "")
+      local partSource = boop.util.trim(part and part.source or "")
+      local label = ""
+      if showPartSources and partSource ~= "" then
+        label = partSource .. ": "
+      end
       if partDamage ~= "" and partCrit ~= "" then
-        suffix = suffix .. " (" .. partDamage .. " - " .. partCrit .. ")"
+        suffix = suffix .. " (" .. label .. partDamage .. " - " .. partCrit .. ")"
       elseif partDamage ~= "" then
-        suffix = suffix .. " (" .. partDamage .. ")"
+        suffix = suffix .. " (" .. label .. partDamage .. ")"
       elseif partCrit ~= "" then
-        suffix = suffix .. " (" .. partCrit .. ")"
+        suffix = suffix .. " (" .. label .. partCrit .. ")"
       end
     end
   else
@@ -769,6 +775,36 @@ local function samePendingAttack(pending, who, ability, target)
     and (nextAbility == "jab" or nextAbility == "dsl")
 end
 
+local function addPendingAbilityPart(pending, ability)
+  if type(pending) ~= "table" then
+    return
+  end
+
+  local label = boop.util.trim(ability or "")
+  if label == "" then
+    return
+  end
+
+  pending.abilityParts = pending.abilityParts or {}
+  for _, existing in ipairs(pending.abilityParts) do
+    if normName(existing) == normName(label) then
+      return
+    end
+  end
+
+  pending.abilityParts[#pending.abilityParts + 1] = label
+  pending.ability = table.concat(pending.abilityParts, " + ")
+end
+
+local function rescheduleAttackSummaryTimer()
+  cancelAttackSummaryTimer()
+  boop.state.gag.pendingAttackTimer = scheduleGagTimer(1.2, function()
+    boop.state.gag.pendingAttackTimer = nil
+    flushPendingAttack()
+  end)
+  return boop.state.gag.pendingAttackTimer == nil
+end
+
 local function setPendingAttack(who, ability, target)
   boop.state = boop.state or {}
   boop.state.gag = boop.state.gag or {}
@@ -781,13 +817,10 @@ local function setPendingAttack(who, ability, target)
     boop.state.gag.pendingAttack.currentHitHasDamage = false
     if normName(boop.state.gag.pendingAttack.ability or "") ~= "razeslash" then
       boop.state.gag.pendingAttack.ability = "DSL"
+      boop.state.gag.pendingAttack.abilityParts = { "DSL" }
+      boop.state.gag.pendingAttack.currentSource = "DSL"
     end
-    cancelAttackSummaryTimer()
-    boop.state.gag.pendingAttackTimer = scheduleGagTimer(1.2, function()
-      boop.state.gag.pendingAttackTimer = nil
-      flushPendingAttack()
-    end)
-    return boop.state.gag.pendingAttackTimer == nil
+    return rescheduleAttackSummaryTimer()
   end
 
   if boop.state.gag.pendingAttack then
@@ -801,18 +834,15 @@ local function setPendingAttack(who, ability, target)
     hitCount = 1,
     currentHitHasDamage = false,
     damageParts = {},
+    abilityParts = { normalizedAbility },
+    currentSource = normalizedAbility,
     nextCritText = "",
     damageText = "",
     critText = "",
     balanceText = "",
   }
 
-  cancelAttackSummaryTimer()
-  boop.state.gag.pendingAttackTimer = scheduleGagTimer(1.2, function()
-    boop.state.gag.pendingAttackTimer = nil
-    flushPendingAttack()
-  end)
-  return boop.state.gag.pendingAttackTimer == nil
+  return rescheduleAttackSummaryTimer()
 end
 
 local function cancelKillSummaryTimer()
@@ -888,6 +918,7 @@ local function resolveCritText(rawCrit)
     ["OBLITERATING CRITICAL"] = "8xCRIT",
     ["ANNIHILATINGLY POWERFUL CRITICAL"] = "16xCRIT",
     ["WORLD SHATTERING CRITICAL"] = "32xCRIT",
+    ["PLANE RAZING CRITICAL"] = "64xCRIT",
   }
 
   return map[key] or ""
@@ -1053,10 +1084,63 @@ function boop.gag.onDamageLine(amount, dtype, _rawLine)
   pending.damageParts[#pending.damageParts + 1] = {
     damageText = pending.damageText,
     critText = critText,
+    source = boop.util.trim(pending.currentSource or pending.ability or ""),
   }
   pending.currentHitHasDamage = true
   if critText ~= "" then
     pending.critText = critText
+  end
+end
+
+function boop.gag.onProcLine(ability, target, _rawLine)
+  if not boop.config or not boop.config.gagOwnAttacks then
+    return
+  end
+
+  local source = boop.util.trim(ability or "")
+  if source == "" then
+    source = "Extra Damage"
+  end
+
+  boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
+  local pending = boop.state.gag.pendingAttack
+  local seenTarget = boop.util.trim(target or "")
+
+  if pending then
+    if seenTarget == "" then
+      seenTarget = boop.util.trim(pending.target or "")
+    end
+    local pendingTarget = normName(pending.target or "")
+    if seenTarget ~= "" and pendingTarget ~= "" and pendingTarget ~= normName(seenTarget) then
+      flushPendingAttack()
+      pending = nil
+    end
+  end
+
+  if not pending then
+    if seenTarget == "" then
+      seenTarget = boop.util.trim(boop.state and boop.state.targeting and boop.state.targeting.targetName or "")
+    end
+    if seenTarget == "" then
+      seenTarget = "(unknown)"
+    end
+
+    local flushNow = setPendingAttack("You", source, seenTarget)
+    deleteCurrent()
+    if flushNow then
+      flushPendingAttack()
+    end
+    return
+  end
+
+  addPendingAbilityPart(pending, source)
+  pending.currentSource = source
+  pending.currentHitHasDamage = false
+  deleteCurrent()
+
+  if rescheduleAttackSummaryTimer() then
+    flushPendingAttack()
   end
 end
 

@@ -82,6 +82,59 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("Bal: 2.5s", 1, true) ~= nil)
   end)
 
+  it("labels same-target proc damage inside the compact attack summary", function()
+    boop.gag.onAttackLine({
+      ability = "Charge",
+      actor = { kind = "match", index = 2 },
+      target = { kind = "match", index = 3 },
+    }, {
+      "Charging forward, you drive a translucent spear into a shade of might.",
+      "you",
+      "a shade of might",
+    }, "Charging forward, you drive a translucent spear into a shade of might.")
+    boop.gag.onCriticalLine("CRUSHING CRITICAL", "You have scored a CRUSHING CRITICAL hit!")
+    boop.gag.onDamageLine("2,478", "physical cutting", "Damage dealt: 2,478 (physical cutting).")
+    boop.gag.onProcLine("Gear", "", "Your gear enhances your strike with additional psychic damage.")
+    boop.gag.onDamageLine("30", "psychic", "Damage dealt: 30 (psychic).")
+    boop.gag.onProcLine("Spectral Claws", "a shade of might", "Spectral claws coalesce around a shade of might, slashing his form with savage fury.")
+    boop.gag.onDamageLine("122", "physical cutting", "Damage dealt: 122 (physical cutting).")
+    boop.gag.onBalanceUsed("2.1", "Balance used: 2.1s.")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("Charge + Gear + Spectral Claws", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Charge: 2478 physical cutting - 4xCRIT", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Gear: 30 psychic", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Spectral Claws: 122 physical cutting", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Bal: 2.1s", 1, true) ~= nil)
+  end)
+
+  it("splits target-changing proc damage before the next prompt", function()
+    boop.gag.onProcLine("Tumble", "(room)", "You tumble violently into your surroundings, obliterating them with all the force of a rolling boulder.")
+    boop.gag.onCriticalLine("CRUSHING CRITICAL", "You have scored a CRUSHING CRITICAL hit!")
+    boop.gag.onDamageLine("19,242", "physical blunt", "Damage dealt: 19,242 (physical blunt).")
+    boop.gag.onProcLine("Gear", "", "Your gear enhances your strike with additional psychic damage.")
+    boop.gag.onDamageLine("180", "psychic", "Damage dealt: 180 (psychic).")
+    boop.gag.onProcLine("Spectral Claws", "a lesser earth elemental", "Spectral claws coalesce around a lesser earth elemental, slashing its form with savage fury.")
+    boop.gag.onCriticalLine("OBLITERATING CRITICAL", "You have scored an OBLITERATING CRITICAL hit!")
+    boop.gag.onDamageLine("7,696", "physical cutting", "Damage dealt: 7,696 (physical cutting).")
+    boop.gag.onDamageLine("4,810", "physical blunt", "Damage dealt: 4,810 (physical blunt).")
+    boop.gag.onProcLine("Gear", "", "Your gear enhances your strike with additional psychic damage.")
+    boop.gag.onCriticalLine("PLANE-RAZING CRITICAL", "You have scored a PLANE-RAZING CRITICAL hit!")
+    boop.gag.onDamageLine("11,520", "psychic", "Damage dealt: 11,520 (psychic).")
+    boop.gag.onPrompt()
+
+    assert.are.equal(2, #outputs)
+    assert.is_true(outputs[1]:find("Tumble + Gear", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("(room)", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Tumble: 19242 physical blunt - 4xCRIT", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Gear: 180 psychic", 1, true) ~= nil)
+    assert.is_true(outputs[2]:find("Spectral Claws + Gear", 1, true) ~= nil)
+    assert.is_true(outputs[2]:find("a lesser earth elemental", 1, true) ~= nil)
+    assert.is_true(outputs[2]:find("Spectral Claws: 7696 physical cutting - 8xCRIT", 1, true) ~= nil)
+    assert.is_true(outputs[2]:find("Spectral Claws: 4810 physical blunt", 1, true) ~= nil)
+    assert.is_true(outputs[2]:find("Gear: 11520 psychic - 64xCRIT", 1, true) ~= nil)
+  end)
+
   it("condenses two pre-balance self jab-shaped hits as one DSL summary", function()
     boop.gag.onAttackLine({
       ability = "Jab",
