@@ -72,7 +72,7 @@ describe("boop pull command", function()
     assert.stub(send_stub).was_called_with("north|psi transcend shatter/weave whirlwind mage|leap south", false)
   end)
 
-  it("does not prepend dragon blast to pull rage commands", function()
+  it("leaves dragon pull rage commands unchanged", function()
     helper.setClass("Blue Dragon")
     helper.setRage(14)
     helper.learnSkill("dragonchill", "Attainment")

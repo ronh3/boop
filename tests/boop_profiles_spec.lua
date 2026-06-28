@@ -141,18 +141,26 @@ describe("boop class profile selection", function()
     assert.are.equal("psi transcend shatter/weave barbedblade 42", actions.rage)
   end)
 
-  it("prepends blast to dragon standard commands only", function()
+  it("can prefer blast as a dragon standard without prefixing every attack", function()
     helper.setClass("Blue Dragon")
     helper.setRage(14)
     helper.learnSkills({
       { name = "Incantation", group = "Dragoncraft" },
+      { name = "Blast", group = "Dragoncraft" },
       { name = "dragonchill", group = "Attainment" },
     })
 
     local actions = boop.attacks.choose()
 
-    assert.are.equal("blast 42/incantation 42", actions.standard)
+    assert.are.equal("incantation 42", actions.standard)
     assert.are.equal("dragonchill 42", actions.rage)
+
+    boop.config[boop.attacks.preferenceConfigKey("blue dragon", "dam", "")] = "blast"
+
+    local preferredActions = boop.attacks.choose()
+
+    assert.are.equal("blast 42", preferredActions.standard)
+    assert.are.equal("dragonchill 42", preferredActions.rage)
   end)
 
   it("prefers deteriorate for depthswalker when the target matches its affliction bucket", function()

@@ -4,6 +4,7 @@ boop.attacks.register("black dragon", {  standard = {
       {cmd = "gut &tar", skill = "Gut", group = "Dragoncraft" },
       {cmd = "dragonroar &tar", skill = "Roaring", group = "Dragoncraft" },
       {cmd = "rend &tar", skill = "Rend", group = "Dragoncraft" },
+      {cmd = "blast &tar", skill = "Blast", group = "Dragoncraft" },
     },
     shield = { {cmd = "tailsmash &tar", skill = "Tailsmash", group = "Dragoncraft" } },
   },

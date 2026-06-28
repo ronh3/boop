@@ -90,7 +90,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Gold get/put has trigger-based success/failure tracking with limited retries and warning output when retries are exhausted.
 - For `Two Handed` spec with `Focus` known in `Weaponmastery`, boop prepends `battlefury focus <speed|precision>/` to standard damage attacks (never shieldbreakers); configure it with `boop focus`.
 - For `Unnamable` with `Maul` known in `Dominion`, boop prepends `maul &tar/` to standard attacks while ready, then waits for the cooldown-ready line before prepending again.
-- Dragon classes prepend `blast &tar/` to standard attacks only; rage and pull-rage actions are left unchanged.
+- Dragon classes include `blast &tar` as a standard damage option, so it can be selected with `boop prefer dam blast`; rage and pull-rage actions are left unchanged.
 - `diag` clears queue, queues `diagnose`, and pauses attacks until `You are: ...` or `You are in perfect health.` and the following prompt (with timeout fallback via `diagTimeoutSeconds`).
 - `matic` queues `ldeck draw matic` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
 - `catarin` queues `ldeck draw catarin` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).

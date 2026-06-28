@@ -115,7 +115,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `boop gag mobs` condenses known mob attack flavor lines plus following `Health lost` lines into `Mob: Damage -> You (#### damagetype)` summaries with their own configurable gag palette.
 - Two-handed standards prepend `battlefury focus speed/` when `Focus` is known (Weaponmastery), excluding shieldbreaker paths.
 - Unnamable standards prepend `maul &tar/` when `Maul` is known (Dominion) and ready, with readiness tracked through the existing ability-ready trigger lines.
-- Dragon standards prepend `blast &tar/`; rage and pull-rage dragon actions are not blast-prefixed.
+- Dragon profiles include `blast &tar` as a standard damage option exposed through `boop prefer`; rage and pull-rage dragon actions are not blast-prefixed.
 - Standard attacks and rage actions are independent; standard builds rage and there is no mode toggle.
 - Skill gating issues `Char.Skills.Get` requests per skill (group-aware).
 - `boop preset solo|party|leader|leader-call` applies recommended baseline config bundles; `leader-call` requires an assist leader to already be configured.

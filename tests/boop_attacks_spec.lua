@@ -91,4 +91,15 @@ describe("boop attack selection", function()
 
     assert.are.equal("Duality -> dsl &tar", options[1].label)
   end)
+
+  it("lists Dragon blast as a standard damage preference option", function()
+    local options = boop.attacks.standardOptions("blue dragon", "dam")
+    local labels = {}
+    for _, option in ipairs(options) do
+      labels[#labels + 1] = option.label
+    end
+    local joined = table.concat(labels, "\n")
+
+    assert.is_true(joined:find("Blast -> blast &tar", 1, true) ~= nil)
+  end)
 end)
