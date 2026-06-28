@@ -18,5 +18,33 @@
       }
     ],
     "script": ""
+  },
+  {
+    "name": "Mobs Horkval Guard Attacks",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "^([Aa] horkval guard) thumps you hard over the head, making your head ring\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^([Aa] horkval guard) slashes one of (?:his|her|its|their) upper arms across your torso, razor-sharp, raised scales on the arm cutting you open\\.$",
+        "type": "regex"
+      },
+      {
+        "pattern": "^With a powerful flex of (?:his|her|its|their) legs, ([Aa] horkval guard) lunges at you, smashing into you with a painful thwack\\.$",
+        "type": "regex"
+      }
+    ],
+    "script": ""
   }
 ]

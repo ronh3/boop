@@ -1264,14 +1264,15 @@ function boop.gag.onDamageLine(amount, dtype, _rawLine)
   if not boop.config or not boop.config.gagOwnAttacks then
     return
   end
-  deleteCurrent()
 
   boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
   local pending = boop.state.gag.pendingAttack
   if not pending then
     return
   end
 
+  deleteCurrent()
   local damageText = formatDamageText(amount, dtype)
   if damageText ~= "" then
     pending.damageText = damageText
@@ -1429,14 +1430,15 @@ function boop.gag.onBalanceUsed(seconds, _rawLine)
   if not boop.config or not boop.config.gagOwnAttacks then
     return
   end
-  deleteCurrent()
 
   boop.state = boop.state or {}
+  boop.state.gag = boop.state.gag or {}
   local pending = boop.state.gag.pendingAttack
   if not pending then
     return
   end
 
+  deleteCurrent()
   local sec = boop.util.trim(tostring(seconds or ""))
   if sec ~= "" then
     pending.balanceText = sec .. "s"

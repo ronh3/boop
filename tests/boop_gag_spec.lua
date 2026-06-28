@@ -108,6 +108,31 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("Bal: 2.1s", 1, true) ~= nil)
   end)
 
+  it("condenses a Blue Dragon blast and gear proc on equilibrium used", function()
+    boop.gag.onAttackLine({
+      ability = "Blast",
+      actor = { kind = "match", index = 2 },
+      target = { kind = "match", index = 3 },
+    }, {
+      "Opening your massive maw, you throw your head forward and blast wave after wave of deadly, all-consuming cold at a horkval guard.",
+      "you",
+      "a horkval guard",
+    }, "Opening your massive maw, you throw your head forward and blast wave after wave of deadly, all-consuming cold at a horkval guard.")
+    boop.gag.onCriticalLine("CRITICAL", "You have scored a CRITICAL hit!")
+    boop.gag.onDamageLine("3,668", "cold", "Damage dealt: 3,668 (cold).")
+    boop.gag.onProcLine("Gear", "", "Your gear enhances your strike with additional psychic damage.")
+    boop.gag.onCriticalLine("CRITICAL", "You have scored a CRITICAL hit!")
+    boop.gag.onDamageLine("82", "psychic", "Damage dealt: 82 (psychic).")
+    boop.gag.onBalanceUsed("3.40", "Equilibrium used: 3.40s.")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("Blast + Gear", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a horkval guard", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Blast: 3668 cold - 2xCRIT", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Gear: 82 psychic - 2xCRIT", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Bal: 3.40s", 1, true) ~= nil)
+  end)
+
   it("keeps psion shatter prefix damage with the following same-target attack", function()
     boop.gag.onAttackLine({
       ability = "Shatter",
@@ -476,6 +501,20 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("a test denizen", 1, true) ~= nil)
   end)
 
+  it("leaves unpaired damage and balance lines visible", function()
+    local deletes = 0
+    delete_stub:revert()
+    delete_stub = stub(_G, "deleteLine", function()
+      deletes = deletes + 1
+    end)
+
+    boop.gag.onDamageLine("999", "fire", "Damage dealt: 999 (fire).")
+    boop.gag.onBalanceUsed("0.5", "Balance used: 0.5s.")
+
+    assert.are.equal(0, #outputs)
+    assert.are.equal(0, deletes)
+  end)
+
   it("applies custom separator and background gag colors", function()
     boop.gag.setColor("own", "who", "yellow")
     boop.gag.setColor("own", "separator", "dark_grey")
@@ -529,6 +568,24 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("Damage", 1, true) ~= nil)
     assert.is_true(outputs[1]:find("You", 1, true) ~= nil)
     assert.is_true(outputs[1]:find("649 asphyxiation", 1, true) ~= nil)
+  end)
+
+  it("condenses horkval guard attacks and health lost lines", function()
+    boop.config.gagMobAttacks = true
+
+    boop.gag.onMobAttackLine({
+      actor = { kind = "match", index = 2 },
+    }, {
+      "With a powerful flex of his legs, a horkval guard lunges at you, smashing into you with a painful thwack.",
+      "a horkval guard",
+    }, "With a powerful flex of his legs, a horkval guard lunges at you, smashing into you with a painful thwack.")
+    boop.gag.onHealthLostLine("839", "physical blunt", "Health lost: 839 (physical blunt).")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("a horkval guard", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Damage", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("You", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("839 physical blunt", 1, true) ~= nil)
   end)
 
   it("uses a separate palette for mob gag lines", function()
