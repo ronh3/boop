@@ -72,6 +72,19 @@ describe("boop pull command", function()
     assert.stub(send_stub).was_called_with("north|psi transcend shatter/weave whirlwind mage|leap south", false)
   end)
 
+  it("does not prepend dragon blast to pull rage commands", function()
+    helper.setClass("Blue Dragon")
+    helper.setRage(14)
+    helper.learnSkill("dragonchill", "Attainment")
+    boop.config.enabled = true
+    boop.state.targeting.room = "1"
+    boop.ui.gameSeparatorCommand("|")
+
+    boop.ui.pullCommand("mage", "north")
+
+    assert.stub(send_stub).was_called_with("north|dragonchill mage|leap south", false)
+  end)
+
   it("restores boop after gmcp confirms the return to the origin room", function()
     boop.config.enabled = true
     boop.state.targeting.room = "1"

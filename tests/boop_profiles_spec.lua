@@ -141,6 +141,20 @@ describe("boop class profile selection", function()
     assert.are.equal("psi transcend shatter/weave barbedblade 42", actions.rage)
   end)
 
+  it("prepends blast to dragon standard commands only", function()
+    helper.setClass("Blue Dragon")
+    helper.setRage(14)
+    helper.learnSkills({
+      { name = "Incantation", group = "Dragoncraft" },
+      { name = "dragonchill", group = "Attainment" },
+    })
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("blast 42/incantation 42", actions.standard)
+    assert.are.equal("dragonchill 42", actions.rage)
+  end)
+
   it("prefers deteriorate for depthswalker when the target matches its affliction bucket", function()
     helper.setClass("Depthswalker")
     helper.learnSkill("Deteriorate", "Aeonics")

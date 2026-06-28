@@ -1319,6 +1319,21 @@ local function prependPsionTranscendShatter(cmd)
   return "psi transcend shatter/" .. trimmed
 end
 
+local function isDragonClass(classKey)
+  local class = boop.util.safeLower(boop.util.trim(classKey or ""))
+  return class:match("%sdragon$") ~= nil
+end
+
+local function prependDragonBlast(cmd)
+  local trimmed = boop.util.trim(cmd)
+  if trimmed == "" then return "" end
+  local normalized = boop.util.safeLower(trimmed)
+  if boop.util.starts(normalized, "blast ") or boop.util.starts(normalized, "blast/") then
+    return trimmed
+  end
+  return "blast &tar/" .. trimmed
+end
+
 local function selectOpenerEntry(entry, classKey, targetId, requireFullHp)
   if not entry then
     return ""
@@ -1461,6 +1476,9 @@ function boop.attacks.applyModifiers(plan, context)
     end
     if standard ~= "" and class == "psion" then
       standard = prependPsionTranscendShatter(standard)
+    end
+    if standard ~= "" and isDragonClass(class) then
+      standard = prependDragonBlast(standard)
     end
 
     local targetId = planningTargetId()
