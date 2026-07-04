@@ -203,7 +203,7 @@ local GAG_ROLE_SAMPLE_TEXT = {
   who = "You",
   ability = "Attack",
   target = "a denizen",
-  meta = " (1234 cutting - 8xCRIT) (Bal: 2.1s)",
+  meta = " (1234 cutting - 8xCRIT) (Total: 1234) (Bal: 2.1s)",
   separator = ":  -> ",
   background = "sample highlight",
 }
@@ -442,7 +442,7 @@ function boop.gag.showColors(scope)
   local sampleWho = normalizedScope == "own" and "You" or normalizedScope == "mobs" and "Mob" or "Someone"
   local sampleAbility = normalizedScope == "mobs" and "Damage" or "Attack"
   local sampleTarget = normalizedScope == "mobs" and "You" or "a denizen"
-  local sampleMeta = normalizedScope == "mobs" and " (649 asphyxiation)" or " (1234 cutting - 8xCRIT) (Bal: 2.1s)"
+  local sampleMeta = normalizedScope == "mobs" and " (649 asphyxiation)" or " (1234 cutting - 8xCRIT) (Total: 1234) (Bal: 2.1s)"
   if cecho then
     if boop.ui and boop.ui._setScreen then
       boop.ui._setScreen("gag-colors")
@@ -674,6 +674,141 @@ local function formatDamageText(amount, dtype)
   return kind
 end
 
+local function parseDamageText(damageText)
+  local text = boop.util.trim(damageText or "")
+  if text == "" then
+    return nil, ""
+  end
+
+  local rawAmount, kind = text:match("^(%-?%d+)%s*(.-)%s*$")
+  if not rawAmount then
+    return nil, text
+  end
+
+  return tonumber(rawAmount), boop.util.trim(kind or "")
+end
+
+local function recordCrit(group, critText)
+  local crit = boop.util.trim(critText or "")
+  if crit == "" then
+    return
+  end
+
+  group.critCounts = group.critCounts or {}
+  group.critOrder = group.critOrder or {}
+  if not group.critCounts[crit] then
+    group.critOrder[#group.critOrder + 1] = crit
+    group.critCounts[crit] = 0
+  end
+  group.critCounts[crit] = group.critCounts[crit] + 1
+  group.critTotal = (group.critTotal or 0) + 1
+end
+
+local function formatGroupedCrit(group)
+  if type(group) ~= "table" or not group.critTotal or group.critTotal <= 0 then
+    return ""
+  end
+
+  if group.critTotal == 1 and (tonumber(group.count) or 0) == 1 then
+    return group.critOrder[1] or ""
+  end
+
+  if #group.critOrder == 1 and group.critTotal == (tonumber(group.count) or 0) then
+    local crit = group.critOrder[1] or ""
+    if group.critTotal > 1 then
+      return crit .. " x" .. tostring(group.critTotal)
+    end
+    return crit
+  end
+
+  local parts = {}
+  for _, crit in ipairs(group.critOrder or {}) do
+    local count = tonumber(group.critCounts and group.critCounts[crit]) or 0
+    if count > 1 then
+      parts[#parts + 1] = crit .. " x" .. tostring(count)
+    elseif count == 1 then
+      parts[#parts + 1] = crit
+    end
+  end
+
+  if #parts == 0 then
+    return ""
+  end
+  return "crits: " .. table.concat(parts, ", ")
+end
+
+local function groupedDamageParts(damageParts)
+  local groups = {}
+  local order = {}
+  local total = nil
+
+  for _, part in ipairs(damageParts or {}) do
+    local damageText = boop.util.trim(part and part.damageText or "")
+    local source = boop.util.trim(part and part.source or "")
+    local amount, kind = parseDamageText(damageText)
+    local key
+    if amount ~= nil then
+      key = source .. "\0" .. kind
+    else
+      key = source .. "\0" .. damageText
+    end
+
+    local group = groups[key]
+    if not group then
+      group = {
+        source = source,
+        amount = amount ~= nil and 0 or nil,
+        kind = amount ~= nil and kind or "",
+        fallbackDamageText = amount == nil and damageText or "",
+        count = 0,
+      }
+      groups[key] = group
+      order[#order + 1] = group
+    end
+
+    group.count = group.count + 1
+    if amount ~= nil then
+      group.amount = (group.amount or 0) + amount
+      total = (total or 0) + amount
+    end
+    recordCrit(group, part and part.critText or "")
+  end
+
+  return order, total
+end
+
+local function formatGroupedDamage(group, showPartSources)
+  if type(group) ~= "table" then
+    return ""
+  end
+
+  local label = ""
+  if showPartSources and boop.util.trim(group.source or "") ~= "" then
+    label = boop.util.trim(group.source or "") .. ": "
+  end
+
+  local damage = ""
+  if group.amount ~= nil then
+    damage = tostring(group.amount)
+    local kind = boop.util.trim(group.kind or "")
+    if kind ~= "" then
+      damage = damage .. " " .. kind
+    end
+  else
+    damage = boop.util.trim(group.fallbackDamageText or "")
+  end
+
+  local crit = formatGroupedCrit(group)
+  if damage ~= "" and crit ~= "" then
+    return "(" .. label .. damage .. " - " .. crit .. ")"
+  elseif damage ~= "" then
+    return "(" .. label .. damage .. ")"
+  elseif crit ~= "" then
+    return "(" .. label .. crit .. ")"
+  end
+  return ""
+end
+
 local function emitAttackSummary(entry)
   if type(entry) ~= "table" then return end
   local who = boop.util.trim(entry.who or "You")
@@ -684,22 +819,15 @@ local function emitAttackSummary(entry)
   local bal = boop.util.trim(entry.balanceText or "")
 
   local suffix = ""
+  local totalDamage = nil
   local showPartSources = type(entry.abilityParts) == "table" and #entry.abilityParts > 1
   if type(entry.damageParts) == "table" and #entry.damageParts > 0 then
-    for _, part in ipairs(entry.damageParts) do
-      local partDamage = boop.util.trim(part and part.damageText or "")
-      local partCrit = boop.util.trim(part and part.critText or "")
-      local partSource = boop.util.trim(part and part.source or "")
-      local label = ""
-      if showPartSources and partSource ~= "" then
-        label = partSource .. ": "
-      end
-      if partDamage ~= "" and partCrit ~= "" then
-        suffix = suffix .. " (" .. label .. partDamage .. " - " .. partCrit .. ")"
-      elseif partDamage ~= "" then
-        suffix = suffix .. " (" .. label .. partDamage .. ")"
-      elseif partCrit ~= "" then
-        suffix = suffix .. " (" .. label .. partCrit .. ")"
+    local groups
+    groups, totalDamage = groupedDamageParts(entry.damageParts)
+    for _, group in ipairs(groups) do
+      local formatted = formatGroupedDamage(group, showPartSources)
+      if formatted ~= "" then
+        suffix = suffix .. " " .. formatted
       end
     end
   else
@@ -710,6 +838,10 @@ local function emitAttackSummary(entry)
     elseif crit ~= "" then
       suffix = suffix .. " (" .. crit .. ")"
     end
+    totalDamage = parseDamageText(damage)
+  end
+  if totalDamage ~= nil then
+    suffix = suffix .. " (Total: " .. tostring(totalDamage) .. ")"
   end
   if bal ~= "" then
     suffix = suffix .. " (Bal: " .. bal .. ")"
@@ -899,6 +1031,24 @@ local function addPendingAbilityPart(pending, ability)
   pending.ability = table.concat(pending.abilityParts, " + ")
 end
 
+local function renamePendingDamageSource(pending, fromAbility, toAbility)
+  if type(pending) ~= "table" or type(pending.damageParts) ~= "table" then
+    return
+  end
+
+  local from = normName(fromAbility or "")
+  local to = boop.util.trim(toAbility or "")
+  if from == "" or to == "" then
+    return
+  end
+
+  for _, part in ipairs(pending.damageParts) do
+    if type(part) == "table" and normName(part.source or "") == from then
+      part.source = to
+    end
+  end
+end
+
 local function pendingHasAbilityPart(pending, ability)
   if type(pending) ~= "table" or type(pending.abilityParts) ~= "table" then
     return false
@@ -986,6 +1136,7 @@ local function setPendingAttack(who, ability, target)
     if normName(boop.state.gag.pendingAttack.ability or "") ~= "razeslash" then
       boop.state.gag.pendingAttack.ability = "DSL"
       boop.state.gag.pendingAttack.abilityParts = { "DSL" }
+      renamePendingDamageSource(boop.state.gag.pendingAttack, "Jab", "DSL")
       boop.state.gag.pendingAttack.currentSource = "DSL"
     end
     return rescheduleAttackSummaryTimer()

@@ -110,6 +110,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop theme list` exposes boop's built-in themes plus the built-in ADB city/class palette names, so themes like `ashtan`, `depthswalker`, and `targossas` work directly in boop.
 - Trace buffer records recent boop decisions/commands for post-mortem debugging (`boop trace show`).
 - Attack-line gagging can be toggled separately for your own attacks and other players' attacks, replacing matched lines with `Who: What -> Victim`.
+- Self attack gag summaries coalesce repeated same-source/same-type damage such as multihit weapon attacks and gear procs, and append total damage before balance time.
 - Gag summaries now support separate `own`, `others`, and `mobs` configurable role colors for `who`, `ability`, `target`, `meta`, `separator`, plus one shared optional background/highlight color per scope.
 - `boop gag colors [own|others|mobs]` is an interactive browser: each role shows its current sample plus clickable `[color]` and `[auto]` / `[off]` controls, and `boop gag color [own|others|mobs] <role>` opens the picker directly.
 - Mob gagging can be toggled with `boop gag mobs`; known mob attack lines followed by `Health lost` are condensed as `Mob: Damage -> You (#### damagetype)`.
