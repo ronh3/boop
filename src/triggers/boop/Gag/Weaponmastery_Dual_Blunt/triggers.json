@@ -15,6 +15,10 @@
       {
         "pattern": "^(\\w+) skilfully whirls? .+ toward (.+), slamming the balls of metal into \\w+\\.$",
         "type": "regex"
+      },
+      {
+        "pattern": "^(\\w+) whips? .+ toward (.+)\\.$",
+        "type": "regex"
       }
     ],
     "script": ""

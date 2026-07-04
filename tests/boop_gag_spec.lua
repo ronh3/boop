@@ -413,7 +413,7 @@ describe("boop gag summaries", function()
   end)
 
   it("keeps repeated doublewhirl hits sourced after gear procs", function()
-    local line = "You skilfully whirl a Braincrusher flail toward a vampire, slamming the balls of metal into him."
+    local line = "You whip Matsuhama's morningstar toward a vampire."
     local matches = { line, "You", "a vampire" }
     local spec = {
       ability = "Doublewhirl",
