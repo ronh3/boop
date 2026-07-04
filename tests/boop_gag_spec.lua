@@ -412,6 +412,37 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("Bal: 3.1s", 1, true) ~= nil)
   end)
 
+  it("keeps repeated doublewhirl hits sourced after gear procs", function()
+    local line = "You skilfully whirl a Braincrusher flail toward a vampire, slamming the balls of metal into him."
+    local matches = { line, "You", "a vampire" }
+    local spec = {
+      ability = "Doublewhirl",
+      actor = { kind = "match", index = 2 },
+      target = { kind = "match", index = 3 },
+    }
+
+    boop.gag.onAttackLine(spec, matches, line)
+    boop.gag.onDamageLine("650", "physical blunt", "Damage dealt: 650 (physical blunt).")
+    boop.gag.onProcLine("Gear", "", "Your gear enhances your strike with additional psychic damage.")
+    boop.gag.onCriticalLine("ANNIHILATINGLY POWERFUL CRITICAL", "You have scored an ANNIHILATINGLY POWERFUL CRITICAL hit!")
+    boop.gag.onDamageLine("288", "psychic", "Damage dealt: 288 (psychic).")
+    boop.gag.onAttackLine(spec, matches, line)
+    boop.gag.onDamageLine("650", "physical blunt", "Damage dealt: 650 (physical blunt).")
+    boop.gag.onProcLine("Gear", "", "Your gear enhances your strike with additional psychic damage.")
+    boop.gag.onDamageLine("18", "psychic", "Damage dealt: 18 (psychic).")
+    boop.gag.onBalanceUsed("3.1", "Balance used: 3.1s.")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("Doublewhirl + Gear", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a vampire", 1, true) ~= nil)
+    local _, doublewhirlHits = outputs[1]:gsub("Doublewhirl: 650 physical blunt", "")
+    assert.are.equal(2, doublewhirlHits)
+    assert.is_true(outputs[1]:find("Gear: 288 psychic - 16xCRIT", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Gear: 18 psychic", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Gear: 650 physical blunt", 1, true) == nil)
+    assert.is_true(outputs[1]:find("Bal: 3.1s", 1, true) ~= nil)
+  end)
+
   it("suppresses the alternate hyena maul claw flavor", function()
     boop.gag.onAttackLine({
       ability = "Hyena Maul",

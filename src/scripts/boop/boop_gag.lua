@@ -1247,10 +1247,6 @@ function boop.gag.onHealthLostLine(amount, dtype, _rawLine)
 end
 
 function boop.gag.onAttackLine(spec, matchTable, rawLine)
-  if shouldSuppressDuplicate(rawLine) then
-    return
-  end
-
   local actor = boop.util.trim(resolveCapture(spec and spec.actor, matchTable))
   if actor == "" then
     actor = findLikelyActor(matchTable)
@@ -1266,6 +1262,12 @@ function boop.gag.onAttackLine(spec, matchTable, rawLine)
   end
 
   local ability = boop.util.trim(spec and spec.ability or "")
+  local pending = boop.state and boop.state.gag and boop.state.gag.pendingAttack or nil
+  if shouldSuppressDuplicate(rawLine)
+    and not (selfActor and canAppendDualBluntHit(pending, "You", ability, victim)) then
+    return
+  end
+
   if selfActor and normName(ability) == "raze" and consumeRazeslashIntent() then
     ability = "Razeslash"
   end
