@@ -899,6 +899,29 @@ local function addPendingAbilityPart(pending, ability)
   pending.ability = table.concat(pending.abilityParts, " + ")
 end
 
+local function pendingHasAbilityPart(pending, ability)
+  if type(pending) ~= "table" or type(pending.abilityParts) ~= "table" then
+    return false
+  end
+
+  local wanted = normName(ability or "")
+  if wanted == "" then
+    return false
+  end
+
+  for _, existing in ipairs(pending.abilityParts) do
+    if normName(existing) == wanted then
+      return true
+    end
+  end
+  return false
+end
+
+local function isDualBluntAbility(ability)
+  local value = normName(ability or "")
+  return value == "doublewhirl" or value == "whirl"
+end
+
 local function canAppendPsionShatterPrefix(pending, who, ability, target)
   if type(pending) ~= "table" then
     return false
@@ -917,6 +940,28 @@ local function canAppendPsionShatterPrefix(pending, who, ability, target)
   local pendingAbility = normName(firstAbility or "")
   local nextAbility = normName(ability or "")
   return pendingAbility == "shatter" and nextAbility ~= "" and nextAbility ~= "shatter"
+end
+
+local function canAppendDualBluntHit(pending, who, ability, target)
+  if type(pending) ~= "table" then
+    return false
+  end
+  if not isDualBluntAbility(ability) then
+    return false
+  end
+  if normName(pending.who or "") ~= normName(who or "") then
+    return false
+  end
+  if normName(pending.target or "") ~= normName(target or "") then
+    return false
+  end
+  if boop.util.trim(pending.balanceText or "") ~= "" then
+    return false
+  end
+
+  return pendingHasAbilityPart(pending, ability)
+    or pendingHasAbilityPart(pending, "Hyena Maul")
+    or pendingHasAbilityPart(pending, "Hound Maul")
 end
 
 local function rescheduleAttackSummaryTimer()
@@ -947,6 +992,14 @@ local function setPendingAttack(who, ability, target)
   end
 
   if canAppendPsionShatterPrefix(boop.state.gag.pendingAttack, normalizedWho, normalizedAbility, normalizedTarget) then
+    boop.state.gag.pendingAttack.hitCount = (tonumber(boop.state.gag.pendingAttack.hitCount) or 1) + 1
+    boop.state.gag.pendingAttack.currentHitHasDamage = false
+    addPendingAbilityPart(boop.state.gag.pendingAttack, normalizedAbility)
+    boop.state.gag.pendingAttack.currentSource = normalizedAbility
+    return rescheduleAttackSummaryTimer()
+  end
+
+  if canAppendDualBluntHit(boop.state.gag.pendingAttack, normalizedWho, normalizedAbility, normalizedTarget) then
     boop.state.gag.pendingAttack.hitCount = (tonumber(boop.state.gag.pendingAttack.hitCount) or 1) + 1
     boop.state.gag.pendingAttack.currentHitHasDamage = false
     addPendingAbilityPart(boop.state.gag.pendingAttack, normalizedAbility)

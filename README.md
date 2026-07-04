@@ -113,7 +113,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Gag summaries now support separate `own`, `others`, and `mobs` configurable role colors for `who`, `ability`, `target`, `meta`, `separator`, plus one shared optional background/highlight color per scope.
 - `boop gag colors [own|others|mobs]` is an interactive browser: each role shows its current sample plus clickable `[color]` and `[auto]` / `[off]` controls, and `boop gag color [own|others|mobs] <role>` opens the picker directly.
 - Mob gagging can be toggled with `boop gag mobs`; known mob attack lines followed by `Health lost` are condensed as `Mob: Damage -> You (#### damagetype)`.
-- Weaponmastery standard attack lines (Two Handed + Sword and Shield) are included in gag replacement coverage.
+- Weaponmastery standard attack lines (Dual Blunt, Two Handed, and Sword and Shield) are included in gag replacement coverage.
 - Self-attack gag mode now compacts Weaponmastery speed/damage/balance lines into one attack summary and condenses slain + experience into a single kill summary.
 - When both summaries are pending, boop now emits the attack summary before the kill summary.
 - Critical hit tiers are folded into the self attack summary as `- 2xCRIT/4xCRIT/8xCRIT/16xCRIT/32xCRIT`.

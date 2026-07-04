@@ -362,6 +362,56 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[2]:find("Bal: 1.9s", 1, true) ~= nil)
   end)
 
+  it("labels companion maul and paired doublewhirl damage in one summary", function()
+    boop.gag.onAttackLine({
+      ability = "Hyena Maul",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "A hyena leaps upon a giant centipede.",
+      "a giant centipede",
+    }, "A hyena leaps upon a giant centipede.")
+    boop.gag.onCriticalLine("CRITICAL", "You have scored a CRITICAL hit!")
+    boop.gag.onDamageLine("1,566", "physical cutting", "Damage dealt: 1,566 (physical cutting).")
+    boop.gag.onProcLine("Gear", "", "Your gear enhances your strike with additional psychic damage.")
+    boop.gag.onCriticalLine("CRITICAL", "You have scored a CRITICAL hit!")
+    boop.gag.onDamageLine("31", "psychic", "Damage dealt: 31 (psychic).")
+    boop.gag.onAttackLine({
+      ability = "Doublewhirl",
+      actor = { kind = "match", index = 2 },
+      target = { kind = "match", index = 3 },
+    }, {
+      "You skilfully whirl a Braincrusher flail toward a giant centipede, slamming the balls of metal into him.",
+      "You",
+      "a giant centipede",
+    }, "You skilfully whirl a Braincrusher flail toward a giant centipede, slamming the balls of metal into him.")
+    boop.gag.onDamageLine("1,160", "physical blunt", "Damage dealt: 1,160 (physical blunt).")
+    boop.gag.onProcLine("Gear", "", "Your gear enhances your strike with additional psychic damage.")
+    boop.gag.onDamageLine("16", "psychic", "Damage dealt: 16 (psychic).")
+    boop.gag.onAttackLine({
+      ability = "Doublewhirl",
+      actor = { kind = "match", index = 2 },
+      target = { kind = "match", index = 3 },
+    }, {
+      "You skilfully whirl a Braincrusher flail toward a giant centipede, slamming the balls of metal into him.",
+      "You",
+      "a giant centipede",
+    }, "You skilfully whirl a Braincrusher flail toward a giant centipede, slamming the balls of metal into him.")
+    boop.gag.onDamageLine("580", "physical blunt", "Damage dealt: 580 (physical blunt).")
+    boop.gag.onProcLine("Gear", "", "Your gear enhances your strike with additional psychic damage.")
+    boop.gag.onDamageLine("16", "psychic", "Damage dealt: 16 (psychic).")
+    boop.gag.onBalanceUsed("3.1", "Balance used: 3.1s.")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("Hyena Maul + Gear + Doublewhirl", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a giant centipede", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Hyena Maul: 1566 physical cutting - 2xCRIT", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Gear: 31 psychic - 2xCRIT", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Doublewhirl: 1160 physical blunt", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Doublewhirl: 580 physical blunt", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Bal: 3.1s", 1, true) ~= nil)
+  end)
+
   it("suppresses the alternate hyena maul claw flavor", function()
     boop.gag.onAttackLine({
       ability = "Hyena Maul",

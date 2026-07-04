@@ -198,6 +198,12 @@
     "script": ""
   },
   {
+    "name": "Weaponmastery_Dual_Blunt",
+    "isActive": "yes",
+    "isFolder": "yes",
+    "script": ""
+  },
+  {
     "name": "Weaponmastery_Sword_and_Shield",
     "isActive": "yes",
     "isFolder": "yes",
