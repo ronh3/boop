@@ -644,7 +644,25 @@ local function conditionalMissingNeeds(ability)
   return missing
 end
 
-local function findConditionalPrimer(profile, conditionalAbility, rage)
+local function excludedPrimerAffliction(aff, options)
+  local key = normalizeAffName(aff or "")
+  local excluded = type(options) == "table" and options.excludedPrimerAfflictions or nil
+  if key == "" or type(excluded) ~= "table" then
+    return false
+  end
+
+  if excluded[key] == true then
+    return true
+  end
+  for _, value in ipairs(excluded) do
+    if normalizeAffName(value or "") == key then
+      return true
+    end
+  end
+  return false
+end
+
+local function findConditionalPrimer(profile, conditionalAbility, rage, options)
   if not profile or not profile.abilities then
     return nil
   end
@@ -665,7 +683,12 @@ local function findConditionalPrimer(profile, conditionalAbility, rage)
   for _, ability in pairs(profile.abilities) do
     if ability.desc == "Gives Affliction" then
       local aff = normalizeAffName(ability.aff or "")
-      if aff ~= "" and missingSet[aff] and abilityKnown(ability) and boop.attacks.rageReady(ability, rage) then
+      if aff ~= ""
+        and missingSet[aff]
+        and not excludedPrimerAffliction(aff, options)
+        and abilityKnown(ability)
+        and boop.attacks.rageReady(ability, rage)
+      then
         local cost = tonumber(ability.rage) or 999
         if not best or cost < bestRage or (cost == bestRage and aff < bestAff) then
           best = ability
@@ -697,7 +720,7 @@ local function conditionalNeedMatchedByClass(ability, classKey)
   return matched > 0
 end
 
-local function findPartyPrimer(profile, selfClassKey, rage)
+local function findPartyPrimer(profile, selfClassKey, rage, options)
   if not profile or not profile.abilities then
     return nil
   end
@@ -717,7 +740,10 @@ local function findPartyPrimer(profile, selfClassKey, rage)
   for _, ability in pairs(profile.abilities) do
     if ability.desc == "Gives Affliction" and abilityKnown(ability) and boop.attacks.rageReady(ability, rage) then
       local aff = normalizeAffName(ability.aff or "")
-      if aff ~= "" and not (boop.afflictions and boop.afflictions.hasTarget and boop.afflictions.hasTarget(aff)) then
+      if aff ~= ""
+        and not excludedPrimerAffliction(aff, options)
+        and not (boop.afflictions and boop.afflictions.hasTarget and boop.afflictions.hasTarget(aff))
+      then
         local coverage = 0
         local mutual = false
         for _, partyClass in ipairs(partyClasses) do
@@ -760,7 +786,7 @@ local function findPartyPrimer(profile, selfClassKey, rage)
   return best
 end
 
-local function selectRageCombo(profile, rage, classKey, allowPriming, allowHold)
+local function selectRageCombo(profile, rage, classKey, allowPriming, allowHold, options)
   local conditionalNow = findByDesc(profile, "Conditional", rage)
   if conditionalNow and boop.attacks.canUseConditional(conditionalNow) then
     traceComboDecision(classKey, "fire conditional")
@@ -771,12 +797,12 @@ local function selectRageCombo(profile, rage, classKey, allowPriming, allowHold)
   local partyPrimerReady = nil
   local partyPrimerAny = nil
   if allowPriming then
-    partyPrimerReady = findPartyPrimer(profile, classKey, rage)
+    partyPrimerReady = findPartyPrimer(profile, classKey, rage, options)
     if partyPrimerReady then
       traceComboDecision(classKey, "prime party combo with " .. tostring(partyPrimerReady.name or partyPrimerReady.skill or partyPrimerReady.aff or "aff"))
       return partyPrimerReady, "combo_party_primer"
     end
-    partyPrimerAny = findPartyPrimer(profile, classKey, nil)
+    partyPrimerAny = findPartyPrimer(profile, classKey, nil, options)
   end
 
   if not conditionalReady then
@@ -793,7 +819,7 @@ local function selectRageCombo(profile, rage, classKey, allowPriming, allowHold)
   end
 
   if allowPriming then
-    local primer = findConditionalPrimer(profile, conditionalReady, rage)
+    local primer = findConditionalPrimer(profile, conditionalReady, rage, options)
     if primer then
       traceComboDecision(classKey, "prime conditional with " .. tostring(primer.name or primer.skill or primer.aff or "aff"))
       return primer, "combo_primer"
@@ -802,7 +828,7 @@ local function selectRageCombo(profile, rage, classKey, allowPriming, allowHold)
 
   local selfPrimerAny = nil
   if allowPriming then
-    selfPrimerAny = findConditionalPrimer(profile, conditionalReady, nil)
+    selfPrimerAny = findConditionalPrimer(profile, conditionalReady, nil, options)
     if selfPrimerAny then
       if allowHold or profile.hybridHoldForSelfPrimer then
         traceComboDecision(classKey, "hold rage for self primer")
@@ -996,7 +1022,9 @@ function boop.attacks.selectRage(profile, rage, classKey, standardShieldbreak)
     local ability, outcome = selectRageCombo(profile, rage, classKey, true, true)
     return finalizeRageDecisionWithPullReserve(profile, mode, outcome, ability, rage)
   elseif mode == "hybrid" then
-    local ability, outcome = selectRageCombo(profile, rage, classKey, true, false)
+    local ability, outcome = selectRageCombo(profile, rage, classKey, true, false, {
+      excludedPrimerAfflictions = { "fear" },
+    })
     return finalizeRageDecisionWithPullReserve(profile, mode, outcome, ability, rage)
   end
 

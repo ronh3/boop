@@ -258,6 +258,40 @@ describe("boop rage modes", function()
     assert.are.equal("psi transcend shatter/enact regrowth 42", actions.rage)
   end)
 
+  it("does not use Psion Terror as a hybrid party primer", function()
+    helper.setClass("Psion")
+    helper.setRage(32)
+    helper.learnSkills({
+      { name = "Charge", group = "Weaving" },
+      { name = "regrowth", group = "Attainment" },
+      { name = "terror", group = "Attainment" },
+      { name = "whirlwind", group = "Attainment" },
+    })
+    boop.config.partyRoster = "occultist"
+    boop.config.attackMode = "hybrid"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("psi transcend shatter/weave charge 42", actions.standard)
+    assert.are.equal("psi transcend shatter/enact regrowth 42", actions.rage)
+  end)
+
+  it("does not use fear afflictions as hybrid party primers", function()
+    helper.setClass("Unnamable")
+    helper.setRage(24)
+    helper.learnSkills({
+      { name = "dread", group = "Attainment" },
+      { name = "shriek", group = "Attainment" },
+    })
+    boop.config.partyRoster = "occultist"
+    boop.config.attackMode = "hybrid"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("kill 42", actions.standard)
+    assert.are.equal("unnamable shriek 42", actions.rage)
+  end)
+
   it("holds Psion hybrid rage for Regrowth when setting up Whirlwind", function()
     helper.setClass("Psion")
     helper.setRage(14)
