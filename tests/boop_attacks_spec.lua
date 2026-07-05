@@ -102,4 +102,16 @@ describe("boop attack selection", function()
 
     assert.is_true(joined:find("Blast -> blast &tar", 1, true) ~= nil)
   end)
+
+  it("lists Psion flurry as a standard damage preference option", function()
+    local options = boop.attacks.standardOptions("psion", "dam")
+    local labels = {}
+    for _, option in ipairs(options) do
+      labels[#labels + 1] = option.label
+    end
+    local joined = table.concat(labels, "\n")
+
+    assert.is_true(joined:find("Charge -> weave charge &tar", 1, true) ~= nil)
+    assert.is_true(joined:find("Flurry -> weave flurry &tar", 1, true) ~= nil)
+  end)
 end)

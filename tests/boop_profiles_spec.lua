@@ -141,6 +141,19 @@ describe("boop class profile selection", function()
     assert.are.equal("psi transcend shatter/weave barbedblade 42", actions.rage)
   end)
 
+  it("can prefer flurry as a psion standard damage attack", function()
+    helper.setClass("Psion")
+    helper.learnSkills({
+      { name = "Charge", group = "Weaving" },
+      { name = "Flurry", group = "Weaving" },
+    })
+    boop.config[boop.attacks.preferenceConfigKey("psion", "dam", "")] = "flurry"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("psi transcend shatter/weave flurry 42", actions.standard)
+  end)
+
   it("can prefer blast as a dragon standard without prefixing every attack", function()
     helper.setClass("Blue Dragon")
     helper.setRage(14)

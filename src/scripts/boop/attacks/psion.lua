@@ -1,5 +1,8 @@
 boop.attacks.register("psion", {  standard = {
-    dam = { cmd = "weave charge &tar", skill = "Charge", group = "Weaving" },
+    dam = {
+      { cmd = "weave charge &tar", skill = "Charge", group = "Weaving" },
+      { cmd = "weave flurry &tar", skill = "Flurry", group = "Weaving" },
+    },
     shield = { cmd = "weave cleave &tar", skill = "Cleave", group = "Weaving" },
   },
   rage = {
