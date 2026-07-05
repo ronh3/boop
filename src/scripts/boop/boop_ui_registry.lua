@@ -1187,15 +1187,15 @@ boop.registry.attachUiConfigRegistries = boop.registry.attachUiConfigRegistries 
   boop.config = boop.config or {}
   boop.ui = boop.ui or {}
 
-  boop.config.schema = boop.config.schema or boop.registry.config.schema
-  boop.config.setters = boop.config.setters or boop.registry.config.setters
-  boop.ui.modes = boop.ui.modes or boop.registry.ui.modes
-  boop.ui.presets = boop.ui.presets or boop.registry.ui.presets
-  boop.ui.helpTopics = boop.ui.helpTopics or boop.registry.ui.helpTopics
+  boop.config.schema = boop.registry.config.schema
+  boop.config.setters = boop.registry.config.setters
+  boop.ui.modes = boop.registry.ui.modes
+  boop.ui.presets = boop.registry.ui.presets
+  boop.ui.helpTopics = boop.registry.ui.helpTopics
   boop.ui.screens = boop.ui.screens or {}
-  boop.ui.screens.configSections = boop.ui.screens.configSections or boop.registry.ui.screens.configSections
-  boop.ui.screens.configHomeRoutes = boop.ui.screens.configHomeRoutes or boop.registry.ui.screens.configHomeRoutes
-  boop.ui.screens.configActions = boop.ui.screens.configActions or boop.registry.ui.screens.configActions
+  boop.ui.screens.configSections = boop.registry.ui.screens.configSections
+  boop.ui.screens.configHomeRoutes = boop.registry.ui.screens.configHomeRoutes
+  boop.ui.screens.configActions = boop.registry.ui.screens.configActions
 
   attachRegistryFallback(boop.config, {
     schema = boop.registry.config.schema,

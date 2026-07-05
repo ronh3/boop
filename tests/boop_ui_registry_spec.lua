@@ -39,4 +39,16 @@ describe("boop ui registries", function()
 
     assert.are.equal(3, boop.config.partySize)
   end)
+
+  it("refreshes stale config registries on package reload", function()
+    boop.config.schema = { aliases = {} }
+    boop.config.setters = {}
+    boop.ui.screens.configActions = { combat = {} }
+
+    boop.registry.attachUiConfigRegistries()
+
+    assert.are.equal("breakShields", boop.config.schema.aliases.breakshields)
+    assert.is_function(boop.config.setters.breakShields)
+    assert.is_function(boop.ui.screens.configActions.combat[13])
+  end)
 end)
