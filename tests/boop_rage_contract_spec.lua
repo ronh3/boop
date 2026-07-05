@@ -49,11 +49,22 @@ local function learnRageSkills(profile)
   end
 end
 
-local function cmdsForDesc(profile, desc)
+local function expectedRageCommand(classKey, cmd)
+  local expected = boop.util.formatTarget(cmd, "42")
+  if boop.util.safeLower(classKey or "") == "psion"
+    and expected ~= ""
+    and not boop.util.starts(boop.util.safeLower(expected), "psi transcend shatter/")
+  then
+    expected = "psi transcend shatter/" .. expected
+  end
+  return expected
+end
+
+local function cmdsForDesc(profile, desc, classKey)
   local cmds = {}
   for _, ability in pairs(profile.abilities or {}) do
     if ability.desc == desc and ability.cmd and ability.cmd ~= "" then
-      cmds[#cmds + 1] = boop.util.formatTarget(ability.cmd, "42")
+      cmds[#cmds + 1] = expectedRageCommand(classKey, ability.cmd)
     end
   end
   table.sort(cmds)
@@ -138,12 +149,12 @@ describe("boop rage mode contracts", function()
       assert.are.equal("", actions.rage)
     end)
 
-    local smallExpected = cmdsForDesc(case.rage, "Small Damage")
+    local smallExpected = cmdsForDesc(case.rage, "Small Damage", case.class)
     if #smallExpected == 0 then
-      smallExpected = cmdsForDesc(case.rage, "Mid Damage")
+      smallExpected = cmdsForDesc(case.rage, "Mid Damage", case.class)
     end
     if #smallExpected == 0 then
-      smallExpected = cmdsForDesc(case.rage, "Big Damage")
+      smallExpected = cmdsForDesc(case.rage, "Big Damage", case.class)
     end
     if #smallExpected > 0 then
       it("uses a damage action in small mode for " .. case.class, function()
@@ -161,7 +172,7 @@ describe("boop rage mode contracts", function()
       end)
     end
 
-    local bigExpected = cmdsForDesc(case.rage, "Big Damage")
+    local bigExpected = cmdsForDesc(case.rage, "Big Damage", case.class)
     if #bigExpected > 0 then
       it("uses a big damage action in big mode when affordable for " .. case.class, function()
         helper.reset()
@@ -178,7 +189,7 @@ describe("boop rage mode contracts", function()
       end)
     end
 
-    local affExpected = cmdsForDesc(case.rage, "Gives Affliction")
+    local affExpected = cmdsForDesc(case.rage, "Gives Affliction", case.class)
     if #affExpected > 0 then
       it("uses an affliction action in aff mode for " .. case.class, function()
         helper.reset()
@@ -195,7 +206,7 @@ describe("boop rage mode contracts", function()
       end)
     end
 
-    local conditionalExpected = cmdsForDesc(case.rage, "Conditional")
+    local conditionalExpected = cmdsForDesc(case.rage, "Conditional", case.class)
     if #conditionalExpected > 0 then
       local conditional
       for _, ability in pairs(case.rage.abilities or {}) do
@@ -226,13 +237,13 @@ describe("boop rage mode contracts", function()
     local affCost = cheapestCost(case.rage, { "Gives Affliction" })
     local dmgCost = cheapestCost(case.rage, { "Small Damage", "Mid Damage", "Big Damage" })
     local damageChoices = {}
-    for _, cmd in ipairs(cmdsForDesc(case.rage, "Small Damage")) do
+    for _, cmd in ipairs(cmdsForDesc(case.rage, "Small Damage", case.class)) do
       damageChoices[#damageChoices + 1] = cmd
     end
-    for _, cmd in ipairs(cmdsForDesc(case.rage, "Mid Damage")) do
+    for _, cmd in ipairs(cmdsForDesc(case.rage, "Mid Damage", case.class)) do
       damageChoices[#damageChoices + 1] = cmd
     end
-    for _, cmd in ipairs(cmdsForDesc(case.rage, "Big Damage")) do
+    for _, cmd in ipairs(cmdsForDesc(case.rage, "Big Damage", case.class)) do
       damageChoices[#damageChoices + 1] = cmd
     end
     if affCost and dmgCost and #affExpected > 0 and #damageChoices > 0 then

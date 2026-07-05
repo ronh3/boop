@@ -13,6 +13,12 @@ boop.attacks.register("psion", {  standard = {
         ["name"] = "barbedblade",
         ["rage"] = 14
       },
+      ["devastate"] = {
+        ["cmd"] = "psi devastate &tar",
+        ["desc"] = "Big Damage",
+        ["name"] = "devastate",
+        ["rage"] = 36
+      },
       ["pulverise"] = {
         ["cmd"] = "weave pulverise &tar",
         ["desc"] = "Shieldbreak",
@@ -35,8 +41,9 @@ boop.attacks.register("psion", {  standard = {
       },
       ["whirlwind"] = {
         ["cmd"] = "weave whirlwind &tar",
-        ["desc"] = "Big Damage",
+        ["desc"] = "Conditional",
         ["name"] = "whirlwind",
+        ["needs"] = { "inhibit", "stun" },
         ["rage"] = 25
       }
     },
@@ -44,6 +51,7 @@ boop.attacks.register("psion", {  standard = {
       ["affAttack"] = 100,
       ["bigDamage"] = 20,
       ["smallDamage"] = 0
-    }
+    },
+    ["hybridHoldForSelfPrimer"] = true
   }
 })

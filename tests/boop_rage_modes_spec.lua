@@ -208,6 +208,90 @@ describe("boop rage modes", function()
     assert.are.equal("goad 42", actions.rage)
   end)
 
+  it("uses Devastate as Psion simple high damage", function()
+    helper.setClass("Psion")
+    helper.setRage(36)
+    helper.learnSkills({
+      { name = "Charge", group = "Weaving" },
+      { name = "barbedblade", group = "Attainment" },
+      { name = "devastate", group = "Attainment" },
+      { name = "whirlwind", group = "Attainment" },
+    })
+    boop.config.attackMode = "simple"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("psi transcend shatter/weave charge 42", actions.standard)
+    assert.are.equal("psi transcend shatter/psi devastate 42", actions.rage)
+  end)
+
+  it("uses Psion Whirlwind in hybrid only when its conditional affliction is present", function()
+    helper.setClass("Psion")
+    helper.setRage(25)
+    helper.learnSkills({
+      { name = "Charge", group = "Weaving" },
+      { name = "whirlwind", group = "Attainment" },
+    })
+    helper.addTargetAfflictions({ "inhibit" })
+    boop.config.attackMode = "hybrid"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("psi transcend shatter/weave charge 42", actions.standard)
+    assert.are.equal("psi transcend shatter/weave whirlwind 42", actions.rage)
+  end)
+
+  it("uses Psion Regrowth in hybrid to prime Whirlwind when affordable", function()
+    helper.setClass("Psion")
+    helper.setRage(24)
+    helper.learnSkills({
+      { name = "Charge", group = "Weaving" },
+      { name = "barbedblade", group = "Attainment" },
+      { name = "regrowth", group = "Attainment" },
+      { name = "whirlwind", group = "Attainment" },
+    })
+    boop.config.attackMode = "hybrid"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("psi transcend shatter/weave charge 42", actions.standard)
+    assert.are.equal("psi transcend shatter/enact regrowth 42", actions.rage)
+  end)
+
+  it("holds Psion hybrid rage for Regrowth when setting up Whirlwind", function()
+    helper.setClass("Psion")
+    helper.setRage(14)
+    helper.learnSkills({
+      { name = "Charge", group = "Weaving" },
+      { name = "barbedblade", group = "Attainment" },
+      { name = "regrowth", group = "Attainment" },
+      { name = "whirlwind", group = "Attainment" },
+    })
+    boop.config.attackMode = "hybrid"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("psi transcend shatter/weave charge 42", actions.standard)
+    assert.are.equal("", actions.rage)
+  end)
+
+  it("falls back to Psion simple damage in hybrid when Whirlwind is unavailable", function()
+    helper.setClass("Psion")
+    helper.setRage(36)
+    helper.learnSkills({
+      { name = "Charge", group = "Weaving" },
+      { name = "barbedblade", group = "Attainment" },
+      { name = "devastate", group = "Attainment" },
+      { name = "regrowth", group = "Attainment" },
+    })
+    boop.config.attackMode = "hybrid"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("psi transcend shatter/weave charge 42", actions.standard)
+    assert.are.equal("psi transcend shatter/psi devastate 42", actions.rage)
+  end)
+
   it("holds rage for a big hit in big mode instead of spending a small attack", function()
     helper.setClass("Sentinel")
     helper.setRage(14)

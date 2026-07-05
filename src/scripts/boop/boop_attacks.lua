@@ -804,7 +804,7 @@ local function selectRageCombo(profile, rage, classKey, allowPriming, allowHold)
   if allowPriming then
     selfPrimerAny = findConditionalPrimer(profile, conditionalReady, nil)
     if selfPrimerAny then
-      if allowHold then
+      if allowHold or profile.hybridHoldForSelfPrimer then
         traceComboDecision(classKey, "hold rage for self primer")
         return nil, "combo_hold"
       end

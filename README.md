@@ -92,6 +92,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - For `Unnamable` with `Maul` known in `Dominion`, boop prepends `maul &tar/` to standard attacks while ready, then waits for the cooldown-ready line before prepending again.
 - Dragon classes include `blast &tar` as a standard damage option, so it can be selected with `boop prefer dam blast`; rage and pull-rage actions are left unchanged.
 - Psion includes `weave flurry &tar` as a standard damage option, so it can be selected with `boop prefer dam flurry`.
+- Psion hybrid rage treats `weave whirlwind &tar` as conditional on target `inhibit` or `stun`, uses `enact regrowth &tar` to prime inhibit, and otherwise falls back to simple damage with `psi devastate &tar` as the high-damage hit.
 - `diag` clears queue, queues `diagnose`, and pauses attacks until `You are: ...` or `You are in perfect health.` and the following prompt (with timeout fallback via `diagTimeoutSeconds`).
 - `matic` queues `ldeck draw matic` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
 - `catarin` queues `ldeck draw catarin` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
