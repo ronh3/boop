@@ -18,6 +18,7 @@ boop.registry.config.schema = boop.registry.config.schema or {
     "targetOrder",
     "attackMode",
     "pullRageReserve",
+    "breakShields",
     "fleeEnabled",
     "fleeAt",
     "tempoRageWindowSeconds",
@@ -130,6 +131,10 @@ boop.registry.config.schema = boop.registry.config.schema or {
     leadtargets = "autoTargetCall",
     pullreserve = "pullRageReserve",
     pullragereserve = "pullRageReserve",
+    breakshields = "breakShields",
+    breakshield = "breakShields",
+    shieldbreak = "breakShields",
+    shieldbreaks = "breakShields",
     flee = "fleeEnabled",
     fleeenabled = "fleeEnabled",
     fleeat = "fleeAt",
@@ -409,6 +414,12 @@ boop.registry.config.setters = boop.registry.config.setters or {
     key = "pullRageReserve",
     warn = "pullRageReserve expects on/off",
     okLabel = "pull rage reserve",
+    reopen = { screen = "combat" },
+  }),
+  breakShields = configBoolSetter({
+    key = "breakShields",
+    warn = "breakShields expects on/off",
+    okLabel = "break shields",
     reopen = { screen = "combat" },
   }),
   fleeEnabled = configBoolSetter({
@@ -754,6 +765,7 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
       helpCommand("boop separator <text>", "Set the game-side separator used by pull, such as `|`."),
       helpCommand("pull <mobname> <direction>", "Move in, use a ready damage battlerage attack on the typed mob name, then leap back."),
       helpCommand("boop set pullRageReserve on|off", "Reserve enough rage for a pull-capable damage hit."),
+      helpCommand("boop set breakShields on|off", "Choose whether shielded targets should interrupt normal attacks with shieldbreaks."),
       helpCommand("boop set tempoRageWindowSeconds <seconds>", "Tune tempo mode's rage recovery prediction window."),
       helpCommand("boop set tempoSqueezeEtaSeconds <seconds>", "Tune when tempo mode may spend damage while preserving affliction tempo."),
     },
@@ -1015,18 +1027,22 @@ boop.registry.ui.screens.configActions = boop.registry.ui.screens.configActions 
         return "refresh"
       end,
       [13] = function()
+        boop.ui.toggleConfigBool("breakShields", true)
+        return "refresh"
+      end,
+      [14] = function()
         boop.ui.fleeCommand((boop.config and boop.config.fleeEnabled) and "off" or "on")
         return "refresh"
       end,
-      [14] = function(ctx)
+      [15] = function(ctx)
         ctx.seed("combat", "boop flee ")
         return "seed"
       end,
-      [15] = function(ctx)
+      [16] = function(ctx)
         ctx.seed("combat", "boop focus ")
         return "seed"
       end,
-      [16] = function(ctx)
+      [17] = function(ctx)
         ctx.seed("combat", "boop separator ")
         return "seed"
       end,

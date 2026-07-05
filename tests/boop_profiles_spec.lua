@@ -45,6 +45,19 @@ describe("boop class profile selection", function()
     assert.is_true(actions.standardShieldbreak)
   end)
 
+  it("does not use a standard shieldbreak when shield breaking is disabled", function()
+    helper.setClass("Infernal")
+    helper.setSpec("Sword and Shield")
+    helper.learnSkill("Combination", "Weaponmastery")
+    boop.config.breakShields = false
+    boop.state.targeting.targetShield = { attempted = false }
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("combination 42 rend smash", actions.standard)
+    assert.is_false(actions.standardShieldbreak)
+  end)
+
   it("uses the standard shieldbreak instead of rage shieldbreak when pull reserve is enabled", function()
     helper.setClass("Infernal")
     helper.setSpec("Sword and Shield")

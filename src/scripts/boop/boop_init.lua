@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.314"
+boop.version = boop.version or "0.1.315"
 
 boop.defaults = {
   enabled = false,
@@ -37,6 +37,7 @@ boop.defaults = {
   gagMobColorBackground = "",
   attackMode = "simple",
   pullRageReserve = false,
+  breakShields = true,
   fleeEnabled = true,
   fleeAt = "30%",
   rageFallbackSeconds = 26,

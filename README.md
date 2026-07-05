@@ -51,6 +51,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop focus <speed|precision>` (sets which battlefury focus verb two-handed standards use when `Focus` is known)
 - `boop flee <on|off|toggle|percent>` (controls auto-flee and sets its threshold; example: `boop flee 25%`)
 - `boop set pullRageReserve on|off` (advanced toggle; keep enough rage reserved for a pull-capable damage battlerage attack)
+- `boop set breakShields on|off` (default: `on`; when off, boop ignores shield state and keeps normal damage/rage selection)
 - `boop whitelist` / `boop whitelist add <name>` / `boop whitelist remove <name>` (display is clickable: up/down/remove)
 - `boop whitelist browse [tag]` (browse whitelist areas; optional tag filter)
 - `boop whitelist share [area]` (share one area's whitelist to party chat `pt`)
@@ -105,6 +106,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - If there is no ready damage battlerage attack or not enough rage to use one, `pull` aborts before movement.
 - `pullRageReserve` optionally makes normal battlerage spending hold back enough rage to preserve a pull-capable damage hit.
 - With `pullRageReserve` on, rage shieldbreak also yields to a standard shieldbreak when the class/profile already has one available.
+- Set `boop set breakShields off` to stop tracked shields from interrupting normal standard or rage attack selection.
 - Auto-flee can be toggled independently from its threshold; `boop flee off` disables it without clearing the saved percentage.
 - Prequeue is separately configurable from queueing (`boop prequeue`); when enabled, it queues standard attacks before recovery using `boop lead` seconds (default `1.00`).
 - Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.

@@ -55,6 +55,11 @@ local function planningTargetShield()
   return state and state.targetShield or false
 end
 
+local function shouldBreakShields()
+  local config = planningConfig()
+  return config.breakShields ~= false
+end
+
 local function planningWieldedItem(hand)
   if planningContext and planningContext.inventory then
     if hand == "left" then
@@ -998,7 +1003,8 @@ end
 function boop.attacks.selectRage(profile, rage, classKey, standardShieldbreak)
   if not profile then return nil, nil end
 
-  if boop.state.targeting.targetShield and (type(boop.state.targeting.targetShield) ~= "table" or not boop.state.targeting.targetShield.attempted) then
+  local targetShield = planningTargetShield()
+  if shouldBreakShields() and targetShield and (type(targetShield) ~= "table" or not targetShield.attempted) then
     if boop.config and boop.config.pullRageReserve and standardShieldbreak then
       return finalizeRageDecision("shieldbreak", "pull_reserve", nil)
     end
@@ -1442,7 +1448,8 @@ function boop.attacks.selectStandard(profile, classKey)
   end
 
   local targetShield = planningTargetShield()
-  if targetShield
+  if shouldBreakShields()
+    and targetShield
     and (type(targetShield) ~= "table" or not targetShield.attempted)
     and profile.shield
   then

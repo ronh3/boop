@@ -45,6 +45,18 @@ describe("boop attack selection", function()
     assert.are.equal("ruin 42", actions.rage)
   end)
 
+  it("does not choose a rage shieldbreak when shield breaking is disabled", function()
+    helper.setTargetHp("80%")
+    helper.setRage(17)
+    boop.config.breakShields = false
+    boop.state.targeting.targetShield = { gained = os.clock(), attempted = false }
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("command hound at 42", actions.standard)
+    assert.are.equal("harry 42", actions.rage)
+  end)
+
   it("honors a preferred standard damage attack when it is available", function()
     helper.setTargetHp("80%")
     local key = boop.attacks.preferenceConfigKey("occultist", "dam", "")

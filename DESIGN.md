@@ -107,6 +107,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Gold queue state is now guarded by a short stale-pending timeout; if get/put success/failure triggers are missed, boop warns, clears stale pending state, and resumes.
 - `boop prequeue` and `boop lead` make prequeue behavior explicit and independent from `useQueueing`.
 - If a standard attack is already prequeued and the current target gains shield before it fires, boop rebuilds `BOOP_ATTACK` immediately to the current shieldbreak standard when appropriate.
+- `breakShields` defaults on; when disabled, tracked target shield state is retained but does not change standard or rage attack selection.
 - `diag` clears queue, queues `diagnose`, and temporarily blocks attacks until a diagnose result line plus prompt.
 - `diag` includes a timeout fallback to release attack hold if diagnose result lines are missed.
 - `pull <mobname> <direction>` temporarily pauses boop, sends the configured separator-delimited move/ready-damage-rage/leap-back chain, resumes only after GMCP confirms the origin room, and clears its in-progress state on the interrupt timeout if confirmation is missed.
