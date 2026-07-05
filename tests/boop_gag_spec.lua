@@ -445,6 +445,61 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("Bal: 3.1s", 1, true) ~= nil)
   end)
 
+  it("keeps same-target battlerage damage visible inside a pending self summary", function()
+    boop.gag.onAttackLine({
+      source = "Psion/General/Charge.lua",
+      ability = "Charge",
+      actor = { kind = "match", index = 2 },
+      target = { kind = "match", index = 3 },
+    }, {
+      "Charging forward, you drive a translucent spear into a ghast.",
+      "you",
+      "a ghast",
+    }, "Charging forward, you drive a translucent spear into a ghast.")
+    boop.gag.onDamageLine("1,000", "physical cutting", "Damage dealt: 1,000 (physical cutting).")
+    boop.gag.onAttackLine({
+      source = "Psion/Battlerage/Devastate.lua",
+      ability = "Devastate",
+      actor = { kind = "match", index = 2 },
+      target = { kind = "match", index = 3 },
+    }, {
+      "You hammer the mind of a ghast with a devastating psionic onslaught.",
+      "You",
+      "a ghast",
+    }, "You hammer the mind of a ghast with a devastating psionic onslaught.")
+    boop.gag.onDamageLine("2,000", "psychic", "Damage dealt: 2,000 (psychic).")
+    boop.gag.onBalanceUsed("2.2", "Balance used: 2.2s.")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("Charge + Devastate", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a ghast", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Charge: 1000 physical cutting", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Devastate: 2000 psychic", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Total: 3000", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Bal: 2.2s", 1, true) ~= nil)
+  end)
+
+  it("flushes standalone battlerage damage on prompt without a balance line", function()
+    boop.gag.onAttackLine({
+      source = "Psion/Battlerage/Devastate.lua",
+      ability = "Devastate",
+      actor = { kind = "match", index = 2 },
+      target = { kind = "match", index = 3 },
+    }, {
+      "You hammer the mind of a ghast with a devastating psionic onslaught.",
+      "You",
+      "a ghast",
+    }, "You hammer the mind of a ghast with a devastating psionic onslaught.")
+    boop.gag.onDamageLine("2,222", "psychic", "Damage dealt: 2,222 (psychic).")
+    boop.gag.onPrompt()
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("Devastate", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("a ghast", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("2222 psychic", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Total: 2222", 1, true) ~= nil)
+  end)
+
   it("suppresses the alternate hyena maul claw flavor", function()
     boop.gag.onAttackLine({
       ability = "Hyena Maul",

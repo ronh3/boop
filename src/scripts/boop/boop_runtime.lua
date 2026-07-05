@@ -98,6 +98,7 @@ local DOMAIN_DEFAULTS = {
     ready = {},
     timers = {},
     samples = {},
+    freeNext = false,
   },
   inventory = {
     itemsById = {},

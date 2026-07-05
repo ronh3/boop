@@ -326,6 +326,43 @@ describe("boop rage modes", function()
     assert.are.equal("psi transcend shatter/psi devastate 42", actions.rage)
   end)
 
+  it("uses Triumph free rage in hybrid on the highest ready damage attack", function()
+    helper.setClass("Psion")
+    helper.setRage(0)
+    helper.learnSkills({
+      { name = "Charge", group = "Weaving" },
+      { name = "barbedblade", group = "Attainment" },
+      { name = "devastate", group = "Attainment" },
+      { name = "regrowth", group = "Attainment" },
+      { name = "whirlwind", group = "Attainment" },
+    })
+    boop.config.attackMode = "hybrid"
+    boop.rage.onTriumphFreeRage()
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("psi transcend shatter/weave charge 42", actions.standard)
+    assert.are.equal("psi transcend shatter/psi devastate 42", actions.rage)
+  end)
+
+  it("uses a Triumph free conditional rage attack only when its condition is present", function()
+    helper.setClass("Psion")
+    helper.setRage(0)
+    helper.learnSkills({
+      { name = "Charge", group = "Weaving" },
+      { name = "barbedblade", group = "Attainment" },
+      { name = "whirlwind", group = "Attainment" },
+    })
+    helper.addTargetAfflictions({ "inhibit" })
+    boop.config.attackMode = "hybrid"
+    boop.rage.onTriumphFreeRage()
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("psi transcend shatter/weave charge 42", actions.standard)
+    assert.are.equal("psi transcend shatter/weave whirlwind 42", actions.rage)
+  end)
+
   it("holds rage for a big hit in big mode instead of spending a small attack", function()
     helper.setClass("Sentinel")
     helper.setRage(14)

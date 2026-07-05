@@ -14,6 +14,9 @@ function boop.rage.init()
   boop.state.rage.ready = boop.state.rage.ready or {}
   boop.state.rage.timers = boop.state.rage.timers or {}
   boop.state.rage.samples = boop.state.rage.samples or {}
+  if boop.state.rage.freeNext == nil then
+    boop.state.rage.freeNext = false
+  end
 end
 
 function boop.rage.setReady(name, ready)
@@ -24,6 +27,10 @@ function boop.rage.setReady(name, ready)
 end
 
 function boop.rage.onRageUsed(ability)
+  if boop.state and boop.state.rage then
+    boop.state.rage.freeNext = false
+  end
+
   local key = ""
   if type(ability) == "table" then
     key = keyForAbility(ability)
@@ -46,6 +53,19 @@ function boop.rage.onRageUsed(ability)
     boop.state.rage.timers[key] = nil
   end)
   boop.state.rage.timers = timers
+end
+
+function boop.rage.onTriumphFreeRage()
+  boop.state = boop.state or {}
+  boop.state.rage = boop.state.rage or {}
+  boop.state.rage.freeNext = true
+  if boop.trace and boop.trace.log then
+    boop.trace.log("rage triumph: next rage free")
+  end
+end
+
+function boop.rage.hasFreeNext()
+  return boop.state and boop.state.rage and boop.state.rage.freeNext == true
 end
 
 function boop.rage.onReadyList(list)

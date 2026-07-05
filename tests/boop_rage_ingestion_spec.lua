@@ -60,6 +60,18 @@ describe("boop rage ingestion", function()
     assert.is_nil(boop.state.rage.timers.harry)
   end)
 
+  it("sets the Triumph free-rage flag and clears it on the next rage use", function()
+    assert.is_false(boop.rage.hasFreeNext())
+
+    boop.rage.onTriumphFreeRage()
+
+    assert.is_true(boop.rage.hasFreeNext())
+
+    boop.rage.onRageUsed({ name = "Harry" })
+
+    assert.is_false(boop.rage.hasFreeNext())
+  end)
+
   it("records rage samples and computes gain rate and eta from them", function()
     local ticks = { 100, 105, 110 }
     local idx = 0

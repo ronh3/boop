@@ -117,6 +117,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Unnamable standards prepend `maul &tar/` when `Maul` is known (Dominion) and ready, with readiness tracked through the existing ability-ready trigger lines.
 - Dragon profiles include `blast &tar` as a standard damage option exposed through `boop prefer`; rage and pull-rage dragon actions are not blast-prefixed.
 - Standard attacks and rage actions are independent; standard builds rage and there is no mode toggle.
+- Triumph's free-rage line sets a one-shot flag consumed by hybrid rage selection; that path ignores current rage amount but still respects cooldown and conditional state.
 - Skill gating issues `Char.Skills.Get` requests per skill (group-aware).
 - `boop preset solo|party|leader|leader-call` applies recommended baseline config bundles; `leader-call` requires an assist leader to already be configured.
 - Party-size is intentionally session-local and defaults to `1` on load; it is used by stats/mob XP telemetry and is not persisted.

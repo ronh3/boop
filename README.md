@@ -93,6 +93,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Dragon classes include `blast &tar` as a standard damage option, so it can be selected with `boop prefer dam blast`; rage and pull-rage actions are left unchanged.
 - Psion includes `weave flurry &tar` as a standard damage option, so it can be selected with `boop prefer dam flurry`.
 - Hybrid rage skips fear-affliction primers; Psion hybrid treats `weave whirlwind &tar` as conditional on target `inhibit` or `stun`, uses `enact regrowth &tar` to prime inhibit, and otherwise falls back to simple damage with `psi devastate &tar` as the high-damage hit.
+- `Triumph suffuses you with incredible rage.` sets a one-shot free-rage flag; hybrid rage spends it on the highest ready damage or satisfied conditional rage attack, then clears it when a rage action is used.
 - `diag` clears queue, queues `diagnose`, and pauses attacks until `You are: ...` or `You are in perfect health.` and the following prompt (with timeout fallback via `diagTimeoutSeconds`).
 - `matic` queues `ldeck draw matic` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
 - `catarin` queues `ldeck draw catarin` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
@@ -113,6 +114,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Trace buffer records recent boop decisions/commands for post-mortem debugging (`boop trace show`).
 - Attack-line gagging can be toggled separately for your own attacks and other players' attacks, replacing matched lines with `Who: What -> Victim`.
 - Self attack gag summaries coalesce repeated same-source/same-type damage such as multihit weapon attacks and gear procs, and append total damage before balance time.
+- Battlerage attack lines on the same target fold into the pending self attack summary so their damage remains visible when standard and rage actions fire together.
 - Gag summaries now support separate `own`, `others`, and `mobs` configurable role colors for `who`, `ability`, `target`, `meta`, `separator`, plus one shared optional background/highlight color per scope.
 - `boop gag colors [own|others|mobs]` is an interactive browser: each role shows its current sample plus clickable `[color]` and `[auto]` / `[off]` controls, and `boop gag color [own|others|mobs] <role>` opens the picker directly.
 - Mob gagging can be toggled with `boop gag mobs`; known mob attack lines followed by `Health lost` are condensed as `Mob: Damage -> You (#### damagetype)`.

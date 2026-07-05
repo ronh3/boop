@@ -445,6 +445,46 @@ local function selectDamageForHp(profile, rageBudget)
   return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, rageBudget)
 end
 
+local FREE_RAGE_DAMAGE_PRIORITY = {
+  ["Big Damage"] = 4,
+  ["Conditional"] = 3,
+  ["Mid Damage"] = 2,
+  ["Small Damage"] = 1,
+}
+
+local function selectFreeRageDamage(profile)
+  if not profile or not profile.abilities then
+    return nil
+  end
+
+  local best = nil
+  local bestPriority = 0
+  local bestCost = -1
+  local bestName = ""
+
+  for _, ability in pairs(profile.abilities) do
+    local priority = FREE_RAGE_DAMAGE_PRIORITY[ability.desc] or 0
+    if priority > 0 and abilityKnown(ability) and boop.attacks.rageReady(ability, nil) then
+      if ability.desc ~= "Conditional" or boop.attacks.canUseConditional(ability) then
+        local cost = tonumber(ability.rage) or 0
+        local name = tostring(ability.name or ability.skill or "")
+        if not best
+          or priority > bestPriority
+          or (priority == bestPriority and cost > bestCost)
+          or (priority == bestPriority and cost == bestCost and name < bestName)
+        then
+          best = ability
+          bestPriority = priority
+          bestCost = cost
+          bestName = name
+        end
+      end
+    end
+  end
+
+  return best
+end
+
 local function pullReserveAbility(profile)
   if not profile then return nil end
   return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, nil)
@@ -1022,6 +1062,9 @@ function boop.attacks.selectRage(profile, rage, classKey, standardShieldbreak)
     local ability, outcome = selectRageCombo(profile, rage, classKey, true, true)
     return finalizeRageDecisionWithPullReserve(profile, mode, outcome, ability, rage)
   elseif mode == "hybrid" then
+    if boop.rage and boop.rage.hasFreeNext and boop.rage.hasFreeNext() then
+      return finalizeRageDecision(mode, "free_damage", selectFreeRageDamage(profile))
+    end
     local ability, outcome = selectRageCombo(profile, rage, classKey, true, false, {
       excludedPrimerAfflictions = { "fear" },
     })

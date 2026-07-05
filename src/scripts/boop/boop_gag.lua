@@ -1114,6 +1114,30 @@ local function canAppendDualBluntHit(pending, who, ability, target)
     or pendingHasAbilityPart(pending, "Hound Maul")
 end
 
+local function isBattlerageSpec(spec)
+  local source = boop.util.safeLower(boop.util.trim(spec and spec.source or ""))
+  return source:find("/battlerage/", 1, true) ~= nil
+end
+
+local function canAppendBattlerageHit(pending, who, ability, target)
+  if type(pending) ~= "table" then
+    return false
+  end
+  if normName(ability or "") == "" then
+    return false
+  end
+  if normName(pending.who or "") ~= normName(who or "") then
+    return false
+  end
+  if normName(pending.target or "") ~= normName(target or "") then
+    return false
+  end
+  if boop.util.trim(pending.balanceText or "") ~= "" then
+    return false
+  end
+  return true
+end
+
 local function rescheduleAttackSummaryTimer()
   cancelAttackSummaryTimer()
   boop.state.gag.pendingAttackTimer = scheduleGagTimer(1.2, function()
@@ -1123,12 +1147,13 @@ local function rescheduleAttackSummaryTimer()
   return boop.state.gag.pendingAttackTimer == nil
 end
 
-local function setPendingAttack(who, ability, target)
+local function setPendingAttack(who, ability, target, options)
   boop.state = boop.state or {}
   boop.state.gag = boop.state.gag or {}
   local normalizedWho = boop.util.trim(who or "You")
   local normalizedAbility = boop.util.trim(ability or "Attack")
   local normalizedTarget = boop.util.trim(target or "(none)")
+  local appendBattlerage = type(options) == "table" and options.battlerage == true
 
   if samePendingAttack(boop.state.gag.pendingAttack, normalizedWho, normalizedAbility, normalizedTarget) then
     boop.state.gag.pendingAttack.hitCount = (tonumber(boop.state.gag.pendingAttack.hitCount) or 1) + 1
@@ -1139,6 +1164,14 @@ local function setPendingAttack(who, ability, target)
       renamePendingDamageSource(boop.state.gag.pendingAttack, "Jab", "DSL")
       boop.state.gag.pendingAttack.currentSource = "DSL"
     end
+    return rescheduleAttackSummaryTimer()
+  end
+
+  if appendBattlerage and canAppendBattlerageHit(boop.state.gag.pendingAttack, normalizedWho, normalizedAbility, normalizedTarget) then
+    boop.state.gag.pendingAttack.hitCount = (tonumber(boop.state.gag.pendingAttack.hitCount) or 1) + 1
+    boop.state.gag.pendingAttack.currentHitHasDamage = false
+    addPendingAbilityPart(boop.state.gag.pendingAttack, normalizedAbility)
+    boop.state.gag.pendingAttack.currentSource = normalizedAbility
     return rescheduleAttackSummaryTimer()
   end
 
@@ -1413,6 +1446,7 @@ function boop.gag.onAttackLine(spec, matchTable, rawLine)
   end
 
   local ability = boop.util.trim(spec and spec.ability or "")
+  local battlerage = isBattlerageSpec(spec)
   local pending = boop.state and boop.state.gag and boop.state.gag.pendingAttack or nil
   if shouldSuppressDuplicate(rawLine)
     and not (selfActor and canAppendDualBluntHit(pending, "You", ability, victim)) then
@@ -1440,7 +1474,7 @@ function boop.gag.onAttackLine(spec, matchTable, rawLine)
   end
 
   if selfActor then
-    local flushNow = setPendingAttack("You", ability, victim)
+    local flushNow = setPendingAttack("You", ability, victim, { battlerage = battlerage })
     deleteCurrent()
     if flushNow then
       flushPendingAttack()
