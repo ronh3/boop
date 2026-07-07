@@ -78,6 +78,9 @@ describe("boop event-driven state transitions", function()
   end)
 
   it("clears tracked shield state when gmcp target set changes", function()
+    helper.setDenizens({
+      { id = "77", name = "a game-selected denizen" },
+    })
     helper.setTarget("42", "a test denizen", "80%")
     boop.state.targeting.targetShield = { attempted = false, timer = 55 }
     gmcp.IRE.Target.Set = "77"
@@ -85,20 +88,38 @@ describe("boop event-driven state transitions", function()
     boop.onTargetSet()
 
     assert.are.equal("77", boop.state.targeting.currentTargetId)
+    assert.are.equal("a game-selected denizen", boop.state.targeting.targetName)
     assert.is_false(boop.state.targeting.targetShield)
     assert.stub(kill_timer_stub).was_called_with(55)
+    assert.stub(send_stub).was_not_called_with("settarget 77", false)
   end)
 
   it("clears tracked shield state when gmcp target info changes", function()
     helper.setTarget("42", "a test denizen", "80%")
     boop.state.targeting.targetShield = { attempted = false, timer = 56 }
     gmcp.IRE.Target.Info.id = "78"
+    gmcp.IRE.Target.Info.short_desc = "a target-info denizen"
 
     boop.onTargetInfo()
 
     assert.are.equal("78", boop.state.targeting.currentTargetId)
+    assert.are.equal("a target-info denizen", boop.state.targeting.targetName)
     assert.is_false(boop.state.targeting.targetShield)
     assert.stub(kill_timer_stub).was_called_with(56)
+    assert.stub(send_stub).was_not_called_with("settarget 78", false)
+  end)
+
+  it("clears stale target name when gmcp target set clears", function()
+    helper.setTarget("42", "a test denizen", "80%")
+    boop.state.targeting.targetShield = { attempted = false, timer = 58 }
+    gmcp.IRE.Target.Set = ""
+
+    boop.onTargetSet()
+
+    assert.are.equal("", boop.state.targeting.currentTargetId)
+    assert.are.equal("", boop.state.targeting.targetName)
+    assert.is_false(boop.state.targeting.targetShield)
+    assert.stub(kill_timer_stub).was_called_with(58)
   end)
 
   it("clears gold intent and remembers the return exit when the room changes", function()

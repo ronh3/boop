@@ -100,6 +100,18 @@ local function findDenizenById(denizens, id)
   return nil
 end
 
+local function resolveTargetName(id, explicitName)
+  local name = boop.util.trim(explicitName or "")
+  if name ~= "" then return name end
+
+  local state = boop.state and boop.state.targeting or {}
+  local denizen = findDenizenById(state.denizens or {}, id)
+  if denizen and denizen.name then
+    return denizen.name
+  end
+  return ""
+end
+
 function boop.targets.getArea()
   if gmcp and gmcp.Room and gmcp.Room.Info then
     return gmcp.Room.Info.area
@@ -162,13 +174,18 @@ function boop.targets.removeRoomItem(item)
   end
 end
 
-function boop.targets.setTarget(id)
-  if not id or id == "" then return end
-  local nextId = tostring(id)
-  local prevId = tostring(boop.state.targeting.currentTargetId or "")
-  local changed = (prevId ~= "" and prevId ~= nextId) or (prevId == "" and nextId ~= "")
+function boop.targets.applyTarget(id, opts)
+  opts = opts or {}
+  boop.state = boop.state or {}
+  boop.state.targeting = boop.state.targeting or {}
+
+  local nextId = boop.util.trim(tostring(id or ""))
+  local prevId = boop.util.trim(tostring(boop.state.targeting.currentTargetId or ""))
+  local changed = prevId ~= nextId
+  local targetName = nextId ~= "" and resolveTargetName(nextId, opts.name) or ""
+
   if changed and boop.targets.clearTargetShield then
-    boop.targets.clearTargetShield("target changed")
+    boop.targets.clearTargetShield(opts.reason or "target changed")
   end
   if changed and boop.afflictions and boop.afflictions.clearTarget then
     boop.afflictions.clearTarget()
@@ -176,17 +193,22 @@ function boop.targets.setTarget(id)
       boop.trace.log("target afflictions cleared: target changed")
     end
   end
+
   boop.state.targeting.currentTargetId = nextId
-  for _, v in ipairs(boop.state.targeting.denizens) do
-    if v.id == boop.state.targeting.currentTargetId then
-      boop.state.targeting.targetName = v.name
-      break
-    end
+  if changed or targetName ~= "" or nextId == "" then
+    boop.state.targeting.targetName = targetName
   end
 
-  if changed and boop.stats and boop.stats.onTargetSet then
+  if changed and nextId ~= "" and opts.stats ~= false and boop.stats and boop.stats.onTargetSet then
     boop.stats.onTargetSet(boop.state.targeting.currentTargetId, boop.state.targeting.targetName or "")
   end
+
+  return changed
+end
+
+function boop.targets.setTarget(id)
+  if not id or id == "" then return end
+  local changed = boop.targets.applyTarget(id)
 
   if changed and send then
     send("settarget " .. boop.state.targeting.currentTargetId, false)

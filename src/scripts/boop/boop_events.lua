@@ -711,22 +711,36 @@ end
 function boop.onTargetSet()
   if not gmcp or not gmcp.IRE or not gmcp.IRE.Target or not gmcp.IRE.Target.Set then return end
   local newId = tostring(gmcp.IRE.Target.Set or "")
-  local oldId = tostring(boop.state.targeting.currentTargetId or "")
-  if oldId ~= "" and newId ~= "" and oldId ~= newId and boop.targets and boop.targets.clearTargetShield then
-    boop.targets.clearTargetShield("target gmcp set changed")
+  if boop.targets and boop.targets.applyTarget then
+    boop.targets.applyTarget(newId, { reason = "target gmcp set changed" })
+  else
+    boop.state.targeting.currentTargetId = newId
   end
-  boop.state.targeting.currentTargetId = newId
+end
+
+local function targetInfoName(info)
+  if type(info) ~= "table" then return "" end
+  local keys = { "name", "short_desc", "shortdesc", "short_description" }
+  for _, key in ipairs(keys) do
+    local value = boop.util.trim(info[key] or "")
+    if value ~= "" then return value end
+  end
+  return ""
 end
 
 function boop.onTargetInfo()
   if not gmcp or not gmcp.IRE or not gmcp.IRE.Target or not gmcp.IRE.Target.Info then return end
-  if gmcp.IRE.Target.Info.id then
-    local newId = tostring(gmcp.IRE.Target.Info.id or "")
-    local oldId = tostring(boop.state.targeting.currentTargetId or "")
-    if oldId ~= "" and newId ~= "" and oldId ~= newId and boop.targets and boop.targets.clearTargetShield then
-      boop.targets.clearTargetShield("target gmcp info changed")
+  local info = gmcp.IRE.Target.Info
+  if info.id then
+    local newId = tostring(info.id or "")
+    if boop.targets and boop.targets.applyTarget then
+      boop.targets.applyTarget(newId, {
+        name = targetInfoName(info),
+        reason = "target gmcp info changed",
+      })
+    else
+      boop.state.targeting.currentTargetId = newId
     end
-    boop.state.targeting.currentTargetId = newId
   end
 end
 
