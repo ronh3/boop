@@ -104,6 +104,32 @@ describe("boop attack selection", function()
     assert.are.equal("Duality -> dsl &tar", options[1].label)
   end)
 
+  it("lists Infernal quarc as a standard damage preference option", function()
+    helper.setClass("Infernal")
+    helper.setSpec("Dual Cutting")
+
+    local options = boop.attacks.standardOptions("infernal", "dam")
+    local labels = {}
+    for _, option in ipairs(options) do
+      labels[#labels + 1] = option.label
+    end
+    local joined = table.concat(labels, "\n")
+
+    assert.is_true(joined:find("quarc -> quash &tar/arc", 1, true) ~= nil)
+  end)
+
+  it("uses Infernal quarc when preferred", function()
+    helper.setClass("Infernal")
+    helper.setSpec("Dual Cutting")
+    helper.setTargetHp("80%")
+    local key = boop.attacks.preferenceConfigKey("infernal", "dam", "Dual Cutting")
+    boop.config[key] = "quarc"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("quash 42/arc", actions.standard)
+  end)
+
   it("lists Dragon blast as a standard damage preference option", function()
     local options = boop.attacks.standardOptions("blue dragon", "dam")
     local labels = {}

@@ -92,6 +92,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - For `Two Handed` spec with `Focus` known in `Weaponmastery`, boop prepends `battlefury focus <speed|precision>/` to standard damage attacks (never shieldbreakers); configure it with `boop focus`.
 - For `Unnamable` with `Maul` known in `Dominion`, boop prepends `maul &tar/` to standard attacks while ready, then waits for the cooldown-ready line before prepending again.
 - Dragon classes include `blast &tar` as a standard damage option, so it can be selected with `boop prefer dam blast`; rage and pull-rage actions are left unchanged.
+- Infernal includes `quash &tar/arc` as `quarc`, so it can be selected with `boop prefer dam quarc`.
 - Psion includes `weave flurry &tar` as a standard damage option, so it can be selected with `boop prefer dam flurry`.
 - Hybrid rage skips fear-affliction primers; Psion hybrid treats `weave whirlwind &tar` as conditional on target `inhibit` or `stun`, uses `enact regrowth &tar` to prime inhibit, and otherwise falls back to simple damage with `psi devastate &tar` as the high-damage hit.
 - `Triumph suffuses you with incredible rage.` sets a one-shot free-rage flag; hybrid rage spends it on the highest ready damage or satisfied conditional rage attack, then clears it when a rage action is used.

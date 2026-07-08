@@ -1,43 +1,47 @@
 boop.attacks.register("infernal", {  standard = {
     dam = {
       bySpec = {
-        ["Dual Cutting"] = { 
+        ["Dual Cutting"] = {
           {cmd = "dsl &tar", skill = "Duality", group = "Weaponmastery" },
           {cmd = "jab &tar", skill = "Swordplay", group = "Weaponmastery" },
+          {label = "quarc", cmd = "quash &tar/arc" },
         },
-        ["Dual Blunt"] = { 
+        ["Dual Blunt"] = {
           {cmd = "doublewhirl &tar", skill = "Doublewhirl", group = "Weaponmastery" },
           {cmd = "whirl &tar", skill = "Whirl", group = "Weaponmastery" },
           {cmd = "jab &tar", skill = "Swordplay", group = "Weaponmastery" },
+          {label = "quarc", cmd = "quash &tar/arc" },
         },
-        ["Two Handed"] = { 
+        ["Two Handed"] = {
           {cmd = "slaughter &tar", skill = "Slaughter", group = "Weaponmastery" },
           {cmd = "jab &tar", skill = "Swordplay", group = "Weaponmastery" },
+          {label = "quarc", cmd = "quash &tar/arc" },
         },
-        ["Sword and Shield"] = { 
+        ["Sword and Shield"] = {
           {cmd = "combination &tar slice smash", skill = "Slice", group = "Weaponmastery" },
           {cmd = "combination &tar rend smash", skill = "Combination", group = "Weaponmastery" },
           {cmd = "smash &tar", skill = "Smash", group = "Weaponmastery" },
           {cmd = "rend &tar", skill = "Rend", group = "Weaponmastery" },
           {cmd = "jab &tar", skill = "Swordplay", group = "Weaponmastery" },
+          {label = "quarc", cmd = "quash &tar/arc" },
         },
       },
       default = { cmd = "kill &tar", skill = "", group = "" },
     },
     shield = {
       bySpec = {
-        ["Dual Cutting"] = { 
+        ["Dual Cutting"] = {
           {cmd = "rsl &tar", skill = "Razeslash", group = "Weaponmastery" },
           {cmd = "raze &tar", skill = "Raze", group = "Weaponmastery" },
         },
-        ["Dual Blunt"] = { 
+        ["Dual Blunt"] = {
           {cmd = "fracture &tar", skill = "Fracture", group = "Weaponmastery" },
         },
-        ["Two Handed"] = { 
+        ["Two Handed"] = {
           {cmd = "carve &tar", skill = "Carve", group = "Weaponmastery" },
           {cmd = "splinter &tar", skill = "Splinter", group = "Weaponmastery" },
         },
-        ["Sword and Shield"] = { 
+        ["Sword and Shield"] = {
           {cmd = "combination &tar raze smash", skill = "Combination", group = "Weaponmastery" },
           {cmd = "raze &tar", skill = "Raze", group = "Weaponmastery" },
         },

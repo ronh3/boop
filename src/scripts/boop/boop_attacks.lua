@@ -186,6 +186,7 @@ local function entryMatchesPreference(entry, preference)
   end
 
   local tokens = {}
+  addEntryToken(tokens, entry.label)
   addEntryToken(tokens, entry.name)
   addEntryToken(tokens, entry.skill)
   addEntryToken(tokens, entry.cmd)
@@ -196,7 +197,7 @@ local function describeEntry(entry)
   if type(entry) ~= "table" then
     return tostring(entry or "")
   end
-  local label = boop.util.trim(entry.name or entry.skill or entry.cmd or "")
+  local label = boop.util.trim(entry.label or entry.name or entry.skill or entry.cmd or "")
   local cmd = boop.util.trim(entry.cmd or "")
   if label == "" then
     label = cmd

@@ -117,6 +117,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Two-handed standards prepend `battlefury focus speed/` when `Focus` is known (Weaponmastery), excluding shieldbreaker paths.
 - Unnamable standards prepend `maul &tar/` when `Maul` is known (Dominion) and ready, with readiness tracked through the existing ability-ready trigger lines.
 - Dragon profiles include `blast &tar` as a standard damage option exposed through `boop prefer`; rage and pull-rage dragon actions are not blast-prefixed.
+- Infernal profiles include `quash &tar/arc` as the `quarc` standard damage option exposed through `boop prefer`.
 - Standard attacks and rage actions are independent; standard builds rage and there is no mode toggle.
 - Triumph's free-rage line sets a one-shot flag consumed by hybrid rage selection; that path ignores current rage amount but still respects cooldown and conditional state.
 - Skill gating issues `Char.Skills.Get` requests per skill (group-aware).
