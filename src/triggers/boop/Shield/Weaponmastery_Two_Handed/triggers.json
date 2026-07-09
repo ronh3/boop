@@ -1,6 +1,6 @@
 [
   {
-    "name": "Weaponmastery Two-Handed Carve",
+    "name": "Weaponmastery Two Handed Carve",
     "isActive": "yes",
     "isFolder": "no",
     "multiline": "no",
@@ -32,7 +32,7 @@
     "script": ""
   },
   {
-    "name": "Weaponmastery Two-Handed Slaughter",
+    "name": "Weaponmastery Two Handed Slaughter",
     "isActive": "yes",
     "isFolder": "no",
     "multiline": "no",
