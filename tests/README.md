@@ -20,6 +20,8 @@ Current coverage:
   Confirms `boop.tick()` sets target and sends the expected actions.
 - `boop_runtime_spec.lua`
   Confirms the runtime coordinator exposes owned state domains, emits tick effects, and resolves prompt/diag hold effects.
+- `boop_state_contract_spec.lua`
+  Confirms owned runtime domain defaults and runtime context mapping for high-risk state-contract drift.
 - `boop_planner_spec.lua`
   Confirms the combat planner returns unexecuted plan data, applies modifiers separately, and executes a prepared plan.
 - `boop_rage_modes_spec.lua`
