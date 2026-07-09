@@ -406,14 +406,16 @@ end)
 
 **If this table is empty:** All claims in this research were verified or cited; no user confirmation needed.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the existing manifest drift be fixed or allowlisted?**
+   - RESOLVED: Fix the manifest drift in Phase 1 rather than allowlisting it. Plan 01 deletes the duplicate orphan `src/aliases/boop/Targeting/Boop_IH.lua` because `IH.lua` is the registered adapter for the documented `ih` command, and it renames the two Weaponmastery Two Handed manifest entries so the existing spaces-to-underscores rule resolves to the current Lua filenames. No broad orphan-file or punctuation allowlist is part of the chosen path.
    - What we know: The dry-run found one orphan alias file and two trigger filename mismatches. [VERIFIED: codebase grep]
    - What's unclear: Whether `Boop_IH.lua` is intentionally retained as a duplicate source file or should be deleted/registered. [VERIFIED: codebase grep]
    - Recommendation: Fix the manifest/file drift in Phase 1 before enabling REL-02; only use allowlists for intentionally non-package source, not accidental package membership drift. [VERIFIED: codebase grep]
 
 2. **What is the current in-Mudlet suite status on CI?**
+   - RESOLVED: Establish the Phase 1 baseline with the fast local static state-drift check plus the focused Busted state-contract spec, then verify the full Mudlet/Busted path at plan-level. Plan 03 keeps task-level verification to `python3 tools/check_release_gates.py --check state-drift` and fast source checks; the full `muddle && AUTORUN_BUSTED_TESTS=true ... /tmp/Mudlet.AppImage ...` command remains plan-level verification when the local AppImage exists, with GitHub Actions Mudlet/Busted evidence recorded before phase verification sign-off when it does not.
    - What we know: The local machine lacks `/tmp/Mudlet.AppImage`, while CI downloads/caches Mudlet and runs Busted in the `GithubTests` profile. [VERIFIED: shell probe]
    - What's unclear: Whether the latest remote CI run is already red because local Mudlet execution was not run during research. [VERIFIED: shell probe]
    - Recommendation: Planner should schedule a Wave 0 verification step to run or inspect the existing CI/Busted baseline before adding new blocking state-contract tests. [VERIFIED: codebase grep]
