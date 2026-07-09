@@ -1,5 +1,7 @@
 # Roadmap: boop Hunter
 
+## v1.0: Pre-1.0 Hardening
+
 ## Overview
 
 boop Hunter's pre-1.0 roadmap hardens the existing Mudlet hunting package in risk order: make release metadata and manifest drift visible first, repair owned runtime state and safety behavior, cover timing-heavy queue/gold/walk paths, lock down command trust boundaries, expand compact-summary fixtures, then close with docs and live release verification. This milestone preserves current behavior and release confidence rather than expanding the feature surface.
