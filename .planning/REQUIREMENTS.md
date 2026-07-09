@@ -9,10 +9,10 @@ Requirements for the pre-1.0 hardening milestone. Each maps to roadmap phases.
 
 ### Release Gates
 
-- [ ] **REL-01**: CI fails when `mfile.version`, `mfile.title`, `src/scripts/boop/boop_init.lua` `boop.version`, or the `CODEX.md` session checkpoint disagree.
-- [ ] **REL-02**: CI validates source JSON and Muddler manifest/file parity for scripts, aliases, and triggers without auto-sorting runtime-sensitive manifests.
+- [x] **REL-01**: CI fails when `mfile.version`, `mfile.title`, `src/scripts/boop/boop_init.lua` `boop.version`, or the `CODEX.md` session checkpoint disagree.
+- [x] **REL-02**: CI validates source JSON and Muddler manifest/file parity for scripts, aliases, and triggers without auto-sorting runtime-sensitive manifests.
 - [ ] **REL-03**: Release verification includes Muddler build output and Busted execution inside a real Mudlet profile before a 1.0 candidate is considered ready.
-- [ ] **REL-04**: High-risk runtime paths have focused regression tests before behavior changes land.
+- [x] **REL-04**: High-risk runtime paths have focused regression tests before behavior changes land.
 
 ### Runtime State
 
@@ -101,10 +101,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REL-01 | Phase 1 | Pending |
-| REL-02 | Phase 1 | Pending |
+| REL-01 | Phase 1 | Complete |
+| REL-02 | Phase 1 | Complete |
 | REL-03 | Phase 6 | Pending |
-| REL-04 | Phase 1 | Pending |
+| REL-04 | Phase 1 | Complete |
 | STATE-01 | Phase 2 | Pending |
 | STATE-02 | Phase 2 | Pending |
 | STATE-03 | Phase 2 | Pending |
