@@ -129,6 +129,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LIVE-02 | Phase 6 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 26 total
 - Mapped to phases: 26
 - Unmapped: 0

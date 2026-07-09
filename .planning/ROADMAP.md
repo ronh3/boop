@@ -11,6 +11,7 @@ Parallelization note: Phase 4 can be planned after Phase 2 without waiting for P
 ## Phases
 
 **Phase Numbering:**
+
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
@@ -26,71 +27,93 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Release Gates and State Contracts
+
 **Goal**: Maintainers can trust CI and focused tests to catch release metadata, package membership, and high-risk state-contract drift before behavior changes land.
 **Depends on**: Nothing (first phase)
 **Requirements**: REL-01, REL-02, REL-04
 **Success Criteria** (what must be TRUE):
+
   1. Maintainer can see CI fail when `mfile.version`, `mfile.title`, `boop.version`, or the `CODEX.md` checkpoint disagree.
   2. Maintainer can see CI fail when source JSON is invalid or script, alias, or trigger manifests do not match source files.
   3. Maintainer can run focused regression tests that fail when high-risk runtime paths bypass owned state contracts before behavior changes land.
-**Plans**: TBD
+
+**Plans**: 1/3 plans executed
+
+- [x] 01-01-PLAN.md
+- [ ] 01-02-PLAN.md
+- [ ] 01-03-PLAN.md
 
 ### Phase 2: State Ownership Repair and Safety Baseline
+
 **Goal**: boop's runtime, safety, trace, status, and dashboard behavior agree on canonical owned state and fail closed when game state is incomplete.
 **Depends on**: Phase 1
 **Requirements**: STATE-01, STATE-02, STATE-03, SAFE-01, SAFE-03
 **Success Criteria** (what must be TRUE):
+
   1. Hunting state for room, target, pull, walk, gold, diag, flee, queue, inventory, trace, rage, IH, and gag is read and written through owned domains instead of removed flat keys.
   2. User sees visible blockers or warnings when GMCP reconnect, missing `gmcp.IRE`, partial room or target updates, or hidden game state make automation unsafe.
   3. Runtime trace, status, and dashboard surfaces report the same canonical values for targeting, movement, pull, gold, diag, flee, queue, and gag debugging.
   4. Auto-flee cancels or blocks queue, prequeue, walk, gold, and attack intent before escape movement is sent.
   5. When the current target disappears from GMCP room items, queued attack state clears and boop retargets only from valid room targets.
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 3: Queue, Interrupt, Gold, and Autowalk Regression Coverage
+
 **Goal**: Timing-sensitive command paths cannot attack, loot, or walk while another safety hold or room-state blocker owns the next action.
 **Depends on**: Phase 2
 **Requirements**: SAFE-02, SAFE-04, WALK-01, WALK-02, WALK-03
 **Success Criteria** (what must be TRUE):
+
   1. `diag`, queued interrupts, `pull`, and manual holds prevent automatic attacks until their prompt, room, or timeout release condition is satisfied.
   2. Gold pickup, pack/stash, retry, warning, and stale-pending behavior cannot send commands in the wrong room or bypass active safety holds.
   3. `boop walk` start, stop, move, and status behavior reflects room-settled state, blocker reasons, and external `demonwalker.move` emission only when the room is safe to leave.
   4. `demonnicAutoWalker` remains optional, with explicit install/status feedback and no silent auto-update behavior.
   5. Regression coverage catches unsafe movement, attacks during holds, wrong-room loot commands, target-removal queue drift, and permanent walk stalls.
+
 **Plans**: TBD
 
 ### Phase 4: Command Validation and Trust Boundaries
+
 **Goal**: Operator-entered and party-provided command fragments are reviewed and constrained before persistence, queueing, or game-command dispatch.
 **Depends on**: Phase 2
 **Requirements**: CMD-01, CMD-02, CMD-03
 **Success Criteria** (what must be TRUE):
+
   1. Unsafe separators, directions, pack/container values, assist leader names, pull target names, queue payload fragments, and party text are rejected before they are persisted or sent.
   2. User sees clear accepted or rejected feedback when command inputs do not match conservative forms.
   3. Whitelist-share receive flow shows sender, area, entry count, mode risk, TTL/cap state, and trusted-sender status before destructive apply modes are accepted.
+
 **Plans**: TBD
 
 ### Phase 5: Compact Summary Fixture Expansion and Focused Gag Fixes
+
 **Goal**: Compact combat summaries reduce scroll while preserving damage, target, kill, warning, failure, unusual-event, and stats signal.
 **Depends on**: Phase 1 and Phase 2
 **Requirements**: GAG-01, GAG-02, GAG-03, GAG-04
 **Success Criteria** (what must be TRUE):
+
   1. Maintainer can replay fixtures covering own attacks, battlerage, mob attacks plus health loss, kill/XP ordering, crit tiers, shield/no-shield lines, pets/follow-through, and unusual parse cases.
   2. User sees compact summaries that preserve target, damage, crit, kill, XP/gold, warning, failed-command, and unusual-event signal.
   3. Unknown or safety-relevant lines remain visible or produce traceable compact diagnostics instead of being silently hidden.
   4. Summary ordering is stable: attack summaries flush before kill summaries, stale summaries do not cross target changes, and stats hooks receive the same meaning as visible output.
+
 **Plans**: TBD
 
 ### Phase 6: Docs, Help, and Live Release Verification
+
 **Goal**: The 1.0 candidate is coherent for operators and backed by recorded package build, automated Mudlet tests, and live validation evidence.
 **Depends on**: Phase 3, Phase 4, and Phase 5
 **Requirements**: REL-03, UX-01, UX-02, UX-03, LIVE-01, LIVE-02
 **Success Criteria** (what must be TRUE):
+
   1. User can reach common workflows through coherent `boop`, `boop control`, `boop config`, `boop party`, `boop stats`, and `boop help` entry points.
   2. `bh`, `boop on`, `boop off`, status, gag, and blocker outputs show compact state summaries with consistent `[OK]`, `[INFO]`, `[WARN]`, and `[ERR]` feedback.
   3. README, command help, UIDESIGN guidance, and dashboard copy match every changed command surface or operator workflow.
   4. Maintainer can produce a 1.0 candidate only after Muddler build output, Busted execution inside a real Mudlet profile, and required live Mudlet checks are recorded.
   5. Unresolved live regressions are recorded as GSD follow-up work before release approval.
+
 **Plans**: TBD
 **UI hint**: yes
 
@@ -101,7 +124,7 @@ Phases normally execute in numeric order. Phase 4 may be planned after Phase 2 i
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Release Gates and State Contracts | 0/TBD | Not started | - |
+| 1. Release Gates and State Contracts | 1/3 | In Progress|  |
 | 2. State Ownership Repair and Safety Baseline | 0/TBD | Not started | - |
 | 3. Queue, Interrupt, Gold, and Autowalk Regression Coverage | 0/TBD | Not started | - |
 | 4. Command Validation and Trust Boundaries | 0/TBD | Not started | - |
