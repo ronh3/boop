@@ -35,6 +35,14 @@ Guidance for Codex when working in this repository.
   - `mfile.title` as `boop Hunter <version>`
   - `src/scripts/boop/boop_init.lua` `boop.version`
 - Never commit or push with those version fields mismatched.
+- Run the local release gate before pushing:
+  - `python3 tools/check_release_gates.py`
+  - `python3 tools/check_release_gates.py --check versions`
+  - `python3 tools/check_release_gates.py --check manifests`
+  - `python3 tools/check_release_gates.py --check state-drift`
+- Full local Mudlet Busted path, when `/tmp/Mudlet.AppImage` is available:
+  `muddle && AUTORUN_BUSTED_TESTS=true TESTS_DIRECTORY="$PWD/tests" QUIT_MUDLET_AFTER_TESTS=true PRETEST_PACKAGE="$PWD/build/boop Hunter.mpackage" /tmp/Mudlet.AppImage --profile "GithubTests" --mirror`
+- If `/tmp/Mudlet.AppImage` is not available locally, use the GitHub Actions Mudlet run as the authoritative full-suite fallback.
 
 ## Workflow Reminders
 - Keep structure shallow and logical.
@@ -94,7 +102,7 @@ Guidance for Codex when working in this repository.
 ## Session Checkpoint
 - Branch to continue from: `codex/pre-1.0-hardening-pass`
 - The branch tip moves with normal hardening commits; rely on git history rather than this file for the exact latest hash.
-- Current synchronized package version: `0.1.332`
+- Current synchronized package version: `0.1.333`
 - The purposeful pre-1.0 hardening work that is currently in this branch:
   - runtime/state ownership and coordinator path
   - combat planner split from execution

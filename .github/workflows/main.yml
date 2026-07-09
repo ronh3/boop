@@ -17,6 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Release gates
+        run: python3 tools/check_release_gates.py
+
       - name: Read package metadata
         id: pkg
         run: |
