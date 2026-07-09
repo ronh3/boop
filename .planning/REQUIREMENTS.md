@@ -101,38 +101,38 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REL-01 | TBD | Pending |
-| REL-02 | TBD | Pending |
-| REL-03 | TBD | Pending |
-| REL-04 | TBD | Pending |
-| STATE-01 | TBD | Pending |
-| STATE-02 | TBD | Pending |
-| STATE-03 | TBD | Pending |
-| SAFE-01 | TBD | Pending |
-| SAFE-02 | TBD | Pending |
-| SAFE-03 | TBD | Pending |
-| SAFE-04 | TBD | Pending |
-| WALK-01 | TBD | Pending |
-| WALK-02 | TBD | Pending |
-| WALK-03 | TBD | Pending |
-| CMD-01 | TBD | Pending |
-| CMD-02 | TBD | Pending |
-| CMD-03 | TBD | Pending |
-| GAG-01 | TBD | Pending |
-| GAG-02 | TBD | Pending |
-| GAG-03 | TBD | Pending |
-| GAG-04 | TBD | Pending |
-| UX-01 | TBD | Pending |
-| UX-02 | TBD | Pending |
-| UX-03 | TBD | Pending |
-| LIVE-01 | TBD | Pending |
-| LIVE-02 | TBD | Pending |
+| REL-01 | Phase 1 | Pending |
+| REL-02 | Phase 1 | Pending |
+| REL-03 | Phase 6 | Pending |
+| REL-04 | Phase 1 | Pending |
+| STATE-01 | Phase 2 | Pending |
+| STATE-02 | Phase 2 | Pending |
+| STATE-03 | Phase 2 | Pending |
+| SAFE-01 | Phase 2 | Pending |
+| SAFE-02 | Phase 3 | Pending |
+| SAFE-03 | Phase 2 | Pending |
+| SAFE-04 | Phase 3 | Pending |
+| WALK-01 | Phase 3 | Pending |
+| WALK-02 | Phase 3 | Pending |
+| WALK-03 | Phase 3 | Pending |
+| CMD-01 | Phase 4 | Pending |
+| CMD-02 | Phase 4 | Pending |
+| CMD-03 | Phase 4 | Pending |
+| GAG-01 | Phase 5 | Pending |
+| GAG-02 | Phase 5 | Pending |
+| GAG-03 | Phase 5 | Pending |
+| GAG-04 | Phase 5 | Pending |
+| UX-01 | Phase 6 | Pending |
+| UX-02 | Phase 6 | Pending |
+| UX-03 | Phase 6 | Pending |
+| LIVE-01 | Phase 6 | Pending |
+| LIVE-02 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 26 total
-- Mapped to phases: 0
-- Unmapped: 26
+- Mapped to phases: 26
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-07-09*
-*Last updated: 2026-07-09 after project research*
+*Last updated: 2026-07-09 after roadmap creation*
