@@ -131,10 +131,11 @@ jobs:
           timed_out=0
 
           while true; do
-            if grep -q "All tests complete" /tmp/mudlet.raw.log 2>/dev/null; then
+            if grep -q "All tests complete" /tmp/mudlet.raw.log 2>/dev/null \
+              || grep -Eq "[0-9]+ successes / [0-9]+ failures / [0-9]+ errors / [0-9]+ pending" /tmp/mudlet.raw.log 2>/dev/null; then
               tests_complete=1
               if kill -0 "$mudlet_pid" 2>/dev/null; then
-                echo "Mudlet reported all tests complete; stopping runner."
+                echo "Mudlet reported Busted completion; stopping runner."
                 kill "$mudlet_pid" 2>/dev/null || true
                 sleep 2
                 if kill -0 "$mudlet_pid" 2>/dev/null; then

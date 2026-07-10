@@ -241,6 +241,23 @@ describe("boop rage modes", function()
     assert.are.equal("psi transcend shatter/weave whirlwind 42", actions.rage)
   end)
 
+  it("reserves Psion Whirlwind as a pull-capable damage action", function()
+    helper.setClass("Psion")
+    helper.setRage(25)
+    helper.learnSkills({
+      { name = "Charge", group = "Weaving" },
+      { name = "whirlwind", group = "Attainment" },
+    })
+    helper.addTargetAfflictions({ "inhibit" })
+    boop.config.attackMode = "hybrid"
+    boop.config.pullRageReserve = true
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("psi transcend shatter/weave charge 42", actions.standard)
+    assert.are.equal("", actions.rage)
+  end)
+
   it("uses Psion Regrowth in hybrid to prime Whirlwind when affordable", function()
     helper.setClass("Psion")
     helper.setRage(24)

@@ -482,6 +482,9 @@ local FREE_RAGE_DAMAGE_PRIORITY = {
   ["Small Damage"] = 1,
 }
 
+local PULL_RAGE_DAMAGE_DESCS = { "Big Damage", "Conditional", "Mid Damage", "Small Damage" }
+local PULL_RESERVE_DAMAGE_DESCS = { "Small Damage", "Mid Damage", "Conditional", "Big Damage" }
+
 local function selectFreeRageDamage(profile)
   if not profile or not profile.abilities then
     return nil
@@ -517,7 +520,7 @@ end
 
 local function pullReserveAbility(profile)
   if not profile then return nil end
-  return findByDescList(profile, {"Small Damage", "Mid Damage", "Big Damage"}, nil)
+  return findByDescList(profile, PULL_RESERVE_DAMAGE_DESCS, nil)
 end
 
 local function pullReserveCost(profile)
@@ -1655,7 +1658,7 @@ function boop.attacks.choosePullRage(targetToken)
   end
 
   local rage = boop.attacks.getRage()
-  local ability = findByDescList(rageProfile, { "Big Damage", "Mid Damage", "Small Damage" }, rage)
+  local ability = findByDescList(rageProfile, PULL_RAGE_DAMAGE_DESCS, rage)
   if not ability or not ability.cmd or ability.cmd == "" then
     return "", nil
   end
