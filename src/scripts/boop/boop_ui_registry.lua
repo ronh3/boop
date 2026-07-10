@@ -1204,7 +1204,11 @@ boop.registry.attachUiConfigRegistries = function()
   boop.ui.modes = boop.registry.ui.modes
   boop.ui.presets = boop.registry.ui.presets
   boop.ui.helpTopics = boop.registry.ui.helpTopics
-  boop.ui.screens = boop.ui.screens or {}
+  local publicScreens = rawget(boop.ui, "screens")
+  if type(publicScreens) ~= "table" or publicScreens == boop.registry.ui.screens then
+    publicScreens = {}
+    boop.ui.screens = publicScreens
+  end
   boop.ui.screens.configSections = boop.registry.ui.screens.configSections
   boop.ui.screens.configHomeRoutes = boop.registry.ui.screens.configHomeRoutes
   boop.ui.screens.configActions = boop.registry.ui.screens.configActions

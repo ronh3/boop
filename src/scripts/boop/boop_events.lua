@@ -126,18 +126,20 @@ end
 
 local function setWieldedHand(hand, item, reason)
   boop.state = boop.state or {}
+  boop.state.inventory = boop.state.inventory or {}
   local key = hand == "left" and "wieldedLeft" or "wieldedRight"
   local nextItem = item and copyInvItem(item) or false
-  local current = boop.state[key]
+  local current = boop.state.inventory[key]
   if sameTrackedItem(current, nextItem) then
     return
   end
-  boop.state[key] = nextItem
+  boop.state.inventory[key] = nextItem
   traceWieldChange(hand, nextItem, reason)
 end
 
 local function updateWieldedFromInvItem(item, reason)
   boop.state = boop.state or {}
+  boop.state.inventory = boop.state.inventory or {}
   if type(item) ~= "table" then return end
   local tracked = copyInvItem(item)
   local id = tostring(tracked.id or "")
@@ -165,6 +167,7 @@ end
 
 local function removeInvItem(item, reason)
   boop.state = boop.state or {}
+  boop.state.inventory = boop.state.inventory or {}
   if type(item) ~= "table" then return end
   local id = tostring(item.id or "")
   if id ~= "" and boop.state.inventory.itemsById then
@@ -180,6 +183,7 @@ end
 
 local function rebuildWieldedFromInventory(items, reason)
   boop.state = boop.state or {}
+  boop.state.inventory = boop.state.inventory or {}
   boop.state.inventory.itemsById = {}
   local leftItem = false
   local rightItem = false
@@ -203,8 +207,9 @@ end
 
 function boop.getWieldedItem(hand)
   boop.state = boop.state or {}
+  boop.state.inventory = boop.state.inventory or {}
   local key = boop.util.safeLower(hand or "") == "right" and "wieldedRight" or "wieldedLeft"
-  local item = boop.state[key]
+  local item = boop.state.inventory[key]
   if not item then return nil end
   return copyInvItem(item)
 end

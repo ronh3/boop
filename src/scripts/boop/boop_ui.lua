@@ -1244,8 +1244,19 @@ local function currentRoomId()
   return room
 end
 
+local function isCallable(fn)
+  if type(fn) == "function" then
+    return true
+  end
+  if type(fn) ~= "table" then
+    return false
+  end
+  local meta = getmetatable(fn)
+  return type(meta) == "table" and type(meta.__call) == "function"
+end
+
 local function stopPullTimeout(pull)
-  if type(pull) == "table" and pull.timeoutTimer and type(killTimer) == "function" then
+  if type(pull) == "table" and pull.timeoutTimer and isCallable(killTimer) then
     killTimer(pull.timeoutTimer)
   end
   if type(pull) == "table" then
@@ -1268,7 +1279,7 @@ function boop.ui.clearPullState(reason)
 end
 
 local function armPullTimeout(pull)
-  if type(pull) ~= "table" or type(tempTimer) ~= "function" then
+  if type(pull) ~= "table" or not isCallable(tempTimer) then
     return
   end
 
