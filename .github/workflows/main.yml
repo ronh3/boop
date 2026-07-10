@@ -117,12 +117,14 @@ jobs:
             exit 1
           fi
           perl -0pi -e "s/options\\.verbose = false/options.verbose = true/" "$profile_xml"
+          perl -0pi -e 's/ioprint\("All tests complete, shutting down Mudlet"\)/local completeFile = io.open("\/tmp\/busted-tests-complete", "w")\n    if completeFile then\n      completeFile:write("Lua busted tests complete")\n      completeFile:close()\n    end\n    ioprint("All tests complete, shutting down Mudlet")/' "$profile_xml"
 
       - name: Prepare Mudlet test runner
         run: |
           cat >/tmp/run-mudlet-tests.sh <<'EOF'
           #!/usr/bin/env bash
           set -euo pipefail
+          rm -f /tmp/busted-tests-complete /tmp/busted-tests-failed /tmp/mudlet.raw.log
 
           /tmp/Mudlet.AppImage --profile "GithubTests" --mirror > /tmp/mudlet.raw.log 2>&1 &
           mudlet_pid=$!
@@ -131,7 +133,8 @@ jobs:
           timed_out=0
 
           while true; do
-            if grep -q "All tests complete" /tmp/mudlet.raw.log 2>/dev/null \
+            if [ -e /tmp/busted-tests-complete ] \
+              || grep -q "All tests complete" /tmp/mudlet.raw.log 2>/dev/null \
               || grep -Eq "[0-9]+ successes / [0-9]+ failures / [0-9]+ errors / [0-9]+ pending" /tmp/mudlet.raw.log 2>/dev/null; then
               tests_complete=1
               if kill -0 "$mudlet_pid" 2>/dev/null; then
