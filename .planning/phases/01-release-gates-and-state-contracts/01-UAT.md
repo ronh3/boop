@@ -1,8 +1,8 @@
 ---
 phase: 01-release-gates-and-state-contracts
-status: partial
+status: issues
 started: 2026-07-09T21:12:56Z
-updated: 2026-07-09T21:12:56Z
+updated: 2026-07-10T02:48:11Z
 source:
   - 01-01-SUMMARY.md
   - 01-02-SUMMARY.md
@@ -10,17 +10,17 @@ source:
 counts:
   total: 8
   passed: 7
-  issues: 0
+  issues: 1
   pending: 0
   skipped: 0
-  blocked: 1
+  blocked: 0
 ---
 
 # Phase 01 UAT: Release Gates and State Contracts
 
 ## Current Status
 
-Phase 01 implementation coverage is green for all local static checks and summary-derived acceptance criteria. Final sign-off is blocked on full Mudlet/Busted execution evidence because this environment does not have `/tmp/Mudlet.AppImage`, and no GitHub Actions run was found for `codex/pre-1.0-hardening-pass`.
+Phase 01 implementation coverage is green for local static checks and summary-derived acceptance criteria. Full Mudlet/Busted execution is now available through `/tmp/Mudlet.AppImage`, but final sign-off is blocked by failing full-suite results. The latest focused repair removed the early attack-profile import failure, reducing the suite from `154 successes / 112 failures / 6 errors` to `464 successes / 45 failures / 3 errors`.
 
 ## Tests
 
@@ -66,14 +66,14 @@ Phase 01 implementation coverage is green for all local static checks and summar
    - Result: pass
    - Evidence: `rg tests/boop_state_contract_spec.lua` for `boop.runtime.context()` and seeded owned-domain assertions
 
-8. **Full Mudlet/Busted execution must be verified in CI because the local AppImage is unavailable.**
+8. **Full Mudlet/Busted execution must pass with Mudlet 4.20.1 before Phase 01 sign-off.**
    - Requirement: REL-04
    - Source: `01-03-SUMMARY.md` coverage D3
-   - Result: blocked
-   - Blocked by: release-build
-   - Evidence needed: GitHub Actions full Mudlet/Busted run, or an equivalent local run with `/tmp/Mudlet.AppImage`
-   - Current evidence: `/tmp/Mudlet.AppImage` is missing locally, and `gh run list --branch codex/pre-1.0-hardening-pass --limit 10` returned no matching workflow run
+   - Result: issue
+   - Evidence: `/tmp/Mudlet.AppImage` extracted from `Mudlet-4.20.1-linux-x64.AppImage.tar`; containerized CI-style Mudlet run saved at `/tmp/boop-mudlet-0.1.338.raw.log`
+   - Current result: `464 successes / 45 failures / 3 errors / 0 pending`
+   - Remaining failure clusters: gag summaries, pull command behavior, UI/menu callback counts, IH capture, stats whitelist output, and two attack-selection edge cases
 
 ## Gaps
 
-No acceptance issue has been found. Verification is waiting for full Mudlet/Busted runtime evidence before Phase 01 can be signed off.
+Full Mudlet/Busted runtime evidence exists and is failing. Phase 01 cannot be signed off until the remaining full-suite failures are triaged and resolved.

@@ -1,7 +1,15 @@
 boop.attacks = boop.attacks or {}
 boop.attacks.registry = boop.attacks.registry or {}
+boop.attacks.pendingRegistry = boop.attacks.pendingRegistry or {}
 
 local planningContext = nil
+
+local function attackProfileKey(class)
+  if boop.util and boop.util.safeLower then
+    return boop.util.safeLower(class)
+  end
+  return tostring(class or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+end
 
 local function withContext(context, fn)
   local previous = planningContext
@@ -81,9 +89,25 @@ end
 
 function boop.attacks.register(class, profile)
   if not class or class == "" then return end
-  local key = boop.util.safeLower(class)
+  local key = attackProfileKey(class)
   boop.attacks.registry[key] = profile or {}
 end
+
+function boop.attacks.flushPendingProfiles()
+  local pending = boop.attacks.pendingRegistry
+  if type(pending) ~= "table" or #pending == 0 then
+    return
+  end
+
+  boop.attacks.pendingRegistry = {}
+  for _, entry in ipairs(pending) do
+    if type(entry) == "table" then
+      boop.attacks.register(entry.class, entry.profile)
+    end
+  end
+end
+
+boop.attacks.flushPendingProfiles()
 
 local function normalizedSpecKey(spec)
   local key = boop.util.safeLower(boop.util.trim(spec or ""))

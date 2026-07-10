@@ -1,5 +1,11 @@
 [
   {
+    "name": "attack_profile_bootstrap",
+    "isActive": "yes",
+    "isFolder": "no",
+    "script": ""
+  },
+  {
     "name": "air_elemental_lady",
     "isActive": "yes",
     "isFolder": "no",
