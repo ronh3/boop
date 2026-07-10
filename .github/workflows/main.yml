@@ -125,9 +125,13 @@ jobs:
           set -euo pipefail
 
           set +e
-          /tmp/Mudlet.AppImage --profile "GithubTests" --mirror > /tmp/mudlet.raw.log 2>&1
+          timeout --preserve-status 10m /tmp/Mudlet.AppImage --profile "GithubTests" --mirror > /tmp/mudlet.raw.log 2>&1
           status=$?
           set -e
+
+          if [ "$status" -eq 124 ] || [ "$status" -eq 143 ]; then
+            echo "Mudlet test runner timed out after 10 minutes; printing captured log before failing."
+          fi
 
           python - <<'PY'
           from pathlib import Path
