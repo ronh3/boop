@@ -924,8 +924,19 @@ local function deleteCurrent()
   end
 end
 
+local function isCallable(fn)
+  if type(fn) == "function" then
+    return true
+  end
+  if type(fn) ~= "table" then
+    return false
+  end
+  local meta = getmetatable(fn)
+  return type(meta) == "table" and type(meta.__call) == "function"
+end
+
 local function scheduleGagTimer(seconds, fn)
-  if type(tempTimer) ~= "function" then
+  if not isCallable(tempTimer) then
     return nil
   end
   local ok, timerId = pcall(tempTimer, seconds, fn)
@@ -941,7 +952,7 @@ end
 local function cancelAttackSummaryTimer()
   boop.state = boop.state or {}
   boop.state.gag = boop.state.gag or {}
-  if boop.state.gag.pendingAttackTimer and type(killTimer) == "function" then
+  if boop.state.gag.pendingAttackTimer and isCallable(killTimer) then
     killTimer(boop.state.gag.pendingAttackTimer)
   end
   boop.state.gag.pendingAttackTimer = nil
@@ -950,7 +961,7 @@ end
 local function cancelMobDamageTimer()
   boop.state = boop.state or {}
   boop.state.gag = boop.state.gag or {}
-  if boop.state.gag.pendingMobDamageTimer and type(killTimer) == "function" then
+  if boop.state.gag.pendingMobDamageTimer and isCallable(killTimer) then
     killTimer(boop.state.gag.pendingMobDamageTimer)
   end
   boop.state.gag.pendingMobDamageTimer = nil
@@ -1216,7 +1227,7 @@ end
 local function cancelKillSummaryTimer()
   boop.state = boop.state or {}
   boop.state.gag = boop.state.gag or {}
-  if boop.state.gag.pendingKillTimer and type(killTimer) == "function" then
+  if boop.state.gag.pendingKillTimer and isCallable(killTimer) then
     killTimer(boop.state.gag.pendingKillTimer)
   end
   boop.state.gag.pendingKillTimer = nil
@@ -1448,9 +1459,15 @@ function boop.gag.onAttackLine(spec, matchTable, rawLine)
   local ability = boop.util.trim(spec and spec.ability or "")
   local battlerage = isBattlerageSpec(spec)
   local pending = boop.state and boop.state.gag and boop.state.gag.pendingAttack or nil
-  if shouldSuppressDuplicate(rawLine)
-    and not (selfActor and canAppendDualBluntHit(pending, "You", ability, victim)) then
-    return
+  if shouldSuppressDuplicate(rawLine) then
+    local appendDualBlunt = selfActor and canAppendDualBluntHit(pending, "You", ability, victim)
+    local startsNewDamagedWindow = selfActor
+      and pending
+      and pending.currentHitHasDamage
+      and not samePendingAttack(pending, "You", ability, victim)
+    if not appendDualBlunt and not startsNewDamagedWindow then
+      return
+    end
   end
 
   if selfActor and normName(ability) == "raze" and consumeRazeslashIntent() then
