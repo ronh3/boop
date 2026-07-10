@@ -118,6 +118,7 @@ jobs:
           fi
           perl -0pi -e "s/options\\.verbose = false/options.verbose = true/" "$profile_xml"
           perl -0pi -e 's/ioprint\("All tests complete, shutting down Mudlet"\)/local completeFile = io.open("\/tmp\/busted-tests-complete", "w")\n    if completeFile then\n      completeFile:write("Lua busted tests complete")\n      completeFile:close()\n    end\n    ioprint("All tests complete, shutting down Mudlet")/' "$profile_xml"
+          perl -0pi -e 's/logTestError\(\)\n      return nil, true/logTestError()\n      return nil, false/g' "$profile_xml"
 
       - name: Prepare Mudlet test runner
         run: |
@@ -139,6 +140,14 @@ jobs:
               tests_complete=1
               if kill -0 "$mudlet_pid" 2>/dev/null; then
                 echo "Mudlet reported Busted completion; stopping runner."
+                for _ in 1 2 3 4 5 6 7 8 9 10; do
+                  if ! kill -0 "$mudlet_pid" 2>/dev/null; then
+                    break
+                  fi
+                  sleep 1
+                done
+              fi
+              if kill -0 "$mudlet_pid" 2>/dev/null; then
                 kill "$mudlet_pid" 2>/dev/null || true
                 sleep 2
                 if kill -0 "$mudlet_pid" 2>/dev/null; then
