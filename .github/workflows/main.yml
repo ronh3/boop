@@ -124,13 +124,59 @@ jobs:
           #!/usr/bin/env bash
           set -euo pipefail
 
+          /tmp/Mudlet.AppImage --profile "GithubTests" --mirror > /tmp/mudlet.raw.log 2>&1 &
+          mudlet_pid=$!
+          deadline=$((SECONDS + 1200))
+          tests_complete=0
+          timed_out=0
+
+          while true; do
+            if grep -q "All tests complete" /tmp/mudlet.raw.log 2>/dev/null; then
+              tests_complete=1
+              if kill -0 "$mudlet_pid" 2>/dev/null; then
+                echo "Mudlet reported all tests complete; stopping runner."
+                kill "$mudlet_pid" 2>/dev/null || true
+                sleep 2
+                if kill -0 "$mudlet_pid" 2>/dev/null; then
+                  kill -KILL "$mudlet_pid" 2>/dev/null || true
+                fi
+              fi
+              break
+            fi
+
+            if ! kill -0 "$mudlet_pid" 2>/dev/null; then
+              break
+            fi
+
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              timed_out=1
+              echo "Mudlet test runner timed out after 20 minutes; printing captured log before failing."
+              kill "$mudlet_pid" 2>/dev/null || true
+              sleep 2
+              if kill -0 "$mudlet_pid" 2>/dev/null; then
+                kill -KILL "$mudlet_pid" 2>/dev/null || true
+              fi
+              break
+            fi
+
+            sleep 2
+          done
+
           set +e
-          timeout --preserve-status 20m /tmp/Mudlet.AppImage --profile "GithubTests" --mirror > /tmp/mudlet.raw.log 2>&1
-          status=$?
+          wait "$mudlet_pid"
+          runner_status=$?
           set -e
 
-          if [ "$status" -eq 124 ] || [ "$status" -eq 143 ]; then
-            echo "Mudlet test runner timed out after 20 minutes; printing captured log before failing."
+          if [ "$tests_complete" -eq 1 ]; then
+            status=0
+          elif [ "$timed_out" -eq 1 ]; then
+            status=124
+          else
+            status=$runner_status
+          fi
+
+          if grep -q "Busted not available" /tmp/mudlet.raw.log 2>/dev/null; then
+            status=1
           fi
 
           python - <<'PY'
