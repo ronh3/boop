@@ -17,7 +17,7 @@ Parallelization note: Phase 4 can be planned after Phase 2 without waiting for P
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Release Gates and State Contracts** - CI and tests catch metadata, manifest, and high-risk state drift before later hardening.
+- [x] **Phase 1: Release Gates and State Contracts** - CI and tests catch metadata, manifest, and high-risk state drift before later hardening. (completed 2026-07-10)
 - [ ] **Phase 2: State Ownership Repair and Safety Baseline** - Runtime state, GMCP degradation, flee, and stale-target behavior use canonical owned domains.
 - [ ] **Phase 3: Queue, Interrupt, Gold, and Autowalk Regression Coverage** - Timing-sensitive holds, loot, and walker movement are covered and fail closed.
 - [ ] **Phase 4: Command Validation and Trust Boundaries** - User-controlled command fragments and whitelist-share apply flows are validated before they can become game commands.
@@ -128,7 +128,7 @@ Phases normally execute in numeric order. Phase 4 may be planned after Phase 2 i
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Release Gates and State Contracts | 7/7 | Implemented, pending full-suite confirmation |  |
+| 1. Release Gates and State Contracts | 7/7 | Complete    | 2026-07-10 |
 | 2. State Ownership Repair and Safety Baseline | 0/TBD | Not started | - |
 | 3. Queue, Interrupt, Gold, and Autowalk Regression Coverage | 0/TBD | Not started | - |
 | 4. Command Validation and Trust Boundaries | 0/TBD | Not started | - |
