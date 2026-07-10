@@ -177,7 +177,17 @@ end
 function boop.runtime.context()
   local state = boop.runtime.ensureState()
   local room = currentRoom()
-  local hpperc = gmcp and gmcp.IRE and gmcp.IRE.Target and gmcp.IRE.Target.Info and gmcp.IRE.Target.Info.hpperc or ""
+  local targetInfo = gmcp and gmcp.IRE and gmcp.IRE.Target and gmcp.IRE.Target.Info or {}
+  local currentTargetId = tostring(state.targeting.currentTargetId or "")
+  local targetInfoId = tostring(targetInfo.id or "")
+  local hpperc = ""
+  if targetInfo.hpperc ~= nil then
+    if currentTargetId == "" then
+      hpperc = targetInfoId == "" and tostring(targetInfo.hpperc or "") or ""
+    elseif targetInfoId == currentTargetId then
+      hpperc = tostring(targetInfo.hpperc or "")
+    end
+  end
   local rageAmount = 0
   if gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.charstats then
     for _, stat in ipairs(gmcp.Char.Vitals.charstats) do
@@ -198,7 +208,8 @@ function boop.runtime.context()
     spec = currentSpec(state),
     room = room,
     target = {
-      id = tostring(state.targeting.currentTargetId or ""),
+      id = currentTargetId,
+      infoId = targetInfoId,
       name = tostring(state.targeting.targetName or ""),
       shield = state.targeting.targetShield,
       hpperc = tostring(hpperc or ""),

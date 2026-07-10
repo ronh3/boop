@@ -9,6 +9,7 @@ describe("boop attack selection", function()
       { name = "Attend", group = "Occultism" },
       { name = "Lycantha", group = "Domination" },
       { name = "Warp", group = "Occultism" },
+      { name = "harry", group = "Attainment" },
       { name = "ruin", group = "Attainment" },
     })
   end)

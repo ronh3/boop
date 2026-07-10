@@ -407,9 +407,9 @@ end
 
 function boop.attacks.getTargetHpPercKnown()
   if planningContext and planningContext.target then
-    local infoTargetId = boop.util.trim(tostring(planningContext.target.id or ""))
     local currentTargetId = planningTargetId()
-    if currentTargetId ~= "" and infoTargetId ~= "" and infoTargetId ~= currentTargetId then
+    local infoTargetId = boop.util.trim(tostring(planningContext.target.infoId or ""))
+    if currentTargetId ~= "" and (infoTargetId == "" or infoTargetId ~= currentTargetId) then
       return nil
     end
     local hp = tostring(planningContext.target.hpperc or "")
