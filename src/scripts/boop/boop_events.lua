@@ -631,12 +631,23 @@ end
 
 function boop.onRoomInfo()
   if not gmcp or not gmcp.Room or not gmcp.Room.Info then return end
-  local vars = boop.state
-  local previousRoom = vars.room
+  if boop.runtime and boop.runtime.ensureState then
+    boop.runtime.ensureState()
+  end
+  boop.state = boop.state or {}
+  boop.state.targeting = boop.state.targeting or {}
+  boop.state.combat = boop.state.combat or {}
 
-  if vars.room ~= gmcp.Room.Info.num then
-    vars.movedRooms = true
-    vars.lastRoom = vars.room
+  local info = gmcp.Room.Info
+  local targeting = boop.state.targeting
+  local combat = boop.state.combat
+  local previousRoom = targeting.room
+  local previousRoomText = boop.util.trim(tostring(previousRoom or ""))
+  local currentRoomText = boop.util.trim(tostring(info.num or ""))
+
+  if previousRoomText ~= currentRoomText then
+    targeting.movedRooms = true
+    targeting.lastRoom = previousRoom
     boop.clearGoldQueueIntent()
     if boop.targets and boop.targets.clearTargetCall then
       boop.targets.clearTargetCall("room changed")
@@ -645,34 +656,35 @@ function boop.onRoomInfo()
       boop.targets.clearTargetShield("room changed")
     end
 
-    if not vars.fleeing then
-      if gmcp.Room.Info.exits then
-        for dir, id in pairs(gmcp.Room.Info.exits) do
-          if tonumber(id) == tonumber(vars.room) then
-            vars.lastRoomDir = dir
+    targeting.lastRoomDir = ""
+    if not combat.fleeing then
+      if info.exits then
+        for dir, id in pairs(info.exits) do
+          if tonumber(id) == tonumber(previousRoom) then
+            targeting.lastRoomDir = dir
+            break
           end
         end
       end
     else
-      vars.lastRoomDir = ""
-      vars.fleeing = false
+      combat.fleeing = false
     end
     if boop.walk and boop.walk.onRoomChange then
       boop.walk.onRoomChange()
     end
   else
-    vars.movedRooms = false
+    targeting.movedRooms = false
   end
 
-  vars.room = gmcp.Room.Info.num
-  traceRoomInfo(gmcp.Room.Info, vars.movedRooms, previousRoom)
-  if vars.movedRooms and vars.lastRoom ~= "" and boop.stats and boop.stats.onRoomChange then
+  targeting.room = info.num
+  traceRoomInfo(info, targeting.movedRooms, previousRoom)
+  if targeting.movedRooms and tostring(targeting.lastRoom or "") ~= "" and boop.stats and boop.stats.onRoomChange then
     boop.stats.onRoomChange()
   end
 
-  local pull = vars.pullState
+  local pull = combat.pullState
   if type(pull) == "table" and pull.active then
-    local currentRoom = boop.util.trim(tostring(vars.room or ""))
+    local currentRoom = boop.util.trim(tostring(targeting.room or ""))
     local originRoom = boop.util.trim(tostring(pull.originRoom or ""))
     if currentRoom ~= "" and originRoom ~= "" then
       if pull.phase == "outbound" and currentRoom ~= originRoom then
@@ -682,7 +694,7 @@ function boop.onRoomInfo()
         if boop.ui and boop.ui.clearPullState then
           boop.ui.clearPullState("returned to origin")
         else
-          vars.pullState = false
+          combat.pullState = false
         end
         if pull.restoreEnabled then
           boop.ui.setEnabled(true, true)
@@ -749,7 +761,8 @@ function boop.onCharStatus()
   if boop.requestCoreSupports and (not gmcp.IRE or not gmcp.IRE.Target or not gmcp.IRE.Display) then
     boop.requestCoreSupports({
       requestSkills = true,
-      minInterval = 2,
+      minInterval = 0,
+      force = true,
     })
   end
   if gmcp.Char.Status.class then

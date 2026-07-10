@@ -44,14 +44,7 @@ OWNED_STATE_DOMAINS = {
 # Reviewed legacy flat-state accesses that still exist before Phase 2 behavior
 # repair work. The gate fails when this baseline grows or shrinks without review.
 KNOWN_FLAT_STATE_ACCESS = {
-    "src/scripts/boop/boop_events.lua": {
-        "fleeing": 2,
-        "lastRoom": 2,
-        "lastRoomDir": 2,
-        "movedRooms": 4,
-        "pullState": 2,
-        "room": 6,
-    },
+    "src/scripts/boop/boop_events.lua": {},
     "src/scripts/boop/boop_walk.lua": {
         "autoGrabGoldPending": 1,
         "currentTargetId": 1,
