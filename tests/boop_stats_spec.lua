@@ -865,7 +865,8 @@ describe("boop stats", function()
 
     boop.targets.displayWhitelist("Test Area")
 
+    local joined = table.concat(echoes, "\n")
     assert.are.equal("Whitelist for Test Area:", echoes[1])
-    assert.is_true(echoes[2]:find("a vicious gnoll soldier | xp mean 28500 | median 28500 | mode 28000 (1x) | seen 2 | p1", 1, true) ~= nil)
+    assert.is_true(joined:find("a vicious gnoll soldier | xp mean 28500 | median 28500 | mode 28000 (1x) | seen 2 | p1", 1, true) ~= nil)
   end)
 end)

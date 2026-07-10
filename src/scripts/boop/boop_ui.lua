@@ -1,5 +1,11 @@
 boop.ui = boop.ui or {}
 
+local function ensureUiConfigRegistries()
+  if boop.registry and boop.registry.attachUiConfigRegistries then
+    boop.registry.attachUiConfigRegistries()
+  end
+end
+
 local function saveConfigValue(key, value)
   boop.config[key] = value
   if key == "partySize" then
@@ -14,30 +20,35 @@ local function saveConfigValue(key, value)
 end
 
 local function configSchema()
+  ensureUiConfigRegistries()
   return (boop.config and boop.config.schema)
     or (boop.registry and boop.registry.config and boop.registry.config.schema)
     or {}
 end
 
 local function modeRegistry()
+  ensureUiConfigRegistries()
   return (boop.ui and boop.ui.modes)
     or (boop.registry and boop.registry.ui and boop.registry.ui.modes)
     or {}
 end
 
 local function presetRegistry()
+  ensureUiConfigRegistries()
   return (boop.ui and boop.ui.presets)
     or (boop.registry and boop.registry.ui and boop.registry.ui.presets)
     or {}
 end
 
 local function helpTopicRegistry()
+  ensureUiConfigRegistries()
   return (boop.ui and boop.ui.helpTopics)
     or (boop.registry and boop.registry.ui and boop.registry.ui.helpTopics)
     or {}
 end
 
 local function configSetterRegistry()
+  ensureUiConfigRegistries()
   return (boop.config and boop.config.setters)
     or (boop.registry and boop.registry.config and boop.registry.config.setters)
     or {}
@@ -3658,16 +3669,26 @@ function boop.ui.home()
   boop.util.echo("Quick: boop control | boop party | boop roster | boop mode | boop stats")
 end
 
-local CONFIG_SECTIONS = (boop.ui.screens and boop.ui.screens.configSections) or {
+local FALLBACK_CONFIG_SECTIONS = {
   { id = 1, key = "combat", label = "Hunting", aliases = { "combat", "hunting", "queueing", "queue" } },
   { id = 2, key = "targeting", label = "Targeting", aliases = { "targeting", "targets" } },
   { id = 3, key = "loot", label = "Loot", aliases = { "loot", "gold", "import" } },
   { id = 4, key = "debug", label = "Diagnostics", aliases = { "debug", "diagnostics", "trace", "gag" } },
 }
 
+local function configSections()
+  ensureUiConfigRegistries()
+  local screens = boop.ui and boop.ui.screens or nil
+  if screens and screens.configSections then
+    return screens.configSections
+  end
+  screens = boop.registry and boop.registry.ui and boop.registry.ui.screens or nil
+  return (screens and screens.configSections) or FALLBACK_CONFIG_SECTIONS
+end
+
 local function configSectionByKey(key)
   local k = boop.util.safeLower(boop.util.trim(key or ""))
-  for _, section in ipairs(CONFIG_SECTIONS) do
+  for _, section in ipairs(configSections()) do
     if section.key == k then
       return section
     end
@@ -3683,7 +3704,7 @@ end
 local function configSectionById(id)
   local n = tonumber(id)
   if not n then return nil end
-  for _, section in ipairs(CONFIG_SECTIONS) do
+  for _, section in ipairs(configSections()) do
     if section.id == n then
       return section
     end
@@ -3703,7 +3724,7 @@ local function configResolveSection(token)
   local byId = configSectionById(raw)
   if byId then return byId end
   local normalized = normalizeConfigToken(raw)
-  for _, section in ipairs(CONFIG_SECTIONS) do
+  for _, section in ipairs(configSections()) do
     if normalizeConfigToken(section.key) == normalized then
       return section
     end
@@ -3846,7 +3867,12 @@ local function configHomeRoute(token)
   if key == "" then
     return false
   end
-  local routeMap = boop.ui.screens and boop.ui.screens.configHomeRoutes or {}
+  ensureUiConfigRegistries()
+  local screens = boop.ui and boop.ui.screens or nil
+  if not (screens and screens.configHomeRoutes) then
+    screens = boop.registry and boop.registry.ui and boop.registry.ui.screens or nil
+  end
+  local routeMap = screens and screens.configHomeRoutes or {}
   local route = routeMap[key]
   if route == "party" then
     boop.ui.partyCommand("")
@@ -4227,9 +4253,12 @@ local function configRenderSection(key)
 end
 
 local function configActionRegistry()
-  local screens = (boop.ui and boop.ui.screens)
-    or (boop.registry and boop.registry.ui and boop.registry.ui.screens)
-    or {}
+  ensureUiConfigRegistries()
+  local screens = boop.ui and boop.ui.screens or nil
+  if not (screens and screens.configActions) then
+    screens = boop.registry and boop.registry.ui and boop.registry.ui.screens or nil
+  end
+  screens = screens or {}
   return screens.configActions or {}
 end
 
@@ -4284,6 +4313,7 @@ function boop.ui.cycleTargetOrder(step, noRefresh)
 end
 
 function boop.ui.config(arg)
+  ensureUiConfigRegistries()
   local raw = boop.util.trim(arg or "")
   local token = boop.util.safeLower(raw)
   local current = configGetScreen()
@@ -4323,6 +4353,18 @@ function boop.ui.config(arg)
   end
 
   if current ~= "home" then
+    if tonumber(token) then
+      local result = configApplySectionOption(current, token)
+      if result then
+        if result == "refresh" then
+          configRenderSection(current)
+        end
+        return
+      end
+      if configHomeRoute(token) then
+        return
+      end
+    end
     local requestedByName = configResolveSection(token)
     if requestedByName then
       configRenderSection(requestedByName.key)
@@ -4333,9 +4375,6 @@ function boop.ui.config(arg)
       if result == "refresh" then
         configRenderSection(current)
       end
-      return
-    end
-    if tonumber(token) and configHomeRoute(token) then
       return
     end
     boop.util.echo("Unknown option for " .. tostring(current) .. ": " .. tostring(arg))

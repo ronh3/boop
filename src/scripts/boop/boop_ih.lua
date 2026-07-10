@@ -133,9 +133,6 @@ function boop.ih.handleLine(id, name, fullLine)
     boop.state.ih.active = true
   end
   armTimeout()
-  local isDenizen = false
-  if boop.targets and boop.targets.isDenizenName then
-    isDenizen = boop.targets.isDenizenName(name)
-  end
+  local isDenizen = true
   boop.ih.printLine(id, name, isDenizen, fullLine)
 end

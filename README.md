@@ -79,7 +79,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Incoming whitelist shares stay pending until you apply `merge`, `merge-reorder`, `overwrite`, or `reject`.
 - `merge` keeps your current order and appends missing incoming entries.
 - `merge-reorder` matches the sender's order for shared entries, appends missing sender entries, then keeps your local-only extras at the bottom in their current order.
-- `ih` shows items too; only denizens get whitelist/blacklist buttons.
+- `ih` shows valid object rows with whitelist/blacklist action labels, even before GMCP has recognized the row as a denizen.
 - Denizens on the global blacklist do not show `ih` whitelist/blacklist action labels.
 - `boop walk` integrates with `demonnicAutoWalker`; if it is missing, use `boop walk install`.
 - `boop walk stop` halts in the current room; it does not return you to the start of the loop.

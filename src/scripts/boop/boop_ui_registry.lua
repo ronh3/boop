@@ -1160,22 +1160,31 @@ local function attachRegistryFallback(target, public)
   end
 
   local meta = getmetatable(target) or {}
-  local previous = meta.__index
+  meta.__boopRegistryFallback = meta.__boopRegistryFallback or {}
+  for key, value in pairs(public) do
+    meta.__boopRegistryFallback[key] = value
+  end
 
-  if previous == public then
+  if meta.__boopRegistryFallbackInstalled then
+    setmetatable(target, meta)
     return
   end
 
+  local previous = meta.__index
+  meta.__boopRegistryPreviousIndex = previous
+  meta.__boopRegistryFallbackInstalled = true
   meta.__index = function(self, key)
-    local value = public[key]
+    local registryMeta = getmetatable(self) or {}
+    local value = registryMeta.__boopRegistryFallback and registryMeta.__boopRegistryFallback[key] or nil
     if value ~= nil then
       return value
     end
-    if type(previous) == "function" then
-      return previous(self, key)
+    local previousIndex = registryMeta.__boopRegistryPreviousIndex
+    if type(previousIndex) == "function" then
+      return previousIndex(self, key)
     end
-    if type(previous) == "table" then
-      return previous[key]
+    if type(previousIndex) == "table" then
+      return previousIndex[key]
     end
     return nil
   end
@@ -1183,7 +1192,10 @@ local function attachRegistryFallback(target, public)
   setmetatable(target, meta)
 end
 
-boop.registry.attachUiConfigRegistries = boop.registry.attachUiConfigRegistries or function()
+boop.registry.attachUiConfigRegistries = function()
+  boop.registry.config = boop.registry.config or {}
+  boop.registry.ui = boop.registry.ui or {}
+  boop.registry.ui.screens = boop.registry.ui.screens or {}
   boop.config = boop.config or {}
   boop.ui = boop.ui or {}
 
@@ -1206,6 +1218,11 @@ boop.registry.attachUiConfigRegistries = boop.registry.attachUiConfigRegistries 
     presets = boop.registry.ui.presets,
     helpTopics = boop.registry.ui.helpTopics,
     screens = boop.registry.ui.screens,
+  })
+  attachRegistryFallback(boop.ui.screens, {
+    configSections = boop.registry.ui.screens.configSections,
+    configHomeRoutes = boop.registry.ui.screens.configHomeRoutes,
+    configActions = boop.registry.ui.screens.configActions,
   })
 end
 

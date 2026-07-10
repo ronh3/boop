@@ -156,6 +156,9 @@ function M.reset()
   boop.skills.desiredGroups = desiredGroups
   boop.rage.init()
   boop.skills.init()
+  if boop.registry and boop.registry.attachUiConfigRegistries then
+    boop.registry.attachUiConfigRegistries()
+  end
 
   boop.handlers = {}
   resetDb()

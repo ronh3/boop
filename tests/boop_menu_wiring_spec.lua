@@ -120,8 +120,9 @@ describe("boop menu wiring", function()
       boop.ui.home()
     end)
 
-    assert.are.equal(9, #callbacks)
+    assert.are.equal(10, #callbacks)
 
+    addStub(boop.ui, "walkCommand", "walkCommand")
     addStub(boop.ui, "partyCommand", "partyCommand")
     addStub(boop.ui, "modeCommand", "modeCommand")
     addStub(boop.stats, "command", "stats.command")
@@ -129,16 +130,17 @@ describe("boop menu wiring", function()
     addStub(_G, "appendCmdLine", "appendCmdLine")
     addStub(_G, "clearCmdLine", "clearCmdLine")
 
-    expectCallback(callbacks[1].callback, { { label = "partyCommand", args = { "" } } })
-    expectCallback(callbacks[2].callback, { { label = "modeCommand", args = { "" } } })
-    expectCallback(callbacks[3].callback, { { label = "stats.command", args = { "" } } })
-    expectCallback(callbacks[4].callback, { { label = "themeCommand", args = { "" } } })
+    expectCallback(callbacks[1].callback, { { label = "walkCommand", args = { "install" } } })
+    expectCallback(callbacks[2].callback, { { label = "partyCommand", args = { "" } } })
+    expectCallback(callbacks[3].callback, { { label = "modeCommand", args = { "" } } })
+    expectCallback(callbacks[4].callback, { { label = "stats.command", args = { "" } } })
+    expectCallback(callbacks[5].callback, { { label = "themeCommand", args = { "" } } })
 
-    expectCallback(callbacks[5].callback, seedExpectation("boop control"))
-    expectCallback(callbacks[6].callback, seedExpectation("boop party"))
-    expectCallback(callbacks[7].callback, seedExpectation("boop roster"))
-    expectCallback(callbacks[8].callback, seedExpectation("boop mode"))
-    expectCallback(callbacks[9].callback, seedExpectation("boop stats"))
+    expectCallback(callbacks[6].callback, seedExpectation("boop control"))
+    expectCallback(callbacks[7].callback, seedExpectation("boop party"))
+    expectCallback(callbacks[8].callback, seedExpectation("boop roster"))
+    expectCallback(callbacks[9].callback, seedExpectation("boop mode"))
+    expectCallback(callbacks[10].callback, seedExpectation("boop stats"))
   end)
 
   it("wires the control dashboard rows and footer seeds", function()
@@ -186,7 +188,7 @@ describe("boop menu wiring", function()
       boop.ui.partyCommand("")
     end)
 
-    assert.are.equal(20, #callbacks)
+    assert.are.equal(19, #callbacks)
 
     addStub(boop.ui, "modeCommand", "modeCommand")
     addStub(boop.ui, "targetCallCommand", "targetCallCommand")
@@ -196,6 +198,7 @@ describe("boop menu wiring", function()
     addStub(boop.ui, "combos", "combos")
     addStub(boop.ui, "config", "config")
     addStub(boop.ui, "controlCommand", "controlCommand")
+    addStub(boop.targets, "displayWhitelist", "displayWhitelist")
     addStub(_G, "appendCmdLine", "appendCmdLine")
     addStub(_G, "clearCmdLine", "clearCmdLine")
 
@@ -212,14 +215,13 @@ describe("boop menu wiring", function()
     expectCallback(callbacks[11].callback, { { label = "combos", args = { "party" } } })
     expectCallback(callbacks[12].callback, { { label = "config", args = { "party" } } })
     expectCallback(callbacks[13].callback, { { label = "controlCommand", args = { "" } } })
+    expectCallback(callbacks[14].callback, { { label = "displayWhitelist", args = {} } })
 
-    expectCallback(callbacks[14].callback, seedExpectation("boop party assist"))
-    expectCallback(callbacks[15].callback, seedExpectation("boop party targetcall on|off"))
-    expectCallback(callbacks[16].callback, seedExpectation("boop party affcalls on|off"))
-    expectCallback(callbacks[17].callback, seedExpectation("boop party walk"))
-    expectCallback(callbacks[18].callback, seedExpectation("boop walk install"))
-    expectCallback(callbacks[19].callback, seedExpectation("boop roster"))
-    expectCallback(callbacks[20].callback, seedExpectation("boop combos"))
+    expectCallback(callbacks[15].callback, seedExpectation("boop party assist"))
+    expectCallback(callbacks[16].callback, seedExpectation("boop party targetcall on|off"))
+    expectCallback(callbacks[17].callback, seedExpectation("boop party affcalls on|off"))
+    expectCallback(callbacks[18].callback, seedExpectation("boop whitelist share [area]"))
+    expectCallback(callbacks[19].callback, seedExpectation("boop whitelist receive"))
   end)
 
   it("wires the config home rows and footer seeds", function()
@@ -263,13 +265,13 @@ describe("boop menu wiring", function()
       boop.ui.config("combat")
     end)
 
-    assert.are.equal(33, #callbacks)
+    assert.are.equal(37, #callbacks)
 
     addStub(boop.ui, "config", "config")
     addStub(_G, "appendCmdLine", "appendCmdLine")
     addStub(_G, "clearCmdLine", "clearCmdLine")
 
-    for i = 1, 15 do
+    for i = 1, 17 do
       expectCallback(callbacks[(i * 2) - 1].callback, {
         { label = "config", args = { "combat " .. tostring(i) } },
       })
@@ -278,9 +280,9 @@ describe("boop menu wiring", function()
       })
     end
 
-    expectCallback(callbacks[31].callback, seedExpectation("boop config home"))
-    expectCallback(callbacks[32].callback, seedExpectation("boop config combat"))
-    expectCallback(callbacks[33].callback, seedExpectation("boop config back"))
+    expectCallback(callbacks[35].callback, seedExpectation("boop config home"))
+    expectCallback(callbacks[36].callback, seedExpectation("boop config combat"))
+    expectCallback(callbacks[37].callback, seedExpectation("boop config back"))
   end)
 
   it("wires the config targeting rows and footer seeds", function()
@@ -335,13 +337,13 @@ describe("boop menu wiring", function()
       boop.ui.config("debug")
     end)
 
-    assert.are.equal(19, #callbacks)
+    assert.are.equal(23, #callbacks)
 
     addStub(boop.ui, "config", "config")
     addStub(_G, "appendCmdLine", "appendCmdLine")
     addStub(_G, "clearCmdLine", "clearCmdLine")
 
-    for i = 1, 8 do
+    for i = 1, 10 do
       expectCallback(callbacks[(i * 2) - 1].callback, {
         { label = "config", args = { "debug " .. tostring(i) } },
       })
@@ -350,9 +352,9 @@ describe("boop menu wiring", function()
       })
     end
 
-    expectCallback(callbacks[17].callback, seedExpectation("boop config home"))
-    expectCallback(callbacks[18].callback, seedExpectation("boop config debug"))
-    expectCallback(callbacks[19].callback, seedExpectation("boop config back"))
+    expectCallback(callbacks[21].callback, seedExpectation("boop config home"))
+    expectCallback(callbacks[22].callback, seedExpectation("boop config debug"))
+    expectCallback(callbacks[23].callback, seedExpectation("boop config back"))
   end)
 
   it("wires the help home rows and footer seeds", function()
