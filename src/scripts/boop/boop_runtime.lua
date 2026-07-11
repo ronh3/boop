@@ -43,6 +43,7 @@ local DOMAIN_DEFAULTS = {
       gmcpSeen = false,
       lastWarningAt = nil,
       lastWarningCode = "",
+      lastRetryAt = nil,
       warningThrottleSeconds = 2,
     },
     lastComboTraceKey = nil,
@@ -303,6 +304,7 @@ local function setBlockerFields(blocker, nextBlocker, preserveSince)
   blocker.gmcpSeen = nextBlocker.gmcpSeen
   blocker.lastWarningAt = preserveSince and blocker.lastWarningAt or nil
   blocker.lastWarningCode = preserveSince and blocker.lastWarningCode or ""
+  blocker.lastRetryAt = preserveSince and blocker.lastRetryAt or nil
   blocker.warningThrottleSeconds = nextBlocker.warningThrottleSeconds
 end
 
@@ -320,6 +322,7 @@ function boop.runtime.blockerSnapshot()
     gmcpSeen = not not blocker.gmcpSeen,
     lastWarningAt = blocker.lastWarningAt,
     lastWarningCode = tostring(blocker.lastWarningCode or ""),
+    lastRetryAt = blocker.lastRetryAt,
     warningThrottleSeconds = tonumber(blocker.warningThrottleSeconds) or 2,
   }
 end
