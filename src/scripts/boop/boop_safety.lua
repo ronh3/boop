@@ -21,7 +21,12 @@ function boop.safety.shouldFlee()
 end
 
 function boop.safety.flee()
-  boop.state.combat.attacking = false
+  local state = boop.runtime.ensureState()
+  boop.runtime.clearAutomationIntent("flee", {
+    includeWalk = true,
+    includeGold = true,
+    includeAttack = true,
+  })
   boop.config.enabled = false
   if boop.clearGoldQueueIntent then
     boop.clearGoldQueueIntent()
@@ -42,7 +47,7 @@ function boop.safety.flee()
     boop.db.saveConfig("enabled", boop.config.enabled)
   end
 
-  local dir = boop.state.targeting.lastRoomDir
+  local dir = state.targeting.lastRoomDir
   if not dir or dir == "" then
     boop.util.warn("No flee direction set.")
     return
@@ -51,9 +56,9 @@ function boop.safety.flee()
   local action = "wake/wake/apply mending to legs/stand/" .. dir
   boop.executeAction(action)
   boop.util.ok("fleeing " .. dir .. " (boop disabled)")
-  boop.state.combat.fleeing = true
+  state.combat.fleeing = true
   if boop.stats and boop.stats.onFlee then
     boop.stats.onFlee()
   end
-  tempTimer(2, function() boop.state.combat.fleeing = false end)
+  tempTimer(2, function() state.combat.fleeing = false end)
 end
