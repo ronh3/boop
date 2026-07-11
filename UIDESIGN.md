@@ -24,6 +24,7 @@ Current product state
 - `boop help` is a workflow-first help surface: common goals first, then topic pages with first steps, common commands, advanced commands, and notes. Routine operator workflows, including loot/gold/import, should get normal topics instead of being hidden in troubleshooting.
 - `boop roster` is separate from `boop party`.
 - `boop preset list|solo|party|leader|leader-call` exists as a shortcut for reviewing or applying recommended baseline setups.
+- Status, dashboard, config, party, and debug blocker output uses stable `code -- label` wording, with compact `systems` and `waits` fragments when automation is held.
 
 This file still documents the config system in detail, but new UX work should preserve coherence across all of the above surfaces rather than treating `boop config` as the entire UI.
 
@@ -119,6 +120,7 @@ Alignment rules
 Current visual language expectations
 
 - Sectioned dashboards should use the shared themed row renderer where available.
+- Blocker rows should read from the canonical runtime snapshot and present the same code, label, affected systems, and waits-for state across status, dashboard, config, party, and debug surfaces.
 - Rich Mudlet screens should prefer concise rows with hover hints over long visible prose.
 - Plain-text fallback should remain readable and deterministic for tests.
 - Older raw/debug-dump output should be treated as technical debt and cleaned up when touched.

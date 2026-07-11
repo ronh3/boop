@@ -15,7 +15,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `bh` (toggle on/off)
 - `boop on` / `boop off`
 - `boop help` / `boop help <number|topic|home>` (workflow help; examples: `boop help targeting`, `boop help rage`, `boop help gold`; `boop help audit` is an advanced review dump)
-- `boop status` (status summary)
+- `boop status` (status summary with blocker `code -- label`, affected systems, and waits-for state)
 - `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow; core sections are `combat`, `targeting`, `loot`, and `debug`)
 - `boop preset` / `boop preset list` / `boop preset <solo|party|leader|leader-call>` (show or apply recommended baseline settings)
 - `boop party` / `boop party <status|mode ...|walk ...|assist ...|targetcall ...|affcalls ...|size <n>|roster ...|combos>` (party dashboard and coordination shortcuts)
@@ -115,6 +115,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop weapon` stores class-scoped wield targets that profiles can consume when they need a specific weapon role; prefer raw GMCP item ids because wield tracking matches exact ids most reliably.
 - `boop theme list` exposes boop's built-in themes plus the built-in ADB city/class palette names, so themes like `ashtan`, `depthswalker`, and `targossas` work directly in boop.
 - Trace buffer records recent boop decisions/commands for post-mortem debugging (`boop trace show`).
+- Status, home/control/config, party, and debug blocker rows use stable `code -- label` wording; held automation also shows affected `systems` and `waits` fragments where available.
 - Attack-line gagging can be toggled separately for your own attacks and other players' attacks, replacing matched lines with `Who: What -> Victim`.
 - Self attack gag summaries coalesce repeated same-source/same-type damage such as multihit weapon attacks and gear procs, and append total damage before balance time.
 - Battlerage attack lines on the same target fold into the pending self attack summary so their damage remains visible when standard and rage actions fire together.
