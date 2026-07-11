@@ -45,20 +45,7 @@ OWNED_STATE_DOMAINS = {
 # repair work. The gate fails when this baseline grows or shrinks without review.
 KNOWN_FLAT_STATE_ACCESS = {
     "src/scripts/boop/boop_events.lua": {},
-    "src/scripts/boop/boop_walk.lua": {
-        "autoGrabGoldPending": 1,
-        "currentTargetId": 1,
-        "diagHold": 1,
-        "fleeing": 1,
-        "goldGetPending": 1,
-        "goldPutPending": 1,
-        "walkActive": 12,
-        "walkArrivalRoom": 4,
-        "walkArrivalTimer": 5,
-        "walkMoveQueued": 6,
-        "walkOwned": 4,
-        "walkRoomSettled": 9,
-    },
+    "src/scripts/boop/boop_walk.lua": {},
     "src/scripts/boop/boop_attacks.lua": {},
 }
 
