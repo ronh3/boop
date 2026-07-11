@@ -268,7 +268,7 @@ local function warnTargetLost()
 end
 
 local function clearLostTargetIntent()
-  boop.runtime.clearAttackIntent("target_lost")
+  boop.runtime.clearAutomationIntent("target_lost")
   if boop.afflictions and boop.afflictions.clearTarget then
     boop.afflictions.clearTarget()
   end

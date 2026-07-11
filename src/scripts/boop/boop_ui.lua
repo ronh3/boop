@@ -1040,9 +1040,10 @@ function boop.ui.showRageModeMenu()
   boop.util.echo("Type: boop ragemode <number|mode> | boop config combat | boop help combat")
 end
 
-function boop.ui.setEnabled(value, quiet)
+function boop.ui.setEnabled(value, quiet, opts)
+  opts = opts or {}
   boop.config.enabled = value and true or false
-  if not boop.config.enabled then
+  if not boop.config.enabled and not opts.preserveAutomationIntent then
     if boop.state.queue.prequeueTimer then
       killTimer(boop.state.queue.prequeueTimer)
       boop.state.queue.prequeueTimer = nil
@@ -1603,9 +1604,6 @@ function boop.ui.pullCommand(mobName, direction)
   end
 
   local restoreEnabled = not not boop.config.enabled
-  if restoreEnabled then
-    boop.ui.setEnabled(false, true)
-  end
   boop.state.combat.pullState = {
     active = true,
     phase = "outbound",
@@ -1614,6 +1612,9 @@ function boop.ui.pullCommand(mobName, direction)
     returnDirection = back,
     restoreEnabled = restoreEnabled,
   }
+  if restoreEnabled then
+    boop.ui.setEnabled(false, true, { preserveAutomationIntent = true })
+  end
   armPullTimeout(boop.state.combat.pullState)
 
   local command = table.concat({ dir, rageAction, "leap " .. back }, separator)
