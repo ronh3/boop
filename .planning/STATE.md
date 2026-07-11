@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 02
 current_phase_name: State Ownership Repair and Safety Baseline
 status: executing
-stopped_at: Completed 02-05-PLAN.md
-last_updated: "2026-07-11T01:17:13.731Z"
+stopped_at: Completed 02-06-PLAN.md
+last_updated: "2026-07-11T01:31:47.853Z"
 last_activity: 2026-07-11
-last_activity_desc: Plan 02-05 complete
+last_activity_desc: Plan 02-06 complete
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 14
-  completed_plans: 12
-  percent: 86
+  completed_plans: 13
+  percent: 93
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 02 (State Ownership Repair and Safety Baseline) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
-Last activity: 2026-07-11 — Plan 02-05 complete
+Last activity: 2026-07-11 — Plan 02-06 complete
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [█████████░] 86%
 | Phase 02 P03 | 18 min | 2 tasks | 7 files |
 | Phase 02-state-ownership-repair-and-safety-baseline P04 | 6m27s | 3 tasks | 7 files |
 | Phase 02-state-ownership-repair-and-safety-baseline P05 | 5m | 2 tasks | 5 files |
+| Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,9 @@ Recent decisions affecting current work:
 - [Phase 02]: Plan 02-04 clears target-loss attack intent with clearAttackIntent rather than broad automation cleanup.
 - [Phase 02]: Plan 02-04 enforces attack fallback migration by reducing boop_attacks.lua flat-state drift allowance to zero.
 - [Phase 02]: Plan 02-05 keeps demonnicAutoWalker install/status behavior unchanged while migrating walk blocker state ownership.
+- [Phase 02]: Plan 02-06 uses boop.runtime.blockerSnapshot() as the canonical UI/status/debug source, with legacy checks only as inactive-blocker fallbacks.
+- [Phase 02]: Plan 02-06 kept trace source unchanged because prior Phase 02 contracts already emit normalized blocker enter/exit, cleanup, GMCP recovery, pull, and retarget messages.
+- [Phase 02]: Plan 02-06 documented host Busted and Mudlet Busted availability limitations rather than treating environment failures as passing tests.
 
 ### Pending Todos
 
@@ -101,6 +105,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-11T01:17:13.726Z
-Stopped at: Completed 02-05-PLAN.md
+Last session: 2026-07-11T01:31:47.848Z
+Stopped at: Completed 02-06-PLAN.md
 Resume file: None
