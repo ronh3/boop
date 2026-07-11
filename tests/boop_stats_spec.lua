@@ -473,6 +473,10 @@ describe("boop stats", function()
   end)
 
   it("shows per-target kill efficiency joined with current party-size xp stats", function()
+    epoch_stub = stub(_G, "getEpoch", function()
+      return 100
+    end)
+
     helper.setArea("Test Area")
     boop.ui.setEnabled(true, true)
 
