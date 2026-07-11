@@ -60,7 +60,16 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Auto-flee cancels or blocks queue, prequeue, walk, gold, and attack intent before escape movement is sent.
   5. When the current target disappears from GMCP room items, queued attack state clears and boop retargets only from valid room targets.
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Wave 0 runtime, flee, and walk safety test contracts
+- [ ] 02-02-PLAN.md — Wave 0 GMCP, target-loss, pull, trace, and UI test contracts
+- [ ] 02-03-PLAN.md — Canonical owned blocker model and GMCP recovery holds
+- [ ] 02-04-PLAN.md — Flee cleanup, target-loss cleanup, pull exception, and attack ownership repair
+- [ ] 02-05-PLAN.md — Walk ownership migration and state-drift gate tightening
+- [ ] 02-06-PLAN.md — Canonical status, dashboard, trace, and focused docs/help sync
+- [ ] 02-07-PLAN.md — Final automated gates and compact blocker/status human checkpoint
 **UI hint**: yes
 
 ### Phase 3: Queue, Interrupt, Gold, and Autowalk Regression Coverage
