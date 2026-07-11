@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 02
 current_phase_name: State Ownership Repair and Safety Baseline
 status: executing
-stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-07-11T01:06:47.399Z"
+stopped_at: Completed 02-05-PLAN.md
+last_updated: "2026-07-11T01:17:13.731Z"
 last_activity: 2026-07-11
-last_activity_desc: Plan 02-03 complete
+last_activity_desc: Plan 02-05 complete
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 14
-  completed_plans: 11
-  percent: 17
+  completed_plans: 12
+  percent: 86
 ---
 
 # Project State
@@ -29,36 +29,37 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 02 (State Ownership Repair and Safety Baseline) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
-Last activity: 2026-07-11 — Plan 02-03 complete
+Last activity: 2026-07-11 — Plan 02-05 complete
 
-Progress: [███████░░░] 71%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 10
-- Average duration: 10 min
-- Total execution time: 0.5 hours
+- Total plans completed: 12
+- Average duration: 9 min
+- Total execution time: 0.7 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 7 | - | - |
-| 02 | 3 | 31 min | 10.3 min |
+| 02 | 5 | 42m27s | 8.5 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 02 P01 (6 min), Phase 02 P02 (7 min), Phase 02 P03 (18 min)
-- Trend: Implementation plan slower than Wave 0 contract plans
+- Last 5 plans: Phase 02 P01 (6 min), Phase 02 P02 (7 min), Phase 02 P03 (18 min), Phase 02 P04 (6m27s), Phase 02 P05 (5m)
+- Trend: Walk migration was faster than the canonical blocker implementation plan
 
 *Updated after each plan completion*
 | Phase 02 P02 | 7 min | 2 tasks | 7 files |
 | Phase 02 P03 | 18 min | 2 tasks | 7 files |
 | Phase 02-state-ownership-repair-and-safety-baseline P04 | 6m27s | 3 tasks | 7 files |
+| Phase 02-state-ownership-repair-and-safety-baseline P05 | 5m | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,7 @@ Recent decisions affecting current work:
 - [Phase 02]: Plan 02-04 uses the Plan 02-03 runtime cleanup helper as the source of truth; this plan did not modify boop_runtime.lua.
 - [Phase 02]: Plan 02-04 clears target-loss attack intent with clearAttackIntent rather than broad automation cleanup.
 - [Phase 02]: Plan 02-04 enforces attack fallback migration by reducing boop_attacks.lua flat-state drift allowance to zero.
+- [Phase 02]: Plan 02-05 keeps demonnicAutoWalker install/status behavior unchanged while migrating walk blocker state ownership.
 
 ### Pending Todos
 
@@ -99,6 +101,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-11T01:06:47.393Z
-Stopped at: Completed 02-04-PLAN.md
+Last session: 2026-07-11T01:17:13.726Z
+Stopped at: Completed 02-05-PLAN.md
 Resume file: None
