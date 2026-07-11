@@ -10,6 +10,11 @@ describe("boop pull command", function()
   local echoes
   local timeout_callback
 
+  local function blockerSnapshot()
+    assert.is_function(boop.runtime.blockerSnapshot)
+    return boop.runtime.blockerSnapshot()
+  end
+
   before_each(function()
     helper.reset()
     helper.setClass("Occultist")
@@ -105,6 +110,49 @@ describe("boop pull command", function()
     assert.is_true(table.concat(echoes, "\n"):find("[OK] pull complete; boop resumed", 1, true) ~= nil)
   end)
 
+  it("preserves the active-pull target-loss exception while away and cleans up after return", function()
+    helper.setDenizens({
+      { id = "42", name = "a pulled mage" },
+    })
+    helper.setTarget("42", "a pulled mage", "70%")
+    boop.state.queue.prequeuedStandard = true
+    boop.state.queue.aliasAction = "command hound at 42"
+    boop.state.queue.aliasDirty = false
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
+    boop.state.targeting.room = "1"
+    boop.ui.gameSeparatorCommand("|")
+
+    boop.ui.pullCommand("mage", "north")
+
+    gmcp.Room.Info.num = "2"
+    boop.onRoomInfo()
+    assert.are.equal("away", boop.state.combat.pullState.phase)
+
+    gmcp.Char.Items.Remove = {
+      location = "room",
+      item = { id = "42", name = "a pulled mage", attrib = "m" },
+    }
+    boop.onRoomItemsRemove()
+
+    assert.are.equal("42", boop.state.targeting.currentTargetId)
+    assert.are.equal("a pulled mage", boop.state.targeting.targetName)
+    assert.is_true(boop.state.queue.prequeuedStandard)
+    assert.are.equal("command hound at 42", boop.state.queue.aliasAction)
+    assert.is_truthy(boop.state.combat.pullState)
+
+    gmcp.Room.Info.num = "1"
+    boop.onRoomInfo()
+
+    assert.is_false(boop.state.combat.pullState)
+    assert.are.equal("", boop.state.targeting.currentTargetId)
+    assert.are.equal("", boop.state.targeting.targetName)
+    assert.is_false(boop.state.queue.prequeuedStandard)
+    assert.are.equal("", boop.state.queue.aliasAction)
+    assert.is_true(boop.state.queue.aliasDirty)
+    assert.are.equal("", blockerSnapshot().code)
+  end)
+
   it("clears a stuck pull and resumes boop when the timeout still sees the origin room", function()
     boop.config.enabled = true
     boop.state.targeting.room = "1"
@@ -135,7 +183,29 @@ describe("boop pull command", function()
 
     assert.is_false(boop.config.enabled)
     assert.is_false(boop.state.combat.pullState)
+    assert.are.equal("pull_timeout_away", blockerSnapshot().code)
+    assert.are.equal("pull timed out away from origin", blockerSnapshot().label)
+    assert.is_true(blockerSnapshot().systems.combat)
+    assert.is_true(blockerSnapshot().systems.target)
+    assert.is_true(blockerSnapshot().systems.walk)
+    assert.is_true(blockerSnapshot().waitsFor.room)
+    assert.is_true(blockerSnapshot().waitsFor.gmcp)
     assert.is_true(table.concat(echoes, "\n"):find("[WARN] pull timeout; boop remains paused", 1, true) ~= nil)
+
+    gmcp.Room.Info.num = "1"
+    boop.onRoomInfo()
+    assert.are.equal("pull_timeout_away", blockerSnapshot().code)
+
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = {},
+    }
+    boop.onRoomItemsList()
+    boop.onPrompt()
+
+    assert.are.equal("", blockerSnapshot().code)
+    assert.is_false(boop.runtime.shouldHold("combat"))
+    assert.is_false(boop.runtime.shouldHold("walk"))
   end)
 
   it("rejects mob names that contain the configured command separator", function()
