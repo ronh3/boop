@@ -3,9 +3,57 @@ boop.walk = boop.walk or {}
 local WALKER_PACKAGE_URL = "https://github.com/demonnic/demonnicAutoWalker/releases/latest/download/demonnicAutoWalker.mpackage"
 boop.walk.packageUrl = boop.walk.packageUrl or WALKER_PACKAGE_URL
 
+local function ensureDomain(state, domain)
+  if type(state[domain]) ~= "table" then
+    state[domain] = {}
+  end
+  return state[domain]
+end
+
+local function stateDomains()
+  local state
+  if boop.runtime and boop.runtime.ensureState then
+    state = boop.runtime.ensureState()
+  else
+    boop.state = boop.state or {}
+    state = boop.state
+  end
+
+  return state,
+    ensureDomain(state, "walk"),
+    ensureDomain(state, "diag"),
+    ensureDomain(state, "combat"),
+    ensureDomain(state, "gold"),
+    ensureDomain(state, "targeting")
+end
+
 local function walkState()
-  boop.state = boop.state or {}
-  return boop.state
+  local _, walk = stateDomains()
+  return walk
+end
+
+local function runtimeWalkBlocker()
+  if not (boop.runtime and boop.runtime.shouldHold and boop.runtime.shouldHold("walk")) then
+    return nil
+  end
+  local snapshot = boop.runtime.blockerSnapshot and boop.runtime.blockerSnapshot() or {}
+  local label = tostring(snapshot.label or "")
+  if label ~= "" then
+    return label
+  end
+  local code = tostring(snapshot.code or "")
+  if code ~= "" then
+    return code
+  end
+  return "runtime blocker is active"
+end
+
+local function goldPending(gold)
+  return gold.autoGrabPending or gold.getPending or gold.putPending
+end
+
+local function currentTargetId(targeting)
+  return tostring(targeting.currentTargetId or "")
 end
 
 local function currentRoomId()
@@ -18,44 +66,57 @@ local function currentRoomId()
   return ""
 end
 
+local function pullBlocker(combat)
+  local pull = combat and combat.pullState or nil
+  if type(pull) ~= "table" or not pull.active then
+    return nil
+  end
+  local originRoom = tostring(pull.originRoom or "")
+  local currentRoom = tostring(pull.currentRoom or currentRoomId() or "")
+  if originRoom ~= "" and currentRoom ~= "" and currentRoom ~= originRoom then
+    return "pull in progress"
+  end
+  return nil
+end
+
 local function cancelArrivalTimer()
-  local state = walkState()
-  if state.walkArrivalTimer then
-    killTimer(state.walkArrivalTimer)
-    state.walkArrivalTimer = nil
+  local walk = walkState()
+  if walk.arrivalTimer then
+    killTimer(walk.arrivalTimer)
+    walk.arrivalTimer = nil
   end
 end
 
 local function armArrivalFallback(reason)
-  local state = walkState()
+  local walk = walkState()
   cancelArrivalTimer()
-  state.walkMoveQueued = false
-  state.walkRoomSettled = false
-  state.walkArrivalRoom = currentRoomId()
+  walk.moveQueued = false
+  walk.roomSettled = false
+  walk.arrivalRoom = currentRoomId()
 
-  local arrivalRoom = state.walkArrivalRoom
-  state.walkArrivalTimer = tempTimer(0.2, function()
-    local liveState = walkState()
-    liveState.walkArrivalTimer = nil
-    if not liveState.walkActive then
+  local arrivalRoom = walk.arrivalRoom
+  walk.arrivalTimer = tempTimer(0.2, function()
+    local liveWalk = walkState()
+    liveWalk.arrivalTimer = nil
+    if not liveWalk.active then
       return
     end
     if arrivalRoom ~= "" and currentRoomId() ~= "" and currentRoomId() ~= arrivalRoom then
       return
     end
-    liveState.walkRoomSettled = true
+    liveWalk.roomSettled = true
     boop.walk.maybeAdvance(reason or "arrival fallback")
   end)
 end
 
 local function resetRuntimeFlags()
-  local state = walkState()
+  local walk = walkState()
   cancelArrivalTimer()
-  state.walkActive = false
-  state.walkOwned = false
-  state.walkRoomSettled = false
-  state.walkMoveQueued = false
-  state.walkArrivalRoom = ""
+  walk.active = false
+  walk.owned = false
+  walk.roomSettled = false
+  walk.moveQueued = false
+  walk.arrivalRoom = ""
 end
 
 local function available()
@@ -68,11 +129,11 @@ local function attached()
 end
 
 local function blockedReason()
-  local state = walkState()
+  local _, walk, diag, combat, gold, targeting = stateDomains()
   if not available() then
     return "demonnicAutoWalker is not installed"
   end
-  if not state.walkActive then
+  if not walk.active then
     return "walk is not active"
   end
   if not boop.config.enabled then
@@ -81,25 +142,33 @@ local function blockedReason()
   if boop.config.targetingMode == "manual" then
     return "manual targeting is active"
   end
-  if not state.walkRoomSettled then
+  if not walk.roomSettled then
     return "room has not settled yet"
   end
-  if state.walkMoveQueued then
+  if walk.moveQueued then
     return "move already queued"
   end
   if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
     return "waiting for leader target call"
   end
-  if state.diagHold then
+  local runtimeBlocker = runtimeWalkBlocker()
+  if runtimeBlocker then
+    return runtimeBlocker
+  end
+  local pullReason = pullBlocker(combat)
+  if pullReason then
+    return pullReason
+  end
+  if diag.hold then
     return "diag pause is active"
   end
-  if state.fleeing then
+  if combat.fleeing then
     return "flee is active"
   end
-  if state.autoGrabGoldPending or state.goldGetPending or state.goldPutPending then
+  if goldPending(gold) then
     return "loot handling is still pending"
   end
-  if tostring(state.currentTargetId or "") ~= "" then
+  if currentTargetId(targeting) ~= "" then
     return "current target still set"
   end
   local targetId = boop.targets and boop.targets.choose and boop.targets.choose() or ""
@@ -150,17 +219,17 @@ function boop.walk.install()
 end
 
 function boop.walk.isActive()
-  local state = walkState()
-  return state.walkActive and true or false
+  local walk = walkState()
+  return walk.active and true or false
 end
 
 function boop.walk.status()
-  local state = walkState()
+  local walk = walkState()
   local packageStatus = available() and "available" or "missing"
-  local walkStatus = state.walkActive and "active" or "idle"
+  local walkStatus = walk.active and "active" or "idle"
   local attachedStatus = attached() and "yes" or "no"
-  local ownedStatus = state.walkOwned and "owned" or "attached"
-  local settledStatus = state.walkRoomSettled and "yes" or "no"
+  local ownedStatus = walk.owned and "owned" or "attached"
+  local settledStatus = walk.roomSettled and "yes" or "no"
   local blocked = blockedReason()
 
   boop.util.info(string.format(
@@ -188,20 +257,20 @@ function boop.walk.start(options)
     return false
   end
 
-  local state = walkState()
-  if state.walkActive and attached() then
+  local walk = walkState()
+  if walk.active and attached() then
     boop.walk.status()
     return true
   end
 
-  state.walkActive = true
-  state.walkOwned = not attached()
-  state.walkMoveQueued = false
-  state.walkRoomSettled = false
-  state.walkArrivalRoom = currentRoomId()
+  walk.active = true
+  walk.owned = not attached()
+  walk.moveQueued = false
+  walk.roomSettled = false
+  walk.arrivalRoom = currentRoomId()
   cancelArrivalTimer()
 
-  if state.walkOwned then
+  if walk.owned then
     local ok, err = pcall(function()
       demonwalker:init(options or {})
     end)
@@ -220,8 +289,8 @@ function boop.walk.start(options)
 end
 
 function boop.walk.stop(silent, external)
-  local state = walkState()
-  local wasActive = state.walkActive
+  local walk = walkState()
+  local wasActive = walk.active
   resetRuntimeFlags()
 
   if not silent and wasActive then
@@ -238,44 +307,44 @@ function boop.walk.onFinished()
 end
 
 function boop.walk.onArrived()
-  local state = walkState()
-  if not state.walkActive then
+  local walk = walkState()
+  if not walk.active then
     return
   end
   armArrivalFallback("arrival fallback")
 end
 
 function boop.walk.onRoomSettled(reason)
-  local state = walkState()
-  if not state.walkActive then
+  local walk = walkState()
+  if not walk.active then
     return false
   end
   cancelArrivalTimer()
-  state.walkRoomSettled = true
+  walk.roomSettled = true
   return boop.walk.maybeAdvance(reason or "room settled")
 end
 
 function boop.walk.onRoomChange()
-  local state = walkState()
-  if not state.walkActive then
+  local walk = walkState()
+  if not walk.active then
     return
   end
   armArrivalFallback("room change fallback")
 end
 
 function boop.walk.maybeAdvance(reason)
-  local state = walkState()
+  local walk = walkState()
   local blocked = blockedReason()
   if blocked then
     return false, blocked
   end
 
-  state.walkMoveQueued = true
-  state.walkRoomSettled = false
+  walk.moveQueued = true
+  walk.roomSettled = false
   boop.trace.log("walk advance: " .. tostring(reason or "unspecified"))
   tempTimer(0, function()
-    local liveState = walkState()
-    if not liveState.walkActive then
+    local liveWalk = walkState()
+    if not liveWalk.active then
       return
     end
     if raiseEvent then
@@ -290,12 +359,12 @@ function boop.walk.move()
     boop.util.warn("walk is not active")
     return false
   end
-  local state = walkState()
-  if state.walkMoveQueued then
+  local walk = walkState()
+  if walk.moveQueued then
     boop.util.info("walk move already queued")
     return false
   end
-  state.walkRoomSettled = true
+  walk.roomSettled = true
   local ok, err = boop.walk.maybeAdvance("manual move")
   if not ok and err then
     boop.util.warn("walk move blocked: " .. tostring(err))
