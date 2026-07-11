@@ -356,7 +356,7 @@ function boop.runtime.setBlocker(code, label, systems, waitsFor, opts)
   setBlockerFields(blocker, nextBlocker, not changed)
   if changed and nextBlocker.code ~= "" then
     trace(string.format(
-      "blocker enter: %s -- %s | systems=%s | waitsFor=%s | observed=%s",
+      "blocker enter: %s -- %s | systems: %s | waits: %s | observed: %s",
       nextBlocker.code,
       nextBlocker.label,
       formatMapKeys(nextBlocker.systems),
