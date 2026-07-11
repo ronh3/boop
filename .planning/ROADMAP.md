@@ -60,12 +60,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Auto-flee cancels or blocks queue, prequeue, walk, gold, and attack intent before escape movement is sent.
   5. When the current target disappears from GMCP room items, queued attack state clears and boop retargets only from valid room targets.
 
-**Plans**: 1/7 plans executed
+**Plans**: 2/7 plans executed
 
 Plans:
 
 - [x] 02-01-PLAN.md — Wave 0 runtime, flee, and walk safety test contracts
-- [ ] 02-02-PLAN.md — Wave 0 GMCP, target-loss, pull, trace, and UI test contracts
+- [x] 02-02-PLAN.md — Wave 0 GMCP, target-loss, pull, trace, and UI test contracts
 - [ ] 02-03-PLAN.md — Canonical owned blocker model and GMCP recovery holds
 - [ ] 02-04-PLAN.md — Flee cleanup, target-loss cleanup, pull exception, and attack ownership repair
 - [ ] 02-05-PLAN.md — Walk ownership migration and state-drift gate tightening
@@ -140,7 +140,7 @@ Phases normally execute in numeric order. Phase 4 may be planned after Phase 2 i
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Release Gates and State Contracts | 7/7 | Complete    | 2026-07-10 |
-| 2. State Ownership Repair and Safety Baseline | 1/7 | In Progress | - |
+| 2. State Ownership Repair and Safety Baseline | 2/7 | In Progress|  |
 | 3. Queue, Interrupt, Gold, and Autowalk Regression Coverage | 0/TBD | Not started | - |
 | 4. Command Validation and Trust Boundaries | 0/TBD | Not started | - |
 | 5. Compact Summary Fixture Expansion and Focused Gag Fixes | 0/TBD | Not started | - |
