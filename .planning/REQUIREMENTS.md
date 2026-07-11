@@ -16,13 +16,13 @@ Requirements for the pre-1.0 hardening milestone. Each maps to roadmap phases.
 
 ### Runtime State
 
-- [ ] **STATE-01**: Room, target, pull, walk, gold, diag, flee, queue, inventory, trace, rage, IH, and gag state are read and written through owned state domains rather than removed flat keys.
-- [ ] **STATE-02**: GMCP reconnect, missing `gmcp.IRE`, partial room/target updates, and intentionally hidden game state degrade with visible blockers or warnings instead of unsafe guessing.
+- [x] **STATE-01**: Room, target, pull, walk, gold, diag, flee, queue, inventory, trace, rage, IH, and gag state are read and written through owned state domains rather than removed flat keys.
+- [x] **STATE-02**: GMCP reconnect, missing `gmcp.IRE`, partial room/target updates, and intentionally hidden game state degrade with visible blockers or warnings instead of unsafe guessing.
 - [ ] **STATE-03**: Runtime trace, status, and dashboard surfaces report canonical owned-state values when debugging targeting, movement, pull, gold, diag, flee, queue, and gag behavior.
 
 ### Safety And Timing
 
-- [ ] **SAFE-01**: Auto-flee cancels or blocks queue, prequeue, walk, gold, and attack intent before sending escape movement.
+- [x] **SAFE-01**: Auto-flee cancels or blocks queue, prequeue, walk, gold, and attack intent before sending escape movement.
 - [ ] **SAFE-02**: `diag`, queued interrupts, `pull`, and manual hold flows prevent automatic attacks until their prompt, room, or timeout release conditions are satisfied.
 - [ ] **SAFE-03**: Stale target cleanup clears queued attacks and retargets safely when the current target disappears from GMCP room items.
 - [ ] **SAFE-04**: Gold pickup, pack/stash, retry, warning, and stale-pending behavior cannot send commands in the wrong room or bypass active safety holds.
@@ -105,10 +105,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REL-02 | Phase 1 | Complete |
 | REL-03 | Phase 6 | Pending |
 | REL-04 | Phase 1 | Complete |
-| STATE-01 | Phase 2 | Pending |
-| STATE-02 | Phase 2 | Pending |
+| STATE-01 | Phase 2 | Complete |
+| STATE-02 | Phase 2 | Complete |
 | STATE-03 | Phase 2 | Pending |
-| SAFE-01 | Phase 2 | Pending |
+| SAFE-01 | Phase 2 | Complete |
 | SAFE-02 | Phase 3 | Pending |
 | SAFE-03 | Phase 2 | Pending |
 | SAFE-04 | Phase 3 | Pending |
