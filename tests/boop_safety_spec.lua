@@ -6,6 +6,7 @@ describe("boop safety", function()
   local save_config_stub
   local saved_disable_trigger
   local trigger_calls
+  local first_send_snapshot
 
   local function boop_folder_trigger_calls()
     local calls = {}
@@ -17,12 +18,36 @@ describe("boop safety", function()
     return calls
   end
 
+  local function automation_intent_snapshot()
+    local state = boop.runtime.state()
+    return {
+      attacking = state.combat.attacking,
+      pendingStandard = state.combat.pendingStandard,
+      pendingRage = state.combat.pendingRage,
+      attackPlan = state.combat.attackPlan,
+      calledTargetId = state.targeting.calledTargetId,
+      prequeuedStandard = state.queue.prequeuedStandard,
+      aliasAction = state.queue.aliasAction,
+      walkActive = state.walk.active,
+      walkMoveQueued = state.walk.moveQueued,
+      goldAutoGrabPending = state.gold.autoGrabPending,
+      goldGetPending = state.gold.getPending,
+      goldPutPending = state.gold.putPending,
+      goldPackTarget = state.gold.packTarget,
+    }
+  end
+
   before_each(function()
     helper.reset()
     boop.config.enabled = true
     trigger_calls = {}
+    first_send_snapshot = nil
 
-    send_stub = stub(_G, "send", function(_, _) end)
+    send_stub = stub(_G, "send", function(_, _)
+      if not first_send_snapshot then
+        first_send_snapshot = automation_intent_snapshot()
+      end
+    end)
     timer_stub = stub(_G, "tempTimer", function(_, _)
       return 1
     end)
@@ -72,6 +97,29 @@ describe("boop safety", function()
     assert.is_true(boop.state.combat.fleeing)
     assert.is_false(boop.state.combat.attacking)
     assert.are.same({ { op = "disable", name = "boop" } }, boop_folder_trigger_calls())
+  end)
+
+  it("clears automation intent before the first flee command is sent", function()
+    helper.seedAutomationIntent()
+    boop.state.targeting.lastRoomDir = "north"
+
+    boop.safety.flee()
+
+    assert.is_table(first_send_snapshot)
+    assert.is_false(first_send_snapshot.attacking)
+    assert.is_nil(first_send_snapshot.pendingStandard)
+    assert.is_nil(first_send_snapshot.pendingRage)
+    assert.is_nil(first_send_snapshot.attackPlan)
+    assert.are.equal("", first_send_snapshot.calledTargetId)
+    assert.is_false(first_send_snapshot.prequeuedStandard)
+    assert.are.equal("", first_send_snapshot.aliasAction)
+    assert.is_false(first_send_snapshot.walkActive)
+    assert.is_false(first_send_snapshot.walkMoveQueued)
+    assert.is_false(first_send_snapshot.goldAutoGrabPending)
+    assert.is_false(first_send_snapshot.goldGetPending)
+    assert.is_false(first_send_snapshot.goldPutPending)
+    assert.are.equal("", first_send_snapshot.goldPackTarget)
+    assert.stub(send_stub).was_called_with("wake", false)
   end)
 
   it("does not auto-flee when auto flee is disabled", function()

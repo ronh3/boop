@@ -222,6 +222,49 @@ function M.setDenizens(denizens)
   end
 end
 
+function M.setRuntimeBlocker(blocker)
+  local state = boop.runtime.state()
+  state.combat.blocker = {
+    code = tostring((blocker and blocker.code) or ""),
+    label = tostring((blocker and blocker.label) or ""),
+    systems = (blocker and blocker.systems) or {},
+    waitsFor = (blocker and blocker.waitsFor) or {},
+    observed = (blocker and blocker.observed) or {},
+  }
+end
+
+function M.seedAutomationIntent()
+  local state = boop.runtime.state()
+
+  state.combat.attacking = true
+  state.combat.pendingStandard = "command hound at 42"
+  state.combat.pendingRage = "harry 42"
+  state.combat.attackPlan = {
+    standard = "command hound at 42",
+    rage = "harry 42",
+  }
+
+  state.targeting.calledTargetId = "42"
+  state.targeting.calledTargetRoom = tostring((gmcp.Room.Info and gmcp.Room.Info.num) or "")
+  state.targeting.calledTargetBy = "boop"
+
+  state.queue.prequeuedStandard = true
+  state.queue.aliasAction = "command hound at 42"
+  state.queue.aliasDirty = false
+
+  state.walk.active = true
+  state.walk.moveQueued = true
+  state.walk.roomSettled = true
+
+  state.gold.autoGrabPending = true
+  state.gold.autoGrabPendingAt = 1
+  state.gold.getPending = true
+  state.gold.putPending = true
+  state.gold.packTarget = "pack"
+
+  return state
+end
+
 function M.setWhitelist(area, names)
   boop.lists.whitelist[area] = {}
   for _, name in ipairs(names or {}) do
