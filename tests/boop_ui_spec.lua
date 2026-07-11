@@ -18,6 +18,41 @@ describe("boop ui home", function()
   local clear_cmd_stub
   local walk_install_stub
 
+  local function seedCanonicalBlocker()
+    helper.setRuntimeBlocker({
+      code = "gmcp_ire_missing",
+      label = "GMCP IRE missing",
+      systems = {
+        target = true,
+        combat = true,
+        queue = true,
+        gold = true,
+        walk = true,
+      },
+      waitsFor = {
+        gmcp = true,
+        prompt = true,
+      },
+      observed = {
+        ire = false,
+        room = "1",
+      },
+    })
+  end
+
+  local function assertCanonicalBlockerOutput(render)
+    echoes = {}
+    boop.ui.setEnabled(true, true)
+    seedCanonicalBlocker()
+
+    render()
+
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find("gmcp_ire_missing -- GMCP IRE missing", 1, true) ~= nil)
+    assert.is_true(joined:find("systems: combat, gold, queue, target, walk", 1, true) ~= nil)
+    assert.is_true(joined:find("waits: gmcp, prompt", 1, true) ~= nil)
+  end
+
   before_each(function()
     helper.reset()
     echoes = {}
@@ -103,7 +138,7 @@ describe("boop ui home", function()
     boop.ui.home()
 
     assert.are.equal("BOOP", echoes[1])
-    assert.is_true(echoes[3]:find("State: on | mode: solo | blocker: engaged target | next: let boop attack", 1, true) ~= nil)
+    assert.is_true(echoes[3]:find("State: on | mode: solo | blocker: engaged_target -- engaged target | next: let boop attack", 1, true) ~= nil)
     assert.is_true(echoes[4]:find("Class: occultist | targeting: whitelist | ragemode: simple", 1, true) ~= nil)
     assert.is_true(echoes[5]:find("Target: 42 | a vicious gnoll soldier | room denizens: 2", 1, true) ~= nil)
     assert.is_true(echoes[6]:find("Trip: running | kills 3 | gold 125 | xp 28376", 1, true) ~= nil)
@@ -163,7 +198,7 @@ describe("boop ui home", function()
     boop.ui.controlCommand("")
 
     assert.are.equal("CONTROL DASHBOARD", echoes[1])
-    assert.is_true(echoes[3]:find("State: on | mode: leader%-call | blocker: engaged target | next: let boop attack") ~= nil)
+    assert.is_true(echoes[3]:find("State: on | mode: leader%-call | blocker: engaged_target %-%- engaged target | next: let boop attack") ~= nil)
     assert.is_true(echoes[4]:find("Combat: class occultist | targeting whitelist | ragemode simple | queue OFF | prequeue ON", 1, true) ~= nil)
     assert.is_true(echoes[5]:find("Party: assist ON -> Leader | targetcall ON | size 3 | walk INSTALL | theme occultist", 1, true) ~= nil)
     assert.is_true(echoes[6]:find("Target: 42 | a vicious gnoll soldier | room denizens: 2", 1, true) ~= nil)
@@ -191,7 +226,7 @@ describe("boop ui home", function()
 
     assert.are.equal("CONFIGURATION", echoes[1])
     assert.is_true(joined:find("Hunting: on | rage simple | queue OFF | prequeue ON", 1, true) ~= nil)
-    assert.is_true(joined:find("Targeting: whitelist | order order | retarget ON | blocker: engaged target", 1, true) ~= nil)
+    assert.is_true(joined:find("Targeting: whitelist | order order | retarget ON | blocker: engaged_target -- engaged target", 1, true) ~= nil)
     assert.is_true(joined:find("Target: 42 | a vicious gnoll soldier | next: let boop attack", 1, true) ~= nil)
     assert.is_true(joined:find("[4] Diagnostics              [ trace OFF | gag own OFF | gag others OFF | gag mobs OFF ]", 1, true) ~= nil)
     assert.is_true(joined:find("[5] Party dashboard          [ leader-call | leader Leader | size 3 ]", 1, true) ~= nil)
@@ -238,7 +273,7 @@ describe("boop ui home", function()
 
     local joined = table.concat(echoes, "\n")
     assert.is_true(joined:find("CONFIGURATION > Combat", 1, true) ~= nil)
-    assert.is_true(joined:find("Hunting: ON | rage simple | blocker: engaged target", 1, true) ~= nil)
+    assert.is_true(joined:find("Hunting: ON | rage simple | blocker: engaged_target -- engaged target", 1, true) ~= nil)
     assert.is_true(joined:find("Target: 42 | a vicious gnoll soldier | next: let boop attack", 1, true) ~= nil)
     assert.is_true(joined:find("[1] Hunting                  [ ON ] [toggle]", 1, true) ~= nil)
     assert.is_true(joined:find("[13] Break shields           [ ON ] [toggle]", 1, true) ~= nil)
@@ -259,7 +294,7 @@ describe("boop ui home", function()
 
     local joined = table.concat(echoes, "\n")
     assert.is_true(joined:find("CONFIGURATION > Targeting", 1, true) ~= nil)
-    assert.is_true(joined:find("Mode: whitelist | order: order | blocker: ready", 1, true) ~= nil)
+    assert.is_true(joined:find("Mode: whitelist | order: order | blocker: ready -- ready", 1, true) ~= nil)
     assert.is_true(joined:find("Called target: 43 | room denizens: 2 | next: let boop attack", 1, true) ~= nil)
     assert.is_true(joined:find("[6] Whitelist manager         [ OPEN ]", 1, true) ~= nil)
     assert.is_true(joined:find("Type: boop config home | boop config targeting <number> | boop config back", 1, true) ~= nil)
@@ -334,7 +369,7 @@ describe("boop ui home", function()
     local joined = table.concat(echoes, "\n")
     assert.are.equal("DEBUG SNAPSHOT", echoes[1])
     assert.is_true(joined:find("Runtime: enabled off | mode whitelist | class Unnamable", 1, true) ~= nil)
-    assert.is_true(joined:find("Flow: blocker boop disabled | next boop on", 1, true) ~= nil)
+    assert.is_true(joined:find("Flow: blocker boop_disabled -- boop disabled | next boop on", 1, true) ~= nil)
     assert.is_true(joined:find("Combat: eq/bal 1/1 | rage 0 | denizens 1", 1, true) ~= nil)
     assert.is_true(joined:find("Target: (none)", 1, true) ~= nil)
     assert.is_true(joined:find("Quick: boop config home | boop config debug | boop trace show | boop debug attacks", 1, true) ~= nil)
@@ -491,12 +526,38 @@ describe("boop ui home", function()
     assert.are.equal("PARTY", echoes[1])
     assert.is_true(echoes[3]:find("Coordination: mode leader%-call | leader Leader | assist ON %-?> Leader") ~= nil)
     assert.is_true(echoes[4]:find("Target gate: ON | called target: 43 | aff calls: ON", 1, true) ~= nil)
-    assert.is_true(echoes[5]:find("Movement: walk INSTALL | blocker waiting for leader target call", 1, true) ~= nil)
+    assert.is_true(echoes[5]:find("Movement: walk INSTALL | blocker waiting_leader_target -- waiting for leader target call", 1, true) ~= nil)
     assert.is_true(echoes[6]:find("Next: wait for pt target line", 1, true) ~= nil)
     assert.is_true(echoes[7]:find("Party size: 3 | roster entries: 1", 1, true) ~= nil)
     assert.are.equal("Whitelist sync: NONE", echoes[8])
     assert.is_true(echoes[9]:find("Roster: infernal", 1, true) ~= nil)
     assert.are.equal("Quick: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop whitelist share [area] | boop whitelist receive", echoes[10])
+  end)
+
+  it("renders canonical blocker code, label, affected systems, and wait state across status surfaces", function()
+    assertCanonicalBlockerOutput(function()
+      boop.ui.status("status")
+    end)
+
+    assertCanonicalBlockerOutput(function()
+      boop.ui.home()
+    end)
+
+    assertCanonicalBlockerOutput(function()
+      boop.ui.controlCommand("")
+    end)
+
+    assertCanonicalBlockerOutput(function()
+      boop.ui.config("")
+    end)
+
+    assertCanonicalBlockerOutput(function()
+      boop.ui.config("debug")
+    end)
+
+    assertCanonicalBlockerOutput(function()
+      boop.ui.debug()
+    end)
   end)
 
   it("routes party affcalls subcommands through the party dashboard", function()
