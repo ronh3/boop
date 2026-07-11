@@ -59,15 +59,7 @@ KNOWN_FLAT_STATE_ACCESS = {
         "walkOwned": 4,
         "walkRoomSettled": 9,
     },
-    "src/scripts/boop/boop_attacks.lua": {
-        "currentTargetId": 1,
-        "lastOpenerTraceKey": 2,
-        "rageReady": 3,
-        "spec": 1,
-        "targetShield": 1,
-        "wieldedLeft": 1,
-        "wieldedRight": 1,
-    },
+    "src/scripts/boop/boop_attacks.lua": {},
 }
 
 

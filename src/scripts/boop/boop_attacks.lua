@@ -26,6 +26,9 @@ local function planningState()
   if planningContext and planningContext.state then
     return planningContext.state
   end
+  if boop.runtime and boop.runtime.ensureState then
+    return boop.runtime.ensureState()
+  end
   return boop.state or {}
 end
 
@@ -44,7 +47,7 @@ local function planningSpec()
   if state and state.combat and state.combat.spec ~= nil then
     return boop.util.trim(tostring(state.combat.spec or ""))
   end
-  return boop.util.trim(tostring(state and state.spec or ""))
+  return ""
 end
 
 local function planningTargetId()
@@ -52,7 +55,7 @@ local function planningTargetId()
     return boop.util.trim(tostring(planningContext.target.id or ""))
   end
   local state = planningState()
-  return boop.util.trim(tostring(state and state.currentTargetId or ""))
+  return boop.util.trim(tostring(state and state.targeting and state.targeting.currentTargetId or ""))
 end
 
 local function planningTargetShield()
@@ -60,7 +63,7 @@ local function planningTargetShield()
     return planningContext.target.shield
   end
   local state = planningState()
-  return state and state.targetShield or false
+  return state and state.targeting and state.targeting.targetShield or false
 end
 
 local function shouldBreakShields()
@@ -81,10 +84,11 @@ local function planningWieldedItem(hand)
     return boop.getWieldedItem(hand)
   end
   local state = planningState()
+  local inventory = state and state.inventory or {}
   if hand == "left" then
-    return state and state.wieldedLeft or nil
+    return inventory.wieldedLeft or nil
   end
-  return state and state.wieldedRight or nil
+  return inventory.wieldedRight or nil
 end
 
 function boop.attacks.register(class, profile)
@@ -351,9 +355,12 @@ function boop.attacks.rageReady(ability, rage)
     end
   end
   if key == "" then return true end
+  if planningContext and planningContext.rage and planningContext.rage.ready and planningContext.rage.ready[key] ~= nil then
+    return planningContext.rage.ready[key]
+  end
   local state = planningState()
-  if state and state.rageReady and state.rageReady[key] ~= nil then
-    return state.rageReady[key]
+  if state and state.rage and state.rage.ready and state.rage.ready[key] ~= nil then
+    return state.rage.ready[key]
   end
   return true
 end
@@ -1201,10 +1208,11 @@ local function traceOpenerDecision(classKey, targetId, reason)
 
   local state = planningState()
   local key = string.format("%s|%s|%s", cls, tid, why)
-  if state.lastOpenerTraceKey == key then
+  state.combat = state.combat or {}
+  if state.combat.lastOpenerTraceKey == key then
     return
   end
-  state.lastOpenerTraceKey = key
+  state.combat.lastOpenerTraceKey = key
   boop.trace.log(string.format("opener %s (%s:%s)", why, cls, tid))
 end
 
