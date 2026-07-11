@@ -240,7 +240,7 @@ local function formatMapKeys(map)
   if #keys == 0 then
     return "none"
   end
-  return table.concat(keys, ",")
+  return table.concat(keys, ", ")
 end
 
 local function formatObservedValue(value)
