@@ -261,6 +261,19 @@ local function currentTargetStillInRoom()
   return current ~= "" and denizenNameById(current) ~= ""
 end
 
+local function warnTargetLost()
+  if boop.util and boop.util.warn then
+    boop.util.warn("target_lost -- target left room")
+  end
+end
+
+local function clearLostTargetIntent()
+  boop.runtime.clearAttackIntent("target_lost")
+  if boop.afflictions and boop.afflictions.clearTarget then
+    boop.afflictions.clearTarget()
+  end
+end
+
 local function copyInvItem(item)
   if type(item) ~= "table" then return false end
   return {
@@ -835,22 +848,15 @@ function boop.onRoomItemsRemove()
   if boop.trace and boop.trace.log then
     boop.trace.log(string.format("target lost: %s -- %s", removedId, tostring(removedName or "")))
   end
-  if boop.runtime and boop.runtime.clearAutomationIntent then
-    boop.runtime.clearAutomationIntent("target_lost")
-  else
-    boop.state.targeting.currentTargetId = ""
-    boop.state.targeting.targetName = ""
-    boop.state.queue.prequeuedStandard = false
-    boop.state.queue.aliasDirty = true
-    if boop.targets and boop.targets.clearTargetShield then
-      boop.targets.clearTargetShield("target removed")
-    end
-  end
-  if boop.afflictions and boop.afflictions.clearTarget then
-    boop.afflictions.clearTarget()
-  end
+  warnTargetLost()
+  clearLostTargetIntent()
 
   if not boop.config or not boop.config.enabled or boop.state.diag.hold then
+    return
+  end
+
+  if shouldHold("target") then
+    traceHeld("target", "target lost retarget")
     return
   end
 
@@ -984,8 +990,8 @@ function boop.onRoomInfo()
         if boop.runtime and boop.runtime.clearBlocker and blockerSnapshot().code == "pull_away" then
           boop.runtime.clearBlocker("pull returned")
         end
-        if not currentTargetStillInRoom() and boop.runtime and boop.runtime.clearAutomationIntent then
-          boop.runtime.clearAutomationIntent("target_lost")
+        if not currentTargetStillInRoom() then
+          clearLostTargetIntent()
         end
       end
     end
