@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Pre-1.0 Hardening
-current_phase: 02
-current_phase_name: State Ownership Repair and Safety Baseline
-status: verifying
-stopped_at: Completed 02-07-PLAN.md
-last_updated: "2026-07-11T06:24:29.383Z"
+current_phase: 03
+current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
+status: ready_to_plan
+stopped_at: Phase 02 verified and completed
+last_updated: "2026-07-11T06:54:08Z"
 last_activity: 2026-07-11
-last_activity_desc: Plan 02-07 complete
+last_activity_desc: Phase 02 verified with Mudlet CI and live UI confirmation
 progress:
   total_phases: 6
   completed_phases: 2
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-09)
 
 **Core value:** boop must make Achaea hunting safer, clearer, and less noisy without taking control away from the operator.
-**Current focus:** Phase 02 — State Ownership Repair and Safety Baseline
+**Current focus:** Phase 03 — Queue, Interrupt, Gold, and Autowalk Regression Coverage
 
 ## Current Position
 
-Phase: 02 (State Ownership Repair and Safety Baseline) — VERIFYING
-Plan: 7 of 7
-Status: Phase complete — ready for verification
-Last activity: 2026-07-11 — Plan 02-07 complete
+Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — READY TO PLAN
+Plan: 0 of TBD
+Status: Phase 02 complete; next action is to plan Phase 03
+Last activity: 2026-07-11 — Phase 02 verified with Mudlet CI and live UI confirmation
 
 Progress: [███░░░░░░░] 33%
 
@@ -39,7 +39,7 @@ Progress: [███░░░░░░░] 33%
 
 **Velocity:**
 
-- Total plans completed: 12
+- Total plans completed: 14
 - Average duration: 9 min
 - Total execution time: 0.7 hours
 
@@ -48,11 +48,11 @@ Progress: [███░░░░░░░] 33%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 7 | - | - |
-| 02 | 5 | 42m27s | 8.5 min |
+| 02 | 7 | ~70m | ~10 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 02 P01 (6 min), Phase 02 P02 (7 min), Phase 02 P03 (18 min), Phase 02 P04 (6m27s), Phase 02 P05 (5m)
+- Last 5 plans: Phase 02 P03 (18 min), Phase 02 P04 (6m27s), Phase 02 P05 (5m), Phase 02 P06 (8m), Phase 02 P07 (20m)
 - Trend: Walk migration was faster than the canonical blocker implementation plan
 
 *Updated after each plan completion*
@@ -86,15 +86,16 @@ Recent decisions affecting current work:
 - [Phase 02]: Plan 02-06 uses boop.runtime.blockerSnapshot() as the canonical UI/status/debug source, with legacy checks only as inactive-blocker fallbacks.
 - [Phase 02]: Plan 02-06 kept trace source unchanged because prior Phase 02 contracts already emit normalized blocker enter/exit, cleanup, GMCP recovery, pull, and retarget messages.
 - [Phase 02]: Plan 02-06 documented host Busted and Mudlet Busted availability limitations rather than treating environment failures as passing tests.
+- [Phase 02]: GitHub Actions run 29143523210 passed the real Mudlet/Busted package suite on commit 312ff01, closing the prior local Busted availability gap.
+- [Phase 02]: User live-confirmed compact blocker/trace readability after installing the rebuilt package.
 
 ### Pending Todos
 
-None yet.
+- Plan Phase 03: Queue, Interrupt, Gold, and Autowalk Regression Coverage.
 
 ### Blockers/Concerns
 
-- State-domain drift, autowalk coverage gaps, gag fixture fragility, manifest parity risk, and missing version-sync enforcement drive the phase order.
-- Executor handled per-commit version synchronization for Plan 02-04; orchestrator should handle the final no-push wave/phase routing.
+- Remaining milestone concerns now move to Phase 03+ scope: autowalk coverage gaps, gold/interrupt timing coverage, command trust boundaries, gag fixture fragility, and final release verification.
 
 ## Deferred Items
 
@@ -107,5 +108,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-07-11T06:24:23.571Z
-Stopped at: Completed 02-07-PLAN.md
+Stopped at: Phase 02 verified and completed
 Resume file: None
