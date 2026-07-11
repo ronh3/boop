@@ -241,6 +241,8 @@ local uiPrintControlRow
 local uiPrintToggleControl
 local uiPrintActionControl
 local uiPrintNumberControl
+local currentBlocker
+local blockerDetailText
 
 function boop.ui.statusLine(context)
   local enabled = boop.config.enabled and "on" or "off"
@@ -248,6 +250,14 @@ function boop.ui.statusLine(context)
   local class = currentClass()
   local fleeShown = boop.config.fleeEnabled and tostring(boop.config.fleeAt) or "off"
   local msg = string.format("%s | class: %s | targeting: %s | flee: %s", enabled, class, mode, fleeShown)
+  if currentBlocker then
+    local blocker, nextAction, blockerDetails = currentBlocker()
+    msg = msg .. string.format(" | blocker: %s | next: %s", blocker, nextAction)
+    local detail = blockerDetailText and blockerDetailText(blockerDetails) or ""
+    if detail ~= "" then
+      msg = msg .. " | " .. detail
+    end
+  end
   if context then
     msg = context .. " | " .. msg
   end
@@ -326,52 +336,149 @@ local function operatingModeLabel()
   return mode
 end
 
-local function currentBlocker()
+local function sortedEnabledKeys(map)
+  local keys = {}
+  if type(map) ~= "table" then
+    return keys
+  end
+  for key, value in pairs(map) do
+    if value then
+      keys[#keys + 1] = tostring(key)
+    end
+  end
+  table.sort(keys)
+  return keys
+end
+
+local function blockerKeyText(map)
+  local keys = sortedEnabledKeys(map)
+  if #keys == 0 then
+    return "none"
+  end
+  return table.concat(keys, ", ")
+end
+
+local function makeBlockerDetails(code, label, nextAction, systems, waitsFor, source)
+  local normalizedCode = tostring(code or "")
+  local normalizedLabel = tostring(label or "")
+  if normalizedCode == "" then
+    normalizedCode = "ready"
+  end
+  if normalizedLabel == "" then
+    normalizedLabel = normalizedCode
+  end
+  local text = normalizedCode .. " -- " .. normalizedLabel
+  return {
+    code = normalizedCode,
+    label = normalizedLabel,
+    text = text,
+    nextAction = tostring(nextAction or "let boop attack"),
+    systems = systems or {},
+    waitsFor = waitsFor or {},
+    systemsText = blockerKeyText(systems),
+    waitsText = blockerKeyText(waitsFor),
+    source = tostring(source or ""),
+    active = normalizedCode ~= "ready",
+  }
+end
+
+local function currentBlockerDetails()
+  local state = boop.runtime and boop.runtime.state and boop.runtime.state() or boop.state or {}
+  local snapshot = boop.runtime and boop.runtime.blockerSnapshot and boop.runtime.blockerSnapshot() or nil
+  if type(snapshot) == "table" and tostring(snapshot.code or "") ~= "" then
+    local waits = blockerKeyText(snapshot.waitsFor)
+    local nextAction = waits ~= "none" and ("wait for " .. waits) or "wait for blocker to clear"
+    return makeBlockerDetails(snapshot.code, snapshot.label, nextAction, snapshot.systems, snapshot.waitsFor, snapshot.source)
+  end
+
   if not boop.config.enabled then
-    return "boop disabled", "boop on"
+    return makeBlockerDetails("boop_disabled", "boop disabled", "boop on", { combat = true, queue = true, gold = true, walk = true }, { manual = true }, "ui")
   end
-  if boop.state and boop.state.diag.hold then
-    return "diagnose pause active", "wait for diag or use diag"
+  if state.diag and state.diag.hold then
+    return makeBlockerDetails("diag_hold", "diagnose pause active", "wait for diag or use diag", { combat = true, queue = true }, { prompt = true }, "ui")
   end
-  if boop.state and boop.state.combat.fleeing then
-    return "flee in progress", "let flee resolve"
+  if state.combat and state.combat.fleeing then
+    return makeBlockerDetails("fleeing", "flee in progress", "let flee resolve", { combat = true, queue = true, gold = true, walk = true }, { prompt = true }, "ui")
   end
-  if boop.state and (boop.state.gold.autoGrabPending or boop.state.gold.getPending or boop.state.gold.putPending) then
-    return "loot handling pending", "wait for gold queue"
+  if state.gold and (state.gold.autoGrabPending or state.gold.getPending or state.gold.putPending) then
+    return makeBlockerDetails("gold_pending", "loot handling pending", "wait for gold queue", { combat = true, gold = true, queue = true }, { gold = true }, "ui")
   end
   if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
-    return "waiting for leader target call", "wait for pt target line"
+    return makeBlockerDetails("waiting_leader_target", "waiting for leader target call", "wait for pt target line", { combat = true, target = true }, { party = true }, "ui")
   end
   if boop.walk and boop.walk.isActive and boop.walk.isActive() and boop.walk.blockedReason then
     local reason = boop.walk.blockedReason()
     if reason and reason ~= "" and reason ~= "walk is not active" then
       if reason == "room has not settled yet" then
-        return reason, "wait for room gmcp"
+        return makeBlockerDetails("room_unsettled", reason, "wait for room gmcp", { walk = true }, { gmcp = true }, "walk")
       end
       if reason == "room still has a valid target" or reason == "current target still set" then
-        return "engaged target", "let boop clear the room"
+        return makeBlockerDetails("engaged_target", "engaged target", "let boop clear the room", { combat = true, target = true, walk = true }, { target = true }, "walk")
       end
       if reason == "move already queued" then
-        return reason, "wait for movement"
+        return makeBlockerDetails("walk_move_queued", reason, "wait for movement", { walk = true }, { room = true }, "walk")
       end
-      return reason, "boop walk status"
+      return makeBlockerDetails("walk_blocked", reason, "boop walk status", { walk = true }, { manual = true }, "walk")
     end
   end
-  local targetId = tostring(boop.state and boop.state.targeting.currentTargetId or "")
+  local targetId = tostring(state.targeting and state.targeting.currentTargetId or "")
   if targetId ~= "" then
-    return "engaged target", "let boop attack"
+    return makeBlockerDetails("engaged_target", "engaged target", "let boop attack", { combat = true, target = true }, {}, "ui")
   end
-  local denizenCount = boop.state and boop.state.targeting.denizens and #boop.state.targeting.denizens or 0
+  local denizenCount = state.targeting and state.targeting.denizens and #state.targeting.denizens or 0
   if denizenCount <= 0 then
     if boop.walk and boop.walk.isActive and boop.walk.isActive() then
-      return "room clear", "autowalk should advance"
+      return makeBlockerDetails("room_clear", "room clear", "autowalk should advance", { walk = true }, {}, "ui")
     end
     if boop.walk and boop.walk.isAvailable and not boop.walk.isAvailable() then
-      return "walk package missing", "boop walk install"
+      return makeBlockerDetails("walk_missing", "walk package missing", "boop walk install", { walk = true }, { manual = true }, "ui")
     end
-    return "room clear", "boop walk start"
+    return makeBlockerDetails("room_clear", "room clear", "boop walk start", {}, {}, "ui")
   end
-  return "ready", "let boop attack"
+  return makeBlockerDetails("ready", "ready", "let boop attack", {}, {}, "ui")
+end
+
+currentBlocker = function()
+  local details = currentBlockerDetails()
+  return details.text, details.nextAction, details
+end
+
+local function blockerColor(details)
+  return details and details.active and "yellow" or "green"
+end
+
+blockerDetailText = function(details)
+  if not details then
+    return ""
+  end
+  local parts = {}
+  if details.systemsText and details.systemsText ~= "" and details.systemsText ~= "none" then
+    parts[#parts + 1] = "systems: " .. details.systemsText
+  end
+  if details.waitsText and details.waitsText ~= "" and details.waitsText ~= "none" then
+    parts[#parts + 1] = "waits: " .. details.waitsText
+  end
+  return table.concat(parts, " | ")
+end
+
+local function echoBlockerDetails(details)
+  local text = blockerDetailText(details)
+  if text ~= "" then
+    boop.util.echo("Blocker details: " .. text)
+  end
+end
+
+local function printBlockerDetailRows(details, startRow)
+  local row = tonumber(startRow) or 1
+  if details and details.systemsText and details.systemsText ~= "none" then
+    uiPrintRow(row, "Affected systems", details.systemsText, "cyan")
+    row = row + 1
+  end
+  if details and details.waitsText and details.waitsText ~= "none" then
+    uiPrintRow(row, "Waits for", details.waitsText, "cyan")
+    row = row + 1
+  end
+  return row
 end
 
 local function walkStatusLabel()
@@ -408,7 +515,7 @@ local function renderStatusDashboard()
   local calledTargetShown = tostring((boop.state and boop.state.targeting.calledTargetId) or "")
   local modeShown = operatingModeLabel()
   local themeShown = activeThemeLabel()
-  local blocker, nextAction = currentBlocker()
+  local blocker, nextAction, blockerDetails = currentBlocker()
   local walkShown = "IDLE"
   if boop.walk and boop.walk.isAvailable and not boop.walk.isAvailable() then
     walkShown = "INSTALL"
@@ -450,10 +557,11 @@ local function renderStatusDashboard()
     row = row + 1
     uiPrintRow(row, "Room denizens", tostring(denizenCount), "cyan")
     row = row + 1
-    uiPrintRow(row, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
+    uiPrintRow(row, "Blocker", blocker, blockerColor(blockerDetails))
     row = row + 1
     uiPrintRow(row, "Next action", nextAction, "cyan")
     row = row + 1
+    row = printBlockerDetailRows(blockerDetails, row)
 
     uiPrintSection("queueing")
     uiPrintRow(row, "Use queueing", boolText(not not boop.config.useQueueing), boolColor(not not boop.config.useQueueing))
@@ -515,6 +623,7 @@ local function renderStatusDashboard()
   boop.util.echo("  roomDenizens: " .. tostring(denizenCount))
   boop.util.echo("  blocker: " .. tostring(blocker))
   boop.util.echo("  nextAction: " .. tostring(nextAction))
+  echoBlockerDetails(blockerDetails)
   boop.util.echo("  useQueueing: " .. tostring(boop.config.useQueueing))
   boop.util.echo("  prequeueEnabled: " .. tostring(boop.config.prequeueEnabled))
   boop.util.echo(string.format("  attackLeadSeconds: %.2f", lead))
@@ -633,7 +742,7 @@ function boop.ui.controlCommand(raw)
   local targetCallShown = boop.config.targetCall and "ON" or "OFF"
   local modeShown = operatingModeLabel()
   local themeShown = activeThemeLabel()
-  local blocker, nextAction = currentBlocker()
+  local blocker, nextAction, blockerDetails = currentBlocker()
   local walkShown = walkStatusLabel()
   local queueShown = boolText(not not boop.config.useQueueing)
   local prequeueShown = boolText(not not boop.config.prequeueEnabled)
@@ -647,8 +756,14 @@ function boop.ui.controlCommand(raw)
       boop.ui.setEnabled(not boop.config.enabled)
     end, "Toggle hunting on or off")
     uiPrintRow(2, "Mode", modeShown, "yellow", function() boop.ui.modeCommand("") end, "Show operating mode controls")
-    uiPrintRow(3, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
+    uiPrintRow(3, "Blocker", blocker, blockerColor(blockerDetails))
     uiPrintRow(4, "Next action", nextAction, "cyan")
+    if blockerDetails and blockerDetails.systemsText ~= "none" then
+      uiPrintRow(nil, "Affected systems", blockerDetails.systemsText, "cyan")
+    end
+    if blockerDetails and blockerDetails.waitsText ~= "none" then
+      uiPrintRow(nil, "Waits for", blockerDetails.waitsText, "cyan")
+    end
     uiPrintRow(5, "Trip", string.format("%s | %d kills | %d gold | %d xp", tripRunning, tripKills, tripGold, tripXp), tripRunning == "running" and "green" or "yellow")
 
     uiPrintSection("combat controls")
@@ -680,7 +795,12 @@ function boop.ui.controlCommand(raw)
 
   boop.util.echo("CONTROL DASHBOARD")
   boop.util.echo("----------------------------------------")
-  boop.util.echo(string.format("State: %s | mode: %s | blocker: %s | next: %s", enabled, modeShown, blocker, nextAction))
+  local blockerDetailsText = blockerDetailText(blockerDetails)
+  local stateLine = string.format("State: %s | mode: %s | blocker: %s | next: %s", enabled, modeShown, blocker, nextAction)
+  if blockerDetailsText ~= "" then
+    stateLine = stateLine .. " | " .. blockerDetailsText
+  end
+  boop.util.echo(stateLine)
   boop.util.echo(string.format("Combat: class %s | targeting %s | ragemode %s | queue %s | prequeue %s", tostring(class), targetingMode, rageMode, queueShown, prequeueShown))
   boop.util.echo(string.format("Party: assist %s | targetcall %s | size %s | walk %s | theme %s", assistShown, targetCallShown, partySize, walkShown, themeShown))
   boop.util.echo("Target: " .. targetShown .. " | room denizens: " .. tostring(denizenCount))
@@ -1743,7 +1863,7 @@ function boop.ui.modeCommand(raw)
   local cmd = boop.util.safeLower(text)
 
   if cmd == "" or cmd == "status" or cmd == "show" then
-    local blocker, nextAction = currentBlocker()
+    local blocker, nextAction, blockerDetails = currentBlocker()
     boop.util.info("mode: " .. operatingModeLabel())
     boop.util.info("blocker: " .. blocker)
     boop.util.info("next: " .. nextAction)
@@ -1885,7 +2005,7 @@ function boop.ui.partyCommand(raw)
   local leader = assistLeader()
   local assistShown = assistStatusText()
   local walkShown = walkStatusLabel()
-  local blocker, nextAction = currentBlocker()
+  local blocker, nextAction, blockerDetails = currentBlocker()
   local calledTarget = tostring((boop.state and boop.state.targeting.calledTargetId) or "")
   if calledTarget == "" then calledTarget = "(none)" end
   local targetCallShown = boop.config.targetCall and "ON" or "OFF"
@@ -1963,10 +2083,16 @@ function boop.ui.partyCommand(raw)
         boop.ui.walkCommand(walkShown == "ON" and "stop" or "start")
       end
     end, walkShown == "INSTALL" and "Install demonnicAutoWalker for walk controls" or "Start or stop autowalk")
-    uiPrintRow(8, "Blocker", blocker, blocker == "ready" and "green" or "yellow", function()
+    uiPrintRow(8, "Blocker", blocker, blockerColor(blockerDetails), function()
       boop.ui.walkCommand("status")
     end, "Show walk status")
     uiPrintRow(9, "Next action", nextAction, "cyan")
+    if blockerDetails and blockerDetails.systemsText ~= "none" then
+      uiPrintRow(nil, "Affected systems", blockerDetails.systemsText, "cyan")
+    end
+    if blockerDetails and blockerDetails.waitsText ~= "none" then
+      uiPrintRow(nil, "Waits for", blockerDetails.waitsText, "cyan")
+    end
     uiPrintRow(10, "Force move", "MOVE", "yellow", function()
       boop.ui.walkCommand("move")
     end, "Ask the external walker to advance once")
@@ -2008,6 +2134,7 @@ function boop.ui.partyCommand(raw)
   boop.util.echo("Whitelist sync: " .. whitelistSyncShown)
   boop.util.echo("Roster: " .. rosterShown)
   boop.util.echo("Quick: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop whitelist share [area] | boop whitelist receive")
+  echoBlockerDetails(blockerDetails)
 end
 
 function boop.ui.assistCommand(raw)
@@ -3645,7 +3772,7 @@ function boop.ui.home()
   local targetCallShown = boop.config.targetCall and "ON" or "OFF"
   local modeShown = operatingModeLabel()
   local themeShown = activeThemeLabel()
-  local blocker, nextAction = currentBlocker()
+  local blocker, nextAction, blockerDetails = currentBlocker()
   local walkShown = walkStatusLabel()
   local walkHint = walkShown == "INSTALL"
     and "Install demonnicAutoWalker for walk controls"
@@ -3656,8 +3783,14 @@ function boop.ui.home()
     uiPrintSection("operations")
     uiPrintRow(1, "Hunting", enabled, boop.config.enabled and "green" or "red")
     uiPrintRow(2, "Mode", modeShown, "yellow")
-    uiPrintRow(3, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
+    uiPrintRow(3, "Blocker", blocker, blockerColor(blockerDetails))
     uiPrintRow(4, "Next action", nextAction, "cyan")
+    if blockerDetails and blockerDetails.systemsText ~= "none" then
+      uiPrintRow(nil, "Affected systems", blockerDetails.systemsText, "cyan")
+    end
+    if blockerDetails and blockerDetails.waitsText ~= "none" then
+      uiPrintRow(nil, "Waits for", blockerDetails.waitsText, "cyan")
+    end
     uiPrintRow(5, "Walk", walkShown, walkShown == "ON" and "green" or (walkShown == "INSTALL" and "red" or "yellow"), function()
       boop.ui.walkCommand(walkShown == "INSTALL" and "install" or "")
     end, walkHint)
@@ -3689,7 +3822,12 @@ function boop.ui.home()
 
   boop.util.echo("BOOP")
   boop.util.echo("----------------------------------------")
-  boop.util.echo(string.format("State: %s | mode: %s | blocker: %s | next: %s", enabled, modeShown, blocker, nextAction))
+  local blockerDetailsText = blockerDetailText(blockerDetails)
+  local stateLine = string.format("State: %s | mode: %s | blocker: %s | next: %s", enabled, modeShown, blocker, nextAction)
+  if blockerDetailsText ~= "" then
+    stateLine = stateLine .. " | " .. blockerDetailsText
+  end
+  boop.util.echo(stateLine)
   boop.util.echo(string.format("Class: %s | targeting: %s | ragemode: %s | assist: %s | targetcall: %s | walk: %s | theme: %s", tostring(class), targetingMode, rageMode, assistShown, targetCallShown, walkShown, themeShown))
   boop.util.echo("Target: " .. targetShown .. " | room denizens: " .. tostring(denizenCount))
   boop.util.echo(string.format("Trip: %s | kills %d | gold %d | xp %d", tripRunning, tripKills, tripGold, tripXp))
@@ -3930,7 +4068,7 @@ end
 
 local function configRenderHome()
   configSetScreen("home")
-  local blocker, nextAction = currentBlocker()
+  local blocker, nextAction, blockerDetails = currentBlocker()
   local targetId = boop.state and boop.state.targeting.currentTargetId or ""
   local targetName = boop.state and boop.state.targeting.targetName or ""
   local targetShown = targetId ~= "" and (targetId .. " | " .. (targetName ~= "" and targetName or "(unnamed)")) or "(none)"
@@ -3945,8 +4083,14 @@ local function configRenderHome()
     uiPrintRow(nil, "Targeting", configTargetingSummary(), "cyan", function()
       boop.ui.config("targeting")
     end, "Open targeting settings")
-    uiPrintRow(nil, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
+    uiPrintRow(nil, "Blocker", blocker, blockerColor(blockerDetails))
     uiPrintRow(nil, "Next action", nextAction, "cyan")
+    if blockerDetails and blockerDetails.systemsText ~= "none" then
+      uiPrintRow(nil, "Affected systems", blockerDetails.systemsText, "cyan")
+    end
+    if blockerDetails and blockerDetails.waitsText ~= "none" then
+      uiPrintRow(nil, "Waits for", blockerDetails.waitsText, "cyan")
+    end
     uiPrintRow(nil, "Target", targetShown, "cyan")
 
     uiPrintSection("settings")
@@ -3986,7 +4130,12 @@ local function configRenderHome()
   boop.util.echo("CONFIGURATION")
   boop.util.echo("----------------------------------------")
   boop.util.echo(string.format("Hunting: %s", configHuntingSummary()))
-  boop.util.echo(string.format("Targeting: %s | blocker: %s", configTargetingSummary(), blocker))
+  local blockerDetailsText = blockerDetailText(blockerDetails)
+  local targetingLine = string.format("Targeting: %s | blocker: %s", configTargetingSummary(), blocker)
+  if blockerDetailsText ~= "" then
+    targetingLine = targetingLine .. " | " .. blockerDetailsText
+  end
+  boop.util.echo(targetingLine)
   boop.util.echo("Target: " .. targetShown .. " | next: " .. nextAction)
   boop.util.echo(string.format("[1] Combat settings          [ OPEN ]"))
   boop.util.echo(string.format("[2] Targeting settings       [ OPEN ]"))
@@ -4011,7 +4160,7 @@ local function configRenderCombatSection()
   local lead = tonumber(boop.config.attackLeadSeconds) or 0
   local diagTimeout = tonumber(boop.config.diagTimeoutSeconds) or 0
   local fleeShown = boop.config.fleeEnabled and tostring(boop.config.fleeAt or "30%") or "off"
-  local blocker, nextAction = currentBlocker()
+  local blocker, nextAction, blockerDetails = currentBlocker()
   local targetId = boop.state and boop.state.targeting.currentTargetId or ""
   local targetName = boop.state and boop.state.targeting.targetName or ""
   local targetShown = targetId ~= "" and (targetId .. " | " .. (targetName ~= "" and targetName or "(unnamed)")) or "(none)"
@@ -4019,6 +4168,7 @@ local function configRenderCombatSection()
     uiPrintHeader("configuration > combat")
     uiPrintSection("live")
     boop.util.echo("Blocker: " .. blocker .. " | next: " .. nextAction)
+    echoBlockerDetails(blockerDetails)
     boop.util.echo("Target: " .. targetShown)
 
     uiPrintSection("settings")
@@ -4079,6 +4229,7 @@ local function configRenderCombatSection()
   boop.util.echo("CONFIGURATION > Combat")
   boop.util.echo("----------------------------------------")
   boop.util.echo(string.format("Hunting: %s | rage %s | blocker: %s", boolText(boop.config.enabled), tostring(boop.config.attackMode or "simple"), blocker))
+  echoBlockerDetails(blockerDetails)
   boop.util.echo("Target: " .. targetShown .. " | next: " .. nextAction)
   boop.util.echo("[1] Hunting                  [ " .. boolText(boop.config.enabled) .. " ] [toggle]")
   boop.util.echo("[2] Rage mode                [ " .. tostring(boop.config.attackMode or "simple") .. " ] [set]")
@@ -4103,7 +4254,7 @@ end
 
 local function configRenderTargetingSection()
   configSetScreen("targeting")
-  local blocker, nextAction = currentBlocker()
+  local blocker, nextAction, blockerDetails = currentBlocker()
   local denizenCount = boop.state and boop.state.targeting.denizens and #boop.state.targeting.denizens or 0
   local calledId = tostring((boop.state and boop.state.targeting.calledTargetId) or "")
   if calledId == "" then
@@ -4114,7 +4265,13 @@ local function configRenderTargetingSection()
     uiPrintSection("overview")
     uiPrintRow(nil, "Mode", boop.config.targetingMode or "whitelist", "cyan")
     uiPrintRow(nil, "Target order", boop.config.targetOrder or "order", "cyan")
-    uiPrintRow(nil, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
+    uiPrintRow(nil, "Blocker", blocker, blockerColor(blockerDetails))
+    if blockerDetails and blockerDetails.systemsText ~= "none" then
+      uiPrintRow(nil, "Affected systems", blockerDetails.systemsText, "cyan")
+    end
+    if blockerDetails and blockerDetails.waitsText ~= "none" then
+      uiPrintRow(nil, "Waits for", blockerDetails.waitsText, "cyan")
+    end
     uiPrintRow(nil, "Called target", calledId, "cyan")
     uiPrintRow(nil, "Room denizens", tostring(denizenCount), "cyan")
 
@@ -4150,6 +4307,7 @@ local function configRenderTargetingSection()
   boop.util.echo("CONFIGURATION > Targeting")
   boop.util.echo("----------------------------------------")
   boop.util.echo(string.format("Mode: %s | order: %s | blocker: %s", tostring(boop.config.targetingMode or "whitelist"), tostring(boop.config.targetOrder or "order"), blocker))
+  echoBlockerDetails(blockerDetails)
   boop.util.echo("Called target: " .. calledId .. " | room denizens: " .. tostring(denizenCount) .. " | next: " .. nextAction)
   boop.util.echo("[1] Targeting mode            [ " .. tostring(boop.config.targetingMode or "whitelist") .. " ]")
   boop.util.echo("[2] Whitelist priority order  [ " .. boolText(not not boop.config.whitelistPriorityOrder) .. " ]")
@@ -4203,11 +4361,22 @@ end
 local function configRenderDebugSection()
   configSetScreen("debug")
   local traceCount = boop.state and boop.state.trace.buffer and #boop.state.trace.buffer or 0
+  local blocker, nextAction, blockerDetails = currentBlocker()
   local ownPalette = boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary("own") or "AUTO"
   local othersPalette = boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary("others") or "AUTO"
   local mobsPalette = boop.gag and boop.gag.paletteSummary and boop.gag.paletteSummary("mobs") or "AUTO"
   if cecho then
     uiPrintHeader("configuration > debug")
+    uiPrintSection("runtime")
+    uiPrintRow(nil, "Blocker", blocker, blockerColor(blockerDetails))
+    uiPrintRow(nil, "Next action", nextAction, "cyan")
+    if blockerDetails and blockerDetails.systemsText ~= "none" then
+      uiPrintRow(nil, "Affected systems", blockerDetails.systemsText, "cyan")
+    end
+    if blockerDetails and blockerDetails.waitsText ~= "none" then
+      uiPrintRow(nil, "Waits for", blockerDetails.waitsText, "cyan")
+    end
+
     uiPrintSection("settings")
     uiPrintToggleControl(1, "Trace logging", not not boop.config.traceEnabled, function()
       boop.ui.config("debug 1")
@@ -4244,6 +4413,8 @@ local function configRenderDebugSection()
   end
   boop.util.echo("CONFIGURATION > Debug")
   boop.util.echo("----------------------------------------")
+  boop.util.echo("Blocker: " .. blocker .. " | next: " .. nextAction)
+  echoBlockerDetails(blockerDetails)
   boop.util.echo(string.format("Trace: %s | entries: %d | gag own %s | gag others %s | gag mobs %s | own palette %s | others palette %s | mobs palette %s", boolText(not not boop.config.traceEnabled), traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks), boolText(not not boop.config.gagMobAttacks), ownPalette, othersPalette, mobsPalette))
   boop.util.echo("[1] Trace logging             [ " .. boolText(not not boop.config.traceEnabled) .. " ] [toggle]")
   boop.util.echo("[2] Debug snapshot            [ ready ] [open]")
@@ -4434,7 +4605,7 @@ function boop.ui.debug()
   local eq = gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.eq or "?"
   local bal = gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.bal or "?"
   local rage = boop.attacks and boop.attacks.getRage and boop.attacks.getRage() or 0
-  local blocker, nextAction = currentBlocker()
+  local blocker, nextAction, blockerDetails = currentBlocker()
   local traceCount = boop.state and boop.state.trace.buffer and #boop.state.trace.buffer or 0
   local targetShown = "(none)"
   if currentTargetId ~= "" and currentTargetName ~= "" then
@@ -4451,8 +4622,14 @@ function boop.ui.debug()
     uiPrintRow(1, "Enabled", enabled, enabled == "on" and "green" or "yellow")
     uiPrintRow(2, "Mode", tostring(mode), "cyan")
     uiPrintRow(3, "Class", tostring(class), "cyan")
-    uiPrintRow(4, "Blocker", blocker, blocker == "ready" and "green" or "yellow")
+    uiPrintRow(4, "Blocker", blocker, blockerColor(blockerDetails))
     uiPrintRow(5, "Next action", nextAction, "cyan")
+    if blockerDetails and blockerDetails.systemsText ~= "none" then
+      uiPrintRow(nil, "Affected systems", blockerDetails.systemsText, "cyan")
+    end
+    if blockerDetails and blockerDetails.waitsText ~= "none" then
+      uiPrintRow(nil, "Waits for", blockerDetails.waitsText, "cyan")
+    end
 
     uiPrintSection("combat state")
     uiPrintRow(6, "Eq / Bal", string.format("%s / %s", tostring(eq), tostring(bal)), "cyan")
@@ -4473,6 +4650,7 @@ function boop.ui.debug()
   boop.util.echo("----------------------------------------")
   boop.util.echo(string.format("Runtime: enabled %s | mode %s | class %s", enabled, tostring(mode), tostring(class)))
   boop.util.echo(string.format("Flow: blocker %s | next %s", blocker, nextAction))
+  echoBlockerDetails(blockerDetails)
   boop.util.echo(string.format("Combat: eq/bal %s/%s | rage %s | denizens %s", tostring(eq), tostring(bal), tostring(rage), tostring(denizenCount)))
   boop.util.echo("Target: " .. targetShown)
   boop.util.echo(string.format("Diagnostics: trace %d | gag own %s | gag others %s | gag mobs %s", traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks), boolText(not not boop.config.gagMobAttacks)))
