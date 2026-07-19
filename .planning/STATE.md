@@ -92,6 +92,7 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 - Plan Phase 03: Queue, Interrupt, Gold, and Autowalk Regression Coverage.
+- [Add temporary prefixes and custom attacks](./todos/pending/2026-07-19-add-temporary-prefixes-and-custom-attacks.md) after Phase 4 command trust boundaries.
 
 ### Blockers/Concerns
 
