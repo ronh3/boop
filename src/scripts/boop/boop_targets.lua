@@ -137,6 +137,15 @@ function boop.targets.isDenizenName(name)
   return false
 end
 
+function boop.targets.isDenizen(id, name)
+  local denizens = boop.state.targeting.denizens or {}
+  local itemId = tostring(id or ""):match("(%d+)$")
+  if itemId and findDenizenById(denizens, itemId) then
+    return true
+  end
+  return boop.targets.isDenizenName(name)
+end
+
 function boop.targets.updateRoomItems(items)
   boop.state.targeting.denizens = {}
   if not items then return end

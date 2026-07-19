@@ -119,12 +119,37 @@ describe("boop ih", function()
   end)
 
   it("activates ih capture for valid ih object rows", function()
+    helper.setDenizens({
+      { id = "79858", name = "a swarthy troll dockworker", attrib = "m" },
+    })
     boop.ih.start()
     boop.ih.handleLine("dockworker79858", "a swarthy troll dockworker", "dockworker79858     a swarthy troll dockworker")
 
     assert.is_true(boop.state.ih.requested)
     assert.is_true(boop.state.ih.active)
     assert.are.equal("dockworker79858     a swarthy troll dockworker [+whitelist] [+blacklist]", echoes[1])
+  end)
+
+  it("does not show list actions for ordinary room items", function()
+    boop.targets.updateRoomItems({
+      { id = "55", name = "an ornate steel rapier", attrib = "t" },
+    })
+
+    boop.ih.start()
+    boop.ih.handleLine("rapier55", "an ornate steel rapier", "rapier55     an ornate steel rapier")
+
+    assert.are.equal("rapier55     an ornate steel rapier", echoes[1])
+  end)
+
+  it("does not show list actions for mounts excluded by GMCP", function()
+    boop.targets.updateRoomItems({
+      { id = "606319", name = "a phantom donkey", attrib = "mx", icon = "animal" },
+    })
+
+    boop.ih.start()
+    boop.ih.handleLine("donkey606319", "a phantom donkey", "donkey606319     a phantom donkey")
+
+    assert.are.equal("donkey606319     a phantom donkey", echoes[1])
   end)
 
   it("keeps the ih trigger broad enough for apostrophes in object ids without matching timestamps", function()
