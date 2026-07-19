@@ -6,9 +6,9 @@ current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
 status: ready_to_plan
 stopped_at: Phase 02 verified and completed
-last_updated: "2026-07-11T06:54:08Z"
-last_activity: 2026-07-11
-last_activity_desc: Phase 02 verified with Mudlet CI and live UI confirmation
+last_updated: "2026-07-19T05:01:19Z"
+last_activity: 2026-07-19
+last_activity_desc: Restored GMCP-backed IH denizen action filtering
 progress:
   total_phases: 6
   completed_phases: 2
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — READY TO PLAN
 Plan: 0 of TBD
 Status: Phase 02 complete; next action is to plan Phase 03
-Last activity: 2026-07-11 — Phase 02 verified with Mudlet CI and live UI confirmation
+Last activity: 2026-07-19 — Restored GMCP-backed IH denizen action filtering
 
 Progress: [███░░░░░░░] 33%
 
@@ -96,6 +96,12 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 - Remaining milestone concerns now move to Phase 03+ scope: autowalk coverage gaps, gold/interrupt timing coverage, command trust boundaries, gag fixture fragility, and final release verification.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260718-uip | Restore GMCP-backed IH denizen actions and hide whitelist/blacklist controls for non-denizen items | 2026-07-19 | a984495 | [260718-uip-restore-gmcp-backed-ih-denizen-actions-a](./quick/260718-uip-restore-gmcp-backed-ih-denizen-actions-a/) |
 
 ## Deferred Items
 
