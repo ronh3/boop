@@ -71,7 +71,7 @@ describe("boop gold handling", function()
     assert.is_true(boop.state.gold.dropped)
 
     boop.runtime.clearBlocker("test release")
-    boop.state.gold.autoGrabPendingAt = -1
+    boop.state.gold.autoGrabPendingAt = 1
     boop.tick()
 
     assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
