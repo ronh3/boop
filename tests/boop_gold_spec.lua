@@ -79,6 +79,47 @@ describe("boop gold handling", function()
     assert.is_true(boop.state.gold.getPending)
   end)
 
+  it("preserves detected gold when the killed target is removed immediately afterward", function()
+    boop.config.useQueueing = true
+    boop.config.goldPack = "tophat"
+    helper.setDenizens({
+      { id = "42", name = "a pit demon" },
+    })
+    helper.setTarget("42", "a pit demon", "0%")
+
+    gmcp.Char.Items.Add = {
+      location = "room",
+      item = {
+        id = "9001",
+        name = "some gold sovereigns",
+        attrib = "t",
+      },
+    }
+    boop.onRoomItemsAdd()
+
+    assert.is_true(boop.state.gold.autoGrabPending)
+    assert.is_function(scheduled[1])
+
+    gmcp.Char.Items.Remove = {
+      location = "room",
+      item = {
+        id = "42",
+        name = "the corpse of a pit demon",
+        attrib = "t",
+      },
+    }
+    boop.onRoomItemsRemove()
+
+    assert.is_true(boop.state.gold.autoGrabPending)
+    scheduled[1]()
+
+    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
+    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in tophat", false)
+    assert.is_false(boop.state.gold.autoGrabPending)
+    assert.is_true(boop.state.gold.getPending)
+    assert.is_true(boop.state.gold.putPending)
+  end)
+
   it("flushes pending gold when tick finds no target under queueing", function()
     boop.config.useQueueing = true
     boop.config.goldPack = "pack"
