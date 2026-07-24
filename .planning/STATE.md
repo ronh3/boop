@@ -93,6 +93,7 @@ Recent decisions affecting current work:
 
 - Plan Phase 03: Queue, Interrupt, Gold, and Autowalk Regression Coverage.
 - [Add temporary prefixes and custom attacks](./todos/pending/2026-07-19-add-temporary-prefixes-and-custom-attacks.md) after Phase 4 command trust boundaries.
+- [Verify Infernal hyena maul summary](./todos/pending/2026-07-24-verify-infernal-hyena-maul-summary.md) during Phase 5 fixture expansion after capturing a successful ungagged live sequence.
 
 ### Blockers/Concerns
 
