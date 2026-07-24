@@ -72,6 +72,24 @@ describe("boop skill ingestion", function()
     assert.stub(send_gmcp_stub).was_called_with([[Char.Skills.Get {"group":"weaponmastery","name":"Slaughter"}]])
   end)
 
+  it("rechecks a cached skill when the requested group has changed", function()
+    boop.skills.known.maul = false
+    boop.skills.skillToGroup.maul = "oppression"
+    boop.skills.skillOriginal.maul = "Maul"
+
+    assert.is_false(boop.skills.ensureSkill("Maul", "Malignity"))
+    assert.stub(send_gmcp_stub).was_called_with([[Char.Skills.Get {"group":"malignity","name":"Maul"}]])
+
+    gmcp.Char.Skills.Info = {
+      group = "Malignity",
+      name = "Maul",
+      learned = true,
+    }
+    boop.onSkillsInfo()
+
+    assert.is_true(boop.skills.ensureSkill("Maul", "Malignity"))
+  end)
+
   it("marks skill info as not learned and clears the pending timer", function()
     boop.skills.pending.slive = true
     boop.skills.pendingTimers.slive = 73

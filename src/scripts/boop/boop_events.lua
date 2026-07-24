@@ -510,12 +510,16 @@ end
 local function onGoldDetected(source)
   if not boop.config.enabled then return end
   if not boop.config.autoGrabGold then return end
+  boop.state = boop.state or {}
+
   if shouldHold("gold") then
+    boop.state.gold.autoGrabPending = true
+    boop.state.gold.autoGrabPendingAt = nowSeconds()
+    boop.state.gold.dropped = true
     traceHeld("gold", source or "gold detected")
     return
   end
 
-  boop.state = boop.state or {}
   boop.trace.log("gold drop detected" .. (source and (": " .. source) or ""))
 
   if boop.config.useQueueing then
@@ -752,9 +756,7 @@ function boop.onRoomItemsList()
   traceRoomItemsList(items, goldItem)
   if goldItem then
     boop.state = boop.state or {}
-    if shouldHold("gold") then
-      traceHeld("gold", "room items list")
-    elseif not (boop.state.gold.autoGrabPending or boop.state.gold.getPending or boop.state.gold.putPending) then
+    if not (boop.state.gold.autoGrabPending or boop.state.gold.getPending or boop.state.gold.putPending) then
       autoGrabRoomItem(goldItem)
     end
   end
@@ -776,11 +778,7 @@ function boop.onRoomItemsAdd()
   traceRoomItemEvent("add", item)
   boop.targets.addRoomItem(item)
   noteRoomGmcpObserved()
-  if shouldHold("gold") then
-    traceHeld("gold", "room item add")
-  else
-    autoGrabRoomItem(item)
-  end
+  autoGrabRoomItem(item)
 end
 
 function boop.onRoomItemsRemove()

@@ -4,11 +4,20 @@ local function norm(value)
   return boop.util.safeLower(boop.util.trim(value or ""))
 end
 
-function boop.skills.init()
+local function ensureCaches()
   boop.skills.known = boop.skills.known or {}
+  boop.skills.knownGroups = boop.skills.knownGroups or {}
   boop.skills.skillToGroup = boop.skills.skillToGroup or {}
   boop.skills.skillOriginal = boop.skills.skillOriginal or {}
+  boop.skills.pending = boop.skills.pending or {}
+  boop.skills.pendingGroups = boop.skills.pendingGroups or {}
+  boop.skills.pendingTimers = boop.skills.pendingTimers or {}
+end
+
+function boop.skills.init()
+  ensureCaches()
   boop.skills.pending = {}
+  boop.skills.pendingGroups = {}
   boop.skills.pendingTimers = {}
   boop.skills.lastInfo = nil
   boop.skills.lastList = nil
@@ -45,6 +54,7 @@ function boop.skills.requestAll()
 end
 
 function boop.skills.requestSkillDirect(name, group)
+  ensureCaches()
   if not name or name == "" then return end
   local key = norm(name)
   local groupKey = norm(group or boop.skills.skillToGroup[key] or "")
@@ -53,6 +63,7 @@ function boop.skills.requestSkillDirect(name, group)
 
   boop.skills.skillToGroup[key] = groupKey
   boop.skills.pending[key] = true
+  boop.skills.pendingGroups[key] = groupKey
   local skillName = boop.skills.skillOriginal[key] or name
   sendGMCP(string.format([[Char.Skills.Get {"group":"%s","name":"%s"}]], groupKey, skillName))
 
@@ -61,11 +72,13 @@ function boop.skills.requestSkillDirect(name, group)
   end
   boop.skills.pendingTimers[key] = tempTimer(1.5, function()
     boop.skills.pending[key] = nil
+    boop.skills.pendingGroups[key] = nil
     boop.skills.pendingTimers[key] = nil
   end)
 end
 
 function boop.skills.knownSkill(name)
+  ensureCaches()
   if not name or name == "" then return true end
   local key = norm(name)
   local val = boop.skills.known[key]
@@ -77,12 +90,17 @@ function boop.skills.knownSkill(name)
 end
 
 function boop.skills.ensureSkill(name, group)
+  ensureCaches()
   if not name or name == "" then return true end
   local key = norm(name)
   local val = boop.skills.known[key]
-  if val ~= nil then return val end
-  if group and group ~= "" then
-    boop.skills.requestSkillDirect(name, group)
+  local requestedGroup = norm(group)
+  local cachedGroup = norm(boop.skills.knownGroups[key] or boop.skills.skillToGroup[key])
+  if val ~= nil and (requestedGroup == "" or cachedGroup == "" or cachedGroup == requestedGroup) then
+    return val
+  end
+  if requestedGroup ~= "" then
+    boop.skills.requestSkillDirect(name, requestedGroup)
   end
   return false
 end
@@ -92,6 +110,7 @@ function boop.skills.handleGroups()
 end
 
 function boop.skills.handleList()
+  ensureCaches()
   if not gmcp or not gmcp.Char or not gmcp.Char.Skills or not gmcp.Char.Skills.List then return end
   local raw = gmcp.Char.Skills.List
   local list = raw.list or raw or {}
@@ -127,14 +146,21 @@ function boop.skills.handleList()
 end
 
 function boop.skills.handleInfo()
+  ensureCaches()
   if not gmcp or not gmcp.Char or not gmcp.Char.Skills or not gmcp.Char.Skills.Info then return end
   local info = gmcp.Char.Skills.Info
   boop.skills.lastInfo = info
   local key = norm(info.skill or info.name or "")
   if key == "" then return end
 
+  local groupKey = norm(info.group or boop.skills.pendingGroups[key] or boop.skills.skillToGroup[key])
   boop.skills.known[key] = learnedFromInfo(info)
+  if groupKey ~= "" then
+    boop.skills.knownGroups[key] = groupKey
+    boop.skills.skillToGroup[key] = groupKey
+  end
   boop.skills.pending[key] = nil
+  boop.skills.pendingGroups[key] = nil
   if boop.skills.pendingTimers[key] then
     killTimer(boop.skills.pendingTimers[key])
     boop.skills.pendingTimers[key] = nil

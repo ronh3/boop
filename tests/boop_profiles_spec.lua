@@ -33,6 +33,20 @@ describe("boop class profile selection", function()
     assert.are.equal("battlefury focus precision/slaughter 42", actions.standard)
   end)
 
+  it("prepends the Infernal hyena maul when Malignity Maul is ready", function()
+    helper.setClass("Infernal")
+    helper.setSpec("Dual Cutting")
+    helper.learnSkills({
+      { name = "Duality", group = "Weaponmastery" },
+      { name = "Maul", group = "Malignity" },
+    })
+    boop.rage.setReady("maul", true)
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("hyena maul 42/dsl 42", actions.standard)
+  end)
+
   it("uses the infernal sword-and-shield shieldbreak standard for shielded targets", function()
     helper.setClass("Infernal")
     helper.setSpec("Sword and Shield")

@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.382"
+boop.version = boop.version or "0.1.383"
 
 boop.defaults = {
   enabled = false,
@@ -156,6 +156,7 @@ boop.bootstrap = boop.bootstrap or function()
       "Elementalism",
       "Occultism",
       "Domination",
+      "Malignity",
       "Attainment",
     }
   end

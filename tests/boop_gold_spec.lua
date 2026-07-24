@@ -48,6 +48,37 @@ describe("boop gold handling", function()
     assert.are.equal("pack", boop.state.gold.packTarget)
   end)
 
+  it("remembers room gold detected during a hold and collects it after release", function()
+    boop.config.useQueueing = false
+    boop.runtime.setBlocker("test_gold_hold", "gold test hold", {
+      gold = true,
+    }, {
+      prompt = true,
+    })
+    gmcp.Char.Items.Add = {
+      location = "room",
+      item = {
+        id = "9001",
+        name = "a pile of golden sovereigns",
+        attrib = "t",
+      },
+    }
+
+    boop.onRoomItemsAdd()
+
+    assert.stub(send_stub).was_not_called()
+    assert.is_true(boop.state.gold.autoGrabPending)
+    assert.is_true(boop.state.gold.dropped)
+
+    boop.runtime.clearBlocker("test release")
+    boop.state.gold.autoGrabPendingAt = -1
+    boop.tick()
+
+    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
+    assert.is_false(boop.state.gold.autoGrabPending)
+    assert.is_true(boop.state.gold.getPending)
+  end)
+
   it("flushes pending gold when tick finds no target under queueing", function()
     boop.config.useQueueing = true
     boop.config.goldPack = "pack"

@@ -1265,7 +1265,7 @@ end
 
 local function infernalMaulKnown()
   if boop.skills and boop.skills.ensureSkill then
-    return boop.skills.ensureSkill("Maul", "Oppression")
+    return boop.skills.ensureSkill("Maul", "Malignity")
   end
   if boop.skills and boop.skills.knownSkill then
     return boop.skills.knownSkill("Maul")
