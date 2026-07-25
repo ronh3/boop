@@ -238,7 +238,6 @@ function boop.executeAction(action, forceQueue)
       end
       send("queue addclearfull freestand BOOP_ATTACK", false)
       boop.trace.log("std queue: " .. queuedAction)
-      markUnnamableMaulUsed(queuedAction)
       return
     end
     if boop.config.useQueueing and (boop.state.gold.getPending or boop.state.gold.putPending) then
@@ -259,7 +258,6 @@ function boop.executeAction(action, forceQueue)
     end
     send("queue addclearfull freestand BOOP_ATTACK", false)
     boop.trace.log("std queue: " .. queuedAction)
-    markUnnamableMaulUsed(queuedAction)
   else
     local parts = boop.util.split(action, boop.lists.separator or "/")
     for _, part in ipairs(parts) do

@@ -52,6 +52,34 @@ describe("boop assist mode", function()
     assert.stub(send_stub).was_called_with("harry 42", false)
   end)
 
+  it("keeps queued Infernal hyena maul until Achaea confirms it was used", function()
+    helper.setClass("Infernal")
+    helper.setSpec("Dual Cutting")
+    helper.learnSkills({
+      { name = "Duality", group = "Weaponmastery" },
+      { name = "Maul", group = "Malignity" },
+    })
+    boop.config.useQueueing = true
+    boop.config.assistEnabled = true
+    boop.config.assistLeader = "Leader"
+    boop.rage.setReady("maul", true)
+
+    local first = boop.attacks.choose()
+    boop.executeAction(first.standard)
+    local refreshed = boop.attacks.choose()
+    boop.executeAction(refreshed.standard)
+
+    assert.are.equal("hyena maul 42/dsl 42", first.standard)
+    assert.are.equal(first.standard, refreshed.standard)
+    assert.is_true(boop.state.rage.ready.maul)
+    assert.are.equal("assist Leader/hyena maul 42/dsl 42", boop.state.queue.aliasAction)
+
+    boop.rage.onHyenaMaulUsed()
+
+    assert.is_false(boop.state.rage.ready.maul)
+    assert.are.equal("dsl 42", boop.attacks.choose().standard)
+  end)
+
   it("stores leader names and toggles assist state from the ui command", function()
     boop.ui.assistCommand("Leader")
 

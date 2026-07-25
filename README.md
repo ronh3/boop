@@ -90,7 +90,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - If `boop pack <container>` is set, boop follows pickup with `put sovereigns in <container>`.
 - Gold get/put has trigger-based success/failure tracking with limited retries and warning output when retries are exhausted.
 - For `Two Handed` spec with `Focus` known in `Weaponmastery`, boop prepends `battlefury focus <speed|precision>/` to standard damage attacks (never shieldbreakers); configure it with `boop focus`.
-- For `Unnamable` with `Maul` known in `Dominion`, boop prepends `maul &tar/` to standard attacks while ready, then waits for the cooldown-ready line before prepending again.
+- For `Unnamable` with `Maul` known in `Dominion`, boop prepends `hound maul &tar/`; for `Infernal` with `Maul` known in `Malignity`, it prepends `hyena maul &tar/`. Queued Maul remains in the attack alias until Achaea confirms it was used or unavailable, then boop waits for the cooldown-ready line before prepending it again.
 - Dragon classes include `blast &tar` as a standard damage option, so it can be selected with `boop prefer dam blast`; rage and pull-rage actions are left unchanged.
 - Infernal includes `quash &tar/arc` as `quarc`, so it can be selected with `boop prefer dam quarc`.
 - Psion includes `weave flurry &tar` as a standard damage option, so it can be selected with `boop prefer dam flurry`.

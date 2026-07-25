@@ -115,7 +115,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `boop trace` now includes compact GMCP room/info/item/gold-related room events for debugging movement and loot timing.
 - `boop gag mobs` condenses known mob attack flavor lines plus following `Health lost` lines into `Mob: Damage -> You (#### damagetype)` summaries with their own configurable gag palette.
 - Two-handed standards prepend `battlefury focus speed/` when `Focus` is known (Weaponmastery), excluding shieldbreaker paths.
-- Unnamable standards prepend `maul &tar/` when `Maul` is known (Dominion) and ready, with readiness tracked through the existing ability-ready trigger lines.
+- Unnamable standards prepend `hound maul &tar/` and Infernal standards prepend `hyena maul &tar/` when the class-specific `Maul` skill is known and ready. Queued intent does not consume readiness before Achaea confirms use or rejection through the existing trigger lines.
 - Dragon profiles include `blast &tar` as a standard damage option exposed through `boop prefer`; rage and pull-rage dragon actions are not blast-prefixed.
 - Infernal profiles include `quash &tar/arc` as the `quarc` standard damage option exposed through `boop prefer`.
 - Standard attacks and rage actions are independent; standard builds rage and there is no mode toggle.
