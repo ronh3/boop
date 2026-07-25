@@ -254,6 +254,56 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("Bal: 1.9s", 1, true) ~= nil)
   end)
 
+  it("attributes physical blunt gear procs and their crits inside a DSL summary", function()
+    boop.gag.onAttackLine({
+      ability = "Jab",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "You swing a broad-bladed sword of hardship at an ogre brute with all your might.",
+      "an ogre brute",
+    }, "You swing a broad-bladed sword of hardship at an ogre brute with all your might.")
+    boop.gag.onDamageLine("340", "physical cutting", "Damage dealt: 340 (physical cutting).")
+    boop.gag.onProcLine("Gear", "", "Your gear enhances your strike with additional physical blunt damage.")
+    boop.gag.onCriticalLine("PLANE-RAZING CRITICAL", "You have scored a PLANE-RAZING CRITICAL hit!")
+    boop.gag.onDamageLine("629", "physical blunt", "Damage dealt: 629 (physical blunt).")
+    boop.gag.onAttackLine({
+      ability = "Jab",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "You swing a curved blade of broken chains at an ogre brute with all your might.",
+      "an ogre brute",
+    }, "You swing a curved blade of broken chains at an ogre brute with all your might.")
+    boop.gag.onDamageLine("340", "physical cutting", "Damage dealt: 340 (physical cutting).")
+    boop.gag.onProcLine("Gear", "", "Your gear enhances your strike with additional physical blunt damage.")
+    boop.gag.onCriticalLine("CRUSHING CRITICAL", "You have scored a CRUSHING CRITICAL hit!")
+    boop.gag.onDamageLine("39", "physical blunt", "Damage dealt: 39 (physical blunt).")
+    boop.gag.onBalanceUsed("1.9", "Balance used: 1.9s.")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("DSL + Gear", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("an ogre brute", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("DSL: 680 physical cutting", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Gear: 668 physical blunt - crits: 64xCRIT, 4xCRIT", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Total: 1348", 1, true) ~= nil)
+    assert.is_true(outputs[1]:find("Bal: 1.9s", 1, true) ~= nil)
+  end)
+
+  it("registers the gear proc trigger for every reported damage type", function()
+    local testsDir = assert(os.getenv("TESTS_DIRECTORY"))
+    local repoRoot = assert(testsDir:match("^(.*)/tests$"))
+    local handle = assert(io.open(repoRoot .. "/src/triggers/boop/Gag/General/triggers.json", "r"))
+    local contents = assert(handle:read("*a"))
+    handle:close()
+
+    assert.is_true(contents:find(
+      [["pattern": "^Your gear enhances your strike with additional (.+) damage\\.$"]],
+      1,
+      true
+    ) ~= nil)
+  end)
+
   it("does not merge unrelated repeated own attack summaries before balance", function()
     boop.gag.onAttackLine({
       ability = "Lycantha",

@@ -76,7 +76,7 @@
     "script": ""
   },
   {
-    "name": "General Proc Psychic Gear",
+    "name": "General Proc Gear",
     "isActive": "yes",
     "isFolder": "no",
     "multiline": "no",
@@ -89,7 +89,7 @@
     "highlightBG": "#ffff00",
     "patterns": [
       {
-        "pattern": "^Your gear enhances your strike with additional psychic damage\\.$",
+        "pattern": "^Your gear enhances your strike with additional (.+) damage\\.$",
         "type": "regex"
       }
     ],
