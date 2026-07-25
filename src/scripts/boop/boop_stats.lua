@@ -804,11 +804,15 @@ local function resolveCritTier(rawCrit)
     ["OBLITERATING CRITICAL"] = "8xCRIT",
     ["ANNIHILATINGLY POWERFUL CRITICAL"] = "16xCRIT",
     ["WORLD SHATTERING CRITICAL"] = "32xCRIT",
+    ["PLANE RAZING CRITICAL"] = "64xCRIT",
+    ["CREATION RENDING CRITICAL"] = "128xCRIT",
     ["2XCRIT"] = "2xCRIT",
     ["4XCRIT"] = "4xCRIT",
     ["8XCRIT"] = "8xCRIT",
     ["16XCRIT"] = "16xCRIT",
     ["32XCRIT"] = "32xCRIT",
+    ["64XCRIT"] = "64xCRIT",
+    ["128XCRIT"] = "128xCRIT",
   }
 
   return map[key] or ""
@@ -1651,6 +1655,8 @@ local function aggregateCrits(scope)
       ["8xCRIT"] = 0,
       ["16xCRIT"] = 0,
       ["32xCRIT"] = 0,
+      ["64xCRIT"] = 0,
+      ["128xCRIT"] = 0,
     },
   }
 
@@ -1830,6 +1836,8 @@ function boop.stats.showCrits(scopeName)
       { index = 4, label = "8x", value = tostring(tonumber(totals.tiers["8xCRIT"]) or 0), color = "yellow" },
       { index = 5, label = "16x", value = tostring(tonumber(totals.tiers["16xCRIT"]) or 0), color = "yellow" },
       { index = 6, label = "32x", value = tostring(tonumber(totals.tiers["32xCRIT"]) or 0), color = "yellow" },
+      { index = 7, label = "64x", value = tostring(tonumber(totals.tiers["64xCRIT"]) or 0), color = "yellow" },
+      { index = 8, label = "128x", value = tostring(tonumber(totals.tiers["128xCRIT"]) or 0), color = "yellow" },
     }, 10)
     printFooter("Type: boop stats crits " .. label)
     return
@@ -1843,13 +1851,15 @@ function boop.stats.showCrits(scopeName)
     formatStatValue(rate, 1)
   ))
   boop.util.info(string.format(
-    "%s crit tiers: 2x %d | 4x %d | 8x %d | 16x %d | 32x %d",
+    "%s crit tiers: 2x %d | 4x %d | 8x %d | 16x %d | 32x %d | 64x %d | 128x %d",
     label,
     tonumber(totals.tiers["2xCRIT"]) or 0,
     tonumber(totals.tiers["4xCRIT"]) or 0,
     tonumber(totals.tiers["8xCRIT"]) or 0,
     tonumber(totals.tiers["16xCRIT"]) or 0,
-    tonumber(totals.tiers["32xCRIT"]) or 0
+    tonumber(totals.tiers["32xCRIT"]) or 0,
+    tonumber(totals.tiers["64xCRIT"]) or 0,
+    tonumber(totals.tiers["128xCRIT"]) or 0
   ))
 end
 

@@ -83,6 +83,26 @@ describe("boop gag summaries", function()
     assert.is_true(outputs[1]:find("Bal: 2.5s", 1, true) ~= nil)
   end)
 
+  it("folds a creation-rending critical into the compact attack summary", function()
+    boop.gag.onAttackLine({
+      ability = "Slaughter",
+      actor = { kind = "literal", value = "You" },
+      target = { kind = "match", index = 2 },
+    }, {
+      "You swing at a test denizen.",
+      "a test denizen",
+    }, "You swing at a test denizen.")
+    boop.gag.onCriticalLine(
+      "CREATION-RENDING critical",
+      "You have scored a CREATION-RENDING critical hit!"
+    )
+    boop.gag.onDamageLine("25,600", "physical cutting", "Damage dealt: 25,600 (physical cutting).")
+    boop.gag.onBalanceUsed("2.5", "Balance used: 2.5s.")
+
+    assert.are.equal(1, #outputs)
+    assert.is_true(outputs[1]:find("25600 physical cutting - 128xCRIT", 1, true) ~= nil)
+  end)
+
   it("labels same-target proc damage inside the compact attack summary", function()
     boop.gag.onAttackLine({
       ability = "Charge",

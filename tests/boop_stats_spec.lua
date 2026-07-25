@@ -528,7 +528,7 @@ describe("boop stats", function()
       target = { kind = "match", index = 2 },
     }, { "line", "a vicious gnoll soldier" }, "You swing at a vicious gnoll soldier.")
     boop.gag.onDamageLine("12,345", "cutting", "Damage line")
-    boop.gag.onCriticalLine("obliterating critical", "Crit line")
+    boop.gag.onCriticalLine("CREATION-RENDING critical", "You have scored a CREATION-RENDING critical hit!")
     boop.gag.onBalanceUsed("2.9", "Balance line")
     boop.gag.onSlainLine("a vicious gnoll soldier", "Slain line")
 
@@ -543,7 +543,7 @@ describe("boop stats", function()
     assert.are.equal(2.9, entry.totalBalance)
     assert.are.equal(1, entry.balances)
     assert.are.equal(1, entry.crits)
-    assert.are.equal(1, entry.critTiers["8xCRIT"])
+    assert.are.equal(1, entry.critTiers["128xCRIT"])
   end)
 
   it("shows per-ability summaries for a stat scope", function()
@@ -612,7 +612,10 @@ describe("boop stats", function()
     boop.stats.showCrits("session")
 
     assert.are.equal("session crits: 3 crits across 5 uses (60%)", messages[1])
-    assert.are.equal("session crit tiers: 2x 1 | 4x 0 | 8x 1 | 16x 0 | 32x 1", messages[2])
+    assert.are.equal(
+      "session crit tiers: 2x 1 | 4x 0 | 8x 1 | 16x 0 | 32x 1 | 64x 0 | 128x 0",
+      messages[2]
+    )
   end)
 
   it("shows best-hit and kill-speed records for a stat scope", function()

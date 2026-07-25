@@ -1319,6 +1319,7 @@ local function resolveCritText(rawCrit)
     ["ANNIHILATINGLY POWERFUL CRITICAL"] = "16xCRIT",
     ["WORLD SHATTERING CRITICAL"] = "32xCRIT",
     ["PLANE RAZING CRITICAL"] = "64xCRIT",
+    ["CREATION RENDING CRITICAL"] = "128xCRIT",
   }
 
   return map[key] or ""
