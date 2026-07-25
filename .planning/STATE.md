@@ -5,8 +5,8 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
 status: ready_to_plan
-stopped_at: Phase 02 verified and completed
-last_updated: "2026-07-19T05:01:19Z"
+stopped_at: Phase 03 context gathered
+last_updated: "2026-07-25T22:52:42.573Z"
 last_activity: 2026-07-19
 last_activity_desc: Restored GMCP-backed IH denizen action filtering
 progress:
@@ -115,6 +115,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-11T06:24:23.571Z
-Stopped at: Phase 02 verified and completed
-Resume file: None
+Last session: 2026-07-25T22:52:42.567Z
+Stopped at: Phase 03 context gathered
+Resume file: .planning/phases/03-queue-interrupt-gold-and-autowalk-regression-coverage/03-CONTEXT.md
