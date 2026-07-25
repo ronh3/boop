@@ -53,6 +53,7 @@ describe("boop assist mode", function()
   end)
 
   it("keeps queued Infernal hyena maul until Achaea confirms it was used", function()
+    helper.setTarget("42", "a test denizen", "80%")
     helper.setClass("Infernal")
     helper.setSpec("Dual Cutting")
     helper.learnSkills({
