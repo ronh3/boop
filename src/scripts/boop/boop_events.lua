@@ -135,7 +135,9 @@ local function traceHeld(system, reason)
 end
 
 local function ireReady()
-  return not not (gmcp and gmcp.IRE and gmcp.IRE.Target and gmcp.IRE.Display)
+  local ire = gmcp and gmcp.IRE or nil
+  return type(ire) == "table"
+    and (type(ire.Target) == "table" or type(ire.Display) == "table")
 end
 
 local function warnBlocker(blocker)
@@ -177,15 +179,18 @@ end
 local function enterGmcpIreBlocker(source, supportAlreadyRequested)
   local previous = blockerSnapshot()
   local firstEntry = previous.code ~= "gmcp_ire_missing"
-  local blocker = setBlocker("gmcp_ire_missing", "GMCP IRE missing", BLOCKER_SYSTEMS_GMCP, {
-    gmcp = true,
-    prompt = true,
-  }, {
-    source = source,
-    observed = {
-      ire = false,
-    },
-  })
+  local blocker = previous
+  if firstEntry then
+    blocker = setBlocker("gmcp_ire_missing", "GMCP IRE missing", BLOCKER_SYSTEMS_GMCP, {
+      gmcp = true,
+      prompt = true,
+    }, {
+      source = source,
+      observed = {
+        ire = false,
+      },
+    })
+  end
   if supportAlreadyRequested then
     local stateBlocker = boop.state and boop.state.combat and boop.state.combat.blocker or nil
     if type(stateBlocker) == "table" then

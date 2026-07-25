@@ -79,14 +79,9 @@ describe("boop event-driven state transitions", function()
       end,
     },
     {
-      name = "gmcp.IRE.Target is missing",
+      name = "both requested IRE modules are missing",
       seed = function()
         gmcp.IRE.Target = nil
-      end,
-    },
-    {
-      name = "gmcp.IRE.Display is missing",
-      seed = function()
         gmcp.IRE.Display = nil
       end,
     },
@@ -123,9 +118,42 @@ describe("boop event-driven state transitions", function()
     end)
   end
 
+  it("accepts IRE.Display as readiness evidence before IRE.Target emits data", function()
+    local support_calls = stubCoreSupports()
+    boop.config.enabled = true
+    gmcp.IRE = {
+      Display = {
+        ButtonActions = {},
+      },
+      Rift = {
+        Change = {
+          amount = "1142",
+          name = "quartz",
+        },
+      },
+    }
+
+    boop.onCharStatus()
+
+    assert.are.equal(0, #support_calls)
+    assert.are.equal("", blockerSnapshot().code)
+  end)
+
+  it("accepts IRE.Target as readiness evidence when IRE.Display has not emitted data", function()
+    local support_calls = stubCoreSupports()
+    boop.config.enabled = true
+    gmcp.IRE.Display = nil
+
+    boop.onCharStatus()
+
+    assert.are.equal(0, #support_calls)
+    assert.are.equal("", blockerSnapshot().code)
+  end)
+
   it("retries missing IRE support immediately once, then throttles repeats until backoff expires", function()
     local support_calls = stubCoreSupports()
     boop.config.enabled = true
+    gmcp.IRE.Target = nil
     gmcp.IRE.Display = nil
 
     boop.onCharStatus()
@@ -139,7 +167,7 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(2, #support_calls)
   end)
 
-  it("clears the GMCP recovery blocker only after IRE modules and a prompt have both arrived", function()
+  it("clears the GMCP recovery blocker after one requested IRE module and a prompt have arrived", function()
     stubCoreSupports()
     boop.config.enabled = true
     gmcp.IRE = nil
@@ -148,13 +176,6 @@ describe("boop event-driven state transitions", function()
     assert.are.equal("gmcp_ire_missing", blockerSnapshot().code)
 
     gmcp.IRE = {
-      Target = {
-        Set = "",
-        Info = {
-          id = "",
-          hpperc = "100%",
-        },
-      },
       Display = {
         ButtonActions = {},
       },
@@ -168,6 +189,28 @@ describe("boop event-driven state transitions", function()
     assert.are.equal("", blockerSnapshot().code)
     assert.is_false(boop.runtime.shouldHold("target"))
     assert.is_false(boop.runtime.shouldHold("combat"))
+  end)
+
+  it("preserves an observed prompt across repeated missing IRE checks", function()
+    stubCoreSupports()
+    boop.config.enabled = true
+    gmcp.IRE = nil
+
+    boop.onCharStatus()
+    boop.onPrompt()
+    assert.is_true(blockerSnapshot().promptSeen)
+
+    boop.onCharStatus()
+    assert.is_true(blockerSnapshot().promptSeen)
+
+    gmcp.IRE = {
+      Display = {
+        ButtonActions = {},
+      },
+    }
+    boop.onCharStatus()
+
+    assert.are.equal("", blockerSnapshot().code)
   end)
 
   it("creates owned room blockers for missing or partial room state", function()
