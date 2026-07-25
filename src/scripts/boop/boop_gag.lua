@@ -1017,8 +1017,17 @@ local function samePendingAttack(pending, who, ability, target)
   if pendingAbility == "razeslash" and nextAbility == "jab" then
     return true
   end
-  return (pendingAbility == "jab" or pendingAbility == "dsl")
-    and (nextAbility == "jab" or nextAbility == "dsl")
+  local pendingIsJabSequence = pendingAbility == "jab" or pendingAbility == "dsl"
+  if not pendingIsJabSequence then
+    for _, part in ipairs(pending.abilityParts or {}) do
+      local normalizedPart = normName(part)
+      if normalizedPart == "jab" or normalizedPart == "dsl" then
+        pendingIsJabSequence = true
+        break
+      end
+    end
+  end
+  return pendingIsJabSequence and (nextAbility == "jab" or nextAbility == "dsl")
 end
 
 local function addPendingAbilityPart(pending, ability)
@@ -1167,13 +1176,24 @@ local function setPendingAttack(who, ability, target, options)
   local appendBattlerage = type(options) == "table" and options.battlerage == true
 
   if samePendingAttack(boop.state.gag.pendingAttack, normalizedWho, normalizedAbility, normalizedTarget) then
-    boop.state.gag.pendingAttack.hitCount = (tonumber(boop.state.gag.pendingAttack.hitCount) or 1) + 1
-    boop.state.gag.pendingAttack.currentHitHasDamage = false
-    if normName(boop.state.gag.pendingAttack.ability or "") ~= "razeslash" then
-      boop.state.gag.pendingAttack.ability = "DSL"
-      boop.state.gag.pendingAttack.abilityParts = { "DSL" }
-      renamePendingDamageSource(boop.state.gag.pendingAttack, "Jab", "DSL")
-      boop.state.gag.pendingAttack.currentSource = "DSL"
+    local pending = boop.state.gag.pendingAttack
+    pending.hitCount = (tonumber(pending.hitCount) or 1) + 1
+    pending.currentHitHasDamage = false
+    if normName(pending.ability or "") ~= "razeslash" then
+      local preservedParts = {}
+      for _, part in ipairs(pending.abilityParts or {}) do
+        local normalizedPart = normName(part)
+        if normalizedPart ~= "" and normalizedPart ~= "jab" and normalizedPart ~= "dsl" then
+          preservedParts[#preservedParts + 1] = part
+        end
+      end
+      pending.ability = "DSL"
+      pending.abilityParts = { "DSL" }
+      for _, part in ipairs(preservedParts) do
+        addPendingAbilityPart(pending, part)
+      end
+      renamePendingDamageSource(pending, "Jab", "DSL")
+      pending.currentSource = "DSL"
     end
     return rescheduleAttackSummaryTimer()
   end
