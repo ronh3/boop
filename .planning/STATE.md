@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-07-26T13:30:36.243Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-07-26T13:48:36.075Z"
 last_activity: 2026-07-26
-last_activity_desc: Completed Phase 03 Plan 02
+last_activity_desc: Completed Phase 03 Plan 03
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 23
-  completed_plans: 16
-  percent: 70
+  completed_plans: 17
+  percent: 74
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — EXECUTING
-Plan: 3 of 9
+Plan: 4 of 9
 Status: Ready to execute
-Last activity: 2026-07-26 — Completed Phase 03 Plan 02
+Last activity: 2026-07-26 — Completed Phase 03 Plan 03
 
-Progress: [███████░░░] 70%
+Progress: [███████░░░] 74%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [███████░░░] 70%
 | Phase 02 P07 | 20m | 2 tasks | 6 files |
 | Phase 03 P01 | 17m | 3 tasks | 12 files |
 | Phase 03 P02 | 10m | 2 tasks | 9 files |
+| Phase 03 P03 | 15m | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,10 @@ Recent decisions affecting current work:
 - [Phase 03]: Keep diagnose evidence independent from the active operation; zero-argument result and prompt handlers inspect only FIFO head.
 - [Phase 03]: Retain timed-out diagnose evidence as a tombstone until late result and prompt evidence drains that exact FIFO record.
 - [Phase 03]: Route all interrupt terminal effects through completeInterrupt after marking the matching generation terminal.
+- [Phase 03]: Represent each pull as one exact record keyed by monotonic pullGeneration and pull:<generation> blocker ownership.
+- [Phase 03]: Route every terminal outcome through completePull, which compares generation, marks terminal, cancels its timer, and clears only its exact owner.
+- [Phase 03]: Treat timeout while away as recovery state pull_timeout_away; retain the hold until a later matching return completes the generation.
+- [Phase 03]: Keep enabled configuration entirely outside pull lifecycle control, with zero setEnabled or saveConfig calls.
 
 ### Pending Todos
 
@@ -126,6 +131,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-26T13:30:36.237Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-07-26T13:48:36.070Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
