@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-07-26T13:16:12.591Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-07-26T13:30:36.243Z"
 last_activity: 2026-07-26
-last_activity_desc: Completed Phase 03 Plan 01
+last_activity_desc: Completed Phase 03 Plan 02
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 23
-  completed_plans: 15
-  percent: 65
+  completed_plans: 16
+  percent: 70
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Status: Ready to execute
-Last activity: 2026-07-26 — Completed Phase 03 Plan 01
+Last activity: 2026-07-26 — Completed Phase 03 Plan 02
 
-Progress: [███████░░░] 65%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [███████░░░] 65%
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
 | Phase 02 P07 | 20m | 2 tasks | 6 files |
 | Phase 03 P01 | 17m | 3 tasks | 12 files |
+| Phase 03 P02 | 10m | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,10 @@ Recent decisions affecting current work:
 - [Phase 03]: Plan 03-01 makes blockersByOwner authoritative and keeps combat.blocker only as a derived primary compatibility snapshot.
 - [Phase 03]: Plan 03-01 permits blocker mutation and self-exclusion only by exact owner key, never by blocker code, family, or subsystem.
 - [Phase 03]: Plan 03-01 requires Room.Info plus a later complete current-cycle room item list, with one capped Char.Items.Room refresh per generation.
+- [Phase 03]: Represent each active interrupt as one generation-keyed operation with an exact interrupt:<generation> blocker owner.
+- [Phase 03]: Keep diagnose evidence independent from the active operation; zero-argument result and prompt handlers inspect only FIFO head.
+- [Phase 03]: Retain timed-out diagnose evidence as a tombstone until late result and prompt evidence drains that exact FIFO record.
+- [Phase 03]: Route all interrupt terminal effects through completeInterrupt after marking the matching generation terminal.
 
 ### Pending Todos
 
@@ -121,6 +126,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-26T13:16:12.585Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-07-26T13:30:36.237Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
