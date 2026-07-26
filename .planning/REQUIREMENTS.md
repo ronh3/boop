@@ -31,7 +31,7 @@ Requirements for the pre-1.0 hardening milestone. Each maps to roadmap phases.
 
 - [x] **WALK-01**: `boop walk` tests cover start, stop, move, room-settled behavior, blocker reasons, and external `demonwalker.move` event emission.
 - [x] **WALK-02**: Walker advancement is blocked while target, gold, diag, flee, pull, leader-call, or room-settling state says the room is not safe to leave.
-- [ ] **WALK-03**: `demonnicAutoWalker` remains an optional external integration with explicit install/status feedback and no silent auto-update behavior.
+- [x] **WALK-03**: `demonnicAutoWalker` remains an optional external integration with explicit install/status feedback and no silent auto-update behavior.
 
 ### Command Trust
 
@@ -114,7 +114,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SAFE-04 | Phase 3 | Complete |
 | WALK-01 | Phase 3 | Complete |
 | WALK-02 | Phase 3 | Complete |
-| WALK-03 | Phase 3 | Pending |
+| WALK-03 | Phase 3 | Complete |
 | CMD-01 | Phase 4 | Pending |
 | CMD-02 | Phase 4 | Pending |
 | CMD-03 | Phase 4 | Pending |
@@ -136,4 +136,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-07-09*
-*Last updated: 2026-07-11 after Phase 02 verification*
+*Last updated: 2026-07-26 after Phase 03 Plan 06*

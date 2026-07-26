@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
 status: executing
-stopped_at: Completed 03-05-PLAN.md
-last_updated: "2026-07-26T14:24:46.877Z"
+stopped_at: Completed 03-06-PLAN.md
+last_updated: "2026-07-26T14:44:08.097Z"
 last_activity: 2026-07-26
-last_activity_desc: Completed Phase 03 Plan 05
+last_activity_desc: Completed Phase 03 Plan 06
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 23
-  completed_plans: 19
-  percent: 83
+  completed_plans: 20
+  percent: 87
 ---
 
 # Project State
@@ -29,31 +29,32 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — EXECUTING
-Plan: 6 of 9
+Plan: 7 of 9
 Status: Ready to execute
-Last activity: 2026-07-26 — Completed Phase 03 Plan 05
+Last activity: 2026-07-26 — Completed Phase 03 Plan 06
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 87%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 15
-- Average duration: 9 min
-- Total execution time: 0.7 hours
+- Total plans completed: 20
+- Average duration: 16 min
+- Total execution time: 5.2 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01 | 7 | - | - |
+| 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
+| 03 | 6 | 88m | ~15 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 02 P03 (18 min), Phase 02 P04 (6m27s), Phase 02 P05 (5m), Phase 02 P06 (8m), Phase 02 P07 (20m)
-- Trend: Walk migration was faster than the canonical blocker implementation plan
+- Last 5 plans: Phase 03 P02 (10m), Phase 03 P03 (15m), Phase 03 P04 (16m), Phase 03 P05 (14m), Phase 03 P06 (16m)
+- Trend: Phase 03 timing-sensitive ownership plans are holding near a 15-minute average
 
 *Updated after each plan completion*
 | Phase 02 P02 | 7 min | 2 tasks | 7 files |
@@ -67,6 +68,7 @@ Progress: [████████░░] 83%
 | Phase 03 P03 | 15m | 2 tasks | 9 files |
 | Phase 03 P04 | 16m | 2 tasks | 9 files |
 | Phase 03 P05 | 14m | 2 tasks | 8 files |
+| Phase 03 P06 | 16m | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -114,6 +116,10 @@ Recent decisions affecting current work:
 - [Phase 03]: Treat every current Room.Info observation as invalidation evidence for DEFERRED_ROOM and PICKUP_PENDING while preserving PACK_PENDING.
 - [Phase 03]: Advance deferred room evidence without sending, then let one normal tick emit flush_gold and call flushPendingGold once.
 - [Phase 03]: Replace direct gold-terminal walker advancement with a generation-guarded zero-delay tick.
+- [Phase 03]: Use shared current-room observation as the only walker settlement authority; capped timers may warn but never stamp settlement.
+- [Phase 03]: Keep moveQueued blocking in normal evaluation and permit only the exact run/room/reservation emitter to exclude walk:<generation>.
+- [Phase 03]: Preserve monotonic walker reservation IDs across generation invalidation while canceling refresh and emitter callback authority.
+- [Phase 03]: Keep demonnicAutoWalker package mutation explicit; status, start, move, and package-loss paths never install or update.
 
 ### Pending Todos
 
@@ -140,6 +146,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-26T14:24:46.871Z
-Stopped at: Completed 03-05-PLAN.md
+Last session: 2026-07-26T14:44:08.092Z
+Stopped at: Completed 03-06-PLAN.md
 Resume file: None
