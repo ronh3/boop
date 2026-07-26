@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
 status: executing
-stopped_at: Planned 03-10-PLAN.md gap closure
-last_updated: "2026-07-26T20:54:01.082Z"
+stopped_at: Completed 03-10-PLAN.md; awaiting Phase 03 verification
+last_updated: "2026-07-26T21:31:17.565Z"
 last_activity: 2026-07-26
-last_activity_desc: Planned Phase 03 gap closure Plan 10
+last_activity_desc: Completed Plan 03-10 gap closure; awaiting Phase 03 verification
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 24
-  completed_plans: 23
-  percent: 96
+  completed_plans: 24
+  percent: 100
 ---
 
 # Project State
@@ -30,18 +30,18 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — EXECUTING
 Plan: 10 of 10
-Status: Ready to execute
-Last activity: 2026-07-26 — Planned Phase 03 gap closure Plan 10
+Status: Plan 03-10 complete; awaiting Phase 03 verifier review
+Last activity: 2026-07-26 — Completed Plan 03-10 gap closure
 
-Progress: [█████████░] 96%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 23
+- Total plans completed: 24
 - Average duration: 15 min
-- Total execution time: 5.9 hours
+- Total execution time: 6.0 hours
 
 **By Phase:**
 
@@ -49,12 +49,12 @@ Progress: [█████████░] 96%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 9 | 124m | ~14 min |
+| 03 | 10 | 131m | ~13 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 03 P05 (14m), Phase 03 P06 (16m), Phase 03 P07 (14m), Phase 03 P08 (12m), Phase 03 P09 (10m)
-- Trend: Phase 03 closed with two faster integration and documentation plans after the ownership core stabilized
+- Last 5 plans: Phase 03 P06 (16m), Phase 03 P07 (14m), Phase 03 P08 (12m), Phase 03 P09 (10m), Phase 03 P10 (7m)
+- Trend: Phase 03 closed with progressively faster integration, verification, and gap-closure plans after the ownership core stabilized
 
 *Updated after each plan completion*
 | Phase 02 P02 | 7 min | 2 tasks | 7 files |
@@ -72,46 +72,28 @@ Progress: [█████████░] 96%
 | Phase 03 P07 | 14m | 2 tasks | 8 files |
 | Phase 03 P08 | 12m | 3 tasks | 10 files |
 | Phase 03 P09 | 10m | 3 tasks | 9 files |
+| Phase 03 P10 | 7m | 2 tasks | 8 files |
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
 - [Milestone]: Treat this as brownfield pre-1.0 hardening, not a greenfield MVP.
 - [Roadmap]: Use the research-backed six-phase order, with REL-03 assigned to final live release verification.
 - [Scope]: Do not edit package source, version fields, or generated build artifacts during roadmap creation.
-- [Phase 02]: Plan 02-01 kept production runtime behavior unchanged and added RED contract tests for downstream Phase 02 implementation.
-- [Phase 02]: Plan 02-01 used owned-domain helper setup for blocker and automation-intent fixtures instead of flat state compatibility keys.
-- [Phase 02]: Plan 02-02 kept production behavior unchanged and added Wave 0 contracts for GMCP recovery, target-loss cleanup, pull holds, trace, and canonical blocker UI rendering.
-- [Phase 02]: Plan 02-03 stores the cross-automation blocker under owned combat state and routes runtime/events through blockerSnapshot/shouldHold.
-- [Phase 02]: Plan 02-03 treats Plans 02-01 and 02-02 as RED contract commits and ships GREEN implementation commits.
-- [Phase 02]: Plan 02-03 patched pull_timeout_away at the pull timeout source because events do not own that transition.
-- [Phase 02]: Plan 02-04 uses the Plan 02-03 runtime cleanup helper as the source of truth; this plan did not modify boop_runtime.lua.
-- [Phase 02]: Plan 02-04 clears target-loss attack intent with clearAttackIntent rather than broad automation cleanup.
-- [Phase 02]: Plan 02-04 enforces attack fallback migration by reducing boop_attacks.lua flat-state drift allowance to zero.
-- [Phase 02]: Plan 02-05 keeps demonnicAutoWalker install/status behavior unchanged while migrating walk blocker state ownership.
-- [Phase 02]: Plan 02-06 uses boop.runtime.blockerSnapshot() as the canonical UI/status/debug source, with legacy checks only as inactive-blocker fallbacks.
-- [Phase 02]: Plan 02-06 kept trace source unchanged because prior Phase 02 contracts already emit normalized blocker enter/exit, cleanup, GMCP recovery, pull, and retarget messages.
-- [Phase 02]: Plan 02-06 documented host Busted and Mudlet Busted availability limitations rather than treating environment failures as passing tests.
-- [Phase 02]: GitHub Actions run 29143523210 passed the real Mudlet/Busted package suite on commit 312ff01, closing the prior local Busted availability gap.
-- [Phase 02]: User live-confirmed compact blocker/trace readability after installing the rebuilt package.
+- [Phase 02]: Established canonical owned blockers, runtime cleanup, target-loss repair, walker ownership, and canonical status/trace rendering with RED→GREEN contract coverage.
+- [Phase 02]: Kept pull timeout ownership at its source, preserved external walker install behavior, and reduced flat-state drift allowance to zero.
+- [Phase 02]: GitHub Actions run 29143523210 and user live validation confirmed the real Mudlet suite and compact blocker/trace readability.
 - [Phase 03 planning]: Commits whose staged paths are all under `.planning/` preserve the package version; any commit touching another path bumps all four version checkpoints.
 - [Phase 03 planning]: Final authority is the tracked repository extension `tools/wait_for_exact_ci.sh` against immutable final HEAD after all GSD mutations.
 - [Phase 03 planning]: Diagnose output uses a zero-argument FIFO/tombstone evidence queue so late output cannot release a newer interrupt generation.
 - [Phase 03]: Plan 03-01 makes blockersByOwner authoritative and keeps combat.blocker only as a derived primary compatibility snapshot.
 - [Phase 03]: Plan 03-01 permits blocker mutation and self-exclusion only by exact owner key, never by blocker code, family, or subsystem.
 - [Phase 03]: Plan 03-01 requires Room.Info plus a later complete current-cycle room item list, with one capped Char.Items.Room refresh per generation.
-- [Phase 03]: Represent each active interrupt as one generation-keyed operation with an exact interrupt:<generation> blocker owner.
-- [Phase 03]: Keep diagnose evidence independent from the active operation; zero-argument result and prompt handlers inspect only FIFO head.
-- [Phase 03]: Retain timed-out diagnose evidence as a tombstone until late result and prompt evidence drains that exact FIFO record.
-- [Phase 03]: Route all interrupt terminal effects through completeInterrupt after marking the matching generation terminal.
-- [Phase 03]: Represent each pull as one exact record keyed by monotonic pullGeneration and pull:<generation> blocker ownership.
-- [Phase 03]: Route every terminal outcome through completePull, which compares generation, marks terminal, cancels its timer, and clears only its exact owner.
-- [Phase 03]: Treat timeout while away as recovery state pull_timeout_away; retain the hold until a later matching return completes the generation.
-- [Phase 03]: Keep enabled configuration entirely outside pull lifecycle control, with zero setEnabled or saveConfig calls.
+- [Phase 03]: Interrupts use exact generation owners, FIFO/tombstone diagnose evidence, and one completeInterrupt terminal boundary.
+- [Phase 03]: Pulls use monotonic generation owners and one completePull boundary; timeout-away retains its hold without mutating enabled configuration.
 - [Phase 03]: Use one monotonic gold generation and gold:<generation> blocker owner as canonical authority; legacy pending fields remain derived compatibility views.
 - [Phase 03]: Keep DEFERRED_ROOM and PICKUP_PENDING tied to current room evidence, then clear room identity before inventory-owned PACK_PENDING.
 - [Phase 03]: Dispatch get and put as independent freestand queue commands; combat execution emits only its supplied action.
@@ -133,6 +115,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Keep the final cross-lifecycle matrix in the existing event-transition integration spec without adding APIs or test frameworks.
 - [Phase 03]: Reevaluate once after room settlement only when the current gold stage remains unsent and has no active timeout.
 - [Phase 03]: Reserve terminal repository authority for the parent immutable-final-HEAD CI gate after every mutation.
+- [Phase 03]: Consume only the exact matching fired gold timeout token and synchronize derived pending state before evaluating unrelated owners.
+- [Phase 03]: Keep timeout recovery on the existing normal tick/flush and guarded walker paths without adding owner-release hooks or walker special cases.
 
 ### Pending Todos
 
@@ -141,7 +125,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Phase 03 implementation is complete; local real-Mudlet evidence, parent exact-final-HEAD CI, and live UAT remain pending before verification sign-off.
+- Plan 03-10 gap closure is complete; Phase 03 awaits verifier review, with local real-Mudlet evidence unavailable and parent exact-final-HEAD CI/live UAT still pending.
 - Remaining milestone implementation concerns move to command trust boundaries, gag fixture expansion, and final release verification.
 
 ### Quick Tasks Completed
@@ -160,6 +144,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-26T15:30:42.394Z
-Stopped at: Completed 03-09-PLAN.md
+Last session: 2026-07-26T21:31:17.560Z
+Stopped at: Completed 03-10-PLAN.md; awaiting Phase 03 verification
 Resume file: None
