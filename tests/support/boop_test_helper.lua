@@ -146,6 +146,9 @@ function M.reset()
 
   resetTableData(boop.state)
   boop.state.init()
+  if boop.runtime and boop.runtime.startRoomObservation then
+    boop.runtime.startRoomObservation(gmcp.Room.Info.num)
+  end
 
   resetTableData(boop.afflictions)
   boop.afflictions.init()

@@ -94,6 +94,7 @@ local BLOCKER_SYSTEMS_GMCP = {
 local BLOCKER_SYSTEMS_ROOM = {
   target = true,
   combat = true,
+  gold = true,
   walk = true,
 }
 
@@ -245,9 +246,46 @@ local function roomInfoIsPartial(info)
 end
 
 local function noteRoomGmcpObserved()
+  if runtime() and boop.runtime.stampRoomItemsObservation
+      and not boop.runtime.stampRoomItemsObservation() then
+    return false
+  end
   if runtime() and boop.runtime.noteGmcpObserved then
     boop.runtime.noteGmcpObserved("room:observation", "room")
   end
+  return true
+end
+
+function boop.requestRoomItemsOnce(reason)
+  local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
+  local observation = state
+    and state.targeting
+    and state.targeting.roomObservation
+    or nil
+  if type(observation) ~= "table"
+      or not observation.infoSeen
+      or observation.itemsSeen
+      or tostring(observation.roomId or "") == "" then
+    return false
+  end
+  if observation.refreshAttempted then
+    if not observation.warned then
+      observation.warned = true
+      if boop.trace and boop.trace.log then
+        boop.trace.log("room item evidence still missing after capped refresh")
+      end
+      if boop.util and boop.util.warn then
+        boop.util.warn("room_partial -- room item evidence still missing")
+      end
+    end
+    return false
+  end
+  observation.refreshAttempted = true
+  observation.refreshReason = tostring(reason or "room item evidence missing")
+  if sendGMCP then
+    sendGMCP([[Char.Items.Room]])
+  end
+  return true
 end
 
 local function noteTargetGmcpObserved()
@@ -760,9 +798,17 @@ function boop.onRoomItemsList()
       room = tostring(gmcp.Room and gmcp.Room.Info and gmcp.Room.Info.num or ""),
       items = false,
     })
+    boop.requestRoomItemsOnce("incomplete room item list")
     return
   end
-  noteRoomGmcpObserved()
+  if not noteRoomGmcpObserved() then
+    enterRoomBlocker("room_partial", "partial room state", {
+      room = tostring(gmcp.Room and gmcp.Room.Info and gmcp.Room.Info.num or ""),
+      items = false,
+    })
+    boop.requestRoomItemsOnce("room item list without current room info")
+    return
+  end
   boop.targets.updateRoomItems(items)
 
   -- Fallback for cases where item-add events are delayed/coalesced: if gold
@@ -792,7 +838,6 @@ function boop.onRoomItemsAdd()
   local item = gmcp.Char.Items.Add.item
   traceRoomItemEvent("add", item)
   boop.targets.addRoomItem(item)
-  noteRoomGmcpObserved()
   autoGrabRoomItem(item)
 end
 
@@ -809,7 +854,6 @@ function boop.onRoomItemsRemove()
   local removedWasGold = isGoldItem(removed)
   traceRoomItemEvent("remove", removed)
   boop.targets.removeRoomItem(removed)
-  noteRoomGmcpObserved()
 
   if removedWasGold then
     boop.state = boop.state or {}
@@ -928,13 +972,21 @@ function boop.onRoomInfo()
   boop.state.combat = boop.state.combat or {}
 
   local info = gmcp.Room.Info
+  local observation = boop.runtime
+    and boop.runtime.startRoomObservation
+    and boop.runtime.startRoomObservation(info.num)
+    or nil
   if roomInfoIsPartial(info) then
     enterRoomBlocker("room_partial", "partial room state", {
       room = tostring(info and info.num or ""),
       exits = type(info and info.exits) == "table",
     })
   else
-    noteRoomGmcpObserved()
+    enterRoomBlocker("room_partial", "partial room state", {
+      room = tostring(info.num or ""),
+      items = false,
+      generation = observation and observation.generation or 0,
+    })
   end
   local targeting = boop.state.targeting
   local combat = boop.state.combat
@@ -1009,6 +1061,7 @@ function boop.onRoomInfo()
       end
     end
   end
+  boop.requestRoomItemsOnce("room info awaiting complete item list")
 end
 
 function boop.onWalkArrived()

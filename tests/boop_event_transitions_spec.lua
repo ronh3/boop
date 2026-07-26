@@ -3,6 +3,7 @@ local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper
 describe("boop event-driven state transitions", function()
   local send_stub
   local send_gmcp_stub
+  local raise_event_stub
   local timer_stub
   local kill_timer_stub
   local request_supports_stub
@@ -16,6 +17,9 @@ describe("boop event-driven state transitions", function()
   local set_blocker_calls
   local clear_blocker_calls
   local note_gmcp_calls
+  local sent_commands
+  local gmcp_requests
+  local raised_events
 
   before_each(function()
     helper.reset()
@@ -24,9 +28,19 @@ describe("boop event-driven state transitions", function()
     set_blocker_calls = {}
     clear_blocker_calls = {}
     note_gmcp_calls = {}
+    sent_commands = {}
+    gmcp_requests = {}
+    raised_events = {}
 
-    send_stub = stub(_G, "send", function(_, _) end)
-    send_gmcp_stub = stub(_G, "sendGMCP", function(_) end)
+    send_stub = stub(_G, "send", function(command, echo)
+      sent_commands[#sent_commands + 1] = { command = command, echo = echo }
+    end)
+    send_gmcp_stub = stub(_G, "sendGMCP", function(command)
+      gmcp_requests[#gmcp_requests + 1] = command
+    end)
+    raise_event_stub = stub(_G, "raiseEvent", function(name, ...)
+      raised_events[#raised_events + 1] = { name = name, args = { ... } }
+    end)
     timer_stub = stub(_G, "tempTimer", function(_, callback)
       scheduled_callback = callback
       return 99
@@ -47,6 +61,10 @@ describe("boop event-driven state transitions", function()
     if send_gmcp_stub then
       send_gmcp_stub:revert()
       send_gmcp_stub = nil
+    end
+    if raise_event_stub then
+      raise_event_stub:revert()
+      raise_event_stub = nil
     end
     if timer_stub then
       timer_stub:revert()
@@ -90,6 +108,26 @@ describe("boop event-driven state transitions", function()
   local function blockerSnapshot()
     assert.is_function(boop.runtime.blockerSnapshot)
     return boop.runtime.blockerSnapshot()
+  end
+
+  local function countSent(command)
+    local count = 0
+    for _, entry in ipairs(sent_commands) do
+      if entry.command == command then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
+  local function countRaised(name)
+    local count = 0
+    for _, entry in ipairs(raised_events) do
+      if entry.name == name then
+        count = count + 1
+      end
+    end
+    return count
   end
 
   local function captureRuntimeBlockerCalls()
@@ -289,6 +327,147 @@ describe("boop event-driven state transitions", function()
     assert.are.equal("partial room state", partial.label)
     assert.is_true(partial.systems.walk)
     assert.is_true(partial.waitsFor.gmcp)
+  end)
+
+  it("starts a fresh room observation and caps refresh requests per generation", function()
+    helper.seedRoomObservation(100, {
+      generation = 7,
+      itemsSeen = true,
+      refreshAttempted = true,
+      refreshReason = "old generation",
+      warned = true,
+    })
+    boop.state.targeting.room = 100
+    gmcp.Room.Info = {
+      num = 200,
+      area = "Test Area",
+      exits = {
+        north = 100,
+      },
+    }
+
+    boop.onRoomInfo()
+
+    local observation = boop.runtime.roomObservationSnapshot()
+    assert.are.equal(8, observation.generation)
+    assert.are.equal("200", observation.roomId)
+    assert.is_true(observation.infoSeen)
+    assert.is_false(observation.itemsSeen)
+    assert.is_true(observation.refreshAttempted)
+    assert.are.equal("room info awaiting complete item list", observation.refreshReason)
+    assert.is_false(observation.warned)
+    assert.are.equal("room:observation", blockerSnapshot().owner)
+    assert.is_true(boop.runtime.shouldHold("gold"))
+    assert.are.same({ [[Char.Items.Room]] }, gmcp_requests)
+    assert.is_false(boop.requestRoomItemsOnce("duplicate refresh"))
+    assert.are.same({ [[Char.Items.Room]] }, gmcp_requests)
+    assert.is_true(boop.runtime.roomObservationSnapshot().warned)
+    assert.are.equal(0, #sent_commands)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+
+    local immutable = boop.runtime.roomObservationSnapshot()
+    immutable.roomId = "mutated"
+    immutable.itemsSeen = true
+    assert.are.equal("200", boop.runtime.roomObservationSnapshot().roomId)
+    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
+  end)
+
+  it("accepts only a complete room list after the current room info generation", function()
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = {},
+    }
+    boop.onRoomItemsList()
+    local settled = boop.runtime.roomObservationSnapshot()
+    assert.are.equal(1, settled.generation)
+    assert.is_true(settled.itemsSeen)
+
+    boop.state.targeting.room = 1
+    boop.state.walk.active = true
+    gmcp.Room.Info = {
+      num = 2,
+      area = "Test Area",
+      exits = {
+        south = 1,
+      },
+    }
+    boop.onRoomInfo()
+    local arrival_callback = scheduled_callback
+    local current = boop.runtime.roomObservationSnapshot()
+    assert.are.equal(2, current.generation)
+    assert.are.equal("2", current.roomId)
+    assert.is_false(current.itemsSeen)
+    assert.are.same({ [[Char.Items.Room]] }, gmcp_requests)
+
+    boop.onPrompt()
+    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.is_function(arrival_callback)
+    arrival_callback()
+    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+
+    gmcp.Char.Items.List = {
+      location = "inv",
+      items = {},
+    }
+    boop.onRoomItemsList()
+    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
+
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = nil,
+    }
+    boop.onRoomItemsList()
+    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.are.same({ [[Char.Items.Room]] }, gmcp_requests)
+
+    boop.state.walk.active = false
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = {},
+    }
+    boop.onRoomItemsList()
+    local complete = boop.runtime.roomObservationSnapshot()
+    assert.are.equal(2, complete.generation)
+    assert.is_true(complete.itemsSeen)
+    assert.are.equal("", blockerSnapshot().code)
+
+    boop.onRoomItemsList()
+    assert.are.equal(2, boop.runtime.roomObservationSnapshot().generation)
+    assert.is_true(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.are.same({ [[Char.Items.Room]] }, gmcp_requests)
+    assert.are.equal(0, #sent_commands)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+  end)
+
+  it("holds loot until a complete list stamps the current room observation", function()
+    boop.config.enabled = true
+    boop.config.autoGrabGold = true
+    boop.config.useQueueing = false
+    boop.config.goldPack = ""
+    boop.state.targeting.room = 1
+    gmcp.Room.Info = {
+      num = 2,
+      area = "Test Area",
+      exits = {
+        south = 1,
+      },
+    }
+
+    boop.onRoomInfo()
+
+    assert.are.equal(0, countSent("queue add freestand get sovereigns"))
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = {
+        { id = "99", name = "some gold sovereigns" },
+      },
+    }
+    boop.onRoomItemsList()
+
+    assert.is_true(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+    assert.are.equal(0, countRaised("demonwalker.move"))
   end)
 
   it("keeps singleton GMCP, room, and target owners isolated at event boundaries", function()

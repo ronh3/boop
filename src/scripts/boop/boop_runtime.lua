@@ -68,6 +68,15 @@ local DOMAIN_DEFAULTS = {
     calledTargetAt = nil,
     incomingWhitelistShares = {},
     pendingWhitelistShare = nil,
+    roomObservation = {
+      generation = 0,
+      roomId = "",
+      infoSeen = false,
+      itemsSeen = false,
+      refreshAttempted = false,
+      refreshReason = "",
+      warned = false,
+    },
   },
   gold = {
     dropped = false,
@@ -160,6 +169,62 @@ end
 
 function boop.runtime.state()
   return boop.runtime.ensureState()
+end
+
+function boop.runtime.startRoomObservation(roomId)
+  local state = boop.runtime.ensureState()
+  local previous = state.targeting.roomObservation
+  local generation = type(previous) == "table" and tonumber(previous.generation) or 0
+  local normalizedRoomId = tostring(roomId or "")
+  state.targeting.roomObservation = {
+    generation = generation + 1,
+    roomId = normalizedRoomId,
+    infoSeen = normalizedRoomId ~= "",
+    itemsSeen = false,
+    refreshAttempted = false,
+    refreshReason = "",
+    warned = false,
+  }
+  return boop.runtime.roomObservationSnapshot()
+end
+
+function boop.runtime.stampRoomItemsObservation()
+  local state = boop.runtime.ensureState()
+  local observation = state.targeting.roomObservation
+  if type(observation) ~= "table"
+      or not observation.infoSeen
+      or tostring(observation.roomId or "") == "" then
+    return false
+  end
+  local currentRoomId = tostring(
+    gmcp
+      and gmcp.Room
+      and gmcp.Room.Info
+      and gmcp.Room.Info.num
+      or ""
+  )
+  if currentRoomId == "" or currentRoomId ~= tostring(observation.roomId or "") then
+    return false
+  end
+  observation.itemsSeen = true
+  return true
+end
+
+function boop.runtime.roomObservationSnapshot()
+  local state = boop.runtime.ensureState()
+  local observation = state.targeting.roomObservation
+  if type(observation) ~= "table" then
+    observation = DOMAIN_DEFAULTS.targeting.roomObservation
+  end
+  return {
+    generation = tonumber(observation.generation) or 0,
+    roomId = tostring(observation.roomId or ""),
+    infoSeen = not not observation.infoSeen,
+    itemsSeen = not not observation.itemsSeen,
+    refreshAttempted = not not observation.refreshAttempted,
+    refreshReason = tostring(observation.refreshReason or ""),
+    warned = not not observation.warned,
+  }
 end
 
 local SYSTEM_ALIASES = {
