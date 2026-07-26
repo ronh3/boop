@@ -1426,7 +1426,7 @@ local function armPullTimeout(pull)
       boop.util.warn("pull timeout; boop resumed at origin")
     elseif active.restoreEnabled then
       if boop.runtime and boop.runtime.setBlocker then
-        boop.runtime.setBlocker("pull_timeout_away", "pull timed out away from origin", {
+        boop.runtime.setBlocker("pull:" .. tostring(active.generation or 0), "pull_timeout_away", "pull timed out away from origin", {
           combat = true,
           target = true,
           walk = true,

@@ -16,12 +16,12 @@ describe("boop trace gmcp events", function()
 
   local function setBlocker(blocker)
     assert.is_function(boop.runtime.setBlocker)
-    boop.runtime.setBlocker(blocker)
+    helper.setRuntimeBlocker(blocker)
   end
 
-  local function clearBlocker(reason)
+  local function clearBlocker(owner, reason)
     assert.is_function(boop.runtime.clearBlocker)
-    boop.runtime.clearBlocker(reason)
+    boop.runtime.clearBlocker(owner, reason)
   end
 
   it("logs room info transitions and room item gmcp events", function()
@@ -64,6 +64,7 @@ describe("boop trace gmcp events", function()
 
   it("logs canonical blocker enter and exit transitions once per state change", function()
     setBlocker({
+      owner = "gmcp:ire",
       code = "gmcp_ire_missing",
       label = "GMCP IRE missing",
       systems = {
@@ -84,6 +85,7 @@ describe("boop trace gmcp events", function()
     })
 
     setBlocker({
+      owner = "gmcp:ire",
       code = "gmcp_ire_missing",
       label = "GMCP IRE missing",
       systems = {
@@ -103,13 +105,13 @@ describe("boop trace gmcp events", function()
       },
     })
 
-    clearBlocker("gmcp recovered")
+    clearBlocker("gmcp:ire", "gmcp recovered")
 
     local trace = traceText()
-    local first_enter = trace:find("blocker enter: gmcp_ire_missing -- GMCP IRE missing | systems: combat, gold, queue, target, walk | waits: gmcp, prompt | observed: ire:false,room:1", 1, true)
+    local first_enter = trace:find("blocker enter: gmcp:ire | gmcp_ire_missing -- GMCP IRE missing | systems: combat, gold, queue, target, walk | waits: gmcp, prompt | observed: ire:false,room:1", 1, true)
     assert.is_true(first_enter ~= nil)
-    assert.is_nil(trace:find("blocker enter: gmcp_ire_missing", first_enter + 1, true))
-    assertTraceContains("blocker exit: gmcp_ire_missing -- GMCP IRE missing | reason=gmcp recovered")
+    assert.is_nil(trace:find("blocker enter: gmcp:ire | gmcp_ire_missing", first_enter + 1, true))
+    assertTraceContains("blocker exit: gmcp:ire | gmcp_ire_missing -- GMCP IRE missing | reason=gmcp recovered")
   end)
 
   it("logs target-loss cleanup, recovery, and valid retarget decisions from owned state", function()
@@ -159,6 +161,7 @@ describe("boop trace gmcp events", function()
     })
 
     setBlocker({
+      owner = "pull:4",
       code = "pull_away",
       label = "pull in progress",
       systems = {
@@ -176,6 +179,7 @@ describe("boop trace gmcp events", function()
     })
 
     setBlocker({
+      owner = "gmcp:ire",
       code = "gmcp_ire_missing",
       label = "GMCP IRE missing",
       systems = {
@@ -196,8 +200,18 @@ describe("boop trace gmcp events", function()
 
     local trace = traceText()
     assert.is_true(trace:find("automation intent cleared: flee | source=auto-flee | target=42 | queue=prequeued aliasDirty=false | walk=active moveQueued=true | gold=get,put | diag=hold:diag | gag=pending:self/hound/a first denizen", 1, true) ~= nil)
-    assert.is_true(trace:find("blocker enter: pull_away -- pull in progress | systems: combat, target, walk | waits: room | observed: currentRoom:2,originRoom:1", 1, true) ~= nil)
-    assert.is_true(trace:find("blocker enter: gmcp_ire_missing -- GMCP IRE missing | systems: combat, gold, queue, target, walk | waits: gmcp, prompt | observed: ire:false", 1, true) ~= nil)
+    assert.is_true(trace:find("blocker enter: pull:4 | pull_away -- pull in progress | systems: combat, target, walk | waits: room | observed: currentRoom:2,originRoom:1", 1, true) ~= nil)
+    assert.is_true(trace:find("blocker enter: gmcp:ire | gmcp_ire_missing -- GMCP IRE missing | systems: combat, gold, queue, target, walk | waits: gmcp, prompt | observed: ire:false", 1, true) ~= nil)
+    local blockers = boop.runtime.blockersSnapshot()
+    assert.are.equal("gmcp:ire", blockers[1].owner)
+    assert.are.equal("pull:4", blockers[2].owner)
+
+    clearBlocker("pull:4", "returned")
+
+    blockers = boop.runtime.blockersSnapshot()
+    assert.are.equal(1, #blockers)
+    assert.are.equal("gmcp:ire", blockers[1].owner)
+    assertTraceContains("blocker exit: pull:4 | pull_away -- pull in progress | reason=returned")
     assert.is_nil(trace:find("gmcp.IRE.Target.Info", 1, true))
     assert.is_nil(trace:find("ButtonActions", 1, true))
   end)

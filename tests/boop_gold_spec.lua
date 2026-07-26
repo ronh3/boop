@@ -50,7 +50,7 @@ describe("boop gold handling", function()
 
   it("remembers room gold detected during a hold and collects it after release", function()
     boop.config.useQueueing = false
-    boop.runtime.setBlocker("test_gold_hold", "gold test hold", {
+    boop.runtime.setBlocker("test:gold", "test_gold_hold", "gold test hold", {
       gold = true,
     }, {
       prompt = true,
@@ -70,7 +70,7 @@ describe("boop gold handling", function()
     assert.is_true(boop.state.gold.autoGrabPending)
     assert.is_true(boop.state.gold.dropped)
 
-    boop.runtime.clearBlocker("test release")
+    boop.runtime.clearBlocker("test:gold", "test release")
     boop.state.gold.autoGrabPendingAt = 1
     boop.tick()
 

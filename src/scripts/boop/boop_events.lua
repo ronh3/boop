@@ -107,12 +107,12 @@ local function blockerSnapshot()
   if runtime() and boop.runtime.blockerSnapshot then
     return boop.runtime.blockerSnapshot()
   end
-  return { code = "", systems = {}, waitsFor = {}, observed = {} }
+  return { owner = "", code = "", systems = {}, waitsFor = {}, observed = {}, additionalCount = 0 }
 end
 
-local function setBlocker(code, label, systems, waitsFor, opts)
+local function setBlocker(owner, code, label, systems, waitsFor, opts)
   if runtime() and boop.runtime.setBlocker then
-    return boop.runtime.setBlocker(code, label, systems, waitsFor, opts or {})
+    return boop.runtime.setBlocker(owner, code, label, systems, waitsFor, opts or {})
   end
   return false
 end
@@ -143,7 +143,11 @@ end
 local function warnBlocker(blocker)
   if not (boop.util and boop.util.warn) then return end
   if type(blocker) ~= "table" or tostring(blocker.code or "") == "" then return end
-  local stateBlocker = boop.state and boop.state.combat and boop.state.combat.blocker or nil
+  local stateBlocker = boop.state
+    and boop.state.combat
+    and boop.state.combat.blockersByOwner
+    and boop.state.combat.blockersByOwner["gmcp:ire"]
+    or nil
   if type(stateBlocker) ~= "table" then return end
   local now = nowSeconds()
   local lastAt = tonumber(stateBlocker.lastWarningAt) or 0
@@ -159,7 +163,11 @@ end
 
 local function requestCoreSupportsThrottled(forceNow)
   if not boop.requestCoreSupports then return false end
-  local blocker = boop.state and boop.state.combat and boop.state.combat.blocker or nil
+  local blocker = boop.state
+    and boop.state.combat
+    and boop.state.combat.blockersByOwner
+    and boop.state.combat.blockersByOwner["gmcp:ire"]
+    or nil
   local now = nowSeconds()
   local lastAt = type(blocker) == "table" and tonumber(blocker.lastRetryAt) or nil
   if not forceNow and lastAt and lastAt > 0 and (now - lastAt) < GMCP_RETRY_SECONDS then
@@ -177,11 +185,16 @@ local function requestCoreSupportsThrottled(forceNow)
 end
 
 local function enterGmcpIreBlocker(source, supportAlreadyRequested)
-  local previous = blockerSnapshot()
-  local firstEntry = previous.code ~= "gmcp_ire_missing"
+  local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
+  local previous = state
+    and state.combat
+    and state.combat.blockersByOwner
+    and state.combat.blockersByOwner["gmcp:ire"]
+    or nil
+  local firstEntry = type(previous) ~= "table"
   local blocker = previous
   if firstEntry then
-    blocker = setBlocker("gmcp_ire_missing", "GMCP IRE missing", BLOCKER_SYSTEMS_GMCP, {
+    blocker = setBlocker("gmcp:ire", "gmcp_ire_missing", "GMCP IRE missing", BLOCKER_SYSTEMS_GMCP, {
       gmcp = true,
       prompt = true,
     }, {
@@ -192,7 +205,11 @@ local function enterGmcpIreBlocker(source, supportAlreadyRequested)
     })
   end
   if supportAlreadyRequested then
-    local stateBlocker = boop.state and boop.state.combat and boop.state.combat.blocker or nil
+    local stateBlocker = boop.state
+      and boop.state.combat
+      and boop.state.combat.blockersByOwner
+      and boop.state.combat.blockersByOwner["gmcp:ire"]
+      or nil
     if type(stateBlocker) == "table" then
       stateBlocker.lastRetryAt = nowSeconds()
     end
@@ -206,7 +223,7 @@ end
 local function reconcileIreSupport(source)
   if ireReady() then
     if runtime() and boop.runtime.noteGmcpObserved then
-      boop.runtime.noteGmcpObserved("ire")
+      boop.runtime.noteGmcpObserved("gmcp:ire", "ire")
     end
     return true
   end
@@ -215,10 +232,7 @@ local function reconcileIreSupport(source)
 end
 
 local function enterRoomBlocker(code, label, observed)
-  if blockerSnapshot().code == "gmcp_ire_missing" then
-    return blockerSnapshot()
-  end
-  return setBlocker(code, label, BLOCKER_SYSTEMS_ROOM, {
+  return setBlocker("room:observation", code, label, BLOCKER_SYSTEMS_ROOM, {
     gmcp = true,
   }, {
     source = "room",
@@ -231,20 +245,14 @@ local function roomInfoIsPartial(info)
 end
 
 local function noteRoomGmcpObserved()
-  if blockerSnapshot().code == "gmcp_ire_missing" then
-    return
-  end
   if runtime() and boop.runtime.noteGmcpObserved then
-    boop.runtime.noteGmcpObserved("room")
+    boop.runtime.noteGmcpObserved("room:observation", "room")
   end
 end
 
 local function noteTargetGmcpObserved()
-  if blockerSnapshot().code == "gmcp_ire_missing" then
-    return
-  end
   if runtime() and boop.runtime.noteGmcpObserved then
-    boop.runtime.noteGmcpObserved("target")
+    boop.runtime.noteGmcpObserved("target:loss", "target")
   end
 end
 
@@ -735,7 +743,7 @@ function boop.onConnectionEvent()
   if not ireReady() then
     enterGmcpIreBlocker("connection", true)
   elseif runtime() and boop.runtime.noteGmcpObserved then
-    boop.runtime.noteGmcpObserved("ire")
+    boop.runtime.noteGmcpObserved("gmcp:ire", "ire")
   end
 end
 
@@ -834,7 +842,7 @@ function boop.onRoomItemsRemove()
 
   local pull = boop.state.combat and boop.state.combat.pullState or nil
   if type(pull) == "table" and pull.active then
-    setBlocker("pull_away", "pull in progress", {
+    setBlocker("pull:" .. tostring(pull.generation or 0), "pull_away", "pull in progress", {
       target = true,
       combat = true,
       walk = true,
@@ -876,7 +884,7 @@ function boop.onRoomItemsRemove()
     end
     boop.targets.setTarget(nextTarget)
   else
-    setBlocker("target_lost", "target left room", {
+    setBlocker("target:loss", "target_lost", "target left room", {
       target = true,
       combat = true,
       queue = true,
@@ -992,8 +1000,8 @@ function boop.onRoomInfo()
           boop.util.ok("pull complete")
         end
         boop.trace.log("pull: returned to origin")
-        if boop.runtime and boop.runtime.clearBlocker and blockerSnapshot().code == "pull_away" then
-          boop.runtime.clearBlocker("pull returned")
+        if boop.runtime and boop.runtime.clearBlocker then
+          boop.runtime.clearBlocker("pull:" .. tostring(pull.generation or 0), "pull returned")
         end
         if not currentTargetStillInRoom() then
           clearLostTargetIntent()

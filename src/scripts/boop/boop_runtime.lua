@@ -31,7 +31,9 @@ local DOMAIN_DEFAULTS = {
     },
     openerUsedByClass = {},
     pullState = false,
+    blockersByOwner = {},
     blocker = {
+      owner = "",
       code = "",
       label = "",
       systems = {},
@@ -45,6 +47,7 @@ local DOMAIN_DEFAULTS = {
       lastWarningCode = "",
       lastRetryAt = nil,
       warningThrottleSeconds = 2,
+      additionalCount = 0,
     },
     lastComboTraceKey = nil,
     lastOpenerTraceKey = nil,
@@ -278,21 +281,90 @@ local function trace(message)
   end
 end
 
+local BLOCKER_PRIORITY = {
+  gmcp_ire_missing = 10,
+  missing_room = 20,
+  room_partial = 21,
+  target_lost = 22,
+  flee_active = 30,
+  pull_timeout_away = 31,
+  pull_away = 32,
+  pull_active = 40,
+  interrupt_pending = 50,
+  gold_deferred_room = 60,
+  gold_pickup_pending = 61,
+  gold_pack_pending = 62,
+  walk_room_unsettled = 70,
+  walk_move_pending = 71,
+  walker_unavailable = 72,
+}
+
+local function blockerPriority(blocker)
+  return BLOCKER_PRIORITY[tostring(blocker and blocker.code or "")] or 100
+end
+
+local function sortedBlockerRecords()
+  local state = boop.runtime.ensureState()
+  state.combat.blockersByOwner = state.combat.blockersByOwner or {}
+  local records = {}
+  for owner, blocker in pairs(state.combat.blockersByOwner) do
+    if type(blocker) == "table" and tostring(blocker.code or "") ~= "" then
+      records[#records + 1] = {
+        owner = tostring(owner),
+        code = tostring(blocker.code or ""),
+        label = tostring(blocker.label or ""),
+        systems = normalizeMap(blocker.systems),
+        waitsFor = normalizeMap(blocker.waitsFor),
+        observed = normalizeObserved(blocker.observed),
+        source = tostring(blocker.source or ""),
+        since = blocker.since,
+        promptSeen = not not blocker.promptSeen,
+        gmcpSeen = not not blocker.gmcpSeen,
+        lastWarningAt = blocker.lastWarningAt,
+        lastWarningCode = tostring(blocker.lastWarningCode or ""),
+        lastRetryAt = blocker.lastRetryAt,
+        warningThrottleSeconds = tonumber(blocker.warningThrottleSeconds) or 2,
+      }
+    end
+  end
+  table.sort(records, function(left, right)
+    local leftPriority = blockerPriority(left)
+    local rightPriority = blockerPriority(right)
+    if leftPriority ~= rightPriority then
+      return leftPriority < rightPriority
+    end
+    if left.code ~= right.code then
+      return left.code < right.code
+    end
+    return left.owner < right.owner
+  end)
+  return records
+end
+
 local function currentBlocker()
   local state = boop.runtime.ensureState()
-  state.combat.blocker = state.combat.blocker or deepCopy(DOMAIN_DEFAULTS.combat.blocker)
+  local records = sortedBlockerRecords()
+  if #records == 0 then
+    state.combat.blocker = deepCopy(DOMAIN_DEFAULTS.combat.blocker)
+    return state.combat.blocker
+  end
+  state.combat.blocker = deepCopy(records[1])
+  state.combat.blocker.additionalCount = #records - 1
   return state.combat.blocker
 end
 
 local function blockerChanged(current, nextBlocker)
-  return tostring(current.code or "") ~= tostring(nextBlocker.code or "")
+  return tostring(current.owner or "") ~= tostring(nextBlocker.owner or "")
+    or tostring(current.code or "") ~= tostring(nextBlocker.code or "")
     or tostring(current.label or "") ~= tostring(nextBlocker.label or "")
     or not mapsEqual(current.systems, nextBlocker.systems)
     or not mapsEqual(current.waitsFor, nextBlocker.waitsFor)
     or not mapsEqual(current.observed, nextBlocker.observed)
+    or tostring(current.source or "") ~= tostring(nextBlocker.source or "")
 end
 
 local function setBlockerFields(blocker, nextBlocker, preserveSince)
+  blocker.owner = nextBlocker.owner
   blocker.code = nextBlocker.code
   blocker.label = nextBlocker.label
   blocker.systems = nextBlocker.systems
@@ -308,9 +380,14 @@ local function setBlockerFields(blocker, nextBlocker, preserveSince)
   blocker.warningThrottleSeconds = nextBlocker.warningThrottleSeconds
 end
 
+function boop.runtime.blockersSnapshot()
+  return deepCopy(sortedBlockerRecords())
+end
+
 function boop.runtime.blockerSnapshot()
   local blocker = currentBlocker()
   return {
+    owner = tostring(blocker.owner or ""),
     code = tostring(blocker.code or ""),
     label = tostring(blocker.label or ""),
     systems = normalizeMap(blocker.systems),
@@ -324,21 +401,19 @@ function boop.runtime.blockerSnapshot()
     lastWarningCode = tostring(blocker.lastWarningCode or ""),
     lastRetryAt = blocker.lastRetryAt,
     warningThrottleSeconds = tonumber(blocker.warningThrottleSeconds) or 2,
+    additionalCount = tonumber(blocker.additionalCount) or 0,
   }
 end
 
-function boop.runtime.setBlocker(code, label, systems, waitsFor, opts)
-  local input = code
-  if type(input) == "table" then
-    opts = input
-    code = input.code
-    label = input.label
-    systems = input.systems
-    waitsFor = input.waitsFor
-  end
+function boop.runtime.setBlocker(owner, code, label, systems, waitsFor, opts)
   opts = opts or {}
+  owner = tostring(owner or "")
+  if owner == "" then
+    return boop.runtime.blockerSnapshot()
+  end
 
   local nextBlocker = {
+    owner = owner,
     code = tostring(code or ""),
     label = tostring(label or ""),
     systems = normalizeMap(systems),
@@ -351,12 +426,34 @@ function boop.runtime.setBlocker(code, label, systems, waitsFor, opts)
     warningThrottleSeconds = tonumber(opts.warningThrottleSeconds) or 2,
   }
 
-  local blocker = currentBlocker()
+  local state = boop.runtime.ensureState()
+  state.combat.blockersByOwner = state.combat.blockersByOwner or {}
+  local blocker = state.combat.blockersByOwner[owner]
+  if type(blocker) ~= "table" then
+    blocker = {
+      owner = "",
+      code = "",
+      label = "",
+      systems = {},
+      waitsFor = {},
+      observed = {},
+      source = "",
+      since = nil,
+      promptSeen = false,
+      gmcpSeen = false,
+      lastWarningAt = nil,
+      lastWarningCode = "",
+      lastRetryAt = nil,
+      warningThrottleSeconds = 2,
+    }
+  end
   local changed = blockerChanged(blocker, nextBlocker)
   setBlockerFields(blocker, nextBlocker, not changed)
+  state.combat.blockersByOwner[owner] = blocker
   if changed and nextBlocker.code ~= "" then
     trace(string.format(
-      "blocker enter: %s -- %s | systems: %s | waits: %s | observed: %s",
+      "blocker enter: %s | %s -- %s | systems: %s | waits: %s | observed: %s",
+      nextBlocker.owner,
       nextBlocker.code,
       nextBlocker.label,
       formatMapKeys(nextBlocker.systems),
@@ -364,11 +461,18 @@ function boop.runtime.setBlocker(code, label, systems, waitsFor, opts)
       formatObserved(nextBlocker.observed)
     ))
   end
-  return boop.runtime.blockerSnapshot()
+  currentBlocker()
+  return deepCopy(blocker)
 end
 
-function boop.runtime.clearBlocker(codeOrSource, observed)
-  local blocker = currentBlocker()
+function boop.runtime.clearBlocker(owner, observed)
+  local state = boop.runtime.ensureState()
+  state.combat.blockersByOwner = state.combat.blockersByOwner or {}
+  owner = tostring(owner or "")
+  local blocker = state.combat.blockersByOwner[owner]
+  if type(blocker) ~= "table" then
+    return false
+  end
   local code = tostring(blocker.code or "")
   if code == "" then
     return false
@@ -378,51 +482,77 @@ function boop.runtime.clearBlocker(codeOrSource, observed)
       blocker.observed[tostring(key)] = value
     end
   end
-  local reason = tostring(codeOrSource or "cleared")
+  local reason = type(observed) == "string" and observed or "cleared"
   local label = tostring(blocker.label or "")
-  trace(string.format("blocker exit: %s -- %s | reason=%s", code, label, reason))
-  setBlockerFields(blocker, deepCopy(DOMAIN_DEFAULTS.combat.blocker), false)
+  trace(string.format("blocker exit: %s | %s -- %s | reason=%s", owner, code, label, reason))
+  state.combat.blockersByOwner[owner] = nil
+  currentBlocker()
   return true
 end
 
-function boop.runtime.shouldHold(system)
-  local blocker = boop.runtime.blockerSnapshot()
-  if blocker.code == "" then
-    return false
-  end
+function boop.runtime.shouldHold(system, exceptOwner)
   local key = normalizeKey(system)
-  return blocker.systems[key] == true
+  local excluded = tostring(exceptOwner or "")
+  for _, blocker in ipairs(sortedBlockerRecords()) do
+    if blocker.owner ~= excluded and blocker.systems[key] == true then
+      return true
+    end
+  end
+  return false
 end
 
 local function blockerCanAutoClear(blocker)
-  if tostring(blocker.code or "") == "" then
+  if type(blocker) ~= "table" or tostring(blocker.code or "") == "" then
     return false
   end
-  return blocker.promptSeen and blocker.gmcpSeen
+  local required = false
+  for evidence, needed in pairs(blocker.waitsFor or {}) do
+    if needed then
+      required = true
+      if evidence == "prompt" and not blocker.promptSeen then
+        return false
+      elseif evidence == "gmcp" and not blocker.gmcpSeen then
+        return false
+      elseif evidence ~= "prompt"
+          and evidence ~= "gmcp"
+          and not (blocker.observed and blocker.observed[evidence]) then
+        return false
+      end
+    end
+  end
+  return required
 end
 
-local function maybeClearObservedBlocker(reason)
-  local blocker = currentBlocker()
+local function maybeClearObservedBlocker(owner, reason)
+  local state = boop.runtime.ensureState()
+  local blocker = state.combat.blockersByOwner and state.combat.blockersByOwner[owner] or nil
   if blockerCanAutoClear(blocker) then
-    boop.runtime.clearBlocker(reason or "observed prompt and gmcp")
+    boop.runtime.clearBlocker(owner, reason or "declared evidence observed")
   end
 end
 
 function boop.runtime.notePromptObserved()
-  local blocker = currentBlocker()
-  if tostring(blocker.code or "") == "" then
-    return false
+  local state = boop.runtime.ensureState()
+  local changed = false
+  for _, snapshot in ipairs(sortedBlockerRecords()) do
+    local blocker = state.combat.blockersByOwner[snapshot.owner]
+    if blocker and blocker.waitsFor and blocker.waitsFor.prompt then
+      blocker.promptSeen = true
+      blocker.observed = blocker.observed or {}
+      blocker.observed.prompt = true
+      changed = true
+      maybeClearObservedBlocker(snapshot.owner, "declared evidence observed")
+    end
   end
-  blocker.promptSeen = true
-  blocker.observed = blocker.observed or {}
-  blocker.observed.prompt = true
-  maybeClearObservedBlocker("observed prompt and gmcp")
-  return true
+  currentBlocker()
+  return changed
 end
 
-function boop.runtime.noteGmcpObserved(kind)
-  local blocker = currentBlocker()
-  if tostring(blocker.code or "") == "" then
+function boop.runtime.noteGmcpObserved(owner, kind)
+  local state = boop.runtime.ensureState()
+  owner = tostring(owner or "")
+  local blocker = state.combat.blockersByOwner and state.combat.blockersByOwner[owner] or nil
+  if type(blocker) ~= "table" or tostring(blocker.code or "") == "" then
     return false
   end
   blocker.gmcpSeen = true
@@ -438,7 +568,8 @@ function boop.runtime.noteGmcpObserved(kind)
       blocker.observed[observedKey] = true
     end
   end
-  maybeClearObservedBlocker("observed prompt and gmcp")
+  maybeClearObservedBlocker(owner, "declared evidence observed")
+  currentBlocker()
   return true
 end
 

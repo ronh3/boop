@@ -7,14 +7,23 @@ describe("boop event-driven state transitions", function()
   local kill_timer_stub
   local request_supports_stub
   local set_target_stub
+  local runtime_set_blocker_stub
+  local runtime_clear_blocker_stub
+  local runtime_note_gmcp_stub
   local saved_get_epoch
   local scheduled_callback
   local fake_epoch
+  local set_blocker_calls
+  local clear_blocker_calls
+  local note_gmcp_calls
 
   before_each(function()
     helper.reset()
     scheduled_callback = nil
     fake_epoch = 1000000
+    set_blocker_calls = {}
+    clear_blocker_calls = {}
+    note_gmcp_calls = {}
 
     send_stub = stub(_G, "send", function(_, _) end)
     send_gmcp_stub = stub(_G, "sendGMCP", function(_) end)
@@ -55,6 +64,18 @@ describe("boop event-driven state transitions", function()
       set_target_stub:revert()
       set_target_stub = nil
     end
+    if runtime_note_gmcp_stub then
+      runtime_note_gmcp_stub:revert()
+      runtime_note_gmcp_stub = nil
+    end
+    if runtime_clear_blocker_stub then
+      runtime_clear_blocker_stub:revert()
+      runtime_clear_blocker_stub = nil
+    end
+    if runtime_set_blocker_stub then
+      runtime_set_blocker_stub:revert()
+      runtime_set_blocker_stub = nil
+    end
   end)
 
   local function stubCoreSupports()
@@ -69,6 +90,24 @@ describe("boop event-driven state transitions", function()
   local function blockerSnapshot()
     assert.is_function(boop.runtime.blockerSnapshot)
     return boop.runtime.blockerSnapshot()
+  end
+
+  local function captureRuntimeBlockerCalls()
+    local originalSetBlocker = boop.runtime.setBlocker
+    local originalClearBlocker = boop.runtime.clearBlocker
+    local originalNoteGmcp = boop.runtime.noteGmcpObserved
+    runtime_set_blocker_stub = stub(boop.runtime, "setBlocker", function(...)
+      set_blocker_calls[#set_blocker_calls + 1] = { ... }
+      return originalSetBlocker(...)
+    end)
+    runtime_clear_blocker_stub = stub(boop.runtime, "clearBlocker", function(...)
+      clear_blocker_calls[#clear_blocker_calls + 1] = { ... }
+      return originalClearBlocker(...)
+    end)
+    runtime_note_gmcp_stub = stub(boop.runtime, "noteGmcpObserved", function(...)
+      note_gmcp_calls[#note_gmcp_calls + 1] = { ... }
+      return originalNoteGmcp(...)
+    end)
   end
 
   local missingIreCases = {
@@ -93,6 +132,7 @@ describe("boop event-driven state transitions", function()
       local support_calls = stubCoreSupports()
       boop.config.enabled = true
       case.seed()
+      captureRuntimeBlockerCalls()
 
       boop.onCharStatus()
 
@@ -100,6 +140,8 @@ describe("boop event-driven state transitions", function()
       assert.is_true(support_calls[1].requestSkills)
 
       local blocker = blockerSnapshot()
+      assert.are.equal("gmcp:ire", blocker.owner)
+      assert.are.equal("gmcp:ire", set_blocker_calls[1][1])
       assert.are.equal("gmcp_ire_missing", blocker.code)
       assert.are.equal("GMCP IRE missing", blocker.label)
       assert.is_true(blocker.systems.target)
@@ -171,6 +213,7 @@ describe("boop event-driven state transitions", function()
     stubCoreSupports()
     boop.config.enabled = true
     gmcp.IRE = nil
+    captureRuntimeBlockerCalls()
 
     boop.onCharStatus()
     assert.are.equal("gmcp_ire_missing", blockerSnapshot().code)
@@ -183,10 +226,13 @@ describe("boop event-driven state transitions", function()
     boop.onCharStatus()
 
     assert.are.equal("gmcp_ire_missing", blockerSnapshot().code)
+    assert.are.equal("gmcp:ire", note_gmcp_calls[#note_gmcp_calls][1])
+    assert.are.equal("ire", note_gmcp_calls[#note_gmcp_calls][2])
 
     boop.onPrompt()
 
     assert.are.equal("", blockerSnapshot().code)
+    assert.are.equal("gmcp:ire", clear_blocker_calls[#clear_blocker_calls][1])
     assert.is_false(boop.runtime.shouldHold("target"))
     assert.is_false(boop.runtime.shouldHold("combat"))
   end)
@@ -216,10 +262,13 @@ describe("boop event-driven state transitions", function()
   it("creates owned room blockers for missing or partial room state", function()
     boop.config.enabled = true
     gmcp.Room.Info = nil
+    captureRuntimeBlockerCalls()
 
     boop.onRoomInfo()
 
     local missing = blockerSnapshot()
+    assert.are.equal("room:observation", missing.owner)
+    assert.are.equal("room:observation", set_blocker_calls[1][1])
     assert.are.equal("missing_room", missing.code)
     assert.are.equal("missing room state", missing.label)
     assert.is_true(missing.systems.target)
@@ -234,11 +283,126 @@ describe("boop event-driven state transitions", function()
     boop.onRoomInfo()
 
     local partial = blockerSnapshot()
+    assert.are.equal("room:observation", partial.owner)
+    assert.are.equal("room:observation", set_blocker_calls[2][1])
     assert.are.equal("room_partial", partial.code)
     assert.are.equal("partial room state", partial.label)
     assert.is_true(partial.systems.walk)
     assert.is_true(partial.waitsFor.gmcp)
   end)
+
+  it("keeps singleton GMCP, room, and target owners isolated at event boundaries", function()
+    helper.setRuntimeBlocker({
+      owner = "gmcp:ire",
+      code = "gmcp_ire_missing",
+      systems = { combat = true, walk = true },
+      waitsFor = { gmcp = true, prompt = true },
+    })
+    helper.setRuntimeBlocker({
+      owner = "room:observation",
+      code = "room_partial",
+      systems = { combat = true, walk = true },
+      waitsFor = { gmcp = true },
+    })
+    helper.setRuntimeBlocker({
+      owner = "target:loss",
+      code = "target_lost",
+      systems = { combat = true, queue = true },
+      waitsFor = { gmcp = true, prompt = true },
+    })
+    captureRuntimeBlockerCalls()
+
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = {},
+    }
+    boop.onRoomItemsList()
+
+    local blockers = boop.runtime.blockersSnapshot()
+    assert.are.equal(2, #blockers)
+    assert.are.equal("gmcp:ire", blockers[1].owner)
+    assert.are.equal("target:loss", blockers[2].owner)
+    assert.are.equal("room:observation", clear_blocker_calls[1][1])
+
+    gmcp.IRE.Target.Set = "77"
+    boop.onTargetSet()
+    blockers = boop.runtime.blockersSnapshot()
+    assert.are.equal(2, #blockers)
+    assert.are.equal("gmcp:ire", blockers[1].owner)
+    assert.are.equal("target:loss", blockers[2].owner)
+    assert.are.equal("target:loss", note_gmcp_calls[#note_gmcp_calls][1])
+
+    boop.onPrompt()
+    blockers = boop.runtime.blockersSnapshot()
+    assert.are.equal(1, #blockers)
+    assert.are.equal("gmcp:ire", blockers[1].owner)
+    assert.are.equal("target:loss", clear_blocker_calls[#clear_blocker_calls][1])
+  end)
+
+  local targetEvidenceCases = {
+    {
+      name = "Target.Set",
+      invoke = function()
+        gmcp.IRE.Target.Set = "77"
+        boop.onTargetSet()
+      end,
+    },
+    {
+      name = "Target.Info",
+      invoke = function()
+        gmcp.IRE.Target.Info = {
+          id = "78",
+          short_desc = "a replacement denizen",
+        }
+        boop.onTargetInfo()
+      end,
+    },
+  }
+
+  for _, entry in ipairs(targetEvidenceCases) do
+    local case = entry
+    it("satisfies only target:loss from " .. case.name .. " evidence", function()
+      helper.setTarget("42", "a removed denizen", "80%")
+      helper.setDenizens({
+        { id = "42", name = "a removed denizen" },
+      })
+      helper.setRuntimeBlocker({
+        owner = "interrupt:88",
+        code = "interrupt_pending",
+        systems = { combat = true },
+        waitsFor = { timeout = true },
+      })
+      boop.config.enabled = true
+      boop.config.targetingMode = "auto"
+      captureRuntimeBlockerCalls()
+
+      gmcp.Char.Items.Remove = {
+        location = "room",
+        item = { id = "42", name = "a removed denizen", attrib = "m" },
+      }
+      boop.onRoomItemsRemove()
+
+      assert.are.equal("target:loss", set_blocker_calls[1][1])
+      local blockers = boop.runtime.blockersSnapshot()
+      assert.are.equal(2, #blockers)
+      assert.are.equal("target:loss", blockers[1].owner)
+      assert.are.equal("interrupt:88", blockers[2].owner)
+
+      case.invoke()
+
+      assert.are.equal("target:loss", note_gmcp_calls[#note_gmcp_calls][1])
+      assert.are.equal("target", note_gmcp_calls[#note_gmcp_calls][2])
+      blockers = boop.runtime.blockersSnapshot()
+      assert.are.equal(2, #blockers)
+
+      boop.onPrompt()
+
+      blockers = boop.runtime.blockersSnapshot()
+      assert.are.equal(1, #blockers)
+      assert.are.equal("interrupt:88", blockers[1].owner)
+      assert.are.equal("target:loss", clear_blocker_calls[#clear_blocker_calls][1])
+    end)
+  end
 
   it("retargets without clearing the server queue when the current denizen is removed from the room", function()
     helper.setArea("Test Area")
@@ -369,6 +533,7 @@ describe("boop event-driven state transitions", function()
     helper.setTarget("42", "a test denizen", "80%")
     boop.state.targeting.targetShield = { attempted = false, timer = 55 }
     gmcp.IRE.Target.Set = "77"
+    captureRuntimeBlockerCalls()
 
     boop.onTargetSet()
 
@@ -377,6 +542,8 @@ describe("boop event-driven state transitions", function()
     assert.is_false(boop.state.targeting.targetShield)
     assert.stub(kill_timer_stub).was_called_with(55)
     assert.stub(send_stub).was_not_called_with("settarget 77", false)
+    assert.are.equal("target:loss", note_gmcp_calls[1][1])
+    assert.are.equal("target", note_gmcp_calls[1][2])
   end)
 
   it("clears tracked shield state when gmcp target info changes", function()
@@ -384,6 +551,7 @@ describe("boop event-driven state transitions", function()
     boop.state.targeting.targetShield = { attempted = false, timer = 56 }
     gmcp.IRE.Target.Info.id = "78"
     gmcp.IRE.Target.Info.short_desc = "a target-info denizen"
+    captureRuntimeBlockerCalls()
 
     boop.onTargetInfo()
 
@@ -392,6 +560,8 @@ describe("boop event-driven state transitions", function()
     assert.is_false(boop.state.targeting.targetShield)
     assert.stub(kill_timer_stub).was_called_with(56)
     assert.stub(send_stub).was_not_called_with("settarget 78", false)
+    assert.are.equal("target:loss", note_gmcp_calls[1][1])
+    assert.are.equal("target", note_gmcp_calls[1][2])
   end)
 
   it("clears stale target name when gmcp target set clears", function()
