@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
 status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-07-26T14:07:57.097Z"
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-07-26T14:24:46.877Z"
 last_activity: 2026-07-26
-last_activity_desc: Completed Phase 03 Plan 04
+last_activity_desc: Completed Phase 03 Plan 05
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 23
-  completed_plans: 18
-  percent: 78
+  completed_plans: 19
+  percent: 83
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — EXECUTING
-Plan: 5 of 9
+Plan: 6 of 9
 Status: Ready to execute
-Last activity: 2026-07-26 — Completed Phase 03 Plan 04
+Last activity: 2026-07-26 — Completed Phase 03 Plan 05
 
-Progress: [████████░░] 78%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [████████░░] 78%
 | Phase 03 P02 | 10m | 2 tasks | 9 files |
 | Phase 03 P03 | 15m | 2 tasks | 9 files |
 | Phase 03 P04 | 16m | 2 tasks | 9 files |
+| Phase 03 P05 | 14m | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,10 @@ Recent decisions affecting current work:
 - [Phase 03]: Use one monotonic gold generation and gold:<generation> blocker owner as canonical authority; legacy pending fields remain derived compatibility views.
 - [Phase 03]: Keep DEFERRED_ROOM and PICKUP_PENDING tied to current room evidence, then clear room identity before inventory-owned PACK_PENDING.
 - [Phase 03]: Dispatch get and put as independent freestand queue commands; combat execution emits only its supplied action.
+- [Phase 03]: Give real auto-flee precedence only inside the active-gold branch, preserving established broad blocker ordering for non-gold ticks.
+- [Phase 03]: Treat every current Room.Info observation as invalidation evidence for DEFERRED_ROOM and PICKUP_PENDING while preserving PACK_PENDING.
+- [Phase 03]: Advance deferred room evidence without sending, then let one normal tick emit flush_gold and call flushPendingGold once.
+- [Phase 03]: Replace direct gold-terminal walker advancement with a generation-guarded zero-delay tick.
 
 ### Pending Todos
 
@@ -135,6 +140,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-26T14:07:57.091Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-07-26T14:24:46.871Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None
