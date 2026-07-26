@@ -1190,9 +1190,11 @@ function boop.onRoomItemsList()
     and activeAfterList
     and activeAfterList.generation == activeGeneration
     and activeAfterList.phase == GOLD_PHASE.PICKUP_PENDING
+  local goldTicked = false
   if (advancedDeferred or (roomOwnerHeldGold and activeAfterList))
       and boop.tick then
     boop.tick()
+    goldTicked = true
   end
   if boop.walk and boop.walk.onRoomSettled then
     local advanced = boop.walk.onRoomSettled(
@@ -1203,6 +1205,13 @@ function boop.onRoomItemsList()
     if not advanced and shouldHold("walk") then
       traceHeld("walk", "room items list")
     end
+  end
+  if activeAfterList
+      and activeAfterList.phase ~= GOLD_PHASE.DEFERRED_ROOM
+      and not activeAfterList.timeoutTimer
+      and not goldTicked
+      and boop.tick then
+    boop.tick()
   end
 end
 

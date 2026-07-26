@@ -4,6 +4,15 @@ These specs run inside a real Mudlet instance in GitHub Actions.
 
 Current coverage:
 
+Owner-keyed blocker tests cover both clear orders and exact-owner exclusion.
+Interrupt and pull tests cover idempotent repeats, first-terminal callbacks, and stale generations.
+Gold tests cover room-owned pickup, inventory-owned packing, get-confirm-put order, and wrong-room retries.
+Room observation tests require current Room.Info plus a complete current room item list; prompts and timers never settle the room.
+Walker tests cover shared automatic/manual gating, one move per room generation, owned stop, attached detach, explicit install, and package loss.
+SAFE-02 tests cover disabled and manual-targeting holds plus existing release actions.
+Standard GSD SUMMARY/STATE/ROADMAP/REQUIREMENTS/phase-completion commits are planning-only and version-exempt when every staged path is under .planning; plan task commits touching tests, docs, or source are package-affecting and synchronize all four version checkpoints.
+Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: after upstream GSD execution and every repository mutation finish, the parent pushes immutable FINAL_SHA and runs tools/wait_for_exact_ci.sh "$FINAL_SHA"; CI evidence remains uncommitted, and any later mutation requires a rerun.
+
 - `boop_targets_spec.lua`
   Confirms target choice behavior for whitelist priority and `retargetOnPriority`.
 - `boop_whitelist_share_spec.lua`
@@ -31,7 +40,7 @@ Current coverage:
 - `boop_skill_gating_spec.lua`
   Confirms attack selection falls back correctly when required skills are unknown.
 - `boop_gold_spec.lua`
-  Confirms auto-gold freestand queueing and pending-gold flush behavior.
+  Confirms staged room-owned pickup, inventory-owned packing, and get-confirm-put command order.
 - `boop_gold_retry_spec.lua`
   Confirms gold get/put retry and give-up behavior after command failures.
 - `boop_safety_spec.lua`

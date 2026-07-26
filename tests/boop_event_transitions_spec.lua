@@ -176,6 +176,23 @@ describe("boop event-driven state transitions", function()
     return count
   end
 
+  local function callbackForTimer(timerId)
+    for _, entry in ipairs(scheduled_callbacks) do
+      if entry.id == timerId then
+        return entry.callback
+      end
+    end
+    return nil
+  end
+
+  local function blockerFor(owner)
+    return boop.state
+      and boop.state.combat
+      and boop.state.combat.blockersByOwner
+      and boop.state.combat.blockersByOwner[tostring(owner or "")]
+      or nil
+  end
+
   local function goldItem(id)
     return {
       id = tostring(id or "9001"),
@@ -1429,6 +1446,378 @@ describe("boop event-driven state transitions", function()
     })
     assert.are.equal(0, countRaised("demonwalker.move"))
     assert.are.equal(0, countRaised("demonwalker.stop"))
+  end)
+
+  local roomLifecycleOrders = {
+    {
+      name = "interrupt then pull",
+      start = function()
+        boop.ui.matic()
+        boop.ui.pullCommand("mage", "north")
+      end,
+    },
+    {
+      name = "pull then interrupt",
+      start = function()
+        boop.ui.pullCommand("mage", "north")
+        boop.ui.matic()
+      end,
+    },
+  }
+
+  for _, entry in ipairs(roomLifecycleOrders) do
+    local case = entry
+    it("retains interrupt, pull, and unrelated ownership across Room.Info for " .. case.name, function()
+      helper.setClass("Occultist")
+      helper.setRage(18)
+      helper.learnSkill("Harry", "Attainment")
+      helper.setSkillKnown("chaosgate", false, "Attainment")
+      helper.setSkillKnown("fluctuate", false, "Attainment")
+      boop.config.enabled = true
+      boop.config.targetingMode = "auto"
+      boop.config.diagTimeoutSeconds = 8
+      boop.config.gameSeparator = "|"
+      boop.state.targeting.room = "1"
+      gmcp.Room.Info = {
+        num = "1",
+        area = "Test Area",
+        exits = {},
+      }
+      helper.setRuntimeBlocker({
+        owner = "test:retained",
+        code = "interrupt_pending",
+        label = "retained unrelated owner",
+        systems = { audit = true },
+        waitsFor = { timeout = true },
+      })
+
+      case.start()
+
+      local interrupt = boop.state.diag.operation
+      local pull = boop.state.combat.pullState
+      assert.is_table(interrupt)
+      assert.is_table(pull)
+      local interruptTimeout = callbackForTimer(interrupt.timeoutTimer)
+      local pullTimeout = callbackForTimer(pull.timeoutTimer)
+      assert.is_function(interruptTimeout)
+      assert.is_function(pullTimeout)
+      assert.are.equal(2, #sent_commands)
+      assert.are.equal(2, #scheduled_callbacks)
+
+      gmcp.Room.Info = {
+        num = "2",
+        area = "Test Area",
+        exits = { south = "1" },
+      }
+      boop.onRoomInfo()
+
+      assert.are.equal("away", boop.state.combat.pullState.phase)
+      assert.is_table(blockerFor(interrupt.blockerOwner))
+      assert.is_table(blockerFor(pull.blockerOwner))
+      assert.is_table(blockerFor("room:observation"))
+      assert.is_table(blockerFor("test:retained"))
+
+      boop.onPrompt()
+      assert.is_false(boop.state.diag.operation)
+      assert.is_nil(blockerFor(interrupt.blockerOwner))
+      assert.is_table(blockerFor(pull.blockerOwner))
+      assert.is_table(blockerFor("room:observation"))
+      assert.is_table(blockerFor("test:retained"))
+
+      interruptTimeout()
+      assert.is_false(boop.state.diag.operation)
+      assert.is_table(blockerFor(pull.blockerOwner))
+
+      gmcp.Room.Info = {
+        num = "1",
+        area = "Test Area",
+        exits = { north = "2" },
+      }
+      boop.onRoomInfo()
+
+      assert.is_false(boop.state.combat.pullState)
+      assert.is_nil(blockerFor(pull.blockerOwner))
+      assert.is_table(blockerFor("room:observation"))
+      assert.is_table(blockerFor("test:retained"))
+
+      pullTimeout()
+      assert.is_false(boop.state.combat.pullState)
+      assert.are.equal(2, #sent_commands)
+      assert.are.equal(2, #scheduled_callbacks)
+      assert.are.equal(2, #gmcp_requests)
+      assert.are.equal(0, countRaised("demonwalker.move"))
+      assert.are.equal(0, countRaised("demonwalker.stop"))
+    end)
+  end
+
+  local targetRemovalGoldPhases = {
+    {
+      name = "room-owned pickup",
+      pack = "",
+      prepare = function() end,
+      expectedGoldSends = 1,
+      stale = function()
+        return boop.onGoldPutSuccess()
+      end,
+    },
+    {
+      name = "inventory-owned packing",
+      pack = "pack",
+      prepare = function()
+        assert.is_true(boop.onGoldGetSuccess())
+      end,
+      expectedGoldSends = 2,
+      stale = function()
+        return boop.onGoldGetSuccess()
+      end,
+    },
+  }
+
+  for _, entry in ipairs(targetRemovalGoldPhases) do
+    local case = entry
+    it("preserves target-removal queue drift during " .. case.name, function()
+      helper.setArea("Test Area")
+      helper.setClass("Occultist")
+      helper.learnSkills({
+        { name = "Lycantha", group = "Domination" },
+        { name = "harry", group = "Attainment" },
+      })
+      helper.setDenizens({
+        { id = "42", name = "a first denizen" },
+        { id = "43", name = "a second denizen" },
+      })
+      helper.setTarget("42", "a first denizen", "80%")
+      seedSettledGoldRoom("1", 1)
+      boop.config.targetingMode = "auto"
+      boop.config.prequeueEnabled = true
+      boop.config.goldPack = case.pack
+      helper.setRuntimeBlocker({
+        owner = "test:retained",
+        code = "interrupt_pending",
+        label = "retained unrelated owner",
+        systems = { audit = true },
+        waitsFor = { timeout = true },
+      })
+
+      boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+      case.prepare()
+      assert.are.equal(case.expectedGoldSends, countGoldSends())
+      local operation = copyGoldOperation(boop.state.gold.operation)
+
+      gmcp.Char.Items.Remove = {
+        location = "room",
+        item = { id = "42", name = "a first denizen", attrib = "m" },
+      }
+      boop.onRoomItemsRemove()
+
+      local retargetCallback = scheduled_callbacks[#scheduled_callbacks].callback
+      assert.is_function(retargetCallback)
+      assert.are.equal("43", boop.state.targeting.currentTargetId)
+      assert.are.same(operation, copyGoldOperation(boop.state.gold.operation))
+      assert.is_table(blockerFor("test:retained"))
+      assert.are.equal(0, countSent("queue clear"))
+      assert.are.equal(0, countSent("command hound at 43"))
+      assert.are.equal(0, countSent("harry 43"))
+      assert.are.equal(0, countSent("setalias BOOP_ATTACK command hound at 43"))
+
+      retargetCallback()
+
+      assert.are.equal(case.expectedGoldSends, countGoldSends())
+      assert.are.equal(0, countSent("queue clear"))
+      assert.are.equal(0, countSent("command hound at 43"))
+      assert.are.equal(0, countSent("harry 43"))
+      assert.are.equal(0, countSent("setalias BOOP_ATTACK command hound at 43"))
+      assert.is_false(case.stale())
+      assert.are.same(operation, copyGoldOperation(boop.state.gold.operation))
+      assert.is_table(blockerFor("test:retained"))
+      assert.are.equal(0, countRaised("demonwalker.move"))
+    end)
+  end
+
+  it("settles walk once after gold and denizen evidence clear in order", function()
+    _G.demonwalker = {
+      enabled = true,
+      init = function() return true end,
+    }
+    boop.config.enabled = true
+    boop.config.autoGrabGold = true
+    boop.config.useQueueing = false
+    boop.config.goldPack = ""
+    boop.config.targetingMode = "auto"
+    boop.config.targetCall = false
+    helper.setTarget("", "", "100%")
+    helper.seedRoomObservation("1", {
+      generation = 7,
+      infoSeen = true,
+      itemsSeen = false,
+    })
+    local state = boop.runtime.state()
+    state.walk.active = true
+    state.walk.owned = false
+    state.walk.roomSettled = false
+    state.walk.moveQueued = false
+    state.walk.arrivalRoom = "1"
+    state.walk.generation = 12
+    state.walk.roomGeneration = 7
+    state.walk.moveIssuedForRoomGeneration = false
+    state.walk.reservationId = 0
+    helper.setRuntimeBlocker({
+      owner = "walk:12",
+      code = "walk_room_unsettled",
+      label = "current room evidence is incomplete",
+      systems = { walk = true },
+      waitsFor = { room = true, items = true },
+    })
+    helper.setRuntimeBlocker({
+      owner = "test:retained",
+      code = "interrupt_pending",
+      label = "retained unrelated owner",
+      systems = { audit = true },
+      waitsFor = { timeout = true },
+    })
+
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = {
+        { id = "42", name = "a denizen", attrib = "m" },
+        goldItem("9001"),
+      },
+    }
+    boop.onRoomItemsList()
+
+    assert.are.equal(1, countGoldSends())
+    assert.are.equal(0, state.walk.reservationId)
+    assert.is_false(state.walk.moveQueued)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+    local goldGeneration = boop.state.gold.operation.generation
+
+    assert.is_true(boop.onGoldGetSuccess())
+    local goldTerminal = scheduled_callbacks[#scheduled_callbacks].callback
+    assert.is_function(goldTerminal)
+
+    assert.is_false(boop.state.gold.operation)
+    assert.is_nil(blockerFor("gold:" .. tostring(goldGeneration)))
+    assert.are.equal(0, state.walk.reservationId)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = {},
+    }
+    boop.onRoomItemsList()
+
+    assert.are.equal(1, state.walk.reservationId)
+    assert.is_true(state.walk.moveQueued)
+    assert.are.equal("walk_move_pending", blockerFor("walk:12").code)
+    assert.is_table(blockerFor("test:retained"))
+    local emitter = callbackForTimer(state.walk.emitterTimer)
+    assert.is_function(emitter)
+
+    goldTerminal()
+    emitter()
+    emitter()
+
+    assert.are.equal(1, countRaised("demonwalker.move"))
+    assert.are.equal(0, countRaised("demonwalker.stop"))
+    assert.are.equal(1, countGoldSends())
+    assert.is_table(blockerFor("test:retained"))
+  end)
+
+  it("makes old gold and walker callbacks no-ops after new room and run generations", function()
+    _G.demonwalker = {
+      enabled = true,
+      init = function() return true end,
+    }
+    boop.config.enabled = true
+    boop.config.autoGrabGold = true
+    boop.config.useQueueing = false
+    boop.config.goldPack = ""
+    boop.config.targetingMode = "auto"
+    helper.setTarget("", "", "100%")
+    helper.setDenizens({})
+    seedSettledGoldRoom("1", 1)
+    helper.setRuntimeBlocker({
+      owner = "test:retained",
+      code = "interrupt_pending",
+      label = "retained unrelated owner",
+      systems = { audit = true },
+      waitsFor = { timeout = true },
+    })
+
+    local state = boop.runtime.state()
+    state.walk.active = true
+    state.walk.owned = false
+    state.walk.roomSettled = true
+    state.walk.moveQueued = false
+    state.walk.arrivalRoom = "1"
+    state.walk.generation = 30
+    state.walk.roomGeneration = 1
+    state.walk.moveIssuedForRoomGeneration = false
+    state.walk.reservationId = 4
+    assert.is_true(boop.walk.maybeAdvance("old generation seed"))
+    local oldEmitter = callbackForTimer(state.walk.emitterTimer)
+    assert.is_function(oldEmitter)
+    boop.runtime.clearBlocker(
+      "walk:" .. tostring(state.walk.generation),
+      "cross-lifecycle callback setup"
+    )
+
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    local oldGold = copyGoldOperation(boop.state.gold.operation)
+    local oldGoldTimeout = callbackForTimer(oldGold.timeoutTimer)
+    assert.is_function(oldGoldTimeout)
+
+    gmcp.Room.Info = {
+      num = "2",
+      area = "Test Area",
+      exits = { south = "1" },
+    }
+    boop.onRoomInfo()
+    assert.is_false(boop.state.gold.operation)
+    assert.is_true(boop.walk.stop(true, true))
+    assert.is_true(boop.walk.start())
+
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = { goldItem("9002") },
+    }
+    boop.onRoomItemsList()
+
+    local currentGold = copyGoldOperation(boop.state.gold.operation)
+    local currentWalk = {
+      active = state.walk.active,
+      owned = state.walk.owned,
+      generation = state.walk.generation,
+      roomGeneration = state.walk.roomGeneration,
+      reservationId = state.walk.reservationId,
+      moveQueued = state.walk.moveQueued,
+      emitterTimer = state.walk.emitterTimer,
+    }
+    local sendCount = #sent_commands
+    local eventCount = #raised_events
+    local timerCount = #scheduled_callbacks
+    assert.is_true(currentGold.generation > oldGold.generation)
+    assert.is_true(currentWalk.generation > 30)
+
+    oldGoldTimeout()
+    oldEmitter()
+
+    assert.are.same(currentGold, copyGoldOperation(boop.state.gold.operation))
+    assert.are.same(currentWalk, {
+      active = state.walk.active,
+      owned = state.walk.owned,
+      generation = state.walk.generation,
+      roomGeneration = state.walk.roomGeneration,
+      reservationId = state.walk.reservationId,
+      moveQueued = state.walk.moveQueued,
+      emitterTimer = state.walk.emitterTimer,
+    })
+    assert.are.equal(sendCount, #sent_commands)
+    assert.are.equal(eventCount, #raised_events)
+    assert.are.equal(timerCount, #scheduled_callbacks)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+    assert.are.equal(0, countRaised("demonwalker.stop"))
+    assert.is_table(blockerFor("test:retained"))
   end)
 
   it("treats Mudlet event names as adapter metadata instead of generation tokens", function()
