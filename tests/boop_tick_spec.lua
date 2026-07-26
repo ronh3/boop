@@ -60,7 +60,7 @@ describe("boop tick", function()
 
   local function startGoldStage(stage)
     seedGoldEvidence()
-    boop.config.goldPack = stage == "initial_get" or stage == "get_retry"
+    boop.config.goldPack = (stage == "initial_get" or stage == "get_retry")
       and ""
       or "pack"
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
@@ -76,7 +76,7 @@ describe("boop tick", function()
 
   local function readyBlockedStage(stage, owner)
     seedGoldEvidence()
-    boop.config.goldPack = stage == "initial_get" or stage == "get_retry"
+    boop.config.goldPack = (stage == "initial_get" or stage == "get_retry")
       and ""
       or "pack"
 

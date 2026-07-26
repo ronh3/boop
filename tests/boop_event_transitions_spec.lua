@@ -1213,14 +1213,13 @@ describe("boop event-driven state transitions", function()
   end)
 
   it("clears gold intent and remembers the return exit when the room changes", function()
+    seedSettledGoldRoom("100", 1)
+    boop.config.goldPack = ""
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    local operation = copyGoldOperation(boop.state.gold.operation)
     boop.state.targeting.room = 100
     boop.state.combat.fleeing = false
     boop.state.targeting.targetShield = { attempted = false, timer = 57 }
-    boop.state.gold.getPending = true
-    boop.state.gold.putPending = true
-    boop.state.gold.getRetries = 1
-    boop.state.gold.putRetries = 1
-    boop.state.gold.packTarget = "pack"
 
     gmcp.Room.Info.num = 200
     gmcp.Room.Info.exits = {
@@ -1235,6 +1234,8 @@ describe("boop event-driven state transitions", function()
     assert.are.equal("north", boop.state.targeting.lastRoomDir)
     assert.are.equal(200, boop.state.targeting.room)
     assert.is_false(boop.state.targeting.targetShield)
+    assert.is_false(boop.state.gold.operation)
+    assert.is_nil(boop.state.combat.blockersByOwner[operation.blockerOwner])
     assert.is_false(boop.state.gold.getPending)
     assert.is_false(boop.state.gold.putPending)
     assert.are.equal(0, boop.state.gold.getRetries)
@@ -1243,14 +1244,12 @@ describe("boop event-driven state transitions", function()
     assert.stub(kill_timer_stub).was_called_with(57)
   end)
 
-  it("clears stale gold state if room sovereigns disappear mid-handling", function()
-    boop.config.enabled = true
-    boop.state.gold.autoGrabPending = true
-    boop.state.gold.autoGrabPendingAt = 1
-    boop.state.gold.dropped = true
-    boop.state.gold.getPending = true
-    boop.state.gold.putPending = true
-    boop.state.gold.packTarget = "pack"
+  it("does not let a room removal callback mutate current gold state", function()
+    seedSettledGoldRoom("1", 1)
+    boop.config.goldPack = ""
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    local operation = copyGoldOperation(boop.state.gold.operation)
+    local sendsBeforeRemove = countGoldSends()
 
     gmcp.Char.Items.Remove = {
       location = "room",
@@ -1259,11 +1258,8 @@ describe("boop event-driven state transitions", function()
 
     boop.onRoomItemsRemove()
 
-    assert.is_false(boop.state.gold.autoGrabPending)
-    assert.is_nil(boop.state.gold.autoGrabPendingAt)
-    assert.is_false(boop.state.gold.getPending)
-    assert.is_false(boop.state.gold.putPending)
-    assert.are.equal("", boop.state.gold.packTarget)
+    assert.are.same(operation, copyGoldOperation(boop.state.gold.operation))
+    assert.are.equal(sendsBeforeRemove, countGoldSends())
   end)
 
   it("re-announces core gmcp supports on connection-ready events", function()

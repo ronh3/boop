@@ -131,7 +131,7 @@ describe("boop generation-owned gold retry handling", function()
     assert.stub(err_stub).was_called_with("auto gold: unable to get sovereigns; check room loot/line timing")
   end)
 
-  it("retries put across movement and exhausts at the existing limit", function()
+  it("holds put retry across movement, resumes after settlement, and exhausts at the existing limit", function()
     startPickup("pack")
     boop.onGoldGetSuccess()
 
@@ -145,9 +145,22 @@ describe("boop generation-owned gold retry handling", function()
 
     boop.onGoldCommandFailure("pack closed")
 
+    assert.are.equal(sendsBeforeRetry, #sent)
+    assert.are.equal(0, currentOperation().putRetries)
+
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = {},
+    }
+    boop.onRoomItemsList()
+
+    assert.are.equal(sendsBeforeRetry, #sent)
+    assert.are.equal("pack_pending", currentOperation().phase)
+    assert.are.equal(0, currentOperation().putRetries)
+
+    boop.onGoldCommandFailure("pack closed")
     assert.are.equal(sendsBeforeRetry + 1, #sent)
     assert.are.equal("queue add freestand put sovereigns in pack", sent[#sent].command)
-    assert.are.equal("pack_pending", currentOperation().phase)
     assert.are.equal(1, currentOperation().putRetries)
 
     boop.onGoldCommandFailure("still closed")

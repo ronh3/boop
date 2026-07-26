@@ -1063,6 +1063,10 @@ local function tickStep(context)
 
   local goldOperation = state.gold.operation
   if type(goldOperation) == "table" and not goldOperation.terminal then
+    if boop.safety and boop.safety.shouldFlee and boop.safety.shouldFlee() then
+      effects[#effects + 1] = { kind = "flee" }
+      return { effects = effects, didAction = false }
+    end
     local owner = tostring(goldOperation.blockerOwner or "")
     if boop.runtime.shouldHold("combat", owner)
       or boop.runtime.shouldHold("queue", owner)

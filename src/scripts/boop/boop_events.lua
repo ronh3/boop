@@ -240,21 +240,7 @@ local function reconcileIreSupport(source)
 end
 
 local function enterRoomBlocker(code, label, observed)
-  local systems = BLOCKER_SYSTEMS_ROOM
-  local operation = boop.state
-    and boop.state.gold
-    and boop.state.gold.operation
-    or nil
-  if type(operation) == "table"
-      and not operation.terminal
-      and operation.phase == GOLD_PHASE.PACK_PENDING then
-    systems = {
-      target = true,
-      combat = true,
-      walk = true,
-    }
-  end
-  return setBlocker("room:observation", code, label, systems, {
+  return setBlocker("room:observation", code, label, BLOCKER_SYSTEMS_ROOM, {
     gmcp = true,
   }, {
     source = "room",
@@ -736,8 +722,16 @@ completeGoldOperation = function(generation, terminalReason)
     tostring(generation),
     reason
   ))
-  if boop.walk and boop.walk.maybeAdvance then
-    boop.walk.maybeAdvance("gold " .. reason)
+  if tempTimer then
+    tempTimer(0, function()
+      local active = currentGoldOperation()
+      if active and tonumber(active.generation) > tonumber(generation) then
+        return
+      end
+      if boop and boop.tick then
+        boop.tick()
+      end
+    end)
   end
   return true
 end
@@ -788,7 +782,9 @@ startGoldOperation = function(source, observation, packTarget)
       operation = false
     elseif operation.phase == GOLD_PHASE.DEFERRED_ROOM
         and evidenceComplete
-        and currentGoldItem then
+        and currentGoldItem
+        and (tostring(operation.goldItemId or "") == ""
+          or tostring(operation.goldItemId or "") == tostring(currentGoldItem.id or "")) then
       cancelAutoGrabGoldTimer()
       stopGoldPendingTimeout()
       operation.phase = GOLD_PHASE.PICKUP_PENDING
@@ -812,7 +808,6 @@ startGoldOperation = function(source, observation, packTarget)
         },
       })
       boop.markGoldQueueIntent(operation.packTarget)
-      queueGoldCommands()
       return operation
     else
       return operation
@@ -1158,6 +1153,16 @@ function boop.onRoomItemsList()
     boop.requestRoomItemsOnce("incomplete room item list")
     return
   end
+  local activeBeforeList = currentGoldOperation()
+  local activeGeneration = activeBeforeList and activeBeforeList.generation or nil
+  local activePhase = activeBeforeList and activeBeforeList.phase or nil
+  local roomOwnerHeldGold = boop.state
+    and boop.state.combat
+    and boop.state.combat.blockersByOwner
+    and boop.state.combat.blockersByOwner["room:observation"]
+    and boop.state.combat.blockersByOwner["room:observation"].systems
+    and boop.state.combat.blockersByOwner["room:observation"].systems.gold
+    or false
   if not noteRoomGmcpObserved() then
     enterRoomBlocker("room_partial", "partial room state", {
       room = tostring(gmcp.Room and gmcp.Room.Info and gmcp.Room.Info.num or ""),
@@ -1175,6 +1180,16 @@ function boop.onRoomItemsList()
   traceRoomItemsList(items, goldItem)
   if goldItem then
     autoGrabRoomItem(goldItem)
+  end
+  local activeAfterList = currentGoldOperation()
+  local advancedDeferred = activeGeneration
+    and activePhase == GOLD_PHASE.DEFERRED_ROOM
+    and activeAfterList
+    and activeAfterList.generation == activeGeneration
+    and activeAfterList.phase == GOLD_PHASE.PICKUP_PENDING
+  if (advancedDeferred or (roomOwnerHeldGold and activeAfterList))
+      and boop.tick then
+    boop.tick()
   end
   if shouldHold("walk") then
     traceHeld("walk", "room items list")
@@ -1311,6 +1326,12 @@ function boop.onRoomInfo()
     and boop.runtime.startRoomObservation
     and boop.runtime.startRoomObservation(info.num)
     or nil
+  local goldOperation = currentGoldOperation()
+  if goldOperation
+      and (goldOperation.phase == GOLD_PHASE.DEFERRED_ROOM
+        or goldOperation.phase == GOLD_PHASE.PICKUP_PENDING) then
+    completeGoldOperation(goldOperation.generation, "room_changed")
+  end
   if roomInfoIsPartial(info) then
     enterRoomBlocker("room_partial", "partial room state", {
       room = tostring(info and info.num or ""),
@@ -1332,12 +1353,6 @@ function boop.onRoomInfo()
   if previousRoomText ~= currentRoomText then
     targeting.movedRooms = true
     targeting.lastRoom = previousRoom
-    local goldOperation = currentGoldOperation()
-    if goldOperation
-      and (goldOperation.phase == GOLD_PHASE.DEFERRED_ROOM
-        or goldOperation.phase == GOLD_PHASE.PICKUP_PENDING) then
-      completeGoldOperation(goldOperation.generation, "room_changed")
-    end
     if boop.targets and boop.targets.clearTargetCall then
       boop.targets.clearTargetCall("room changed")
     end
