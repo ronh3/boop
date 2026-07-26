@@ -4,15 +4,88 @@ describe("boop pull command", function()
   local send_stub
   local timer_stub
   local kill_timer_stub
+  local set_enabled_stub
+  local save_config_stub
+  local trace_stub
+  local tick_stub
   local ok_stub
   local warn_stub
   local info_stub
-  local echoes
-  local timeout_callback
+  local sent
+  local scheduled
+  local killed
+  local enabled_calls
+  local saved_enabled
+  local traces
+  local ok_messages
+  local warn_messages
+  local info_messages
+  local tick_count
 
-  local function blockerSnapshot()
-    assert.is_function(boop.runtime.blockerSnapshot)
-    return boop.runtime.blockerSnapshot()
+  local function blockerFor(owner)
+    for _, blocker in ipairs(boop.runtime.blockersSnapshot()) do
+      if blocker.owner == owner then
+        return blocker
+      end
+    end
+    return nil
+  end
+
+  local function pullTraceCount()
+    local count = 0
+    for _, message in ipairs(traces) do
+      if tostring(message):find("pull", 1, true) then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
+  local function seedUnrelatedOwner()
+    helper.setRuntimeBlocker({
+      owner = "test:unrelated",
+      code = "interrupt_pending",
+      label = "unrelated hold",
+      systems = { combat = true, queue = true, target = true, gold = true, walk = true },
+      waitsFor = { prompt = true },
+    })
+  end
+
+  local function assertActivePull(generation, phase, timer_id, command)
+    local pull = boop.state.combat.pullState
+    assert.are.same({
+      active = true,
+      generation = generation,
+      blockerOwner = "pull:" .. tostring(generation),
+      phase = phase,
+      terminal = false,
+      originRoom = "1",
+      direction = "north",
+      returnDirection = "south",
+      command = command,
+      timeoutTimer = timer_id,
+    }, pull)
+    assert.are.equal(generation, boop.state.combat.pullGeneration)
+  end
+
+  local function assertPullBlocker(generation, code)
+    local blocker = blockerFor("pull:" .. tostring(generation))
+    assert.is_table(blocker)
+    assert.are.equal(code, blocker.code)
+    assert.are.same({
+      combat = true,
+      queue = true,
+      target = true,
+      gold = true,
+      walk = true,
+    }, blocker.systems)
+    assert.is_true(blocker.waitsFor.room)
+    return blocker
+  end
+
+  local function moveTo(room)
+    gmcp.Room.Info.num = tostring(room)
+    boop.onRoomInfo()
   end
 
   before_each(function()
@@ -20,48 +93,103 @@ describe("boop pull command", function()
     helper.setClass("Occultist")
     helper.setRage(18)
     helper.learnSkill("Harry", "Attainment")
-    echoes = {}
-    timeout_callback = nil
-    timer_stub = stub(_G, "tempTimer", function(_, callback)
-      timeout_callback = callback
-      return 333
+    boop.config.diagTimeoutSeconds = 8
+    boop.config.gameSeparator = "|"
+    boop.config.traceEnabled = true
+    boop.state.targeting.room = "1"
+    gmcp.Room.Info.num = "1"
+
+    sent = {}
+    scheduled = {}
+    killed = {}
+    enabled_calls = {}
+    saved_enabled = {}
+    traces = {}
+    ok_messages = {}
+    warn_messages = {}
+    info_messages = {}
+    tick_count = 0
+
+    timer_stub = stub(_G, "tempTimer", function(delay, callback)
+      local timer_id = #scheduled + 1
+      scheduled[timer_id] = {
+        delay = delay,
+        callback = callback,
+      }
+      return timer_id
     end)
-    kill_timer_stub = stub(_G, "killTimer", function(_) end)
-    send_stub = stub(_G, "send", function(_, _) end)
+    kill_timer_stub = stub(_G, "killTimer", function(timer_id)
+      killed[#killed + 1] = timer_id
+    end)
+    send_stub = stub(_G, "send", function(command, echo_back)
+      sent[#sent + 1] = {
+        command = command,
+        echoBack = echo_back,
+      }
+    end)
+    set_enabled_stub = stub(boop.ui, "setEnabled", function(value, quiet, opts)
+      enabled_calls[#enabled_calls + 1] = {
+        value = value,
+        quiet = quiet,
+        opts = opts,
+      }
+    end)
+    save_config_stub = stub(boop.db, "saveConfig", function(key, value)
+      if key == "enabled" then
+        saved_enabled[#saved_enabled + 1] = value
+      end
+    end)
+    trace_stub = stub(boop.trace, "log", function(message)
+      traces[#traces + 1] = message
+    end)
+    tick_stub = stub(boop, "tick", function()
+      tick_count = tick_count + 1
+    end)
     ok_stub = stub(boop.util, "ok", function(msg)
-      echoes[#echoes + 1] = "[OK] " .. msg
+      ok_messages[#ok_messages + 1] = msg
     end)
     warn_stub = stub(boop.util, "warn", function(msg)
-      echoes[#echoes + 1] = "[WARN] " .. msg
+      warn_messages[#warn_messages + 1] = msg
     end)
     info_stub = stub(boop.util, "info", function(msg)
-      echoes[#echoes + 1] = "[INFO] " .. msg
+      info_messages[#info_messages + 1] = msg
     end)
   end)
 
   after_each(function()
+    if tick_stub then tick_stub:revert() tick_stub = nil end
     if send_stub then send_stub:revert() send_stub = nil end
     if timer_stub then timer_stub:revert() timer_stub = nil end
     if kill_timer_stub then kill_timer_stub:revert() kill_timer_stub = nil end
+    if set_enabled_stub then set_enabled_stub:revert() set_enabled_stub = nil end
+    if save_config_stub then save_config_stub:revert() save_config_stub = nil end
+    if trace_stub then trace_stub:revert() trace_stub = nil end
     if ok_stub then ok_stub:revert() ok_stub = nil end
     if warn_stub then warn_stub:revert() warn_stub = nil end
     if info_stub then info_stub:revert() info_stub = nil end
   end)
 
-  it("uses the configured game separator and typed mob name", function()
+  it("allocates one exact owner, record, timer, and unchanged command", function()
     boop.config.enabled = true
-    boop.state.targeting.room = "1"
-    boop.ui.gameSeparatorCommand("|")
+    seedUnrelatedOwner()
 
     boop.ui.pullCommand("mage", "north")
 
-    assert.is_false(boop.config.enabled)
-    assert.is_truthy(boop.state.combat.pullState)
-    assert.are.equal("1", boop.state.combat.pullState.originRoom)
-    assert.are.equal("outbound", boop.state.combat.pullState.phase)
-    assert.are.equal(333, boop.state.combat.pullState.timeoutTimer)
-    assert.stub(send_stub).was_called_with("north|harry mage|leap south", false)
-    assert.is_true(table.concat(echoes, "\n"):find("[OK] pull queued: north|harry mage|leap south", 1, true) ~= nil)
+    local command = "north|harry mage|leap south"
+    assertActivePull(1, "outbound", 1, command)
+    assertPullBlocker(1, "pull_active")
+    assert.is_table(blockerFor("test:unrelated"))
+    assert.are.same({
+      { command = command, echoBack = false },
+    }, sent)
+    assert.are.equal(1, #scheduled)
+    assert.are.equal(8, scheduled[1].delay)
+    assert.are.same({ "pull queued: " .. command }, ok_messages)
+    assert.are.equal(0, #warn_messages)
+    assert.are.equal(0, #info_messages)
+    assert.are.equal(0, #enabled_calls)
+    assert.are.equal(0, #saved_enabled)
+    assert.is_true(boop.config.enabled)
   end)
 
   it("prepends psion transcend shatter to pull rage commands", function()
@@ -69,12 +197,15 @@ describe("boop pull command", function()
     helper.setRage(25)
     helper.learnSkill("whirlwind", "Attainment")
     boop.config.enabled = true
-    boop.state.targeting.room = "1"
-    boop.ui.gameSeparatorCommand("|")
 
     boop.ui.pullCommand("mage", "north")
 
-    assert.stub(send_stub).was_called_with("north|psi transcend shatter/weave whirlwind mage|leap south", false)
+    assert.are.same({
+      {
+        command = "north|psi transcend shatter/weave whirlwind mage|leap south",
+        echoBack = false,
+      },
+    }, sent)
   end)
 
   it("leaves dragon pull rage commands unchanged", function()
@@ -82,32 +213,67 @@ describe("boop pull command", function()
     helper.setRage(14)
     helper.learnSkill("dragonchill", "Attainment")
     boop.config.enabled = true
-    boop.state.targeting.room = "1"
-    boop.ui.gameSeparatorCommand("|")
 
     boop.ui.pullCommand("mage", "north")
 
-    assert.stub(send_stub).was_called_with("north|dragonchill mage|leap south", false)
+    assert.are.same({
+      {
+        command = "north|dragonchill mage|leap south",
+        echoBack = false,
+      },
+    }, sent)
   end)
 
-  it("restores boop after gmcp confirms the return to the origin room", function()
+  it("lets return win once and makes the captured timeout a zero-effect no-op", function()
     boop.config.enabled = true
-    boop.state.targeting.room = "1"
-    boop.ui.gameSeparatorCommand("|")
+    seedUnrelatedOwner()
 
     boop.ui.pullCommand("mage", "north")
+    local generation = boop.state.combat.pullState.generation
+    local timeout_callback = scheduled[1].callback
 
-    gmcp.Room.Info.num = "2"
-    boop.onRoomInfo()
-    assert.is_false(boop.config.enabled)
-    assert.are.equal("away", boop.state.combat.pullState.phase)
+    moveTo("2")
+    assertActivePull(generation, "away", 1, "north|harry mage|leap south")
+    assertPullBlocker(generation, "pull_active")
 
-    gmcp.Room.Info.num = "1"
-    boop.onRoomInfo()
+    moveTo("1")
     assert.is_true(boop.config.enabled)
     assert.is_false(boop.state.combat.pullState)
-    assert.stub(kill_timer_stub).was_called_with(333)
-    assert.is_true(table.concat(echoes, "\n"):find("[OK] pull complete; boop resumed", 1, true) ~= nil)
+    assert.is_nil(blockerFor("pull:" .. tostring(generation)))
+    assert.is_table(blockerFor("test:unrelated"))
+    assert.are.same({ 1 }, killed)
+    assert.are.same({ "pull queued: north|harry mage|leap south", "pull complete" }, ok_messages)
+    assert.are.equal(0, #warn_messages)
+    assert.are.equal(1, #sent)
+    assert.are.equal(1, #scheduled)
+    assert.are.equal(0, tick_count)
+    assert.are.equal(5, pullTraceCount())
+    assert.are.equal(0, #enabled_calls)
+    assert.are.equal(0, #saved_enabled)
+
+    local snapshot = {
+      generation = boop.state.combat.pullGeneration,
+      sends = #sent,
+      timers = #scheduled,
+      killed = #killed,
+      oks = #ok_messages,
+      warnings = #warn_messages,
+      traces = #traces,
+      ticks = tick_count,
+    }
+
+    timeout_callback()
+
+    assert.is_false(boop.ui.completePull(generation, "timeout_at_origin"))
+    assert.are.equal(snapshot.generation, boop.state.combat.pullGeneration)
+    assert.are.equal(snapshot.sends, #sent)
+    assert.are.equal(snapshot.timers, #scheduled)
+    assert.are.equal(snapshot.killed, #killed)
+    assert.are.equal(snapshot.oks, #ok_messages)
+    assert.are.equal(snapshot.warnings, #warn_messages)
+    assert.are.equal(snapshot.traces, #traces)
+    assert.are.equal(snapshot.ticks, tick_count)
+    assert.is_table(blockerFor("test:unrelated"))
   end)
 
   it("preserves the active-pull target-loss exception while away and cleans up after return", function()
@@ -120,13 +286,10 @@ describe("boop pull command", function()
     boop.state.queue.aliasDirty = false
     boop.config.enabled = true
     boop.config.targetingMode = "auto"
-    boop.state.targeting.room = "1"
-    boop.ui.gameSeparatorCommand("|")
 
     boop.ui.pullCommand("mage", "north")
 
-    gmcp.Room.Info.num = "2"
-    boop.onRoomInfo()
+    moveTo("2")
     assert.are.equal("away", boop.state.combat.pullState.phase)
 
     gmcp.Char.Items.Remove = {
@@ -141,8 +304,7 @@ describe("boop pull command", function()
     assert.are.equal("command hound at 42", boop.state.queue.aliasAction)
     assert.is_truthy(boop.state.combat.pullState)
 
-    gmcp.Room.Info.num = "1"
-    boop.onRoomInfo()
+    moveTo("1")
 
     assert.is_false(boop.state.combat.pullState)
     assert.are.equal("", boop.state.targeting.currentTargetId)
@@ -150,81 +312,193 @@ describe("boop pull command", function()
     assert.is_false(boop.state.queue.prequeuedStandard)
     assert.are.equal("", boop.state.queue.aliasAction)
     assert.is_true(boop.state.queue.aliasDirty)
-    assert.are.equal("", blockerSnapshot().code)
+    assert.is_nil(blockerFor("pull:1"))
   end)
 
-  it("clears a stuck pull and resumes boop when the timeout still sees the origin room", function()
+  it("terminates at origin on timeout without changing saved enabled intent", function()
     boop.config.enabled = true
-    boop.state.targeting.room = "1"
-    boop.ui.gameSeparatorCommand("|")
+    seedUnrelatedOwner()
 
     boop.ui.pullCommand("mage", "north")
-    assert.is_false(boop.config.enabled)
-    assert.is_function(timeout_callback)
+    assert.is_function(scheduled[1].callback)
 
-    timeout_callback()
+    scheduled[1].callback()
 
     assert.is_true(boop.config.enabled)
     assert.is_false(boop.state.combat.pullState)
-    assert.is_true(table.concat(echoes, "\n"):find("[WARN] pull timeout; boop resumed at origin", 1, true) ~= nil)
+    assert.is_nil(blockerFor("pull:1"))
+    assert.is_table(blockerFor("test:unrelated"))
+    assert.are.same({ "pull timeout at origin; pull hold released" }, warn_messages)
+    assert.are.equal(1, #sent)
+    assert.are.equal(1, #scheduled)
+    assert.are.equal(0, tick_count)
+    assert.are.equal(0, #enabled_calls)
+    assert.are.equal(0, #saved_enabled)
   end)
 
-  it("clears a stuck pull without resuming boop when timeout sees an away room", function()
+  it("keeps the same owner after timeout away and releases once on matching return", function()
     boop.config.enabled = true
-    boop.state.targeting.room = "1"
-    boop.ui.gameSeparatorCommand("|")
+    seedUnrelatedOwner()
 
     boop.ui.pullCommand("mage", "north")
-    gmcp.Room.Info.num = "2"
-    boop.onRoomInfo()
+    moveTo("2")
     assert.are.equal("away", boop.state.combat.pullState.phase)
 
-    timeout_callback()
+    scheduled[1].callback()
 
-    assert.is_false(boop.config.enabled)
+    assert.is_true(boop.config.enabled)
+    assertActivePull(1, "timed_out_away", nil, "north|harry mage|leap south")
+    local blocker = assertPullBlocker(1, "pull_timeout_away")
+    assert.are.equal("2", blocker.observed.currentRoom)
+    assert.is_table(blockerFor("test:unrelated"))
+    assert.are.same({ "pull timeout; hold remains until return" }, warn_messages)
+    assert.are.equal(0, #killed)
+    assert.are.equal(1, #sent)
+    assert.are.equal(1, #scheduled)
+    assert.are.equal(0, tick_count)
+
+    moveTo("1")
+
     assert.is_false(boop.state.combat.pullState)
-    assert.are.equal("pull_timeout_away", blockerSnapshot().code)
-    assert.are.equal("pull timed out away from origin", blockerSnapshot().label)
-    assert.is_true(blockerSnapshot().systems.combat)
-    assert.is_true(blockerSnapshot().systems.target)
-    assert.is_true(blockerSnapshot().systems.walk)
-    assert.is_true(blockerSnapshot().waitsFor.room)
-    assert.is_true(blockerSnapshot().waitsFor.gmcp)
-    assert.is_true(table.concat(echoes, "\n"):find("[WARN] pull timeout; boop remains paused", 1, true) ~= nil)
+    assert.is_nil(blockerFor("pull:1"))
+    assert.is_table(blockerFor("test:unrelated"))
+    assert.are.same({
+      "pull queued: north|harry mage|leap south",
+      "pull complete after timeout",
+    }, ok_messages)
+    assert.are.equal(1, #warn_messages)
+    assert.are.equal(0, #killed)
+    assert.are.equal(1, #sent)
+    assert.are.equal(1, #scheduled)
+    assert.are.equal(0, tick_count)
+    assert.are.equal(0, #enabled_calls)
+    assert.are.equal(0, #saved_enabled)
+  end)
 
-    gmcp.Room.Info.num = "1"
-    boop.onRoomInfo()
-    assert.are.equal("pull_timeout_away", blockerSnapshot().code)
+  it("keeps a newer pull unchanged when the old timeout callback runs", function()
+    boop.config.enabled = true
+    seedUnrelatedOwner()
 
-    gmcp.Char.Items.List = {
-      location = "room",
-      items = {},
+    boop.ui.pullCommand("mage", "north")
+    local old_timeout = scheduled[1].callback
+    moveTo("2")
+    moveTo("1")
+
+    boop.ui.pullCommand("mage", "north")
+    assertActivePull(2, "outbound", 2, "north|harry mage|leap south")
+    assertPullBlocker(2, "pull_active")
+
+    local operation = boop.state.combat.pullState
+    local snapshot = {
+      generation = boop.state.combat.pullGeneration,
+      phase = operation.phase,
+      owner = operation.blockerOwner,
+      timer = operation.timeoutTimer,
+      command = operation.command,
+      sends = #sent,
+      timers = #scheduled,
+      killed = #killed,
+      warnings = #warn_messages,
+      oks = #ok_messages,
+      traces = #traces,
+      ticks = tick_count,
     }
-    boop.onRoomItemsList()
-    boop.onPrompt()
 
-    assert.are.equal("", blockerSnapshot().code)
-    assert.is_false(boop.runtime.shouldHold("combat"))
-    assert.is_false(boop.runtime.shouldHold("walk"))
+    old_timeout()
+
+    assert.is_true(operation == boop.state.combat.pullState)
+    assert.are.equal(snapshot.generation, boop.state.combat.pullGeneration)
+    assert.are.equal(snapshot.phase, boop.state.combat.pullState.phase)
+    assert.are.equal(snapshot.owner, boop.state.combat.pullState.blockerOwner)
+    assert.are.equal(snapshot.timer, boop.state.combat.pullState.timeoutTimer)
+    assert.are.equal(snapshot.command, boop.state.combat.pullState.command)
+    assert.are.equal(snapshot.sends, #sent)
+    assert.are.equal(snapshot.timers, #scheduled)
+    assert.are.equal(snapshot.killed, #killed)
+    assert.are.equal(snapshot.warnings, #warn_messages)
+    assert.are.equal(snapshot.oks, #ok_messages)
+    assert.are.equal(snapshot.traces, #traces)
+    assert.are.equal(snapshot.ticks, tick_count)
+    assertPullBlocker(2, "pull_active")
+    assert.is_table(blockerFor("test:unrelated"))
+  end)
+
+  it("rejects repeats without another send, timer, generation, or owner", function()
+    boop.config.enabled = true
+    seedUnrelatedOwner()
+
+    boop.ui.pullCommand("mage", "north")
+    local original = boop.state.combat.pullState
+    local original_timer = original.timeoutTimer
+
+    boop.ui.pullCommand("mage", "north")
+    boop.ui.pullCommand("another mage", "south")
+
+    assert.is_true(original == boop.state.combat.pullState)
+    assert.are.equal(1, boop.state.combat.pullGeneration)
+    assert.are.equal(original_timer, boop.state.combat.pullState.timeoutTimer)
+    assert.are.equal("north|harry mage|leap south", boop.state.combat.pullState.command)
+    assert.are.equal(1, #sent)
+    assert.are.equal(1, #scheduled)
+    assert.are.equal(0, #killed)
+    assert.are.same({
+      "pull already in progress",
+      "pull already in progress",
+    }, warn_messages)
+    assertPullBlocker(1, "pull_active")
+    assert.is_table(blockerFor("test:unrelated"))
+    assert.are.equal(0, #enabled_calls)
+    assert.are.equal(0, #saved_enabled)
+  end)
+
+  it("keeps an operator-disabled session disabled after every terminal path", function()
+    local terminal_scenarios = {
+      function()
+        moveTo("2")
+        moveTo("1")
+      end,
+      function()
+        scheduled[#scheduled].callback()
+      end,
+      function()
+        moveTo("2")
+        scheduled[#scheduled].callback()
+        moveTo("1")
+      end,
+    }
+
+    for _, finish in ipairs(terminal_scenarios) do
+      boop.ui.pullCommand("mage", "north")
+      finish()
+      assert.is_false(boop.config.enabled)
+      assert.is_false(boop.state.combat.pullState)
+    end
+
+    assert.are.equal(3, boop.state.combat.pullGeneration)
+    assert.are.equal(3, #sent)
+    assert.are.equal(3, #scheduled)
+    assert.are.equal(0, #enabled_calls)
+    assert.are.equal(0, #saved_enabled)
   end)
 
   it("rejects mob names that contain the configured command separator", function()
     boop.config.enabled = true
-    boop.state.targeting.room = "1"
-    boop.ui.gameSeparatorCommand("|")
 
     boop.ui.pullCommand("mage|say unsafe", "north")
 
-    assert.stub(send_stub).was_not_called()
+    assert.are.equal(0, #sent)
     assert.is_false(boop.state.combat.pullState)
-    assert.is_true(table.concat(echoes, "\n"):find("[WARN] pull: mob name cannot contain the game separator or newlines", 1, true) ~= nil)
+    assert.are.same({
+      "pull: mob name cannot contain the game separator or newlines",
+    }, warn_messages)
   end)
 
   it("shows usage when the separator command is queried bare", function()
     boop.ui.gameSeparatorCommand("")
 
-    local joined = table.concat(echoes, "\n")
-    assert.is_true(joined:find("[INFO] game separator: |", 1, true) ~= nil)
-    assert.is_true(joined:find("[INFO] Usage: boop separator <text>", 1, true) ~= nil)
+    assert.are.same({
+      "game separator: |",
+      "Usage: boop separator <text>",
+    }, info_messages)
   end)
 end)

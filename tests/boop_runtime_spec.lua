@@ -131,6 +131,8 @@ describe("boop runtime coordinator", function()
     assert.is_table(state.combat.blocker.systems)
     assert.is_table(state.combat.blocker.waitsFor)
     assert.is_table(state.combat.blocker.observed)
+    assert.are.equal(0, state.combat.pullGeneration)
+    assert.is_false(state.combat.pullState)
 
     local snapshot = boop.runtime.blockerSnapshot()
     assert.are.equal("", snapshot.owner)
@@ -140,6 +142,46 @@ describe("boop runtime coordinator", function()
     assert.is_table(snapshot.systems)
     assert.is_table(snapshot.waitsFor)
     assert.is_table(snapshot.observed)
+  end)
+
+  it("resets pull generation and active-record fields independently", function()
+    local first = boop.runtime.state()
+    assert.are.equal(0, first.combat.pullGeneration)
+    assert.is_false(first.combat.pullState)
+
+    first.combat.pullGeneration = 7
+    first.combat.pullState = {
+      active = true,
+      generation = 7,
+      blockerOwner = "pull:7",
+      phase = "timed_out_away",
+      terminal = false,
+      originRoom = "101",
+      direction = "north",
+      returnDirection = "south",
+      command = "north|harry mage|leap south",
+      timeoutTimer = 707,
+    }
+    local first_record = first.combat.pullState
+
+    helper.reset()
+
+    local fresh = boop.runtime.state()
+    assert.are.equal(0, fresh.combat.pullGeneration)
+    assert.is_false(fresh.combat.pullState)
+    assert.is_false(first_record == fresh.combat.pullState)
+    assert.are.same({
+      active = true,
+      generation = 7,
+      blockerOwner = "pull:7",
+      phase = "timed_out_away",
+      terminal = false,
+      originRoom = "101",
+      direction = "north",
+      returnDirection = "south",
+      command = "north|harry mage|leap south",
+      timeoutTimer = 707,
+    }, first_record)
   end)
 
   it("keeps attack sends held until both owners clear in either order", function()

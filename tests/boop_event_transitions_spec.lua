@@ -681,10 +681,24 @@ describe("boop event-driven state transitions", function()
     boop.config.enabled = false
     boop.state.combat.pullState = {
       active = true,
+      generation = 7,
+      blockerOwner = "pull:7",
       phase = "away",
+      terminal = false,
       originRoom = "1",
-      restoreEnabled = true,
+      direction = "north",
+      returnDirection = "south",
+      command = "north|harry a pulled denizen|leap south",
+      timeoutTimer = 707,
     }
+    boop.state.combat.pullGeneration = 7
+    helper.setRuntimeBlocker({
+      owner = "pull:7",
+      code = "pull_active",
+      label = "pull active",
+      systems = { combat = true, queue = true, target = true, gold = true, walk = true },
+      waitsFor = { room = true },
+    })
     boop.state.queue.prequeuedStandard = true
     boop.state.queue.aliasAction = "command hound at 42"
     boop.state.queue.aliasDirty = false
@@ -700,6 +714,20 @@ describe("boop event-driven state transitions", function()
     assert.are.equal("a pulled denizen", boop.state.targeting.targetName)
     assert.is_truthy(boop.state.combat.pullState)
     assert.are.equal("away", boop.state.combat.pullState.phase)
+    assert.are.equal(7, boop.state.combat.pullState.generation)
+    assert.are.equal("pull:7", boop.state.combat.pullState.blockerOwner)
+    assert.is_false(boop.state.combat.pullState.terminal)
+    assert.are.equal(707, boop.state.combat.pullState.timeoutTimer)
+    local blocker = boop.state.combat.blockersByOwner["pull:7"]
+    assert.is_table(blocker)
+    assert.are.equal("pull_active", blocker.code)
+    assert.are.same({
+      combat = true,
+      queue = true,
+      target = true,
+      gold = true,
+      walk = true,
+    }, blocker.systems)
     assert.is_true(boop.state.queue.prequeuedStandard)
     assert.are.equal("command hound at 42", boop.state.queue.aliasAction)
     assert.is_false(boop.state.queue.aliasDirty)
