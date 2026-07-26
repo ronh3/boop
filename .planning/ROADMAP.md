@@ -87,12 +87,12 @@ Plans:
   4. `demonnicAutoWalker` remains optional, with explicit install/status feedback and no silent auto-update behavior.
   5. Regression coverage catches unsafe movement, attacks during holds, wrong-room loot commands, target-removal queue drift, and permanent walk stalls.
 
-**Plans**: 9 plans
+**Plans**: 1/9 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 03-01-PLAN.md — Canonical owner-keyed blockers and shared room-observation foundation
+- [x] 03-01-PLAN.md — Canonical owner-keyed blockers and shared room-observation foundation
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -178,7 +178,7 @@ Phases normally execute in numeric order. Phase 4 may be planned after Phase 2 i
 |-------|----------------|--------|-----------|
 | 1. Release Gates and State Contracts | 7/7 | Complete    | 2026-07-10 |
 | 2. State Ownership Repair and Safety Baseline | 7/7 | Complete    | 2026-07-11 |
-| 3. Queue, Interrupt, Gold, and Autowalk Regression Coverage | 0/9 | Not started | - |
+| 3. Queue, Interrupt, Gold, and Autowalk Regression Coverage | 1/9 | In Progress | - |
 | 4. Command Validation and Trust Boundaries | 0/TBD | Not started | - |
 | 5. Compact Summary Fixture Expansion and Focused Gag Fixes | 0/TBD | Not started | - |
 | 6. Docs, Help, and Live Release Verification | 0/TBD | Not started | - |

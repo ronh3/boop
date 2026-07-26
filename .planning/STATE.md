@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
 status: executing
-stopped_at: Phase 03 planned; ready to execute
-last_updated: "2026-07-26T00:37:21-07:00"
-last_activity: 2026-07-25
-last_activity_desc: Planned and verified all 9 Phase 03 plans
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-07-26T13:16:12.591Z"
+last_activity: 2026-07-26
+last_activity_desc: Completed Phase 03 Plan 01
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 23
-  completed_plans: 14
-  percent: 33
+  completed_plans: 15
+  percent: 65
 ---
 
 # Project State
@@ -28,18 +28,18 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 ## Current Position
 
-Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — READY TO EXECUTE
-Plan: 0 of 9
+Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — EXECUTING
+Plan: 2 of 9
 Status: Ready to execute
-Last activity: 2026-07-25 — Planned and verified all 9 Phase 03 plans
+Last activity: 2026-07-26 — Completed Phase 03 Plan 01
 
-Progress: [███░░░░░░░] 33%
+Progress: [███████░░░] 65%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 14
+- Total plans completed: 15
 - Average duration: 9 min
 - Total execution time: 0.7 hours
 
@@ -62,6 +62,7 @@ Progress: [███░░░░░░░] 33%
 | Phase 02-state-ownership-repair-and-safety-baseline P05 | 5m | 2 tasks | 5 files |
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
 | Phase 02 P07 | 20m | 2 tasks | 6 files |
+| Phase 03 P01 | 17m | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase 03 planning]: Commits whose staged paths are all under `.planning/` preserve the package version; any commit touching another path bumps all four version checkpoints.
 - [Phase 03 planning]: Final authority is the tracked repository extension `tools/wait_for_exact_ci.sh` against immutable final HEAD after all GSD mutations.
 - [Phase 03 planning]: Diagnose output uses a zero-argument FIFO/tombstone evidence queue so late output cannot release a newer interrupt generation.
+- [Phase 03]: Plan 03-01 makes blockersByOwner authoritative and keeps combat.blocker only as a derived primary compatibility snapshot.
+- [Phase 03]: Plan 03-01 permits blocker mutation and self-exclusion only by exact owner key, never by blocker code, family, or subsystem.
+- [Phase 03]: Plan 03-01 requires Room.Info plus a later complete current-cycle room item list, with one capped Char.Items.Room refresh per generation.
 
 ### Pending Todos
 
@@ -117,6 +121,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-26T00:37:21-07:00
-Stopped at: Phase 03 planned; ready to execute
-Resume file: .planning/phases/03-queue-interrupt-gold-and-autowalk-regression-coverage/03-CONTEXT.md
+Last session: 2026-07-26T13:16:12.585Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None

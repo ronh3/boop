@@ -23,14 +23,14 @@ Requirements for the pre-1.0 hardening milestone. Each maps to roadmap phases.
 ### Safety And Timing
 
 - [x] **SAFE-01**: Auto-flee cancels or blocks queue, prequeue, walk, gold, and attack intent before sending escape movement.
-- [ ] **SAFE-02**: `diag`, queued interrupts, `pull`, and manual hold flows prevent automatic attacks until their prompt, room, or timeout release conditions are satisfied.
+- [x] **SAFE-02**: `diag`, queued interrupts, `pull`, and manual hold flows prevent automatic attacks until their prompt, room, or timeout release conditions are satisfied.
 - [x] **SAFE-03**: Stale target cleanup clears queued attacks and retargets safely when the current target disappears from GMCP room items.
-- [ ] **SAFE-04**: Gold pickup, pack/stash, retry, warning, and stale-pending behavior cannot send commands in the wrong room or bypass active safety holds.
+- [x] **SAFE-04**: Gold pickup, pack/stash, retry, warning, and stale-pending behavior cannot send commands in the wrong room or bypass active safety holds.
 
 ### Autowalk Integration
 
-- [ ] **WALK-01**: `boop walk` tests cover start, stop, move, room-settled behavior, blocker reasons, and external `demonwalker.move` event emission.
-- [ ] **WALK-02**: Walker advancement is blocked while target, gold, diag, flee, pull, leader-call, or room-settling state says the room is not safe to leave.
+- [x] **WALK-01**: `boop walk` tests cover start, stop, move, room-settled behavior, blocker reasons, and external `demonwalker.move` event emission.
+- [x] **WALK-02**: Walker advancement is blocked while target, gold, diag, flee, pull, leader-call, or room-settling state says the room is not safe to leave.
 - [ ] **WALK-03**: `demonnicAutoWalker` remains an optional external integration with explicit install/status feedback and no silent auto-update behavior.
 
 ### Command Trust
@@ -109,11 +109,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STATE-02 | Phase 2 | Complete |
 | STATE-03 | Phase 2 | Complete |
 | SAFE-01 | Phase 2 | Complete |
-| SAFE-02 | Phase 3 | Pending |
+| SAFE-02 | Phase 3 | Complete |
 | SAFE-03 | Phase 2 | Complete |
-| SAFE-04 | Phase 3 | Pending |
-| WALK-01 | Phase 3 | Pending |
-| WALK-02 | Phase 3 | Pending |
+| SAFE-04 | Phase 3 | Complete |
+| WALK-01 | Phase 3 | Complete |
+| WALK-02 | Phase 3 | Complete |
 | WALK-03 | Phase 3 | Pending |
 | CMD-01 | Phase 4 | Pending |
 | CMD-02 | Phase 4 | Pending |
