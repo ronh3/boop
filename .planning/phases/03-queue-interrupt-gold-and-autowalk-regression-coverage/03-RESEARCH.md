@@ -113,7 +113,7 @@ Walk settlement currently becomes true from a 0.2-second timer without a complet
 ## Project Constraints (from AGENTS.md)
 
 - Read `README.md`, `DESIGN.md`, and `CODEX.md`; read `UIDESIGN.md` when UI/UX work is involved. All were inspected because blocker/status wording is part of this phase. [VERIFIED: codebase inspection `AGENTS.md`, `UIDESIGN.md`]
-- On every future commit or push, synchronize `mfile.version`, `mfile.title` as `boop Hunter <version>`, and `src/scripts/boop/boop_init.lua` `boop.version`; the current three values are `0.1.393`. [VERIFIED: codebase inspection `AGENTS.md`, `mfile:3`, `mfile:5`, `src/scripts/boop/boop_init.lua:3`]
+- On every future commit or push, synchronize `mfile.version`, `mfile.title` as `boop Hunter <version>`, and `src/scripts/boop/boop_init.lua` `boop.version`; the research-time baseline measured when this document was written was `0.1.393` across all three fields. [VERIFIED: codebase inspection `AGENTS.md`, `mfile:3`, `mfile:5`, `src/scripts/boop/boop_init.lua:3`]
 - Package-content edits belong under `src/`; built artifacts must not be edited. [VERIFIED: codebase inspection `AGENTS.md`, `CODEX.md:12`]
 - User-facing documentation and help must stay synchronized with command-surface or behavior wording changes. [VERIFIED: codebase inspection `AGENTS.md`, `CODEX.md:58`, `CODEX.md:73`]
 - Blocker wording must stay stable as `code -- label`; status/dashboard/config/party/debug should read the canonical snapshot, keep systems/waits compact, and retain deterministic plain-text output for tests. [VERIFIED: codebase inspection `UIDESIGN.md`]
