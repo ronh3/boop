@@ -24,6 +24,20 @@ describe("boop trace gmcp events", function()
     boop.runtime.clearBlocker(owner, reason)
   end
 
+  local function countTraceOccurrences(expected)
+    local count = 0
+    local offset = 1
+    local trace = traceText()
+    while true do
+      local found = trace:find(expected, offset, true)
+      if not found then
+        return count
+      end
+      count = count + 1
+      offset = found + #expected
+    end
+  end
+
   it("logs room info transitions and room item gmcp events", function()
     gmcp.Room.Info = {
       num = 15,
@@ -214,5 +228,90 @@ describe("boop trace gmcp events", function()
     assertTraceContains("blocker exit: pull:4 | pull_away -- pull in progress | reason=returned")
     assert.is_nil(trace:find("gmcp.IRE.Target.Info", 1, true))
     assert.is_nil(trace:find("ButtonActions", 1, true))
+  end)
+
+  it("sorts every owner and traces exact non-primary release and primary promotion", function()
+    setBlocker({
+      owner = "gold:5",
+      code = "gold_pack_pending",
+      label = "gold pack pending",
+      systems = { combat = true, gold = true, queue = true, walk = true },
+      waitsFor = { inventory = true },
+    })
+    setBlocker({
+      owner = "interrupt:9",
+      code = "interrupt_pending",
+      label = "interrupt nine pending",
+      systems = { combat = true, queue = true },
+      waitsFor = { prompt = true },
+    })
+    setBlocker({
+      owner = "gmcp:ire",
+      code = "gmcp_ire_missing",
+      label = "GMCP IRE missing",
+      systems = {
+        target = true,
+        combat = true,
+        queue = true,
+        gold = true,
+        walk = true,
+      },
+      waitsFor = { gmcp = true, prompt = true },
+    })
+    setBlocker({
+      owner = "interrupt:2",
+      code = "interrupt_pending",
+      label = "interrupt two pending",
+      systems = { combat = true, queue = true },
+      waitsFor = { prompt = true },
+    })
+
+    local blockers = boop.runtime.blockersSnapshot()
+    assert.are.same({
+      "gmcp:ire",
+      "interrupt:2",
+      "interrupt:9",
+      "gold:5",
+    }, {
+      blockers[1].owner,
+      blockers[2].owner,
+      blockers[3].owner,
+      blockers[4].owner,
+    })
+    local primary = boop.runtime.blockerSnapshot()
+    assert.are.equal("gmcp:ire", primary.owner)
+    assert.are.equal(3, primary.additionalCount)
+
+    clearBlocker("interrupt:9", "non-primary complete")
+
+    primary = boop.runtime.blockerSnapshot()
+    assert.are.equal("gmcp:ire", primary.owner)
+    assert.are.equal(2, primary.additionalCount)
+    assert.are.equal(
+      1,
+      countTraceOccurrences(
+        "blocker exit: interrupt:9 | interrupt_pending -- interrupt nine pending | reason=non-primary complete"
+      )
+    )
+    assert.are.equal(0, countTraceOccurrences("blocker exit: gold:5"))
+
+    clearBlocker("gmcp:ire", "primary recovered")
+
+    primary = boop.runtime.blockerSnapshot()
+    assert.are.equal("interrupt:2", primary.owner)
+    assert.are.equal("interrupt_pending", primary.code)
+    assert.are.equal(1, primary.additionalCount)
+    assert.are.equal(
+      1,
+      countTraceOccurrences(
+        "blocker exit: gmcp:ire | gmcp_ire_missing -- GMCP IRE missing | reason=primary recovered"
+      )
+    )
+    assertTraceContains(
+      "blocker enter: gold:5 | gold_pack_pending -- gold pack pending | systems: combat, gold, queue, walk | waits: inventory"
+    )
+    assertTraceContains(
+      "blocker enter: interrupt:2 | interrupt_pending -- interrupt two pending | systems: combat, queue | waits: prompt"
+    )
   end)
 end)

@@ -17,9 +17,41 @@ describe("boop ui home", function()
   local append_cmd_stub
   local clear_cmd_stub
   local walk_install_stub
+  local walker_fixture
+  local saved_temp_timer
+  local saved_kill_timer
+  local saved_send_gmcp
 
-  local function seedCanonicalBlocker()
+  local function countOccurrences(text, expected)
+    local count = 0
+    local offset = 1
+    while true do
+      local found = text:find(expected, offset, true)
+      if not found then
+        return count
+      end
+      count = count + 1
+      offset = found + #expected
+    end
+  end
+
+  local function seedCanonicalBlockers()
     helper.setRuntimeBlocker({
+      owner = "gold:5",
+      code = "gold_pack_pending",
+      label = "gold pack pending",
+      systems = { combat = true, gold = true, queue = true, walk = true },
+      waitsFor = { inventory = true },
+    })
+    helper.setRuntimeBlocker({
+      owner = "interrupt:9",
+      code = "interrupt_pending",
+      label = "interrupt nine pending",
+      systems = { combat = true, queue = true },
+      waitsFor = { prompt = true },
+    })
+    helper.setRuntimeBlocker({
+      owner = "gmcp:ire",
       code = "gmcp_ire_missing",
       label = "GMCP IRE missing",
       systems = {
@@ -38,19 +70,36 @@ describe("boop ui home", function()
         room = "1",
       },
     })
+    helper.setRuntimeBlocker({
+      owner = "interrupt:2",
+      code = "interrupt_pending",
+      label = "interrupt two pending",
+      systems = { combat = true, queue = true },
+      waitsFor = { prompt = true },
+    })
   end
 
-  local function assertCanonicalBlockerOutput(render)
+  local function assertCompactCanonicalBlockerOutput(render)
     echoes = {}
     boop.ui.setEnabled(true, true)
-    seedCanonicalBlocker()
+    seedCanonicalBlockers()
 
     render()
 
     local joined = table.concat(echoes, "\n")
-    assert.is_true(joined:find("gmcp_ire_missing -- GMCP IRE missing", 1, true) ~= nil)
+    assert.are.equal(
+      1,
+      countOccurrences(
+        joined,
+        "gmcp_ire_missing -- GMCP IRE missing | +3 more"
+      )
+    )
     assert.is_true(joined:find("systems: combat, gold, queue, target, walk", 1, true) ~= nil)
     assert.is_true(joined:find("waits: gmcp, prompt", 1, true) ~= nil)
+    assert.is_nil(joined:find("interrupt two pending", 1, true))
+    assert.is_nil(joined:find("interrupt nine pending", 1, true))
+    assert.is_nil(joined:find("gold pack pending", 1, true))
+    assert.is_nil(joined:find("ALL ACTIVE BLOCKER OWNERS", 1, true))
   end
 
   before_each(function()
@@ -73,6 +122,9 @@ describe("boop ui home", function()
     saved_cecho_link = _G.cechoLink
     saved_echo = _G.echo
     saved_echo_link = _G.echoLink
+    saved_temp_timer = _G.tempTimer
+    saved_kill_timer = _G.killTimer
+    saved_send_gmcp = _G.sendGMCP
     _G.cecho = nil
     _G.cechoLink = nil
     _G.echo = nil
@@ -115,10 +167,17 @@ describe("boop ui home", function()
       walk_install_stub:revert()
       walk_install_stub = nil
     end
+    if walker_fixture then
+      walker_fixture.restore()
+      walker_fixture = nil
+    end
     _G.cecho = saved_cecho
     _G.cechoLink = saved_cecho_link
     _G.echo = saved_echo
     _G.echoLink = saved_echo_link
+    _G.tempTimer = saved_temp_timer
+    _G.killTimer = saved_kill_timer
+    _G.sendGMCP = saved_send_gmcp
   end)
 
   it("shows a compact operations dashboard on bare boop", function()
@@ -528,36 +587,207 @@ describe("boop ui home", function()
     assert.is_true(echoes[4]:find("Target gate: ON | called target: 43 | aff calls: ON", 1, true) ~= nil)
     assert.is_true(echoes[5]:find("Movement: walk INSTALL | blocker waiting_leader_target -- waiting for leader target call", 1, true) ~= nil)
     assert.is_true(echoes[6]:find("Next: wait for pt target line", 1, true) ~= nil)
-    assert.is_true(echoes[7]:find("Party size: 3 | roster entries: 1", 1, true) ~= nil)
-    assert.are.equal("Whitelist sync: NONE", echoes[8])
-    assert.is_true(echoes[9]:find("Roster: infernal", 1, true) ~= nil)
-    assert.are.equal("Quick: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop whitelist share [area] | boop whitelist receive", echoes[10])
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(
+      joined:find("Party size: 3 | roster entries: 1", 1, true) ~= nil,
+      joined
+    )
+    assert.is_true(joined:find("Whitelist sync: NONE", 1, true) ~= nil)
+    assert.is_true(joined:find("Roster: infernal", 1, true) ~= nil)
+    assert.is_true(joined:find("Quick: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop whitelist share [area] | boop whitelist receive", 1, true) ~= nil)
   end)
 
-  it("renders canonical blocker code, label, affected systems, and wait state across status surfaces", function()
-    assertCanonicalBlockerOutput(function()
+  it("renders one canonical primary plus count across every compact status surface", function()
+    assertCompactCanonicalBlockerOutput(function()
       boop.ui.status("status")
     end)
 
-    assertCanonicalBlockerOutput(function()
+    assertCompactCanonicalBlockerOutput(function()
       boop.ui.home()
     end)
 
-    assertCanonicalBlockerOutput(function()
+    assertCompactCanonicalBlockerOutput(function()
       boop.ui.controlCommand("")
     end)
 
-    assertCanonicalBlockerOutput(function()
+    assertCompactCanonicalBlockerOutput(function()
       boop.ui.config("")
     end)
 
-    assertCanonicalBlockerOutput(function()
-      boop.ui.config("debug")
+    assertCompactCanonicalBlockerOutput(function()
+      boop.ui.partyCommand("")
     end)
 
-    assertCanonicalBlockerOutput(function()
-      boop.ui.debug()
+    assertCompactCanonicalBlockerOutput(function()
+      boop.ui.config("debug")
     end)
+  end)
+
+  it("renders every sorted owner under the full debug heading", function()
+    boop.ui.setEnabled(true, true)
+    seedCanonicalBlockers()
+    echoes = {}
+
+    boop.ui.debug()
+
+    local joined = table.concat(echoes, "\n")
+    assert.are.equal(1, countOccurrences(joined, "ALL ACTIVE BLOCKER OWNERS"))
+    assert.are.equal(
+      1,
+      countOccurrences(
+        joined,
+        "gmcp_ire_missing -- GMCP IRE missing | +3 more"
+      )
+    )
+    local gmcpPos = assert(joined:find(
+      "gmcp:ire | gmcp_ire_missing -- GMCP IRE missing | systems: combat, gold, queue, target, walk | waits: gmcp, prompt",
+      1,
+      true
+    ))
+    local interruptTwoPos = assert(joined:find(
+      "interrupt:2 | interrupt_pending -- interrupt two pending | systems: combat, queue | waits: prompt",
+      1,
+      true
+    ))
+    local interruptNinePos = assert(joined:find(
+      "interrupt:9 | interrupt_pending -- interrupt nine pending | systems: combat, queue | waits: prompt",
+      1,
+      true
+    ))
+    local goldPos = assert(joined:find(
+      "gold:5 | gold_pack_pending -- gold pack pending | systems: combat, gold, queue, walk | waits: inventory",
+      1,
+      true
+    ))
+    assert.is_true(gmcpPos < interruptTwoPos)
+    assert.is_true(interruptTwoPos < interruptNinePos)
+    assert.is_true(interruptNinePos < goldPos)
+  end)
+
+  it("decrements the count for non-primary release and promotes the next owner", function()
+    boop.ui.setEnabled(true, true)
+    seedCanonicalBlockers()
+
+    echoes = {}
+    boop.ui.status("status")
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find(
+      "gmcp_ire_missing -- GMCP IRE missing | +3 more",
+      1,
+      true
+    ) ~= nil)
+
+    assert.is_true(boop.runtime.clearBlocker(
+      "interrupt:9",
+      "non-primary complete"
+    ))
+    echoes = {}
+    boop.ui.status("status")
+    joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find(
+      "gmcp_ire_missing -- GMCP IRE missing | +2 more",
+      1,
+      true
+    ) ~= nil)
+    assert.is_nil(joined:find("| +3 more", 1, true))
+
+    assert.is_true(boop.runtime.clearBlocker("gmcp:ire", "primary recovered"))
+    echoes = {}
+    boop.ui.status("status")
+    joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find(
+      "interrupt_pending -- interrupt two pending | +1 more",
+      1,
+      true
+    ) ~= nil)
+    assert.is_nil(joined:find("gmcp_ire_missing", 1, true))
+  end)
+
+  it("renders real walker lifecycle owners in status and transition trace", function()
+    local timers = helper.newTimerQueue()
+    local sentGmcp = {}
+    _G.tempTimer = timers.tempTimer
+    _G.killTimer = timers.killTimer
+    _G.sendGMCP = function(command)
+      sentGmcp[#sentGmcp + 1] = command
+    end
+    walker_fixture = helper.setWalker({
+      available = true,
+      attached = true,
+    })
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
+    boop.config.traceEnabled = true
+    helper.setTarget("", "", "100%")
+    helper.setDenizens({})
+
+    assert.is_true(boop.walk.start())
+    local state = boop.runtime.state()
+    local generation = state.walk.generation
+    local owner = "walk:" .. tostring(generation)
+    echoes = {}
+    boop.ui.status("status")
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find(
+      "walk_room_unsettled -- current room evidence is incomplete",
+      1,
+      true
+    ) ~= nil)
+
+    gmcp.Room.Info.num = 2
+    local observation = boop.runtime.startRoomObservation(2)
+    assert.is_true(boop.walk.onRoomChange(generation, observation.generation))
+    helper.seedRoomObservation(2, {
+      generation = state.walk.roomGeneration,
+      infoSeen = true,
+      itemsSeen = true,
+    })
+    assert.is_true(boop.walk.onRoomSettled(
+      "complete current room items",
+      generation,
+      state.walk.roomGeneration
+    ))
+    echoes = {}
+    boop.ui.status("status")
+    joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find(
+      "walk_move_pending -- move already queued",
+      1,
+      true
+    ) ~= nil)
+
+    local emitter = state.walk.emitterTimer
+    assert.is_number(emitter)
+    walker_fixture.setAvailable(false)
+    timers.run(emitter)
+    echoes = {}
+    boop.ui.status("status")
+    joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find(
+      "walker_unavailable -- demonnicAutoWalker unavailable",
+      1,
+      true
+    ) ~= nil)
+    assert.are.equal(0, #walker_fixture.installCalls)
+    assert.are.equal(0, #walker_fixture.updateCalls)
+    assert.is_true(#sentGmcp >= 1)
+
+    local trace = table.concat(boop.state.trace.buffer or {}, "\n")
+    assert.is_true(trace:find(
+      "blocker enter: " .. owner .. " | walk_room_unsettled -- current room evidence is incomplete",
+      1,
+      true
+    ) ~= nil)
+    assert.is_true(trace:find(
+      "blocker enter: " .. owner .. " | walk_move_pending -- move already queued",
+      1,
+      true
+    ) ~= nil)
+    assert.is_true(trace:find(
+      "blocker enter: " .. owner .. " | walker_unavailable -- demonnicAutoWalker unavailable",
+      1,
+      true
+    ) ~= nil)
   end)
 
   it("routes party affcalls subcommands through the party dashboard", function()
