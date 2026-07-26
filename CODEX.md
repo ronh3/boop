@@ -29,11 +29,13 @@ Guidance for Codex when working in this repository.
 
 ## CI & Versioning
 - CI reads `mfile` for `package` and `version`, builds with Muddler, and uploads `build/tmp/` as `<package>-<version>`.
-- Versioning: bump the boop version on every change we commit/merge/push (even docs/config-only); keep it monotonically increasing.
-- Sync rule: every version bump must update all three fields together with the exact same version value:
+- Classify commits by staged paths. A commit is planning-only only when every staged path is under `.planning/`; planning-only commits do not bump the package version.
+- Any commit that includes a path outside `.planning/` is package-affecting: bump the boop version monotonically and synchronize all four checkpoints.
+- Sync rule: every version bump must update all four checkpoints together with the exact same version value:
   - `mfile.version`
   - `mfile.title` as `boop Hunter <version>`
   - `src/scripts/boop/boop_init.lua` `boop.version`
+  - this file's `Current synchronized package version` checkpoint
 - Never commit or push with those version fields mismatched.
 - Run the local release gate before pushing:
   - `python3 tools/check_release_gates.py`
@@ -44,6 +46,7 @@ Guidance for Codex when working in this repository.
   `muddle && AUTORUN_BUSTED_TESTS=true TESTS_DIRECTORY="$PWD/tests" QUIT_MUDLET_AFTER_TESTS=true PRETEST_PACKAGE="$PWD/build/boop Hunter.mpackage" /tmp/Mudlet.AppImage --profile "GithubTests" --mirror`
 - If `/tmp/Mudlet.AppImage` is not available locally, use the GitHub Actions Mudlet run as the authoritative full-suite fallback.
 - Do not treat the host's default LuaRocks/Busted tree as authoritative unless it is a Lua 5.1-compatible tree built for Mudlet-style execution; this repo's CI intentionally mirrors `demonnic/test-in-mudlet` with Lua 5.1.5, Busted, the `GithubTests` profile, and Xvfb.
+- After a GSD workflow finishes every source, documentation, SUMMARY, STATE, ROADMAP, REQUIREMENTS, and phase-completion commit, push immutable final HEAD and run `tools/wait_for_exact_ci.sh`. The script's exact-`headSha` success is the blocking terminal authority; any later repository mutation requires it to run again.
 
 ## Workflow Reminders
 - Keep structure shallow and logical.
@@ -52,7 +55,7 @@ Guidance for Codex when working in this repository.
 - Make aliases responsive with confirmation output when they do not already emit results.
 - When adding new scripts, update the right manifest JSON and name files accordingly.
 - Keep `mfile` version, title, and description current; tokens replace on build.
-- Verify the three version fields are synchronized before every commit and again before every push.
+- Inspect staged paths and run `python3 tools/check_release_gates.py` before every commit and again before every push.
 - Explain the reasoning behind code changes in responses. Do not make non-trivial changes without verifying with the user first.
 - Commit and push changes unless the user asks otherwise.
 - Keep `README.md` in sync when commands or features change.
@@ -62,7 +65,7 @@ Guidance for Codex when working in this repository.
 ## User Preferences / Project Memory
 - Treat `CODEX.md` as the continuity file for new sessions; keep it current when preferences or workflow conventions change.
 - Push non-trivial changes after committing them. If a version was bumped, the expectation is to push unless the user says not to.
-- Keep all boop version fields synchronized on every commit/push: `mfile.version`, `mfile.title`, and `src/scripts/boop/boop_init.lua` `boop.version`.
+- Keep all four boop version checkpoints synchronized. Planning-only commits may preserve the current version; package-affecting commits must bump it.
 - Avoid surfacing legacy/old command behavior in user-facing help or docs unless the user explicitly asks for backwards-compat details.
 - `boop` by itself should open the home dashboard. `boop help` should show help only.
 - `bh` and `boop on/off` should use the compact boop aesthetic summary, not the full dashboard.
@@ -93,7 +96,7 @@ Guidance for Codex when working in this repository.
 ## Session Startup (New Agent Checklist)
 - Read `README.md` and `DESIGN.md` to understand current scope and user-facing behavior.
 - Read `UIDESIGN.md` as well when doing UI or UX work; it is now lagging less and should be kept in sync.
-- Open `mfile` and `src/scripts/boop/boop_init.lua` to confirm the current version fields; on every commit/push, bump and sync `mfile.version`, `mfile.title`, and `boop.version` together.
+- Open `mfile`, `src/scripts/boop/boop_init.lua`, and this checkpoint to confirm synchronized versions. Bump all four only for package-affecting commits; preserve them for planning-only commits.
 - Work only under `src/` for package content; never edit built artifacts.
 - Use the existing `boop` namespace and follow the current file/manifest layout.
 - For gameplay behavior questions, prefer the existing reference implementations (Basher/Bashing/Foxhunt) and our current code as the source of truth unless instructed otherwise.
@@ -103,7 +106,7 @@ Guidance for Codex when working in this repository.
 ## Session Checkpoint
 - Branch to continue from: `codex/pre-1.0-hardening-pass`
 - The branch tip moves with normal hardening commits; rely on git history rather than this file for the exact latest hash.
-- Current synchronized package version: `0.1.393`
+- Current synchronized package version: `0.1.394`
 - The purposeful pre-1.0 hardening work that is currently in this branch:
   - runtime/state ownership and coordinator path
   - combat planner split from execution
