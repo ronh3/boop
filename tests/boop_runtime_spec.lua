@@ -199,6 +199,8 @@ describe("boop runtime coordinator", function()
         { name = "Warp", group = "Occultism" },
         { name = "harry", group = "Attainment" },
       })
+      helper.setSkillKnown("chaosgate", false, "Attainment")
+      helper.setSkillKnown("fluctuate", false, "Attainment")
       helper.setDenizens({
         { id = "42", name = "a test denizen" },
       })
@@ -459,17 +461,37 @@ describe("boop runtime coordinator", function()
   end)
 
   it("releases diagnose hold from prompt effects", function()
+    boop.state.diag.generation = 1
     boop.state.diag.hold = true
     boop.state.diag.awaitPrompt = true
     boop.state.diag.label = "matic"
     boop.state.diag.timeoutTimer = 44
+    boop.state.diag.operation = {
+      generation = 1,
+      name = "matic",
+      command = "ldeck draw matic",
+      completionMode = "prompt",
+      resultSeen = false,
+      terminal = false,
+      blockerOwner = "interrupt:1",
+      timeoutTimer = 44,
+      startedAt = os.time(),
+    }
+    helper.setRuntimeBlocker({
+      owner = "interrupt:1",
+      code = "interrupt_pending",
+      label = "matic pending",
+      systems = { combat = true, queue = true },
+    })
 
     local result = boop.runtime.step({ type = "prompt", context = boop.runtime.context() })
     boop.runtime.applyEffects(result, boop.runtime.context())
 
+    assert.is_false(boop.state.diag.operation)
     assert.is_false(boop.state.diag.hold)
     assert.is_false(boop.state.diag.awaitPrompt)
     assert.are.equal("", boop.state.diag.label)
+    assert.is_nil(boop.state.combat.blockersByOwner["interrupt:1"])
     assert.stub(kill_timer_stub).was_called_with(44)
   end)
 end)

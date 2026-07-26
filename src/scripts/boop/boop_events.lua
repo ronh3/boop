@@ -884,19 +884,6 @@ function boop.onRoomItemsRemove()
 
   local pull = boop.state.combat and boop.state.combat.pullState or nil
   if type(pull) == "table" and pull.active then
-    setBlocker("pull:" .. tostring(pull.generation or 0), "pull_away", "pull in progress", {
-      target = true,
-      combat = true,
-      walk = true,
-    }, {
-      room = true,
-    }, {
-      source = "pull",
-      observed = {
-        originRoom = tostring(pull.originRoom or ""),
-        currentRoom = tostring(boop.state.targeting.room or ""),
-      },
-    })
     return
   end
 
@@ -1030,30 +1017,31 @@ function boop.onRoomInfo()
   end
 
   local pull = combat.pullState
-  if type(pull) == "table" and pull.active then
+  if type(pull) == "table" and pull.active and not pull.terminal then
+    local generation = tonumber(pull.generation)
     local currentRoom = boop.util.trim(tostring(targeting.room or ""))
     local originRoom = boop.util.trim(tostring(pull.originRoom or ""))
-    if currentRoom ~= "" and originRoom ~= "" then
+    local currentPull = combat.pullState
+    if generation
+        and type(currentPull) == "table"
+        and currentPull.generation == generation
+        and not currentPull.terminal
+        and currentRoom ~= ""
+        and originRoom ~= "" then
       if pull.phase == "outbound" and currentRoom ~= originRoom then
         pull.phase = "away"
         boop.trace.log("pull: away room " .. currentRoom)
-      elseif pull.phase == "away" and currentRoom == originRoom then
-        if boop.ui and boop.ui.clearPullState then
-          boop.ui.clearPullState("returned to origin")
-        else
-          combat.pullState = false
-        end
-        if pull.restoreEnabled then
-          boop.ui.setEnabled(true, true)
-          boop.util.ok("pull complete; boop resumed")
-        else
-          boop.util.ok("pull complete")
-        end
-        boop.trace.log("pull: returned to origin")
-        if boop.runtime and boop.runtime.clearBlocker then
-          boop.runtime.clearBlocker("pull:" .. tostring(pull.generation or 0), "pull returned")
-        end
-        if not currentTargetStillInRoom() then
+      elseif currentRoom == originRoom
+          and (pull.phase == "away" or pull.phase == "timed_out_away") then
+        local terminalReason = pull.phase == "timed_out_away"
+          and "returned_after_timeout"
+          or "returned_origin"
+        local completed = boop.ui
+          and boop.ui.completePull
+          and boop.ui.completePull(generation, terminalReason, {
+            currentRoom = currentRoom,
+          })
+        if completed and not currentTargetStillInRoom() then
           clearLostTargetIntent()
         end
       end

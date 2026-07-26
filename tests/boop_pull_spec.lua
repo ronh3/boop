@@ -93,6 +93,8 @@ describe("boop pull command", function()
     helper.setClass("Occultist")
     helper.setRage(18)
     helper.learnSkill("Harry", "Attainment")
+    helper.setSkillKnown("chaosgate", false, "Attainment")
+    helper.setSkillKnown("fluctuate", false, "Attainment")
     boop.config.diagTimeoutSeconds = 8
     boop.config.gameSeparator = "|"
     boop.config.traceEnabled = true
@@ -421,6 +423,43 @@ describe("boop pull command", function()
     assert.are.equal(snapshot.ticks, tick_count)
     assertPullBlocker(2, "pull_active")
     assert.is_table(blockerFor("test:unrelated"))
+  end)
+
+  it("rejects wrong-generation and already-terminal completion without effects", function()
+    boop.config.enabled = true
+    seedUnrelatedOwner()
+
+    boop.ui.pullCommand("mage", "north")
+    local pull = boop.state.combat.pullState
+    local snapshot = {
+      sends = #sent,
+      timers = #scheduled,
+      killed = #killed,
+      warnings = #warn_messages,
+      oks = #ok_messages,
+      traces = #traces,
+      ticks = tick_count,
+    }
+
+    assert.is_false(boop.ui.completePull(pull.generation + 1, "returned_origin"))
+    assert.is_true(pull == boop.state.combat.pullState)
+    assertPullBlocker(pull.generation, "pull_active")
+
+    pull.active = false
+    pull.phase = "terminal"
+    pull.terminal = true
+    assert.is_false(boop.ui.completePull(pull.generation, "returned_origin"))
+
+    assert.is_true(pull == boop.state.combat.pullState)
+    assert.is_table(blockerFor("pull:" .. tostring(pull.generation)))
+    assert.is_table(blockerFor("test:unrelated"))
+    assert.are.equal(snapshot.sends, #sent)
+    assert.are.equal(snapshot.timers, #scheduled)
+    assert.are.equal(snapshot.killed, #killed)
+    assert.are.equal(snapshot.warnings, #warn_messages)
+    assert.are.equal(snapshot.oks, #ok_messages)
+    assert.are.equal(snapshot.traces, #traces)
+    assert.are.equal(snapshot.ticks, tick_count)
   end)
 
   it("rejects repeats without another send, timer, generation, or owner", function()

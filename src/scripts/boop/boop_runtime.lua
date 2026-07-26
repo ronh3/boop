@@ -30,6 +30,7 @@ local DOMAIN_DEFAULTS = {
       rage = false,
     },
     openerUsedByClass = {},
+    pullGeneration = 0,
     pullState = false,
     blockersByOwner = {},
     blocker = {

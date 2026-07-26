@@ -1428,18 +1428,63 @@ local function stopPullTimeout(pull)
   end
 end
 
+function boop.ui.completePull(generation, terminalReason, opts)
+  opts = opts or {}
+  local state = boop.runtime.state()
+  local pull = state.combat.pullState
+  local expectedGeneration = tonumber(generation)
+  local reason = tostring(terminalReason or "")
+  if type(pull) ~= "table"
+      or pull.generation ~= expectedGeneration
+      or pull.terminal
+      or (reason ~= "returned_origin"
+        and reason ~= "timeout_at_origin"
+        and reason ~= "returned_after_timeout") then
+    return false
+  end
+
+  pull.terminal = true
+  pull.active = false
+  pull.phase = "terminal"
+  local owner = tostring(pull.blockerOwner or "")
+  stopPullTimeout(pull)
+  boop.runtime.clearBlocker(owner, reason)
+  state.combat.pullState = false
+
+  if reason == "timeout_at_origin" then
+    boop.util.warn("pull timeout at origin; pull hold released")
+  elseif reason == "returned_after_timeout" then
+    boop.util.ok("pull complete after timeout")
+  else
+    boop.util.ok("pull complete")
+  end
+  boop.trace.log(string.format(
+    "pull terminal: %s | generation=%s | reason=%s",
+    owner,
+    tostring(expectedGeneration or ""),
+    reason
+  ))
+  return true
+end
+
 function boop.ui.clearPullState(reason)
-  boop.state = boop.state or {}
-  local pull = boop.state.combat and boop.state.combat.pullState or nil
-  if type(pull) == "table" then
-    stopPullTimeout(pull)
+  local state = boop.runtime.state()
+  local pull = state.combat.pullState
+  if type(pull) ~= "table" then
+    return false
   end
-  if boop.state.combat then
-    boop.state.combat.pullState = false
+
+  local terminalReason = tostring(reason or "")
+  if terminalReason == "timeout" then
+    terminalReason = "timeout_at_origin"
+  elseif terminalReason == "returned to origin" then
+    terminalReason = "returned_origin"
+  elseif terminalReason ~= "returned_origin"
+      and terminalReason ~= "timeout_at_origin"
+      and terminalReason ~= "returned_after_timeout" then
+    terminalReason = "returned_origin"
   end
-  if reason and reason ~= "" then
-    boop.trace.log("pull: cleared " .. tostring(reason))
-  end
+  return boop.ui.completePull(pull.generation, terminalReason)
 end
 
 local function armPullTimeout(pull)
@@ -1452,42 +1497,53 @@ local function armPullTimeout(pull)
     return
   end
 
+  local generation = tonumber(pull.generation)
   pull.timeoutTimer = tempTimer(timeout, function()
     local active = boop.state and boop.state.combat and boop.state.combat.pullState or nil
-    if type(active) ~= "table" or not active.active then
+    if type(active) ~= "table"
+        or not active.active
+        or active.terminal
+        or active.generation ~= generation
+        or (active.phase ~= "outbound" and active.phase ~= "away") then
       return
     end
 
     local originRoom = boop.util.trim(tostring(active.originRoom or ""))
     local here = currentRoomId()
-    local shouldRestore = active.restoreEnabled and originRoom ~= "" and here == originRoom
-    active.timeoutTimer = nil
-    boop.ui.clearPullState("timeout")
-
-    if shouldRestore then
-      boop.ui.setEnabled(true, true)
-      boop.util.warn("pull timeout; boop resumed at origin")
-    elseif active.restoreEnabled then
-      if boop.runtime and boop.runtime.setBlocker then
-        boop.runtime.setBlocker("pull:" .. tostring(active.generation or 0), "pull_timeout_away", "pull timed out away from origin", {
-          combat = true,
-          target = true,
-          walk = true,
-        }, {
-          room = true,
-          gmcp = true,
-        }, {
-          source = "pull",
-          observed = {
-            originRoom = originRoom,
-            currentRoom = here,
-          },
-        })
-      end
-      boop.util.warn("pull timeout; boop remains paused")
-    else
-      boop.util.warn("pull timeout")
+    if originRoom ~= "" and here == originRoom then
+      boop.ui.completePull(generation, "timeout_at_origin", {
+        currentRoom = here,
+      })
+      return
     end
+
+    active.timeoutTimer = nil
+    active.phase = "timed_out_away"
+    boop.runtime.setBlocker(active.blockerOwner, "pull_timeout_away", "pull timed out away from origin", {
+      combat = true,
+      queue = true,
+      target = true,
+      gold = true,
+      walk = true,
+    }, {
+      room = true,
+    }, {
+      source = "pull",
+      observed = {
+        generation = generation,
+        originRoom = originRoom,
+        currentRoom = here,
+        phase = active.phase,
+      },
+    })
+    boop.util.warn("pull timeout; hold remains until return")
+    boop.trace.log(string.format(
+      "pull timeout recovery: %s | generation=%s | reason=timeout_away | origin=%s | current=%s",
+      tostring(active.blockerOwner or ""),
+      tostring(generation or ""),
+      originRoom,
+      here
+    ))
   end)
 end
 
@@ -1622,8 +1678,8 @@ function boop.ui.pullCommand(mobName, direction)
     return
   end
 
-  boop.state = boop.state or {}
-  if boop.state.combat.pullState and boop.state.combat.pullState.active then
+  local state = boop.runtime.state()
+  if state.combat.pullState and state.combat.pullState.active then
     boop.util.warn("pull already in progress")
     return
   end
@@ -1646,21 +1702,42 @@ function boop.ui.pullCommand(mobName, direction)
     return
   end
 
-  local restoreEnabled = not not boop.config.enabled
-  boop.state.combat.pullState = {
+  local command = table.concat({ dir, rageAction, "leap " .. back }, separator)
+  local generation = (tonumber(state.combat.pullGeneration) or 0) + 1
+  local blockerOwner = "pull:" .. tostring(generation)
+  local pull = {
     active = true,
+    generation = generation,
+    blockerOwner = blockerOwner,
     phase = "outbound",
+    terminal = false,
     originRoom = originRoom,
     direction = dir,
     returnDirection = back,
-    restoreEnabled = restoreEnabled,
+    command = command,
+    timeoutTimer = nil,
   }
-  if restoreEnabled then
-    boop.ui.setEnabled(false, true, { preserveAutomationIntent = true })
-  end
-  armPullTimeout(boop.state.combat.pullState)
+  state.combat.pullGeneration = generation
+  state.combat.pullState = pull
 
-  local command = table.concat({ dir, rageAction, "leap " .. back }, separator)
+  boop.runtime.setBlocker(blockerOwner, "pull_active", "pull active", {
+    combat = true,
+    queue = true,
+    target = true,
+    gold = true,
+    walk = true,
+  }, {
+    room = true,
+  }, {
+    source = "pull",
+    observed = {
+      generation = generation,
+      originRoom = originRoom,
+      currentRoom = originRoom,
+      phase = pull.phase,
+    },
+  })
+  armPullTimeout(pull)
   send(command, false)
   boop.util.ok("pull queued: " .. command)
   boop.trace.log("pull: " .. command)
