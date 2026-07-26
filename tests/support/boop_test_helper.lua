@@ -223,14 +223,39 @@ function M.setDenizens(denizens)
 end
 
 function M.setRuntimeBlocker(blocker)
+  blocker = blocker or {}
+  return boop.runtime.setBlocker(
+    tostring(blocker.owner or blocker.code or ""),
+    tostring(blocker.code or ""),
+    tostring(blocker.label or ""),
+    blocker.systems or {},
+    blocker.waitsFor or {},
+    {
+      observed = blocker.observed or {},
+      source = blocker.source,
+      since = blocker.since,
+      promptSeen = blocker.promptSeen,
+      gmcpSeen = blocker.gmcpSeen,
+      warningThrottleSeconds = blocker.warningThrottleSeconds,
+    }
+  )
+end
+
+function M.seedRoomObservation(roomId, opts)
+  opts = opts or {}
   local state = boop.runtime.state()
-  state.combat.blocker = {
-    code = tostring((blocker and blocker.code) or ""),
-    label = tostring((blocker and blocker.label) or ""),
-    systems = (blocker and blocker.systems) or {},
-    waitsFor = (blocker and blocker.waitsFor) or {},
-    observed = (blocker and blocker.observed) or {},
+  local observation = {
+    generation = tonumber(opts.generation) or 1,
+    roomId = tostring(roomId or ""),
+    infoSeen = opts.infoSeen ~= false,
+    itemsSeen = opts.itemsSeen == true,
+    refreshAttempted = opts.refreshAttempted == true,
+    refreshReason = tostring(opts.refreshReason or ""),
+    warned = opts.warned == true,
   }
+  state.targeting.roomObservation = observation
+  gmcp.Room.Info.num = roomId
+  return observation
 end
 
 function M.seedAutomationIntent()

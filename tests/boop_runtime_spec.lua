@@ -4,6 +4,14 @@ describe("boop runtime coordinator", function()
   local send_stub
   local timer_stub
   local kill_timer_stub
+  local raise_event_stub
+  local attack_execute_stub
+  local flush_gold_stub
+  local maybe_flush_gold_stub
+  local walk_advance_stub
+  local sent
+  local scheduled
+  local raised_events
 
   local function effectKinds(result)
     local kinds = {}
@@ -15,18 +23,86 @@ describe("boop runtime coordinator", function()
 
   before_each(function()
     helper.reset()
-    timer_stub = stub(_G, "tempTimer", function(_, _)
-      return 1
+    sent = {}
+    scheduled = {}
+    raised_events = {}
+    timer_stub = stub(_G, "tempTimer", function(_, callback)
+      scheduled[#scheduled + 1] = callback
+      return #scheduled
     end)
     kill_timer_stub = stub(_G, "killTimer", function(_) end)
-    send_stub = stub(_G, "send", function(_, _) end)
+    send_stub = stub(_G, "send", function(command, echoBack)
+      sent[#sent + 1] = {
+        command = command,
+        echoBack = echoBack,
+      }
+    end)
+    raise_event_stub = stub(_G, "raiseEvent", function(name, ...)
+      raised_events[#raised_events + 1] = {
+        name = name,
+        args = { ... },
+      }
+    end)
   end)
 
   after_each(function()
+    if walk_advance_stub then walk_advance_stub:revert() walk_advance_stub = nil end
+    if maybe_flush_gold_stub then maybe_flush_gold_stub:revert() maybe_flush_gold_stub = nil end
+    if flush_gold_stub then flush_gold_stub:revert() flush_gold_stub = nil end
+    if attack_execute_stub then attack_execute_stub:revert() attack_execute_stub = nil end
+    if raise_event_stub then raise_event_stub:revert() raise_event_stub = nil end
     if send_stub then send_stub:revert() send_stub = nil end
     if timer_stub then timer_stub:revert() timer_stub = nil end
     if kill_timer_stub then kill_timer_stub:revert() kill_timer_stub = nil end
   end)
+
+  local function seedTwoBlockers(system)
+    helper.setRuntimeBlocker({
+      owner = "interrupt:7",
+      code = "interrupt_pending",
+      label = "interrupt pending",
+      systems = { [system] = true },
+      waitsFor = { prompt = true },
+    })
+    helper.setRuntimeBlocker({
+      owner = "pull:9",
+      code = "pull_active",
+      label = "pull active",
+      systems = { [system] = true },
+      waitsFor = { room = true },
+    })
+  end
+
+  local function assertRetainedOwner(owner)
+    local blockers = boop.runtime.blockersSnapshot()
+    assert.are.equal(1, #blockers)
+    assert.are.equal(owner, blockers[1].owner)
+  end
+
+  local function clearInBothOrders(system, setup, assertHeld, assertReleased)
+    local orders = {
+      { "interrupt:7", "pull:9" },
+      { "pull:9", "interrupt:7" },
+    }
+    for _, order in ipairs(orders) do
+      helper.reset()
+      sent = {}
+      scheduled = {}
+      raised_events = {}
+      if setup then
+        setup()
+      end
+      seedTwoBlockers(system)
+
+      assert.is_true(boop.runtime.clearBlocker(order[1], "first owner complete"))
+      assertRetainedOwner(order[2])
+      assertHeld(order)
+
+      assert.is_true(boop.runtime.clearBlocker(order[2], "final owner complete"))
+      assert.are.equal(0, #boop.runtime.blockersSnapshot())
+      assertReleased(order)
+    end
+  end
 
   it("initializes owned domains and the canonical blocker snapshot", function()
     local state = boop.runtime.state()
@@ -49,6 +125,7 @@ describe("boop runtime coordinator", function()
     end
 
     assert.is_table(state.combat.blocker)
+    assert.is_table(state.combat.blockersByOwner)
     assert.are.equal("", state.combat.blocker.code)
     assert.are.equal("", state.combat.blocker.label)
     assert.is_table(state.combat.blocker.systems)
@@ -56,11 +133,195 @@ describe("boop runtime coordinator", function()
     assert.is_table(state.combat.blocker.observed)
 
     local snapshot = boop.runtime.blockerSnapshot()
+    assert.are.equal("", snapshot.owner)
+    assert.are.equal(0, snapshot.additionalCount)
     assert.are.equal("", snapshot.code)
     assert.are.equal("", snapshot.label)
     assert.is_table(snapshot.systems)
     assert.is_table(snapshot.waitsFor)
     assert.is_table(snapshot.observed)
+  end)
+
+  it("keeps attack sends held until both owners clear in either order", function()
+    attack_execute_stub = stub(boop.attacks, "execute", function(_, _)
+      send("attack 42", false)
+      return true
+    end)
+
+    clearInBothOrders("combat", function()
+      helper.setClass("Occultist")
+      helper.setTarget("42", "a test denizen", "80%")
+      helper.setRage(14)
+      helper.learnSkills({
+        { name = "Lycantha", group = "Domination" },
+        { name = "Warp", group = "Occultism" },
+        { name = "harry", group = "Attainment" },
+      })
+      helper.setDenizens({
+        { id = "42", name = "a test denizen" },
+      })
+      boop.config.enabled = true
+      boop.config.targetingMode = "auto"
+      boop.config.attackMode = "simple"
+      boop.config.useQueueing = true
+    end, function()
+      local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
+      boop.runtime.applyEffects(result, boop.runtime.context())
+      assert.are.equal(0, #sent)
+      assert.are.equal(0, #scheduled)
+      assert.are.equal(0, #raised_events)
+    end, function()
+      local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
+      boop.runtime.applyEffects(result, boop.runtime.context())
+      assert.are.equal(1, #sent)
+      assert.are.equal("attack 42", sent[1].command)
+      assert.are.equal(0, #scheduled)
+      assert.are.equal(0, #raised_events)
+    end)
+  end)
+
+  it("keeps gold sends held until both owners clear in either order", function()
+    maybe_flush_gold_stub = stub(boop, "maybeFlushPendingGold", function(_)
+      return false
+    end)
+    flush_gold_stub = stub(boop, "flushPendingGold", function(_)
+      send("queue add freestand get sovereigns", false)
+      return true
+    end)
+    walk_advance_stub = stub(boop.walk, "maybeAdvance", function(_)
+      return false
+    end)
+
+    clearInBothOrders("gold", nil, function()
+      boop.config.enabled = true
+      boop.config.targetingMode = "auto"
+      boop.config.useQueueing = true
+      boop.state.gold.autoGrabPending = true
+      local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
+      boop.runtime.applyEffects(result, boop.runtime.context())
+      assert.are.equal(0, #sent)
+      assert.are.equal(0, #scheduled)
+      assert.are.equal(0, #raised_events)
+    end, function()
+      boop.config.enabled = true
+      boop.config.targetingMode = "auto"
+      boop.config.useQueueing = true
+      boop.state.gold.autoGrabPending = true
+      local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
+      boop.runtime.applyEffects(result, boop.runtime.context())
+      assert.are.equal(1, #sent)
+      assert.are.equal("queue add freestand get sovereigns", sent[1].command)
+      assert.are.equal(0, #scheduled)
+      assert.are.equal(0, #raised_events)
+    end)
+  end)
+
+  it("keeps movement events held until both owners clear in either order", function()
+    walk_advance_stub = stub(boop.walk, "maybeAdvance", function(_)
+      tempTimer(0, function()
+        raiseEvent("demonwalker.move")
+      end)
+      return true
+    end)
+
+    clearInBothOrders("walk", nil, function()
+      boop.config.enabled = true
+      boop.config.targetingMode = "auto"
+      local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
+      boop.runtime.applyEffects(result, boop.runtime.context())
+      assert.are.equal(0, #sent)
+      assert.are.equal(0, #scheduled)
+      assert.are.equal(0, #raised_events)
+    end, function()
+      boop.config.enabled = true
+      boop.config.targetingMode = "auto"
+      local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
+      boop.runtime.applyEffects(result, boop.runtime.context())
+      assert.are.equal(0, #sent)
+      assert.are.equal(1, #scheduled)
+      assert.are.equal(0, #raised_events)
+      scheduled[1]()
+      assert.are.equal(1, #raised_events)
+      assert.are.equal("demonwalker.move", raised_events[1].name)
+    end)
+  end)
+
+  it("excludes only an exact owner from aggregate holds", function()
+    helper.setRuntimeBlocker({
+      owner = "interrupt:7",
+      code = "interrupt_pending",
+      systems = { combat = true, queue = true },
+    })
+
+    assert.is_false(boop.runtime.shouldHold("combat", "interrupt:7"))
+    assert.is_true(boop.runtime.shouldHold("combat", "interrupt_pending"))
+    assert.is_true(boop.runtime.shouldHold("combat", "interrupt"))
+    assert.is_true(boop.runtime.shouldHold("combat", "combat"))
+
+    helper.setRuntimeBlocker({
+      owner = "pull:9",
+      code = "pull_active",
+      systems = { combat = true },
+    })
+
+    assert.is_true(boop.runtime.shouldHold("combat", "interrupt:7"))
+    assert.is_true(boop.runtime.shouldHold("combat", "pull:9"))
+  end)
+
+  it("sorts blocker snapshots by priority, code, and owner without exposing state", function()
+    local expected = {
+      { owner = "gmcp:ire", code = "gmcp_ire_missing" },
+      { owner = "room:missing", code = "missing_room" },
+      { owner = "room:partial", code = "room_partial" },
+      { owner = "target:loss", code = "target_lost" },
+      { owner = "flee:1", code = "flee_active" },
+      { owner = "pull:timeout", code = "pull_timeout_away" },
+      { owner = "pull:away", code = "pull_away" },
+      { owner = "pull:active", code = "pull_active" },
+      { owner = "interrupt:1", code = "interrupt_pending" },
+      { owner = "interrupt:2", code = "interrupt_pending" },
+      { owner = "gold:deferred", code = "gold_deferred_room" },
+      { owner = "gold:pickup", code = "gold_pickup_pending" },
+      { owner = "gold:pack", code = "gold_pack_pending" },
+      { owner = "walk:unsettled", code = "walk_room_unsettled" },
+      { owner = "walk:move", code = "walk_move_pending" },
+      { owner = "walk:missing", code = "walker_unavailable" },
+      { owner = "custom:a", code = "alpha_custom" },
+      { owner = "custom:z", code = "zeta_custom" },
+    }
+
+    for index = #expected, 1, -1 do
+      helper.setRuntimeBlocker({
+        owner = expected[index].owner,
+        code = expected[index].code,
+        label = expected[index].code,
+        systems = { combat = true },
+        observed = { current = true },
+      })
+    end
+
+    local blockers = boop.runtime.blockersSnapshot()
+    assert.are.equal(#expected, #blockers)
+    for index, record in ipairs(expected) do
+      assert.are.equal(record.owner, blockers[index].owner)
+      assert.are.equal(record.code, blockers[index].code)
+    end
+
+    local primary = boop.runtime.blockerSnapshot()
+    assert.are.equal("gmcp:ire", primary.owner)
+    assert.are.equal(#expected - 1, primary.additionalCount)
+
+    blockers[1].code = "mutated"
+    blockers[1].systems.combat = false
+    primary.owner = "mutated"
+    primary.observed.current = false
+
+    local freshBlockers = boop.runtime.blockersSnapshot()
+    local freshPrimary = boop.runtime.blockerSnapshot()
+    assert.are.equal("gmcp_ire_missing", freshBlockers[1].code)
+    assert.is_true(freshBlockers[1].systems.combat)
+    assert.are.equal("gmcp:ire", freshPrimary.owner)
+    assert.is_true(freshPrimary.observed.current)
   end)
 
   it("maps legacy state aliases onto owned runtime domains", function()
