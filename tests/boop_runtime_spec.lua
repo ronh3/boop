@@ -184,6 +184,40 @@ describe("boop runtime coordinator", function()
     }, first_record)
   end)
 
+  it("resets gold generation and operation fields independently", function()
+    local first = boop.runtime.state()
+    assert.are.equal(0, first.gold.generation)
+    assert.is_false(first.gold.operation)
+
+    first.gold.generation = 7
+    first.gold.operation = {
+      generation = 7,
+      phase = "pack_pending",
+      terminal = false,
+      blockerOwner = "gold:7",
+      source = "text line",
+      roomId = "",
+      roomGeneration = 0,
+      goldItemId = "",
+      packTarget = "pack",
+      getRetries = 1,
+      putRetries = 1,
+      flushTimer = false,
+      timeoutTimer = 707,
+    }
+    local first_operation = first.gold.operation
+    first_operation.packTarget = "changed-after-reset"
+
+    helper.reset()
+
+    local fresh = boop.runtime.state()
+    assert.are.equal(0, fresh.gold.generation)
+    assert.is_false(fresh.gold.operation)
+    assert.is_false(first_operation == fresh.gold.operation)
+    assert.are.equal("changed-after-reset", first_operation.packTarget)
+    assert.are.equal(707, first_operation.timeoutTimer)
+  end)
+
   it("keeps attack sends held until both owners clear in either order", function()
     attack_execute_stub = stub(boop.attacks, "execute", function(_, _)
       send("attack 42", false)

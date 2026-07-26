@@ -1,182 +1,338 @@
 local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper.lua")
 
-describe("boop gold handling", function()
+describe("boop staged gold handling", function()
   local send_stub
+  local send_gmcp_stub
   local timer_stub
   local kill_timer_stub
+  local mark_intent_stub
+  local sent
+  local sent_gmcp
   local scheduled
+
+  local function goldItem(id)
+    return {
+      id = tostring(id or "9001"),
+      name = "a pile of golden sovereigns",
+      attrib = "t",
+    }
+  end
+
+  local function currentOperation()
+    local operation = boop.state.gold.operation
+    assert.is_table(operation)
+    return operation
+  end
+
+  local function copyOperation(operation)
+    if type(operation) ~= "table" then
+      return operation
+    end
+    return {
+      generation = operation.generation,
+      phase = operation.phase,
+      terminal = operation.terminal,
+      blockerOwner = operation.blockerOwner,
+      source = operation.source,
+      roomId = operation.roomId,
+      roomGeneration = operation.roomGeneration,
+      goldItemId = operation.goldItemId,
+      packTarget = operation.packTarget,
+      getRetries = operation.getRetries,
+      putRetries = operation.putRetries,
+      flushTimer = operation.flushTimer,
+      timeoutTimer = operation.timeoutTimer,
+    }
+  end
+
+  local function setCurrentRoomEvidence(items, generation)
+    helper.seedRoomObservation("1", {
+      generation = generation or 1,
+      infoSeen = true,
+      itemsSeen = true,
+    })
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = items,
+    }
+  end
+
+  local function publishRoomList(items)
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = items,
+    }
+    boop.onRoomItemsList()
+  end
+
+  local function publishGoldAdd(id)
+    gmcp.Char.Items.Add = {
+      location = "room",
+      item = goldItem(id),
+    }
+    boop.onRoomItemsAdd()
+  end
+
+  local function startPickup(pack)
+    boop.config.goldPack = pack or ""
+    setCurrentRoomEvidence({ goldItem("9001") })
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    return currentOperation()
+  end
+
+  local function addGoldBlocker(owner)
+    helper.setRuntimeBlocker({
+      owner = owner,
+      code = owner == "flee:active" and "flee_active" or "test_gold_hold",
+      label = "gold test hold",
+      systems = {
+        combat = true,
+        queue = true,
+        gold = true,
+        walk = true,
+      },
+    })
+  end
 
   before_each(function()
     helper.reset()
+    sent = {}
+    sent_gmcp = {}
     scheduled = {}
     boop.config.enabled = true
     boop.config.autoGrabGold = true
+    boop.config.useQueueing = false
 
-    send_stub = stub(_G, "send", function(_, _) end)
-    timer_stub = stub(_G, "tempTimer", function(_, callback)
-      scheduled[#scheduled + 1] = callback
-      return #scheduled
+    send_stub = stub(_G, "send", function(command, echoBack)
+      sent[#sent + 1] = {
+        command = command,
+        echoBack = echoBack,
+        phase = type(boop.state.gold.operation) == "table"
+          and boop.state.gold.operation.phase
+          or false,
+      }
+    end)
+    send_gmcp_stub = stub(_G, "sendGMCP", function(command)
+      sent_gmcp[#sent_gmcp + 1] = command
+    end)
+    timer_stub = stub(_G, "tempTimer", function(delay, callback)
+      local id = 100 + #scheduled + 1
+      scheduled[#scheduled + 1] = {
+        id = id,
+        delay = delay,
+        callback = callback,
+      }
+      return id
     end)
     kill_timer_stub = stub(_G, "killTimer", function(_) end)
   end)
 
   after_each(function()
-    if send_stub then
-      send_stub:revert()
-      send_stub = nil
-    end
-    if timer_stub then
-      timer_stub:revert()
-      timer_stub = nil
-    end
-    if kill_timer_stub then
-      kill_timer_stub:revert()
-      kill_timer_stub = nil
-    end
+    if mark_intent_stub then mark_intent_stub:revert() mark_intent_stub = nil end
+    if send_stub then send_stub:revert() send_stub = nil end
+    if send_gmcp_stub then send_gmcp_stub:revert() send_gmcp_stub = nil end
+    if timer_stub then timer_stub:revert() timer_stub = nil end
+    if kill_timer_stub then kill_timer_stub:revert() kill_timer_stub = nil end
   end)
 
-  it("queues gold pickup on the freestand queue when queueing is disabled", function()
-    boop.config.useQueueing = false
-    boop.config.goldPack = "pack"
-
+  it("waits for complete current-room evidence and coalesces duplicate text, Add, and List signals", function()
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
 
-    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
-    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
-    assert.is_true(boop.state.gold.getPending)
-    assert.is_true(boop.state.gold.putPending)
-    assert.are.equal("pack", boop.state.gold.packTarget)
+    assert.are.equal(0, #sent)
+    assert.are.equal(1, #sent_gmcp)
+    assert.are.equal("Char.Items.Room", sent_gmcp[1])
+    local deferred = currentOperation()
+    assert.are.equal(1, deferred.generation)
+    assert.are.equal("deferred_room", deferred.phase)
+    assert.is_false(deferred.terminal)
+    assert.are.equal("gold:1", deferred.blockerOwner)
+    assert.are.equal("1", deferred.roomId)
+    assert.are.equal(1, deferred.roomGeneration)
+    local deferredFlushTimer = deferred.flushTimer
+    local deferredTimeoutTimer = deferred.timeoutTimer
+
+    boop.onGoldDropLine("More sovereigns spill onto the ground.")
+    publishGoldAdd("9001")
+
+    local afterDuplicates = currentOperation()
+    assert.are.equal(1, afterDuplicates.generation)
+    assert.are.equal(deferredFlushTimer, afterDuplicates.flushTimer)
+    assert.are.equal(deferredTimeoutTimer, afterDuplicates.timeoutTimer)
+    assert.are.equal(0, #sent)
+    assert.are.equal(1, #sent_gmcp)
+
+    publishRoomList({ goldItem("9001") })
+
+    local pickup = currentOperation()
+    assert.are.equal("pickup_pending", pickup.phase)
+    assert.are.equal("9001", pickup.goldItemId)
+    assert.are.equal(1, #sent)
+    assert.are.equal("queue add freestand get sovereigns", sent[1].command)
+    assert.is_false(sent[1].echoBack)
+    local pickupFlushTimer = pickup.flushTimer
+    local pickupTimeoutTimer = pickup.timeoutTimer
+
+    boop.onGoldDropLine("A third handful of sovereigns spills.")
+    publishGoldAdd("9001")
+    publishRoomList({ goldItem("9001") })
+
+    local final = currentOperation()
+    assert.are.equal(1, final.generation)
+    assert.are.equal(pickupFlushTimer, final.flushTimer)
+    assert.are.equal(pickupTimeoutTimer, final.timeoutTimer)
+    assert.are.equal(1, #sent)
+    assert.are.equal(1, #sent_gmcp)
   end)
 
-  it("remembers room gold detected during a hold and collects it after release", function()
-    boop.config.useQueueing = false
-    boop.runtime.setBlocker("test:gold", "test_gold_hold", "gold test hold", {
-      gold = true,
-    }, {
-      prompt = true,
-    })
-    gmcp.Char.Items.Add = {
-      location = "room",
-      item = {
-        id = "9001",
-        name = "a pile of golden sovereigns",
-        attrib = "t",
-      },
+  it("queues get, transfers to inventory-owned packing, then queues put", function()
+    local pickup = startPickup("pack")
+
+    assert.are.equal("pickup_pending", pickup.phase)
+    assert.are.equal(1, #sent)
+    assert.are.equal("queue add freestand get sovereigns", sent[1].command)
+    assert.are.equal("pickup_pending", sent[1].phase)
+
+    boop.onGoldGetSuccess()
+
+    local packing = currentOperation()
+    assert.are.equal("pack_pending", packing.phase)
+    assert.are.equal("", packing.roomId)
+    assert.are.equal(0, packing.roomGeneration)
+    assert.are.equal("", packing.goldItemId)
+    assert.are.equal("pack", packing.packTarget)
+    assert.are.equal(2, #sent)
+    assert.are.equal("queue add freestand put sovereigns in pack", sent[2].command)
+    assert.are.equal("pack_pending", sent[2].phase)
+
+    gmcp.Room.Info = {
+      area = "TEST",
+      num = 2,
+      exits = {},
     }
+    boop.onRoomInfo()
 
-    boop.onRoomItemsAdd()
+    assert.are.equal("pack_pending", currentOperation().phase)
+    assert.are.equal(2, #sent)
 
-    assert.stub(send_stub).was_not_called()
-    assert.is_true(boop.state.gold.autoGrabPending)
-    assert.is_true(boop.state.gold.dropped)
+    boop.onGoldPutSuccess()
 
-    boop.runtime.clearBlocker("test:gold", "test release")
-    boop.state.gold.autoGrabPendingAt = 1
-    boop.tick()
-
-    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
-    assert.is_false(boop.state.gold.autoGrabPending)
-    assert.is_true(boop.state.gold.getPending)
+    assert.is_false(boop.state.gold.operation)
+    assert.is_nil(boop.state.combat.blockersByOwner["gold:1"])
+    assert.are.equal(2, #sent)
   end)
 
-  it("preserves detected gold when the killed target is removed immediately afterward", function()
-    boop.config.useQueueing = true
-    boop.config.goldPack = "tophat"
-    helper.setDenizens({
-      { id = "42", name = "a pit demon" },
-    })
-    helper.setTarget("42", "a pit demon", "0%")
+  it("completes confirmed pickup without a pack and never queues put", function()
+    startPickup("")
 
-    gmcp.Char.Items.Add = {
-      location = "room",
-      item = {
-        id = "9001",
-        name = "some gold sovereigns",
-        attrib = "t",
-      },
-    }
-    boop.onRoomItemsAdd()
+    boop.onGoldGetSuccess()
 
-    assert.is_true(boop.state.gold.autoGrabPending)
-    assert.is_function(scheduled[1])
-
-    gmcp.Char.Items.Remove = {
-      location = "room",
-      item = {
-        id = "42",
-        name = "the corpse of a pit demon",
-        attrib = "t",
-      },
-    }
-    boop.onRoomItemsRemove()
-
-    assert.is_true(boop.state.gold.autoGrabPending)
-    scheduled[1]()
-
-    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
-    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in tophat", false)
-    assert.is_false(boop.state.gold.autoGrabPending)
-    assert.is_true(boop.state.gold.getPending)
-    assert.is_true(boop.state.gold.putPending)
+    assert.is_false(boop.state.gold.operation)
+    assert.is_nil(boop.state.combat.blockersByOwner["gold:1"])
+    assert.are.equal(1, #sent)
+    assert.are.equal("queue add freestand get sovereigns", sent[1].command)
   end)
 
-  it("flushes pending gold when tick finds no target under queueing", function()
+  it("invalidates room-owned pickup before success and ignores the late success", function()
+    startPickup("pack")
+
+    gmcp.Room.Info = {
+      area = "TEST",
+      num = 2,
+      exits = {},
+    }
+    boop.onRoomInfo()
+
+    assert.is_false(boop.state.gold.operation)
+    assert.is_nil(boop.state.combat.blockersByOwner["gold:1"])
+    local sendsAfterMove = #sent
+
+    boop.onGoldGetSuccess()
+
+    assert.is_false(boop.state.gold.operation)
+    assert.are.equal(sendsAfterMove, #sent)
+  end)
+
+  it("authorizes initial get only by exact self-owner exclusion", function()
+    local owners = {
+      "room:observation",
+      "flee:active",
+      "pull:8",
+      "interrupt:9",
+    }
+
+    for _, owner in ipairs(owners) do
+      helper.reset()
+      sent = {}
+      sent_gmcp = {}
+      scheduled = {}
+      boop.config.enabled = true
+      boop.config.autoGrabGold = true
+      boop.config.useQueueing = false
+      setCurrentRoomEvidence({ goldItem("9001") })
+      addGoldBlocker(owner)
+
+      boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+
+      local blocked = currentOperation()
+      assert.are.equal("pickup_pending", blocked.phase)
+      assert.are.equal(0, blocked.getRetries)
+      assert.are.equal(0, #sent)
+
+      boop.runtime.clearBlocker(owner, "test release")
+      assert.is_true(boop.flushPendingGold("test release"))
+      assert.are.equal(1, #sent)
+      assert.are.equal("queue add freestand get sovereigns", sent[1].command)
+    end
+  end)
+
+  it("authorizes initial put only by exact self-owner exclusion", function()
+    local owners = {
+      "room:observation",
+      "flee:active",
+      "pull:8",
+      "interrupt:9",
+    }
+
+    for _, owner in ipairs(owners) do
+      helper.reset()
+      sent = {}
+      sent_gmcp = {}
+      scheduled = {}
+      boop.config.enabled = true
+      boop.config.autoGrabGold = true
+      boop.config.useQueueing = false
+      startPickup("pack")
+      addGoldBlocker(owner)
+      local sendsBeforeSuccess = #sent
+
+      boop.onGoldGetSuccess()
+
+      local blocked = currentOperation()
+      assert.are.equal("pack_pending", blocked.phase)
+      assert.are.equal(0, blocked.putRetries)
+      assert.are.equal(sendsBeforeSuccess, #sent)
+
+      boop.runtime.clearBlocker(owner, "test release")
+      assert.is_true(boop.flushPendingGold("test release"))
+      assert.are.equal(sendsBeforeSuccess + 1, #sent)
+      assert.are.equal("queue add freestand put sovereigns in pack", sent[#sent].command)
+    end
+  end)
+
+  it("dispatches only the supplied combat action without gold prefixing or mark-intent", function()
     boop.config.useQueueing = true
     boop.config.goldPack = "pack"
     boop.state.gold.autoGrabPending = true
     boop.state.gold.autoGrabPendingAt = -1
     boop.state.gold.dropped = true
-
-    boop.tick()
-
-    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
-    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
-    assert.is_false(boop.state.gold.autoGrabPending)
-    assert.is_false(boop.state.gold.dropped)
-    assert.is_true(boop.state.gold.getPending)
-    assert.is_true(boop.state.gold.putPending)
-  end)
-
-  it("flushes aged pending gold during tick even if combat is ongoing", function()
-    boop.config.useQueueing = true
-    boop.config.goldPack = "pack"
-    boop.state.gold.autoGrabPending = true
-    boop.state.gold.autoGrabPendingAt = -1
-    boop.state.gold.dropped = true
-    helper.setClass("Occultist")
-    helper.learnSkills({
-      { name = "Warp", group = "Occultism" },
-      { name = "harry", group = "Attainment" },
-    })
-    helper.setDenizens({
-      { id = "42", name = "a test denizen" },
-    })
-    helper.setTarget("42", "a test denizen", "100%")
-
-    boop.tick()
-
-    assert.stub(send_stub).was_called_with("queue add freestand get sovereigns", false)
-    assert.stub(send_stub).was_called_with("queue add freestand put sovereigns in pack", false)
-    assert.is_false(boop.state.gold.autoGrabPending)
-    assert.is_true(boop.state.gold.getPending)
-    assert.is_true(boop.state.gold.putPending)
-  end)
-
-  it("prepends gold pickup to the next queued combat action when queueing sees pending gold", function()
-    boop.config.useQueueing = true
-    boop.config.goldPack = "pack"
-    boop.state.gold.autoGrabPending = true
-    boop.state.gold.autoGrabPendingAt = -1
-    boop.state.gold.dropped = true
+    mark_intent_stub = stub(boop, "markGoldQueueIntent", function(_) end)
 
     boop.executeAction("warp 42")
 
-    assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK get sovereigns/put sovereigns in pack/warp 42", false)
-    assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
-    assert.is_false(boop.state.gold.autoGrabPending)
-    assert.is_nil(boop.state.gold.autoGrabPendingAt)
-    assert.is_false(boop.state.gold.dropped)
-    assert.is_true(boop.state.gold.getPending)
-    assert.is_true(boop.state.gold.putPending)
+    assert.are.equal(2, #sent)
+    assert.are.equal("setalias BOOP_ATTACK warp 42", sent[1].command)
+    assert.are.equal("queue addclearfull freestand BOOP_ATTACK", sent[2].command)
+    assert.is_nil(sent[1].command:find("sovereigns", 1, true))
+    assert.stub(mark_intent_stub).was_not_called()
   end)
 end)
