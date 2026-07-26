@@ -11,8 +11,12 @@ describe("boop event-driven state transitions", function()
   local runtime_set_blocker_stub
   local runtime_clear_blocker_stub
   local runtime_note_gmcp_stub
+  local tick_stub
+  local flush_gold_stub
+  local walk_advance_stub
   local saved_get_epoch
   local scheduled_callback
+  local scheduled_callbacks
   local fake_epoch
   local set_blocker_calls
   local clear_blocker_calls
@@ -24,6 +28,7 @@ describe("boop event-driven state transitions", function()
   before_each(function()
     helper.reset()
     scheduled_callback = nil
+    scheduled_callbacks = {}
     fake_epoch = 1000000
     set_blocker_calls = {}
     clear_blocker_calls = {}
@@ -41,9 +46,15 @@ describe("boop event-driven state transitions", function()
     raise_event_stub = stub(_G, "raiseEvent", function(name, ...)
       raised_events[#raised_events + 1] = { name = name, args = { ... } }
     end)
-    timer_stub = stub(_G, "tempTimer", function(_, callback)
+    timer_stub = stub(_G, "tempTimer", function(delay, callback)
       scheduled_callback = callback
-      return 99
+      local id = 99 + #scheduled_callbacks
+      scheduled_callbacks[#scheduled_callbacks + 1] = {
+        id = id,
+        delay = delay,
+        callback = callback,
+      }
+      return id
     end)
     kill_timer_stub = stub(_G, "killTimer", function(_) end)
     saved_get_epoch = _G.getEpoch
@@ -94,6 +105,18 @@ describe("boop event-driven state transitions", function()
       runtime_set_blocker_stub:revert()
       runtime_set_blocker_stub = nil
     end
+    if walk_advance_stub then
+      walk_advance_stub:revert()
+      walk_advance_stub = nil
+    end
+    if flush_gold_stub then
+      flush_gold_stub:revert()
+      flush_gold_stub = nil
+    end
+    if tick_stub then
+      tick_stub:revert()
+      tick_stub = nil
+    end
   end)
 
   local function stubCoreSupports()
@@ -128,6 +151,66 @@ describe("boop event-driven state transitions", function()
       end
     end
     return count
+  end
+
+  local function countGoldSends()
+    local count = 0
+    for _, entry in ipairs(sent_commands) do
+      if tostring(entry.command or ""):find("sovereigns", 1, true) then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
+  local function goldItem(id)
+    return {
+      id = tostring(id or "9001"),
+      name = "some gold sovereigns",
+      attrib = "t",
+    }
+  end
+
+  local function copyGoldOperation(operation)
+    if type(operation) ~= "table" then
+      return operation
+    end
+    return {
+      generation = operation.generation,
+      phase = operation.phase,
+      terminal = operation.terminal,
+      blockerOwner = operation.blockerOwner,
+      roomId = operation.roomId,
+      roomGeneration = operation.roomGeneration,
+      goldItemId = operation.goldItemId,
+      packTarget = operation.packTarget,
+      getRetries = operation.getRetries,
+      putRetries = operation.putRetries,
+      flushTimer = operation.flushTimer,
+      timeoutTimer = operation.timeoutTimer,
+    }
+  end
+
+  local function seedSettledGoldRoom(roomId, generation)
+    local room = tostring(roomId or "1")
+    gmcp.Room.Info = {
+      num = room,
+      area = "Test Area",
+      exits = {},
+    }
+    boop.state.targeting.room = room
+    helper.seedRoomObservation(room, {
+      generation = generation or 1,
+      infoSeen = true,
+      itemsSeen = true,
+    })
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = { goldItem("9001") },
+    }
+    boop.config.enabled = true
+    boop.config.autoGrabGold = true
+    boop.config.useQueueing = false
   end
 
   local function captureRuntimeBlockerCalls()
@@ -470,6 +553,308 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(0, countRaised("demonwalker.move"))
   end)
 
+  it("releases current room evidence through one tick and one flush only after every owner clears", function()
+    boop.config.enabled = true
+    boop.config.autoGrabGold = true
+    boop.config.useQueueing = false
+    boop.config.goldPack = ""
+    boop.state.targeting.room = 1
+    gmcp.Room.Info = {
+      num = 2,
+      area = "Test Area",
+      exits = {
+        south = 1,
+      },
+    }
+    boop.onRoomInfo()
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    local operation = boop.state.gold.operation
+    assert.is_table(operation)
+    assert.are.equal("deferred_room", operation.phase)
+
+    helper.setRuntimeBlocker({
+      owner = "interrupt:remaining",
+      code = "interrupt_pending",
+      systems = { combat = true, queue = true, gold = true, walk = true },
+    })
+
+    local tickCalls = 0
+    local flushCalls = 0
+    local originalTick = boop.tick
+    local originalFlush = boop.flushPendingGold
+    tick_stub = stub(boop, "tick", function()
+      tickCalls = tickCalls + 1
+      return originalTick()
+    end)
+    flush_gold_stub = stub(boop, "flushPendingGold", function(reason)
+      flushCalls = flushCalls + 1
+      return originalFlush(reason)
+    end)
+
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = { goldItem("9001") },
+    }
+    boop.onRoomItemsList()
+
+    assert.are.equal("pickup_pending", boop.state.gold.operation.phase)
+    assert.is_nil(boop.state.combat.blockersByOwner["room:observation"])
+    assert.are.equal(1, tickCalls)
+    assert.are.equal(0, flushCalls)
+    assert.are.equal(0, countSent("queue add freestand get sovereigns"))
+
+    boop.runtime.clearBlocker("interrupt:remaining", "final owner released")
+    boop.tick()
+
+    assert.are.equal(2, tickCalls)
+    assert.are.equal(1, flushCalls)
+    assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+    assert.are.equal(operation.generation, boop.state.gold.operation.generation)
+    assert.are.equal(0, boop.state.gold.operation.getRetries)
+  end)
+
+  it("resumes one unchanged gold stage through the real GMCP recovery release path", function()
+    seedSettledGoldRoom("1", 1)
+    boop.config.goldPack = ""
+    gmcp.IRE = nil
+    boop.onCharStatus()
+    assert.is_table(boop.state.combat.blockersByOwner["gmcp:ire"])
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    local operation = copyGoldOperation(boop.state.gold.operation)
+    assert.are.equal(0, countGoldSends())
+
+    local tickCalls = 0
+    local flushCalls = 0
+    local originalTick = boop.tick
+    local originalFlush = boop.flushPendingGold
+    tick_stub = stub(boop, "tick", function()
+      tickCalls = tickCalls + 1
+      return originalTick()
+    end)
+    flush_gold_stub = stub(boop, "flushPendingGold", function(reason)
+      flushCalls = flushCalls + 1
+      return originalFlush(reason)
+    end)
+
+    gmcp.IRE = {
+      Target = { Set = "", Info = { id = "", hpperc = "100%" } },
+      Display = { ButtonActions = {} },
+    }
+    boop.onCharStatus()
+
+    assert.is_table(boop.state.combat.blockersByOwner["gmcp:ire"])
+    assert.are.equal(0, tickCalls)
+    assert.are.equal(0, flushCalls)
+    assert.are.equal(0, countGoldSends())
+
+    boop.onPrompt()
+
+    assert.is_nil(boop.state.combat.blockersByOwner["gmcp:ire"])
+    assert.are.equal(1, tickCalls)
+    assert.are.equal(1, flushCalls)
+    assert.are.equal(1, countGoldSends())
+    assert.are.equal(operation.generation, boop.state.gold.operation.generation)
+    assert.are.equal(operation.phase, boop.state.gold.operation.phase)
+    assert.are.equal(operation.getRetries, boop.state.gold.operation.getRetries)
+  end)
+
+  it("resumes one unchanged gold stage through the real interrupt release path", function()
+    seedSettledGoldRoom("1", 1)
+    boop.config.goldPack = ""
+    boop.ui.matic()
+    local interrupt = boop.state.diag.operation
+    assert.is_table(interrupt)
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    local operation = copyGoldOperation(boop.state.gold.operation)
+    assert.are.equal(0, countGoldSends())
+
+    local tickCalls = 0
+    local flushCalls = 0
+    local originalTick = boop.tick
+    local originalFlush = boop.flushPendingGold
+    tick_stub = stub(boop, "tick", function()
+      tickCalls = tickCalls + 1
+      return originalTick()
+    end)
+    flush_gold_stub = stub(boop, "flushPendingGold", function(reason)
+      flushCalls = flushCalls + 1
+      return originalFlush(reason)
+    end)
+
+    boop.onPrompt()
+
+    assert.is_false(boop.state.diag.operation)
+    assert.is_nil(boop.state.combat.blockersByOwner[interrupt.blockerOwner])
+    assert.are.equal(1, tickCalls)
+    assert.are.equal(1, flushCalls)
+    assert.are.equal(1, countGoldSends())
+    assert.are.equal(operation.generation, boop.state.gold.operation.generation)
+    assert.are.equal(operation.phase, boop.state.gold.operation.phase)
+    assert.are.equal(operation.getRetries, boop.state.gold.operation.getRetries)
+  end)
+
+  it("resumes one unchanged gold stage after the real pull completion path and one normal tick", function()
+    seedSettledGoldRoom("1", 1)
+    boop.config.goldPack = ""
+    boop.state.combat.pullGeneration = 8
+    boop.state.combat.pullState = {
+      active = true,
+      generation = 8,
+      blockerOwner = "pull:8",
+      phase = "outbound",
+      terminal = false,
+      originRoom = "1",
+      timeoutTimer = 808,
+    }
+    helper.setRuntimeBlocker({
+      owner = "pull:8",
+      code = "pull_active",
+      systems = { combat = true, queue = true, target = true, gold = true, walk = true },
+    })
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    local operation = copyGoldOperation(boop.state.gold.operation)
+    assert.are.equal(0, countGoldSends())
+
+    local tickCalls = 0
+    local flushCalls = 0
+    local originalTick = boop.tick
+    local originalFlush = boop.flushPendingGold
+    tick_stub = stub(boop, "tick", function()
+      tickCalls = tickCalls + 1
+      return originalTick()
+    end)
+    flush_gold_stub = stub(boop, "flushPendingGold", function(reason)
+      flushCalls = flushCalls + 1
+      return originalFlush(reason)
+    end)
+
+    assert.is_true(boop.ui.completePull(8, "timeout_at_origin"))
+    boop.tick()
+
+    assert.is_false(boop.state.combat.pullState)
+    assert.is_nil(boop.state.combat.blockersByOwner["pull:8"])
+    assert.are.equal(1, tickCalls)
+    assert.are.equal(1, flushCalls)
+    assert.are.equal(1, countGoldSends())
+    assert.are.equal(operation.generation, boop.state.gold.operation.generation)
+    assert.are.equal(operation.phase, boop.state.gold.operation.phase)
+    assert.are.equal(operation.getRetries, boop.state.gold.operation.getRetries)
+  end)
+
+  it("keeps current gold unchanged when late old-room List, Add, Remove, and text evidence arrives", function()
+    seedSettledGoldRoom("1", 1)
+    boop.config.goldPack = ""
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+
+    gmcp.Room.Info = {
+      num = 2,
+      area = "Test Area",
+      exits = {
+        south = 1,
+      },
+    }
+    boop.onRoomInfo()
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = { goldItem("9002") },
+    }
+    boop.onRoomItemsList()
+    local current = copyGoldOperation(boop.state.gold.operation)
+    local sendCount = countGoldSends()
+
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = { goldItem("9001") },
+    }
+    boop.onRoomItemsList()
+    gmcp.Char.Items.Add = {
+      location = "room",
+      item = goldItem("9001"),
+    }
+    boop.onRoomItemsAdd()
+    gmcp.Char.Items.Remove = {
+      location = "room",
+      item = goldItem("9001"),
+    }
+    boop.onRoomItemsRemove()
+    boop.onGoldDropLine("Old-room sovereign text arrives late.")
+
+    assert.are.same(current, copyGoldOperation(boop.state.gold.operation))
+    assert.are.equal(sendCount, countGoldSends())
+  end)
+
+  it("invalidates a current room-owned stage on Room.Info and makes its captured timers stale", function()
+    seedSettledGoldRoom("1", 1)
+    boop.config.goldPack = ""
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    local operation = copyGoldOperation(boop.state.gold.operation)
+    local callbacks = {}
+    for _, entry in ipairs(scheduled_callbacks) do
+      callbacks[#callbacks + 1] = entry.callback
+    end
+
+    gmcp.Room.Info = {
+      num = 1,
+      area = "Test Area",
+      exits = {},
+    }
+    boop.onRoomInfo()
+
+    assert.is_false(boop.state.gold.operation)
+    assert.is_nil(boop.state.combat.blockersByOwner[operation.blockerOwner])
+    local sendsAfterInvalidation = countGoldSends()
+
+    for _, callback in ipairs(callbacks) do
+      callback()
+    end
+
+    assert.is_false(boop.state.gold.operation)
+    assert.are.equal(sendsAfterInvalidation, countGoldSends())
+  end)
+
+  it("schedules one terminal reevaluation and makes a stale pack terminal a zero-effect no-op", function()
+    seedSettledGoldRoom("1", 1)
+    boop.config.goldPack = "pack"
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    boop.onGoldGetSuccess()
+    local callbacksBeforeTerminal = #scheduled_callbacks
+    local sendsBeforeTerminal = countGoldSends()
+    local tickCalls = 0
+    local walkCalls = 0
+    local originalTick = boop.tick
+    tick_stub = stub(boop, "tick", function()
+      tickCalls = tickCalls + 1
+      return originalTick()
+    end)
+    walk_advance_stub = stub(boop.walk, "maybeAdvance", function(_)
+      walkCalls = walkCalls + 1
+      return false
+    end)
+    helper.setRuntimeBlocker({
+      owner = "interrupt:remaining",
+      code = "interrupt_pending",
+      systems = { combat = true, queue = true, walk = true },
+    })
+
+    assert.is_true(boop.onGoldPutSuccess())
+    assert.are.equal(callbacksBeforeTerminal + 1, #scheduled_callbacks)
+    local terminalCallback = scheduled_callbacks[#scheduled_callbacks].callback
+    assert.is_function(terminalCallback)
+    terminalCallback()
+
+    assert.are.equal(1, tickCalls)
+    assert.are.equal(0, walkCalls)
+    assert.are.equal(sendsBeforeTerminal, countGoldSends())
+    assert.is_false(boop.state.gold.operation)
+
+    local callbacksAfterTerminal = #scheduled_callbacks
+    assert.is_false(boop.onGoldPutSuccess())
+    assert.are.equal(callbacksAfterTerminal, #scheduled_callbacks)
+    assert.are.equal(1, tickCalls)
+    assert.are.equal(0, walkCalls)
+    assert.are.equal(sendsBeforeTerminal, countGoldSends())
+  end)
+
   it("keeps singleton GMCP, room, and target owners isolated at event boundaries", function()
     helper.setRuntimeBlocker({
       owner = "gmcp:ire",
@@ -619,6 +1004,49 @@ describe("boop event-driven state transitions", function()
 
     assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK command hound at 43", false)
     assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
+  end)
+
+  it("cleans target intent without attacking or executing prequeue while gold owns the queue", function()
+    helper.setArea("Test Area")
+    helper.setClass("Occultist")
+    helper.learnSkills({
+      { name = "Lycantha", group = "Domination" },
+      { name = "harry", group = "Attainment" },
+    })
+    helper.setDenizens({
+      { id = "42", name = "a first denizen" },
+      { id = "43", name = "a second denizen" },
+    })
+    helper.setTarget("42", "a first denizen", "80%")
+    helper.addTargetAfflictions({ "stupidity" })
+    seedSettledGoldRoom("1", 1)
+    boop.config.targetingMode = "auto"
+    boop.config.prequeueEnabled = true
+    boop.config.goldPack = ""
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    assert.are.equal("pickup_pending", boop.state.gold.operation.phase)
+    sent_commands = {}
+
+    gmcp.Char.Items.Remove = {
+      location = "room",
+      item = { id = "42", name = "a first denizen", attrib = "m" },
+    }
+    boop.onRoomItemsRemove()
+
+    assert.are.equal("43", boop.state.targeting.currentTargetId)
+    assert.is_false(boop.afflictions.hasTarget("stupidity"))
+    assert.is_function(scheduled_callback)
+    assert.are.equal(0, countSent("queue clear"))
+    assert.are.equal(0, countSent("command hound at 43"))
+    assert.are.equal(0, countSent("harry 43"))
+    assert.are.equal(0, countSent("setalias BOOP_ATTACK command hound at 43"))
+
+    scheduled_callback()
+
+    assert.are.equal(0, countSent("queue clear"))
+    assert.are.equal(0, countSent("command hound at 43"))
+    assert.are.equal(0, countSent("harry 43"))
+    assert.are.equal(0, countSent("setalias BOOP_ATTACK command hound at 43"))
   end)
 
   it("clears stale attack intent before same-tick retargeting from valid current-room denizens", function()
