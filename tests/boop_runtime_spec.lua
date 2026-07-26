@@ -218,6 +218,76 @@ describe("boop runtime coordinator", function()
     assert.are.equal(707, first_operation.timeoutTimer)
   end)
 
+  it("resets every walk field and materializes an independent domain", function()
+    local first = boop.runtime.state()
+    local firstWalk = first.walk
+
+    assert.is_false(firstWalk.active)
+    assert.is_false(firstWalk.owned)
+    assert.is_false(firstWalk.roomSettled)
+    assert.is_false(firstWalk.moveQueued)
+    assert.are.equal("", firstWalk.arrivalRoom)
+    assert.are.equal(0, firstWalk.generation)
+    assert.are.equal(0, firstWalk.roomGeneration)
+    assert.is_false(firstWalk.moveIssuedForRoomGeneration)
+    assert.are.equal(0, firstWalk.reservationId)
+    assert.is_nil(firstWalk.refreshTimer)
+    assert.is_nil(firstWalk.emitterTimer)
+    assert.is_false(firstWalk.refreshWarned)
+
+    firstWalk.active = true
+    firstWalk.owned = true
+    firstWalk.roomSettled = true
+    firstWalk.moveQueued = true
+    firstWalk.arrivalRoom = "101"
+    firstWalk.generation = 7
+    firstWalk.roomGeneration = 9
+    firstWalk.moveIssuedForRoomGeneration = true
+    firstWalk.reservationId = 11
+    firstWalk.refreshTimer = 13
+    firstWalk.emitterTimer = 15
+    firstWalk.refreshWarned = true
+
+    helper.reset()
+
+    local freshWalk = boop.runtime.state().walk
+    assert.is_false(firstWalk == freshWalk)
+    assert.is_false(freshWalk.active)
+    assert.is_false(freshWalk.owned)
+    assert.is_false(freshWalk.roomSettled)
+    assert.is_false(freshWalk.moveQueued)
+    assert.are.equal("", freshWalk.arrivalRoom)
+    assert.are.equal(0, freshWalk.generation)
+    assert.are.equal(0, freshWalk.roomGeneration)
+    assert.is_false(freshWalk.moveIssuedForRoomGeneration)
+    assert.are.equal(0, freshWalk.reservationId)
+    assert.is_nil(freshWalk.refreshTimer)
+    assert.is_nil(freshWalk.emitterTimer)
+    assert.is_false(freshWalk.refreshWarned)
+
+    assert.is_true(firstWalk.active)
+    assert.are.equal(7, firstWalk.generation)
+    assert.are.equal(11, firstWalk.reservationId)
+    assert.are.equal(15, firstWalk.emitterTimer)
+  end)
+
+  it("includes the current walk reservation in immutable runtime context", function()
+    local state = boop.runtime.state()
+    state.walk.generation = 7
+    state.walk.roomGeneration = 9
+    state.walk.reservationId = 11
+    state.walk.moveQueued = true
+
+    local context = boop.runtime.context()
+    assert.are.equal(7, context.walk.generation)
+    assert.are.equal(9, context.walk.roomGeneration)
+    assert.are.equal(11, context.walk.reservationId)
+    assert.is_true(context.walk.moveQueued)
+
+    context.walk.reservationId = 99
+    assert.are.equal(11, boop.runtime.state().walk.reservationId)
+  end)
+
   it("keeps attack sends held until both owners clear in either order", function()
     attack_execute_stub = stub(boop.attacks, "execute", function(_, _)
       send("attack 42", false)

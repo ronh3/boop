@@ -261,6 +261,121 @@ function M.seedRoomObservation(roomId, opts)
   return observation
 end
 
+function M.newTimerQueue()
+  local queue = {
+    callbacks = {},
+    cancelled = {},
+    delays = {},
+    nextId = 0,
+  }
+
+  function queue.tempTimer(delay, callback)
+    queue.nextId = queue.nextId + 1
+    local id = queue.nextId
+    queue.delays[id] = delay
+    queue.callbacks[id] = callback
+    return id
+  end
+
+  function queue.killTimer(id)
+    local exists = queue.callbacks[id] ~= nil
+    queue.cancelled[id] = true
+    return exists
+  end
+
+  function queue.callback(id)
+    return queue.callbacks[id]
+  end
+
+  function queue.run(id)
+    local callback = queue.callbacks[id]
+    assert(type(callback) == "function", "timer callback not found: " .. tostring(id))
+    return callback()
+  end
+
+  return queue
+end
+
+function M.setWalker(opts)
+  opts = opts or {}
+  local previous = {
+    demonwalker = _G.demonwalker,
+    installPackage = _G.installPackage,
+    raiseEvent = _G.raiseEvent,
+    updatePackage = _G.updatePackage,
+  }
+  local fixture = {
+    initCalls = {},
+    installCalls = {},
+    raisedEvents = {},
+    updateCalls = {},
+  }
+  local walker = {
+    enabled = opts.attached == true,
+  }
+
+  function walker:init(options)
+    fixture.initCalls[#fixture.initCalls + 1] = options
+    if opts.initMode == "throw" then
+      error(opts.initError or "walker init failed")
+    end
+    self.enabled = true
+    return true
+  end
+
+  function walker:update(...)
+    fixture.updateCalls[#fixture.updateCalls + 1] = { ... }
+    return true
+  end
+
+  if opts.available == false then
+    _G.demonwalker = nil
+  else
+    _G.demonwalker = walker
+  end
+  _G.installPackage = function(url)
+    fixture.installCalls[#fixture.installCalls + 1] = url
+    local mode = opts.installMode or "success"
+    if mode == "throw" then
+      error(opts.installError or "install threw")
+    elseif mode == "false_error" then
+      return false, opts.installError or "install returned false"
+    elseif mode == "nil_error" then
+      return nil, opts.installError or "install returned nil"
+    end
+    return true
+  end
+  _G.updatePackage = function(...)
+    fixture.updateCalls[#fixture.updateCalls + 1] = { ... }
+    return true
+  end
+  _G.raiseEvent = function(name, ...)
+    fixture.raisedEvents[#fixture.raisedEvents + 1] = {
+      name = name,
+      args = { ... },
+    }
+  end
+
+  fixture.walker = walker
+
+  function fixture.setAvailable(value)
+    _G.demonwalker = value and walker or nil
+  end
+
+  function fixture.setAttached(value)
+    walker.enabled = value and true or false
+  end
+
+  function fixture.restore()
+    _G.demonwalker = previous.demonwalker
+    _G.installPackage = previous.installPackage
+    _G.raiseEvent = previous.raiseEvent
+    _G.updatePackage = previous.updatePackage
+  end
+
+  return fixture
+end
+
 function M.seedAutomationIntent()
   local state = boop.runtime.state()
 
