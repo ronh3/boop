@@ -80,6 +80,8 @@ local DOMAIN_DEFAULTS = {
     },
   },
   gold = {
+    generation = 0,
+    operation = false,
     dropped = false,
     shardsDropped = false,
     autoGrabPending = false,
@@ -774,6 +776,13 @@ local function describeQueue(queue)
 end
 
 local function describeGold(gold)
+  if type(gold.operation) == "table" and not gold.operation.terminal then
+    return string.format(
+      "%s:%s",
+      tostring(gold.operation.phase or "pending"),
+      tostring(gold.operation.generation or "?")
+    )
+  end
   if gold.getPending or gold.putPending then
     local parts = {}
     if gold.getPending then parts[#parts + 1] = "get" end
@@ -889,8 +898,19 @@ function boop.runtime.clearAutomationIntent(reason, opts)
   end
 
   if includeGold then
+    local operation = state.gold.operation
+    if type(operation) == "table" then
+      operation.terminal = true
+      killOwnedTimer(operation.flushTimer)
+      killOwnedTimer(operation.timeoutTimer)
+      boop.runtime.clearBlocker(
+        operation.blockerOwner,
+        tostring(reason or "automation clear")
+      )
+    end
     killOwnedTimer(state.gold.autoGrabTimer)
     killOwnedTimer(state.gold.pendingTimer)
+    state.gold.operation = false
     state.gold.dropped = false
     state.gold.shardsDropped = false
     state.gold.autoGrabPending = false
@@ -987,6 +1007,8 @@ function boop.runtime.context()
       aliasDirty = state.queue.aliasDirty ~= false,
     },
     gold = {
+      generation = tonumber(state.gold.generation) or 0,
+      operation = deepCopy(state.gold.operation),
       autoGrabPending = not not state.gold.autoGrabPending,
       getPending = not not state.gold.getPending,
       putPending = not not state.gold.putPending,
@@ -1038,6 +1060,24 @@ local function tickStep(context)
   if state.diag.hold then
     return { effects = effects, didAction = false }
   end
+
+  local goldOperation = state.gold.operation
+  if type(goldOperation) == "table" and not goldOperation.terminal then
+    local owner = tostring(goldOperation.blockerOwner or "")
+    if boop.runtime.shouldHold("combat", owner)
+      or boop.runtime.shouldHold("queue", owner)
+      or boop.runtime.shouldHold("gold", owner)
+      or boop.runtime.shouldHold("walk", owner)
+    then
+      effects[#effects + 1] = heldEffect(context, "gold", "gold")
+      return { effects = effects, didAction = false }
+    end
+    if not goldOperation.timeoutTimer then
+      effects[#effects + 1] = { kind = "flush_gold", reason = "tick gold stage" }
+    end
+    return { effects = effects, didAction = false }
+  end
+
   if boop.runtime.shouldHold("target")
     or boop.runtime.shouldHold("combat")
     or boop.runtime.shouldHold("queue")

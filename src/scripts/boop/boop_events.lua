@@ -32,6 +32,11 @@ end
 
 local AUTO_GOLD_FLUSH_SECONDS = 0.35
 local GOLD_READY_QUEUE = "freestand"
+local GOLD_PHASE = {
+  DEFERRED_ROOM = "deferred_room",
+  PICKUP_PENDING = "pickup_pending",
+  PACK_PENDING = "pack_pending",
+}
 
 local function queueGoldCommand(command)
   send("queue add " .. GOLD_READY_QUEUE .. " " .. command, false)
@@ -118,8 +123,10 @@ local function setBlocker(owner, code, label, systems, waitsFor, opts)
   return false
 end
 
-local function shouldHold(system)
-  return runtime() and boop.runtime.shouldHold and boop.runtime.shouldHold(system)
+local function shouldHold(system, exceptOwner)
+  return runtime()
+    and boop.runtime.shouldHold
+    and boop.runtime.shouldHold(system, exceptOwner)
 end
 
 local function traceHeld(system, reason)
@@ -233,7 +240,21 @@ local function reconcileIreSupport(source)
 end
 
 local function enterRoomBlocker(code, label, observed)
-  return setBlocker("room:observation", code, label, BLOCKER_SYSTEMS_ROOM, {
+  local systems = BLOCKER_SYSTEMS_ROOM
+  local operation = boop.state
+    and boop.state.gold
+    and boop.state.gold.operation
+    or nil
+  if type(operation) == "table"
+      and not operation.terminal
+      and operation.phase == GOLD_PHASE.PACK_PENDING then
+    systems = {
+      target = true,
+      combat = true,
+      walk = true,
+    }
+  end
+  return setBlocker("room:observation", code, label, systems, {
     gmcp = true,
   }, {
     source = "room",
@@ -458,171 +479,530 @@ function boop.getWieldedItem(hand)
   return copyInvItem(item)
 end
 
+local startGoldOperation
+local transferGoldToPacking
+local completeGoldOperation
+
+local function currentGoldOperation(generation, expectedPhase)
+  local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
+  local operation = state and state.gold and state.gold.operation or nil
+  if type(operation) ~= "table" or operation.terminal then
+    return false
+  end
+  if generation ~= nil and operation.generation ~= tonumber(generation) then
+    return false
+  end
+  if expectedPhase ~= nil and operation.phase ~= expectedPhase then
+    return false
+  end
+  return operation
+end
+
+local function goldDispatchAuthorized(operation)
+  local current = currentGoldOperation(
+    operation and operation.generation,
+    operation and operation.phase
+  )
+  if current ~= operation then
+    return false
+  end
+  if not boop.config or not boop.config.enabled or not boop.config.autoGrabGold then
+    return false
+  end
+
+  local owner = tostring(operation.blockerOwner or "")
+  if operation.phase == GOLD_PHASE.PACK_PENDING then
+    if shouldHold("queue", owner) or shouldHold("gold", owner) then
+      return false
+    end
+    return boop.util.trim(operation.packTarget or "") ~= ""
+  end
+
+  if shouldHold("combat", owner)
+      or shouldHold("queue", owner)
+      or shouldHold("gold", owner)
+      or shouldHold("walk", owner) then
+    return false
+  end
+
+  local observation = runtime()
+    and boop.runtime.roomObservationSnapshot
+    and boop.runtime.roomObservationSnapshot()
+    or {}
+  local currentRoom = tostring(
+    gmcp
+      and gmcp.Room
+      and gmcp.Room.Info
+      and gmcp.Room.Info.num
+      or ""
+  )
+  if currentRoom == ""
+      or currentRoom ~= tostring(operation.roomId or "")
+      or tonumber(observation.generation) ~= tonumber(operation.roomGeneration)
+      or tostring(observation.roomId or "") ~= tostring(operation.roomId or "")
+      or not observation.infoSeen then
+    return false
+  end
+  if operation.phase == GOLD_PHASE.DEFERRED_ROOM then
+    return true
+  end
+  if operation.phase ~= GOLD_PHASE.PICKUP_PENDING or not observation.itemsSeen then
+    return false
+  end
+
+  local list = gmcp
+    and gmcp.Char
+    and gmcp.Char.Items
+    and gmcp.Char.Items.List
+    or nil
+  if type(list) ~= "table"
+      or list.location ~= "room"
+      or type(list.items) ~= "table" then
+    return false
+  end
+  local goldItem = findRoomGoldItem(list.items)
+  if not goldItem then
+    return false
+  end
+  local expectedItem = tostring(operation.goldItemId or "")
+  return expectedItem == "" or tostring(goldItem.id or "") == expectedItem
+end
+
 function boop.clearGoldQueueIntent()
-  boop.state = boop.state or {}
-  if boop.state.gold.autoGrabTimer then
-    killTimer(boop.state.gold.autoGrabTimer)
-    boop.state.gold.autoGrabTimer = nil
+  local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
+  local operation = state and state.gold and state.gold.operation or nil
+  if type(operation) == "table" and not operation.terminal then
+    return completeGoldOperation(operation.generation, "disabled")
   end
-  boop.state.gold.autoGrabPending = false
-  boop.state.gold.autoGrabPendingAt = nil
-  boop.state.gold.dropped = false
-  if boop.state.gold.pendingTimer then
-    killTimer(boop.state.gold.pendingTimer)
-    boop.state.gold.pendingTimer = nil
+  if state and state.gold then
+    if state.gold.autoGrabTimer and killTimer then
+      killTimer(state.gold.autoGrabTimer)
+    end
+    if state.gold.pendingTimer and killTimer then
+      killTimer(state.gold.pendingTimer)
+    end
+    state.gold.autoGrabPending = false
+    state.gold.autoGrabPendingAt = nil
+    state.gold.autoGrabTimer = nil
+    state.gold.getPending = false
+    state.gold.putPending = false
+    state.gold.getRetries = 0
+    state.gold.putRetries = 0
+    state.gold.packTarget = ""
+    state.gold.pendingTimer = nil
+    state.gold.dropped = false
   end
-  boop.state.gold.getPending = false
-  boop.state.gold.putPending = false
-  boop.state.gold.getRetries = 0
-  boop.state.gold.putRetries = 0
-  boop.state.gold.packTarget = ""
+  return false
 end
 
 local function stopGoldPendingTimeout()
-  boop.state = boop.state or {}
-  if boop.state.gold.pendingTimer then
-    killTimer(boop.state.gold.pendingTimer)
-    boop.state.gold.pendingTimer = nil
+  local operation = currentGoldOperation()
+  if not operation then return false end
+  local timerId = operation.timeoutTimer
+  operation.timeoutTimer = false
+  if timerId and killTimer then
+    killTimer(timerId)
   end
+  boop.markGoldQueueIntent(operation.packTarget)
+  return timerId and true or false
 end
 
-local function armGoldPendingTimeout()
-  boop.state = boop.state or {}
+local function armGoldPendingTimeout(generation, expectedPhase)
+  local operation = currentGoldOperation(generation, expectedPhase)
+  if not operation or not tempTimer then
+    return false
+  end
   stopGoldPendingTimeout()
-  boop.state.gold.pendingTimer = tempTimer(4, function()
-    boop.state.gold.pendingTimer = nil
-    if not (boop.state.gold.getPending or boop.state.gold.putPending) then
+  operation = currentGoldOperation(generation, expectedPhase)
+  if not operation then return false end
+
+  local timerId = false
+  timerId = tempTimer(4, function()
+    local active = currentGoldOperation(generation, expectedPhase)
+    if not active or active.timeoutTimer ~= timerId then
+      return
+    end
+    if not goldDispatchAuthorized(active) then
       return
     end
     boop.trace.log("gold pending timeout: clearing stale state")
     boop.util.warn("auto gold: clearing stale pending state")
-    boop.clearGoldQueueIntent()
-    if boop.walk and boop.walk.maybeAdvance then
-      boop.walk.maybeAdvance("gold timeout clear")
-    elseif boop.tick then
-      boop.tick()
-    end
+    completeGoldOperation(generation, "pending_timeout")
   end)
+  operation.timeoutTimer = timerId or false
+  boop.markGoldQueueIntent(operation.packTarget)
+  return operation.timeoutTimer
 end
 
-function boop.markGoldQueueIntent(pack)
-  boop.state = boop.state or {}
-  local target = boop.util.trim(pack or "")
-  boop.state.gold.getPending = true
-  boop.state.gold.putPending = target ~= ""
-  boop.state.gold.getRetries = 0
-  boop.state.gold.putRetries = 0
-  boop.state.gold.packTarget = target
-  armGoldPendingTimeout()
+function boop.markGoldQueueIntent(_)
+  local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
+  if not state or not state.gold then return false end
+  local operation = currentGoldOperation()
+  if not operation then
+    state.gold.autoGrabPending = false
+    state.gold.autoGrabPendingAt = nil
+    state.gold.autoGrabTimer = nil
+    state.gold.getPending = false
+    state.gold.putPending = false
+    state.gold.getRetries = 0
+    state.gold.putRetries = 0
+    state.gold.packTarget = ""
+    state.gold.pendingTimer = nil
+    state.gold.dropped = false
+    return false
+  end
+
+  state.gold.autoGrabPending = operation.phase == GOLD_PHASE.DEFERRED_ROOM
+  state.gold.autoGrabPendingAt = state.gold.autoGrabPending
+    and (state.gold.autoGrabPendingAt or nowSeconds())
+    or nil
+  state.gold.autoGrabTimer = operation.flushTimer or nil
+  state.gold.getPending = operation.phase == GOLD_PHASE.PICKUP_PENDING
+  state.gold.putPending = operation.phase == GOLD_PHASE.PACK_PENDING
+  state.gold.getRetries = tonumber(operation.getRetries) or 0
+  state.gold.putRetries = tonumber(operation.putRetries) or 0
+  state.gold.packTarget = tostring(operation.packTarget or "")
+  state.gold.pendingTimer = operation.timeoutTimer or nil
+  state.gold.dropped = operation.phase ~= GOLD_PHASE.PACK_PENDING
+  return operation
 end
 
 local function queueGoldCommands()
-  local pack = boop.util.trim(boop.config.goldPack or "")
-  boop.markGoldQueueIntent(pack)
-  queueGoldCommand("get sovereigns")
-  boop.trace.log("gold queue: get sovereigns")
-
-  if pack ~= "" then
-    queueGoldCommand("put sovereigns in " .. pack)
-    boop.trace.log("gold queue: put sovereigns in " .. pack)
+  local operation = currentGoldOperation()
+  if not operation or operation.timeoutTimer or not goldDispatchAuthorized(operation) then
+    return false
   end
+  if operation.phase == GOLD_PHASE.PICKUP_PENDING then
+    queueGoldCommand("get sovereigns")
+    boop.trace.log(string.format(
+      "gold queue: get sovereigns | generation=%s | room=%s",
+      tostring(operation.generation),
+      tostring(operation.roomId)
+    ))
+  elseif operation.phase == GOLD_PHASE.PACK_PENDING then
+    local pack = boop.util.trim(operation.packTarget or "")
+    if pack == "" then return false end
+    queueGoldCommand("put sovereigns in " .. pack)
+    boop.trace.log(string.format(
+      "gold queue: put sovereigns in %s | generation=%s",
+      pack,
+      tostring(operation.generation)
+    ))
+  else
+    return false
+  end
+  armGoldPendingTimeout(operation.generation, operation.phase)
+  return true
 end
 
 local cancelAutoGrabGoldTimer
 local flushPendingGold
 
-local function clearPendingGoldDrop(reason)
-  boop.state = boop.state or {}
-  if not boop.state.gold.autoGrabPending then
+cancelAutoGrabGoldTimer = function()
+  local operation = currentGoldOperation()
+  if not operation then return false end
+  local timerId = operation.flushTimer
+  operation.flushTimer = false
+  if timerId and killTimer then
+    killTimer(timerId)
+  end
+  boop.markGoldQueueIntent(operation.packTarget)
+  return timerId and true or false
+end
+
+completeGoldOperation = function(generation, terminalReason)
+  local operation = currentGoldOperation(generation)
+  if not operation then return false end
+
+  operation.terminal = true
+  local reason = tostring(terminalReason or "")
+  local owner = tostring(operation.blockerOwner or "")
+  local flushTimer = operation.flushTimer
+  local timeoutTimer = operation.timeoutTimer
+  operation.flushTimer = false
+  operation.timeoutTimer = false
+  if flushTimer and killTimer then killTimer(flushTimer) end
+  if timeoutTimer and killTimer then killTimer(timeoutTimer) end
+  if runtime() and boop.runtime.clearBlocker then
+    boop.runtime.clearBlocker(owner, reason)
+  end
+
+  local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
+  state.gold.operation = false
+  boop.markGoldQueueIntent()
+  boop.trace.log(string.format(
+    "gold terminal: %s | generation=%s | reason=%s",
+    owner,
+    tostring(generation),
+    reason
+  ))
+  if boop.walk and boop.walk.maybeAdvance then
+    boop.walk.maybeAdvance("gold " .. reason)
+  end
+  return true
+end
+
+startGoldOperation = function(source, observation, packTarget)
+  if not boop.config or not boop.config.enabled or not boop.config.autoGrabGold then
     return false
   end
-  cancelAutoGrabGoldTimer()
-  boop.state.gold.autoGrabPending = false
-  boop.state.gold.autoGrabPendingAt = nil
-  boop.state.gold.dropped = false
+  local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
+  observation = observation or (
+    runtime()
+      and boop.runtime.roomObservationSnapshot
+      and boop.runtime.roomObservationSnapshot()
+      or {}
+  )
+  local roomId = tostring(observation.roomId or "")
+  local roomGeneration = tonumber(observation.generation) or 0
+  local operation = currentGoldOperation()
+
+  local list = gmcp
+    and gmcp.Char
+    and gmcp.Char.Items
+    and gmcp.Char.Items.List
+    or nil
+  local currentGoldItem = type(list) == "table"
+    and list.location == "room"
+    and type(list.items) == "table"
+    and findRoomGoldItem(list.items)
+    or nil
+  local evidenceComplete = observation.infoSeen
+    and observation.itemsSeen
+    and roomId ~= ""
+    and tostring(
+      gmcp
+        and gmcp.Room
+        and gmcp.Room.Info
+        and gmcp.Room.Info.num
+        or ""
+    ) == roomId
+
+  if operation then
+    if operation.phase == GOLD_PHASE.PACK_PENDING then
+      return operation
+    end
+    if tostring(operation.roomId or "") ~= roomId
+        or tonumber(operation.roomGeneration) ~= roomGeneration then
+      completeGoldOperation(operation.generation, "room_changed")
+      operation = false
+    elseif operation.phase == GOLD_PHASE.DEFERRED_ROOM
+        and evidenceComplete
+        and currentGoldItem then
+      cancelAutoGrabGoldTimer()
+      stopGoldPendingTimeout()
+      operation.phase = GOLD_PHASE.PICKUP_PENDING
+      operation.goldItemId = tostring(currentGoldItem.id or observation.goldItemId or "")
+      operation.flushTimer = false
+      operation.timeoutTimer = false
+      setBlocker(operation.blockerOwner, "gold_pickup_pending", "gold pickup pending", {
+        combat = true,
+        queue = true,
+        gold = true,
+        walk = true,
+      }, {
+        gold_get = true,
+      }, {
+        source = operation.source,
+        observed = {
+          generation = operation.generation,
+          room = operation.roomId,
+          roomGeneration = operation.roomGeneration,
+          goldItem = operation.goldItemId,
+        },
+      })
+      boop.markGoldQueueIntent(operation.packTarget)
+      queueGoldCommands()
+      return operation
+    else
+      return operation
+    end
+  end
+
+  state.gold.generation = (tonumber(state.gold.generation) or 0) + 1
+  local generation = state.gold.generation
+  local phase = evidenceComplete and currentGoldItem
+    and GOLD_PHASE.PICKUP_PENDING
+    or GOLD_PHASE.DEFERRED_ROOM
+  operation = {
+    generation = generation,
+    phase = phase,
+    terminal = false,
+    blockerOwner = "gold:" .. tostring(generation),
+    source = tostring(source or "gold detected"),
+    roomId = roomId,
+    roomGeneration = roomGeneration,
+    goldItemId = tostring(
+      currentGoldItem and currentGoldItem.id or observation.goldItemId or ""
+    ),
+    packTarget = boop.util.trim(packTarget or ""),
+    getRetries = 0,
+    putRetries = 0,
+    flushTimer = false,
+    timeoutTimer = false,
+  }
+  state.gold.operation = operation
+
+  if phase == GOLD_PHASE.DEFERRED_ROOM then
+    setBlocker(operation.blockerOwner, "gold_deferred_room", "gold awaiting room evidence", {
+      combat = true,
+      queue = true,
+      gold = true,
+      walk = true,
+    }, {
+      gmcp = true,
+    }, {
+      source = operation.source,
+      observed = {
+        generation = generation,
+        room = roomId,
+        roomGeneration = roomGeneration,
+        items = not not observation.itemsSeen,
+      },
+    })
+    boop.markGoldQueueIntent(operation.packTarget)
+    if boop.requestRoomItemsOnce then
+      boop.requestRoomItemsOnce("gold awaiting complete room evidence")
+    end
+    if tempTimer then
+      local timerId = false
+      timerId = tempTimer(AUTO_GOLD_FLUSH_SECONDS, function()
+        local active = currentGoldOperation(generation, GOLD_PHASE.DEFERRED_ROOM)
+        if not active or active.flushTimer ~= timerId then
+          return
+        end
+        active.flushTimer = false
+        boop.markGoldQueueIntent(active.packTarget)
+        if boop.maybeFlushPendingGold then
+          boop.maybeFlushPendingGold("gold evidence fallback")
+        end
+      end)
+      operation.flushTimer = timerId or false
+    end
+    armGoldPendingTimeout(generation, GOLD_PHASE.DEFERRED_ROOM)
+  else
+    setBlocker(operation.blockerOwner, "gold_pickup_pending", "gold pickup pending", {
+      combat = true,
+      queue = true,
+      gold = true,
+      walk = true,
+    }, {
+      gold_get = true,
+    }, {
+      source = operation.source,
+      observed = {
+        generation = generation,
+        room = roomId,
+        roomGeneration = roomGeneration,
+        goldItem = operation.goldItemId,
+      },
+    })
+    boop.markGoldQueueIntent(operation.packTarget)
+    queueGoldCommands()
+  end
+  return operation
+end
+
+transferGoldToPacking = function(generation)
+  local operation = currentGoldOperation(generation, GOLD_PHASE.PICKUP_PENDING)
+  if not operation then return false end
+  stopGoldPendingTimeout()
+  operation = currentGoldOperation(generation, GOLD_PHASE.PICKUP_PENDING)
+  if not operation then return false end
+
+  operation.phase = GOLD_PHASE.PACK_PENDING
+  operation.roomId = ""
+  operation.roomGeneration = 0
+  operation.goldItemId = ""
+  operation.getRetries = 0
+  operation.putRetries = 0
+  operation.flushTimer = false
+  operation.timeoutTimer = false
+  if boop.util.trim(operation.packTarget or "") == "" then
+    return completeGoldOperation(generation, "get_success_no_pack")
+  end
+
+  setBlocker(operation.blockerOwner, "gold_pack_pending", "gold packing pending", {
+    combat = true,
+    queue = true,
+    gold = true,
+    walk = true,
+  }, {
+    gold_put = true,
+  }, {
+    source = operation.source,
+    observed = {
+      generation = generation,
+      inventory = true,
+      pack = operation.packTarget,
+    },
+  })
+  boop.markGoldQueueIntent(operation.packTarget)
+  queueGoldCommands()
+  return true
+end
+
+local function clearPendingGoldDrop(reason)
+  local operation = currentGoldOperation()
+  if not operation then return false end
   if reason then
-    boop.trace.log("gold pending clear: " .. tostring(reason))
+    boop.trace.log(string.format(
+      "gold room item removed while %s: %s",
+      tostring(operation.phase),
+      tostring(reason)
+    ))
   end
   return true
 end
 
 local function maybeFlushPendingGold(reason)
-  boop.state = boop.state or {}
-  if not boop.state.gold.autoGrabPending then return false end
-  if shouldHold("gold") then
-    traceHeld("gold", reason or "pending age exceeded")
+  local operation = currentGoldOperation()
+  if not operation then
     return false
   end
-  if boop.state.gold.getPending or boop.state.gold.putPending then return false end
-  local startedAt = tonumber(boop.state.gold.autoGrabPendingAt) or 0
-  if startedAt <= 0 then return false end
-  if (nowSeconds() - startedAt) < AUTO_GOLD_FLUSH_SECONDS then return false end
-  return flushPendingGold(reason or "pending age exceeded")
+  if operation.phase == GOLD_PHASE.DEFERRED_ROOM then
+    if boop.requestRoomItemsOnce then
+      boop.requestRoomItemsOnce(reason or "gold awaiting room evidence")
+    end
+    return false
+  end
+  if operation.timeoutTimer then
+    return false
+  end
+  return flushPendingGold(reason or "gold stage ready")
 end
 
-local function onGoldDetected(source)
-  if not boop.config.enabled then return end
-  if not boop.config.autoGrabGold then return end
-  boop.state = boop.state or {}
-
-  if shouldHold("gold") then
-    boop.state.gold.autoGrabPending = true
-    boop.state.gold.autoGrabPendingAt = nowSeconds()
-    boop.state.gold.dropped = true
-    traceHeld("gold", source or "gold detected")
-    return
-  end
-
+local function onGoldDetected(source, item)
+  if not boop.config.enabled or not boop.config.autoGrabGold then return end
+  local observation = runtime()
+    and boop.runtime.roomObservationSnapshot
+    and boop.runtime.roomObservationSnapshot()
+    or {}
+  observation.goldItemId = tostring(item and item.id or "")
   boop.trace.log("gold drop detected" .. (source and (": " .. source) or ""))
-
-  if boop.config.useQueueing then
-    boop.state.gold.autoGrabPending = true
-    boop.state.gold.autoGrabPendingAt = nowSeconds()
-    boop.state.gold.dropped = true
-
-    local denizenCount = boop.state.targeting.denizens and #boop.state.targeting.denizens or 0
-    if denizenCount <= 0 then
-      flushPendingGold("room clear on drop")
-      return
-    end
-
-    cancelAutoGrabGoldTimer()
-    boop.state.gold.autoGrabTimer = tempTimer(AUTO_GOLD_FLUSH_SECONDS, function()
-      if not boop.config or not boop.config.enabled or not boop.config.autoGrabGold then
-        cancelAutoGrabGoldTimer()
-        return
-      end
-      flushPendingGold("fallback timer")
-    end)
-  else
-    if boop.state.gold.getPending or boop.state.gold.putPending then
-      return
-    end
-    queueGoldCommands()
-  end
-end
-
-cancelAutoGrabGoldTimer = function()
-  if boop.state and boop.state.gold.autoGrabTimer then
-    killTimer(boop.state.gold.autoGrabTimer)
-    boop.state.gold.autoGrabTimer = nil
-  end
+  startGoldOperation(
+    source,
+    observation,
+    boop.util.trim(boop.config.goldPack or "")
+  )
 end
 
 flushPendingGold = function(reason)
-  boop.state = boop.state or {}
-  if not boop.state.gold.autoGrabPending then return false end
-  if shouldHold("gold") then
+  local operation = currentGoldOperation()
+  if not operation then return false end
+  if operation.phase == GOLD_PHASE.DEFERRED_ROOM then
+    return maybeFlushPendingGold(reason)
+  end
+  if operation.timeoutTimer then
+    return false
+  end
+  if not goldDispatchAuthorized(operation) then
     traceHeld("gold", reason or "pending flush")
     return false
   end
   cancelAutoGrabGoldTimer()
-  boop.state.gold.autoGrabPending = false
-  boop.state.gold.autoGrabPendingAt = nil
-  boop.state.gold.dropped = false
   boop.trace.log("gold pending flush: " .. tostring(reason or "unspecified"))
-  queueGoldCommands()
-  return true
+  return queueGoldCommands()
 end
 
 boop.flushPendingGold = flushPendingGold
@@ -630,105 +1010,84 @@ boop.maybeFlushPendingGold = maybeFlushPendingGold
 
 local function autoGrabRoomItem(item)
   if not isGoldItem(item) then return end
-  onGoldDetected("gmcp room item")
+  onGoldDetected("gmcp room item", item)
 end
 
 function boop.onGoldDropLine(rawLine)
   local line = boop.util.safeLower(boop.util.trim(rawLine or ""))
-  if line == "" then return end
-  if not line:find("sovereign", 1, true) then return end
+  if line == "" or not line:find("sovereign", 1, true) then return end
   onGoldDetected("text line")
 end
 
 local function retryGoldGet(reason)
-  boop.state = boop.state or {}
-  if not boop.state.gold.getPending then return end
-  local retries = boop.state.gold.getRetries or 0
+  local operation = currentGoldOperation(nil, GOLD_PHASE.PICKUP_PENDING)
+  if not operation or not goldDispatchAuthorized(operation) then return false end
+  local retries = tonumber(operation.getRetries) or 0
   if retries >= 2 then
     boop.trace.log("gold get failed; giving up: " .. tostring(reason))
     boop.util.err("auto gold: unable to get sovereigns; check room loot/line timing")
-    boop.state.gold.getPending = false
-    boop.state.gold.putPending = false
-    boop.state.gold.packTarget = ""
-    stopGoldPendingTimeout()
-    return
+    return completeGoldOperation(operation.generation, "get_retry_exhausted")
   end
-  boop.state.gold.getRetries = retries + 1
-  armGoldPendingTimeout()
+  stopGoldPendingTimeout()
+  operation = currentGoldOperation(operation.generation, GOLD_PHASE.PICKUP_PENDING)
+  if not operation or not goldDispatchAuthorized(operation) then return false end
   queueGoldCommand("get sovereigns")
-  boop.trace.log("gold get retry " .. tostring(boop.state.gold.getRetries) .. ": " .. tostring(reason))
+  operation.getRetries = retries + 1
+  boop.markGoldQueueIntent(operation.packTarget)
+  armGoldPendingTimeout(operation.generation, operation.phase)
+  boop.trace.log("gold get retry " .. tostring(operation.getRetries) .. ": " .. tostring(reason))
+  return true
 end
 
 local function retryGoldPut(reason)
-  boop.state = boop.state or {}
-  if not boop.state.gold.putPending then return end
-  local pack = boop.state.gold.packTarget or ""
+  local operation = currentGoldOperation(nil, GOLD_PHASE.PACK_PENDING)
+  if not operation or not goldDispatchAuthorized(operation) then return false end
+  local pack = boop.util.trim(operation.packTarget or "")
   if pack == "" then
-    boop.state.gold.putPending = false
-    return
+    return completeGoldOperation(operation.generation, "put_retry_exhausted")
   end
-
-  local retries = boop.state.gold.putRetries or 0
+  local retries = tonumber(operation.putRetries) or 0
   if retries >= 1 then
     boop.trace.log("gold put failed for pack " .. pack .. "; giving up: " .. tostring(reason))
     boop.util.err("auto gold: unable to put sovereigns in " .. pack .. "; use `boop pack test`")
-    boop.state.gold.putPending = false
-    stopGoldPendingTimeout()
-    return
+    return completeGoldOperation(operation.generation, "put_retry_exhausted")
   end
-  boop.state.gold.putRetries = retries + 1
-  armGoldPendingTimeout()
+  stopGoldPendingTimeout()
+  operation = currentGoldOperation(operation.generation, GOLD_PHASE.PACK_PENDING)
+  if not operation or not goldDispatchAuthorized(operation) then return false end
   queueGoldCommand("put sovereigns in " .. pack)
-  boop.trace.log("gold put retry " .. tostring(boop.state.gold.putRetries) .. " for " .. pack .. ": " .. tostring(reason))
+  operation.putRetries = retries + 1
+  boop.markGoldQueueIntent(operation.packTarget)
+  armGoldPendingTimeout(operation.generation, operation.phase)
+  boop.trace.log("gold put retry " .. tostring(operation.putRetries) .. " for " .. pack .. ": " .. tostring(reason))
+  return true
 end
 
 function boop.onGoldGetSuccess()
-  boop.state = boop.state or {}
-  if not boop.state.gold.getPending then return end
-  boop.state.gold.getPending = false
-  boop.state.gold.getRetries = 0
-  if not boop.state.gold.putPending then
-    boop.state.gold.putPending = false
-    stopGoldPendingTimeout()
-  end
+  local operation = currentGoldOperation(nil, GOLD_PHASE.PICKUP_PENDING)
+  if not operation then return false end
   boop.trace.log("gold get success")
-  if not boop.state.gold.putPending and boop.walk and boop.walk.maybeAdvance then
-    boop.walk.maybeAdvance("gold get success")
-  end
+  return transferGoldToPacking(operation.generation)
 end
 
 function boop.onGoldPutSuccess()
-  boop.state = boop.state or {}
-  if not boop.state.gold.putPending then return end
-  boop.state.gold.putPending = false
-  boop.state.gold.putRetries = 0
-  stopGoldPendingTimeout()
+  local operation = currentGoldOperation(nil, GOLD_PHASE.PACK_PENDING)
+  if not operation then return false end
   boop.trace.log("gold put success")
-  if boop.walk and boop.walk.maybeAdvance then
-    boop.walk.maybeAdvance("gold put success")
-  end
+  return completeGoldOperation(operation.generation, "put_success")
 end
 
 function boop.onGoldCommandFailure(line)
-  boop.state = boop.state or {}
+  local operation = currentGoldOperation()
+  if not operation then return false end
   local reason = boop.util.trim(line or "")
-  if boop.state.gold.getPending then
-    retryGoldGet(reason)
-    if not boop.state.gold.getPending and not boop.state.gold.putPending and boop.walk and boop.walk.maybeAdvance then
-      boop.walk.maybeAdvance("gold get failed closed")
-    end
-    return
+  if operation.phase == GOLD_PHASE.PICKUP_PENDING then
+    return retryGoldGet(reason)
   end
-  if boop.state.gold.putPending then
-    retryGoldPut(reason)
-    if not boop.state.gold.putPending and boop.walk and boop.walk.maybeAdvance then
-      boop.walk.maybeAdvance("gold put failed closed")
-    end
-    return
+  if operation.phase == GOLD_PHASE.PACK_PENDING then
+    return retryGoldPut(reason)
   end
-  if boop.walk and boop.walk.maybeAdvance then
-    boop.walk.maybeAdvance("gold failure clear")
-  end
+  return false
 end
 
 function boop.onDiagReadyLine()
@@ -809,15 +1168,13 @@ function boop.onRoomItemsList()
   end
   boop.targets.updateRoomItems(items)
 
-  -- Fallback for cases where item-add events are delayed/coalesced: if gold
-  -- exists in the room list and we're not already processing a pickup, queue it.
+  -- Fallback for cases where item-add events are delayed/coalesced: a complete
+  -- room list can advance a deferred operation, while duplicate evidence
+  -- coalesces into the current generation.
   local goldItem = findRoomGoldItem(items)
   traceRoomItemsList(items, goldItem)
   if goldItem then
-    boop.state = boop.state or {}
-    if not (boop.state.gold.autoGrabPending or boop.state.gold.getPending or boop.state.gold.putPending) then
-      autoGrabRoomItem(goldItem)
-    end
+    autoGrabRoomItem(goldItem)
   end
   if shouldHold("walk") then
     traceHeld("walk", "room items list")
@@ -854,14 +1211,7 @@ function boop.onRoomItemsRemove()
   boop.targets.removeRoomItem(removed)
 
   if removedWasGold then
-    boop.state = boop.state or {}
-    if boop.state.gold.autoGrabPending then
-      clearPendingGoldDrop("gold removed before flush")
-    end
-    if boop.state.gold.getPending or boop.state.gold.putPending then
-      boop.trace.log("gold room item removed while pending: clearing stale gold state")
-      boop.clearGoldQueueIntent()
-    end
+    clearPendingGoldDrop("gold removed while operation pending")
   end
 
   if removedId ~= "" and boop.targets and boop.targets.clearTargetCall and tostring(boop.state.targeting.calledTargetId or "") == removedId then
@@ -982,7 +1332,12 @@ function boop.onRoomInfo()
   if previousRoomText ~= currentRoomText then
     targeting.movedRooms = true
     targeting.lastRoom = previousRoom
-    boop.clearGoldQueueIntent()
+    local goldOperation = currentGoldOperation()
+    if goldOperation
+      and (goldOperation.phase == GOLD_PHASE.DEFERRED_ROOM
+        or goldOperation.phase == GOLD_PHASE.PICKUP_PENDING) then
+      completeGoldOperation(goldOperation.generation, "room_changed")
+    end
     if boop.targets and boop.targets.clearTargetCall then
       boop.targets.clearTargetCall("room changed")
     end
