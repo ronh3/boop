@@ -3,12 +3,14 @@ local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper
 describe("boop walk integration", function()
   local saved_temp_timer
   local saved_kill_timer
+  local saved_send
   local saved_send_gmcp
   local saved_feedback
   local saved_trace_log
   local timers
   local walker
   local sent_gmcp
+  local sent
   local feedback
   local trace_lines
 
@@ -16,6 +18,16 @@ describe("boop walk integration", function()
     local count = 0
     for _, event in ipairs((walker and walker.raisedEvents) or {}) do
       if event.name == name then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
+  local function countSent(command)
+    local count = 0
+    for _, entry in ipairs(sent or {}) do
+      if entry.command == command then
         count = count + 1
       end
     end
@@ -38,6 +50,7 @@ describe("boop walk integration", function()
     end
     helper.reset()
     timers = helper.newTimerQueue()
+    sent = {}
     sent_gmcp = {}
     feedback = {
       err = {},
@@ -49,6 +62,12 @@ describe("boop walk integration", function()
 
     _G.tempTimer = timers.tempTimer
     _G.killTimer = timers.killTimer
+    _G.send = function(command, echoBack)
+      sent[#sent + 1] = {
+        command = command,
+        echoBack = echoBack,
+      }
+    end
     _G.sendGMCP = function(command)
       sent_gmcp[#sent_gmcp + 1] = command
     end
@@ -128,6 +147,7 @@ describe("boop walk integration", function()
   before_each(function()
     saved_temp_timer = _G.tempTimer
     saved_kill_timer = _G.killTimer
+    saved_send = _G.send
     saved_send_gmcp = _G.sendGMCP
     saved_feedback = {
       err = boop.util.err,
@@ -168,6 +188,7 @@ describe("boop walk integration", function()
     end
     _G.tempTimer = saved_temp_timer
     _G.killTimer = saved_kill_timer
+    _G.send = saved_send
     _G.sendGMCP = saved_send_gmcp
     boop.util.err = saved_feedback.err
     boop.util.info = saved_feedback.info
@@ -483,6 +504,113 @@ describe("boop walk integration", function()
     assert.is_true(secondEmitter ~= firstEmitter)
     timers.run(secondEmitter)
     assert.are.equal(2, countRaised("demonwalker.move"))
+  end)
+
+  it("timeout-under-owner recovery permits one guarded walker move", function()
+    local state = seedReadyWalk()
+    boop.config.autoGrabGold = true
+    boop.config.goldPack = ""
+    boop.config.useQueueing = false
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = {
+        {
+          id = "9001",
+          name = "some gold sovereigns",
+          attrib = "t",
+        },
+      },
+    }
+
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    local operation = boop.state.gold.operation
+    assert.is_table(operation)
+    assert.are.equal("pickup_pending", operation.phase)
+    local goldOwner = operation.blockerOwner
+    local expiredTimer = operation.timeoutTimer
+    local getCountBeforeTimeout = countSent(
+      "queue add freestand get sovereigns"
+    )
+    assert.is_function(timers.callback(expiredTimer))
+
+    helper.setRuntimeBlocker({
+      owner = "interrupt:timeout-hold",
+      code = "interrupt_pending",
+      label = "interrupt pending",
+      systems = {
+        combat = true,
+        queue = true,
+        gold = true,
+        walk = true,
+      },
+      waitsFor = { prompt = true },
+    })
+
+    timers.run(expiredTimer)
+
+    operation = boop.state.gold.operation
+    assert.is_table(operation)
+    assert.is_false(
+      operation.timeoutTimer,
+      "TIMEOUT_UNDER_OWNER_TOKEN_NOT_CONSUMED"
+    )
+    assert.is_nil(boop.state.gold.pendingTimer)
+    assert.are.equal(getCountBeforeTimeout, countSent(
+      "queue add freestand get sovereigns"
+    ))
+    assert.are.equal(0, state.walk.reservationId)
+    assert.is_false(state.walk.moveQueued)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+
+    timers.run(expiredTimer)
+    assert.is_false(operation.timeoutTimer)
+    assert.are.equal(getCountBeforeTimeout, countSent(
+      "queue add freestand get sovereigns"
+    ))
+    assert.are.equal(0, state.walk.reservationId)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+
+    assert.is_true(boop.runtime.clearBlocker(
+      "interrupt:timeout-hold",
+      "timeout-under-owner released"
+    ))
+    boop.tick()
+
+    operation = boop.state.gold.operation
+    assert.is_table(operation)
+    assert.are.equal("pickup_pending", operation.phase)
+    assert.are.equal(getCountBeforeTimeout + 1, countSent(
+      "queue add freestand get sovereigns"
+    ))
+    assert.is_number(operation.timeoutTimer)
+    assert.is_true(operation.timeoutTimer ~= expiredTimer)
+    assert.are.equal(0, state.walk.reservationId)
+    assert.is_false(state.walk.moveQueued)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+
+    local replacementTimer = operation.timeoutTimer
+    assert.is_true(boop.onGoldGetSuccess())
+    assert.is_false(boop.state.gold.operation)
+    assert.is_nil(boop.state.combat.blockersByOwner[goldOwner])
+    assert.is_true(timers.cancelled[replacementTimer])
+    local terminalTick = timers.nextId
+    assert.is_function(timers.callback(terminalTick))
+    assert.are.equal(0, state.walk.reservationId)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+
+    timers.run(terminalTick)
+
+    assert.are.equal(1, state.walk.reservationId)
+    assert.is_true(state.walk.moveQueued)
+    assert.is_number(state.walk.emitterTimer)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+
+    local emitter = state.walk.emitterTimer
+    timers.run(emitter)
+    assert.are.equal(1, countRaised("demonwalker.move"))
+
+    timers.run(emitter)
+    assert.are.equal(1, countRaised("demonwalker.move"))
   end)
 
   local staleCases = {

@@ -8,6 +8,7 @@ describe("boop tick", function()
   local save_config_stub
   local sync_enabled_stub
   local flush_gold_stub
+  local walk_advance_stub
   local sent
   local scheduled
 
@@ -54,6 +55,15 @@ describe("boop tick", function()
     return boop.state.gold.operation
   end
 
+  local function scheduledEntry(timerId)
+    for _, entry in ipairs(scheduled) do
+      if entry.id == timerId then
+        return entry
+      end
+    end
+    return nil
+  end
+
   local function seedGoldEvidence()
     helper.seedRoomObservation("1", {
       generation = 1,
@@ -85,41 +95,26 @@ describe("boop tick", function()
   end
 
   local function readyBlockedStage(stage, owner)
-    seedGoldEvidence()
-    boop.config.goldPack = (stage == "initial_get" or stage == "get_retry")
-      and ""
-      or "pack"
+    local operation = startGoldStage(stage)
+    helper.setRuntimeBlocker({
+      owner = owner,
+      code = "test_gold_hold",
+      systems = { combat = true, queue = true, gold = true, walk = true },
+    })
 
-    if stage == "initial_get" then
-      helper.setRuntimeBlocker({
-        owner = owner,
-        code = "test_gold_hold",
-        systems = { combat = true, queue = true, gold = true, walk = true },
-      })
-      boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
-    else
-      boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
-      if stage == "put" or stage == "put_retry" then
-        boop.onGoldGetSuccess()
-      end
-      if stage == "get_retry" or stage == "put_retry" then
-        boop.onGoldCommandFailure("retry fixture")
-        local operation = currentOperation()
-        operation.timeoutTimer = false
-        boop.markGoldQueueIntent(operation.packTarget)
-      end
-      helper.setRuntimeBlocker({
-        owner = owner,
-        code = "test_gold_hold",
-        systems = { combat = true, queue = true, gold = true, walk = true },
-      })
-      if stage == "put" then
-        local operation = currentOperation()
-        operation.timeoutTimer = false
-        boop.markGoldQueueIntent(operation.packTarget)
-      end
-    end
-    return currentOperation()
+    local expiredTimer = operation.timeoutTimer
+    local expiredEntry = scheduledEntry(expiredTimer)
+    assert.is_table(expiredEntry)
+    assert.is_function(expiredEntry.callback)
+    expiredEntry.callback()
+
+    operation = currentOperation()
+    assert.is_false(
+      operation.timeoutTimer,
+      "TIMEOUT_UNDER_OWNER_TOKEN_NOT_CONSUMED"
+    )
+    assert.is_nil(boop.state.gold.pendingTimer)
+    return operation, expiredTimer
   end
 
   before_each(function()
@@ -165,6 +160,10 @@ describe("boop tick", function()
   end)
 
   after_each(function()
+    if walk_advance_stub then
+      walk_advance_stub:revert()
+      walk_advance_stub = nil
+    end
     if flush_gold_stub then
       flush_gold_stub:revert()
       flush_gold_stub = nil
@@ -457,8 +456,8 @@ describe("boop tick", function()
     for _, stageName in ipairs(fleeStages) do
       local case = ownerEntry
       local stage = stageName
-      it("resumes one unchanged " .. stage .. " stage after the current " .. case.name .. " owner clears", function()
-        local operation = readyBlockedStage(stage, case.owner)
+      it("timeout-under-owner resumes one unchanged " .. stage .. " stage after the current " .. case.name .. " owner clears", function()
+        local operation, expiredTimer = readyBlockedStage(stage, case.owner)
         local generation = operation.generation
         local phase = operation.phase
         local getRetries = operation.getRetries
@@ -467,9 +466,14 @@ describe("boop tick", function()
           and "queue add freestand put sovereigns in pack"
           or "queue add freestand get sovereigns"
         local sendsBeforeHold = countSent(command)
+        local goldSendsBeforeHold = countGoldSends()
+        local scheduledBeforeRelease = #scheduled
         local originalFlush = boop.flushPendingGold
         flush_gold_stub = stub(boop, "flushPendingGold", function(reason)
           return originalFlush(reason)
+        end)
+        walk_advance_stub = stub(boop.walk, "maybeAdvance", function(_)
+          return true
         end)
 
         helper.setRuntimeBlocker({
@@ -483,21 +487,36 @@ describe("boop tick", function()
         boop.tick()
 
         assert.are.equal(sendsBeforeHold, countSent(command))
+        assert.are.equal(goldSendsBeforeHold, countGoldSends())
         assert.stub(flush_gold_stub).was_not_called()
+        assert.stub(walk_advance_stub).was_not_called()
         assert.are.equal(generation, currentOperation().generation)
         assert.are.equal(phase, currentOperation().phase)
         assert.are.equal(getRetries, currentOperation().getRetries)
         assert.are.equal(putRetries, currentOperation().putRetries)
+        assert.is_false(currentOperation().timeoutTimer)
+        assert.is_nil(boop.state.gold.pendingTimer)
+        assert.are.equal(0, countSent("command hound at 42"))
+        assert.are.equal(0, countSent("harry 42"))
 
         boop.runtime.clearBlocker("test:remaining", "final owner released")
         boop.tick()
 
         assert.stub(flush_gold_stub).was_called(1)
+        assert.stub(walk_advance_stub).was_not_called()
         assert.are.equal(sendsBeforeHold + 1, countSent(command))
+        assert.are.equal(goldSendsBeforeHold + 1, countGoldSends())
         assert.are.equal(generation, currentOperation().generation)
         assert.are.equal(phase, currentOperation().phase)
         assert.are.equal(getRetries, currentOperation().getRetries)
         assert.are.equal(putRetries, currentOperation().putRetries)
+        assert.is_number(currentOperation().timeoutTimer)
+        assert.is_true(currentOperation().timeoutTimer ~= expiredTimer)
+        assert.are.equal(
+          currentOperation().timeoutTimer,
+          boop.state.gold.pendingTimer
+        )
+        assert.are.equal(scheduledBeforeRelease + 1, #scheduled)
         assert.are.equal(0, countSent("command hound at 42"))
         assert.are.equal(0, countSent("harry 42"))
       end)

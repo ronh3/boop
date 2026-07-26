@@ -7,8 +7,10 @@ describe("boop generation-owned gold retry handling", function()
   local warn_stub
   local timer_stub
   local kill_timer_stub
+  local raise_event_stub
   local sent
   local scheduled
+  local raised_events
 
   local function goldItem(id)
     return {
@@ -42,6 +44,35 @@ describe("boop generation-owned gold retry handling", function()
   local function currentOperation()
     assert.is_table(boop.state.gold.operation)
     return boop.state.gold.operation
+  end
+
+  local function scheduledEntry(timerId)
+    for _, entry in ipairs(scheduled) do
+      if entry.id == timerId then
+        return entry
+      end
+    end
+    return nil
+  end
+
+  local function countSent(command)
+    local count = 0
+    for _, entry in ipairs(sent) do
+      if entry.command == command then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
+  local function countRaised(name)
+    local count = 0
+    for _, event in ipairs(raised_events) do
+      if event.name == name then
+        count = count + 1
+      end
+    end
+    return count
   end
 
   local function startPickup(pack, roomId, roomGeneration)
@@ -78,6 +109,7 @@ describe("boop generation-owned gold retry handling", function()
     helper.reset()
     sent = {}
     scheduled = {}
+    raised_events = {}
     boop.config.enabled = true
     boop.config.autoGrabGold = true
     boop.config.useQueueing = false
@@ -101,6 +133,12 @@ describe("boop generation-owned gold retry handling", function()
       return id
     end)
     kill_timer_stub = stub(_G, "killTimer", function(_) end)
+    raise_event_stub = stub(_G, "raiseEvent", function(name, ...)
+      raised_events[#raised_events + 1] = {
+        name = name,
+        args = { ... },
+      }
+    end)
   end)
 
   after_each(function()
@@ -110,6 +148,7 @@ describe("boop generation-owned gold retry handling", function()
     if warn_stub then warn_stub:revert() warn_stub = nil end
     if timer_stub then timer_stub:revert() timer_stub = nil end
     if kill_timer_stub then kill_timer_stub:revert() kill_timer_stub = nil end
+    if raise_event_stub then raise_event_stub:revert() raise_event_stub = nil end
   end)
 
   it("retries get under its exact owner and exhausts at the existing limit", function()
@@ -224,6 +263,107 @@ describe("boop generation-owned gold retry handling", function()
     end
   end)
 
+  local timeoutUnderOwnerCases = {
+    {
+      name = "pickup",
+      command = "queue add freestand get sovereigns",
+      start = function()
+        return startPickup("")
+      end,
+      assertOwnership = function(operation)
+        assert.are.equal("1", operation.roomId)
+        assert.are.equal(1, operation.roomGeneration)
+        assert.are.equal("9001", operation.goldItemId)
+      end,
+    },
+    {
+      name = "packing",
+      command = "queue add freestand put sovereigns in pack",
+      start = function()
+        startPickup("pack")
+        assert.is_true(boop.onGoldGetSuccess())
+        return currentOperation()
+      end,
+      assertOwnership = function(operation)
+        assert.are.equal("", operation.roomId)
+        assert.are.equal(0, operation.roomGeneration)
+        assert.are.equal("", operation.goldItemId)
+        assert.are.equal("pack", operation.packTarget)
+      end,
+    },
+  }
+
+  for _, entry in ipairs(timeoutUnderOwnerCases) do
+    local case = entry
+    it("timeout-under-owner " .. case.name .. " consumes fired token", function()
+      local operation = case.start()
+      local expiredTimer = operation.timeoutTimer
+      local expiredEntry = scheduledEntry(expiredTimer)
+      assert.is_table(expiredEntry)
+      assert.is_function(expiredEntry.callback)
+      addGoldBlocker("interrupt:timeout-hold")
+
+      local generation = operation.generation
+      local phase = operation.phase
+      local owner = operation.blockerOwner
+      local getRetries = operation.getRetries
+      local putRetries = operation.putRetries
+      local sendsBeforeTimeout = #sent
+      local commandCountBeforeTimeout = countSent(case.command)
+      local scheduledBeforeTimeout = #scheduled
+
+      expiredEntry.callback()
+
+      operation = currentOperation()
+      assert.is_false(
+        operation.timeoutTimer,
+        "TIMEOUT_UNDER_OWNER_TOKEN_NOT_CONSUMED"
+      )
+      assert.is_nil(boop.state.gold.pendingTimer)
+      assert.are.equal(generation, operation.generation)
+      assert.are.equal(phase, operation.phase)
+      assert.are.equal(owner, operation.blockerOwner)
+      assert.are.equal(getRetries, operation.getRetries)
+      assert.are.equal(putRetries, operation.putRetries)
+      case.assertOwnership(operation)
+      assert.are.equal(sendsBeforeTimeout, #sent)
+      assert.are.equal(scheduledBeforeTimeout, #scheduled)
+      assert.are.equal(0, countRaised("demonwalker.move"))
+
+      local afterFirstCallback = copyOperation(operation)
+      expiredEntry.callback()
+
+      assert.are.same(afterFirstCallback, copyOperation(currentOperation()))
+      assert.are.equal(sendsBeforeTimeout, #sent)
+      assert.are.equal(scheduledBeforeTimeout, #scheduled)
+      assert.are.equal(0, countRaised("demonwalker.move"))
+
+      assert.is_true(boop.runtime.clearBlocker(
+        "interrupt:timeout-hold",
+        "timeout-under-owner released"
+      ))
+      boop.tick()
+
+      operation = currentOperation()
+      assert.are.equal(sendsBeforeTimeout + 1, #sent)
+      assert.are.equal(
+        commandCountBeforeTimeout + 1,
+        countSent(case.command)
+      )
+      assert.are.equal(scheduledBeforeTimeout + 1, #scheduled)
+      assert.is_number(operation.timeoutTimer)
+      assert.is_true(operation.timeoutTimer ~= expiredTimer)
+      assert.are.equal(operation.timeoutTimer, boop.state.gold.pendingTimer)
+      assert.are.equal(generation, operation.generation)
+      assert.are.equal(phase, operation.phase)
+      assert.are.equal(owner, operation.blockerOwner)
+      assert.are.equal(getRetries, operation.getRetries)
+      assert.are.equal(putRetries, operation.putRetries)
+      case.assertOwnership(operation)
+      assert.are.equal(0, countRaised("demonwalker.move"))
+    end)
+  end
+
   it("makes an old timeout a zero-effect callback after a new generation starts", function()
     local first = startPickup("")
     local firstGeneration = first.generation
@@ -244,12 +384,16 @@ describe("boop generation-owned gold retry handling", function()
     startPickup("", "2", 2)
     assert.is_true(currentOperation().generation > firstGeneration)
     local before = copyOperation(currentOperation())
+    local currentTimer = currentOperation().timeoutTimer
     local sendCount = #sent
+    local scheduledCount = #scheduled
 
     oldTimeout()
 
     assert.are.same(before, copyOperation(currentOperation()))
+    assert.are.equal(currentTimer, currentOperation().timeoutTimer)
     assert.are.equal(sendCount, #sent)
+    assert.are.equal(scheduledCount, #scheduled)
   end)
 
   it("makes retry-after-room-change a zero-effect callback", function()
