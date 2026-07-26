@@ -100,17 +100,19 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `boop whitelist browse [tag]` browses area-level whitelist entries with optional tag filter.
 - `boop whitelist share [area]` emits structured party-chat packets for one area's ordered whitelist; incoming shares stay pending until explicitly applied as `merge`, `merge-reorder`, `overwrite`, or `reject`.
 - Whitelist areas support multi-tag metadata via `boop whitelist tag add/remove`, with `boop whitelist tag list` summary and per-area `boop whitelist tags <area>`.
-- `boop autogold` toggles automatic pickup of newly dropped gold sovereigns; in queueing mode it prepends `get sovereigns/` to the next queued standard attack, with a short fallback timer that places `get sovereigns` on the game's `freestand` queue if no attack follows quickly (non-queueing mode uses the same freestand queue fallback path).
-- `boop pack <container>` sets an optional auto-stash container (`put sovereigns in <container>`) used after auto gold pickup.
+- Gold is a get-confirm-put pipeline: pickup is queued independently from attacks, and confirmed inventory ownership starts inventory-owned packing through `put sovereigns in <container>`.
+- `boop pack <container>` configures the optional container consumed by the inventory-owned packing stage.
 - `boop import foxhunt [merge|overwrite|dryrun]` imports area list data from Foxhunt's `hunting` DB into boop lists.
 - Gold get/put tracking now listens for success/failure lines and performs bounded retries before warning.
 - Gold queue state is now guarded by a short stale-pending timeout; if get/put success/failure triggers are missed, boop warns, clears stale pending state, and resumes.
 - `boop prequeue` and `boop lead` make prequeue behavior explicit and independent from `useQueueing`.
 - If a standard attack is already prequeued and the current target gains shield before it fires, boop rebuilds `BOOP_ATTACK` immediately to the current shieldbreak standard when appropriate.
 - `breakShields` defaults on; when disabled, tracked target shield state is retained but does not change standard or rage attack selection.
+- Runtime safety uses owner-keyed blockers so each interrupt, pull, loot, or movement owner releases only its own hold.
 - `diag` clears queue, queues `diagnose`, and temporarily blocks attacks until a diagnose result line plus prompt.
 - `diag` includes a timeout fallback to release attack hold if diagnose result lines are missed.
-- `pull <mobname> <direction>` temporarily pauses boop, sends the configured separator-delimited move/ready-damage-rage/leap-back chain, resumes only after GMCP confirms the origin room, and clears its in-progress state on the interrupt timeout if confirmation is missed.
+- `pull <mobname> <direction>` uses a runtime hold without changing saved enabled configuration, sends the configured separator-delimited move/ready-damage-rage/leap-back chain, and releases its own hold after origin-room confirmation or the current operation timeout.
+- Interrupt, pull, gold, and walk lifecycles are generation-owned operations; callbacks from superseded generations cannot mutate current state.
 - `boop get/set` provides scriptable config access, and `boop trace` exposes a rolling decision/command buffer.
 - `boop trace` now includes compact GMCP room/info/item/gold-related room events for debugging movement and loot timing.
 - `boop gag mobs` condenses known mob attack flavor lines plus following `Health lost` lines into `Mob: Damage -> You (#### damagetype)` summaries with their own configurable gag palette.
@@ -123,7 +125,9 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Skill gating issues `Char.Skills.Get` requests per skill (group-aware).
 - `boop preset solo|party|leader|leader-call` applies recommended baseline config bundles; `leader-call` requires an assist leader to already be configured.
 - Party-size is intentionally session-local and defaults to `1` on load; it is used by stats/mob XP telemetry and is not persisted.
-- External autowalking is integrated through `demonnicAutoWalker` as a separate package; boop decides when a room is clear, the external walker decides where to move next.
+- External autowalking is integrated through `demonnicAutoWalker` as a separate package; installation is explicit and runtime paths never install or update it.
+- Movement settlement is shared room observation: boop requires current `Room.Info` plus a complete current room item list, while prompts and timers cannot mark a room settled.
+- Walker shutdown follows owned stop / attached detach: stop ends a boop-owned run but only detaches boop from an externally owned run.
 
 ## Versioning Policy
 - Bump `mfile.version` on every commit/merge.

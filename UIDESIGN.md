@@ -24,7 +24,7 @@ Current product state
 - `boop help` is a workflow-first help surface: common goals first, then topic pages with first steps, common commands, advanced commands, and notes. Routine operator workflows, including loot/gold/import, should get normal topics instead of being hidden in troubleshooting.
 - `boop roster` is separate from `boop party`.
 - `boop preset list|solo|party|leader|leader-call` exists as a shortcut for reviewing or applying recommended baseline setups.
-- Status, dashboard, config, party, and debug blocker output uses stable `code -- label` wording, with compact `systems` and `waits` fragments when automation is held.
+- Primary blocker displays use `code -- label | +N more`; trace and debug expose all active blocker owners, affected systems, and waits-for state.
 
 This file still documents the config system in detail, but new UX work should preserve coherence across all of the above surfaces rather than treating `boop config` as the entire UI.
 

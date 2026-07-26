@@ -46,7 +46,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `fly` (queues `fly` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
 - `ts` (queues `touch shield` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
 - `leap <direction>` (queues `leap <direction>` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
-- `pull <mobname> <direction>` (pauses boop, sends `<direction><sep><damage rage on mobname><sep>leap <opposite direction>`, then resumes boop when GMCP confirms you returned; timeout clears stuck pull state)
+- `pull <mobname> <direction>` (places a runtime hold, sends `<direction><sep><damage rage on mobname><sep>leap <opposite direction>`, and releases only that hold after return confirmation or timeout)
 - `boop separator <text>` (sets the game-side command separator used by `pull`; for example `|`)
 - `boop focus <speed|precision>` (sets which battlefury focus verb two-handed standards use when `Focus` is known)
 - `boop flee <on|off|toggle|percent>` (controls auto-flee and sets its threshold; example: `boop flee 25%`)
@@ -82,12 +82,12 @@ Standalone Mudlet package for Achaea auto hunting.
 - `ih` shows all valid object rows, but only GMCP-recognized denizens get whitelist/blacklist action labels.
 - Denizens on the global blacklist do not show `ih` whitelist/blacklist action labels.
 - `boop walk` integrates with `demonnicAutoWalker`; if it is missing, use `boop walk install`.
-- `boop walk stop` halts in the current room; it does not return you to the start of the loop.
+- boop walk stop ends a boop-owned run or detaches from an external run.
+- demonnicAutoWalker installation is explicit; runtime paths never install or update it.
+- Room settlement requires current Room.Info plus a complete current room item list; prompts and timers never settle the room.
 - Auto gold pickup grabs newly dropped room items whose names contain `gold sovereign`.
-- In queueing mode, auto gold pickup is prepended to the next queued standard attack as `get sovereigns/<attack>`.
-- If no standard attack follows quickly, boop falls back to the game-side `freestand` queue for `get sovereigns`.
-- Non-queueing mode uses the same freestand queue fallback path.
-- If `boop pack <container>` is set, boop follows pickup with `put sovereigns in <container>`.
+- Gold uses get-confirm-put and never chains loot with an attack.
+- If `boop pack <container>` is set, confirmed inventory pickup starts the separate `put sovereigns in <container>` stage.
 - Gold get/put has trigger-based success/failure tracking with limited retries and warning output when retries are exhausted.
 - For `Two Handed` spec with `Focus` known in `Weaponmastery`, boop prepends `battlefury focus <speed|precision>/` to standard damage attacks (never shieldbreakers); configure it with `boop focus`.
 - For `Unnamable` with `Maul` known in `Dominion`, boop prepends `hound maul &tar/`; for `Infernal` with `Maul` known in `Malignity`, it prepends `hyena maul &tar/`. Queued Maul remains in the attack alias until Achaea confirms it was used or unavailable, then boop waits for the cooldown-ready line before prepending it again.
@@ -102,8 +102,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - `fly` queues `fly` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
 - `leap <direction>` queues `leap <direction>` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
 - `pull <mobname> <direction>` uses the configured `boop separator` to send one chained game command: move in, use the highest available damage battlerage attack against the typed mob name, then `leap` back using the opposite direction.
-- When boop is already enabled, `pull` pauses it before the chained move starts and resumes it only after GMCP confirms you returned to the origin room.
-- If the return confirmation is missed, `pull` clears its in-progress state after the interrupt timeout; it only resumes boop automatically when the current room still matches the origin room.
+- Pull uses a runtime hold and never changes saved enabled configuration.
+- Return-room GMCP or the current operation timeout releases only the pull-owned hold; stale callbacks from older pull generations are ignored.
 - If there is no ready damage battlerage attack or not enough rage to use one, `pull` aborts before movement.
 - `pullRageReserve` optionally makes normal battlerage spending hold back enough rage to preserve a pull-capable damage hit.
 - With `pullRageReserve` on, rage shieldbreak also yields to a standard shieldbreak when the class/profile already has one available.
@@ -115,7 +115,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop weapon` stores class-scoped wield targets that profiles can consume when they need a specific weapon role; prefer raw GMCP item ids because wield tracking matches exact ids most reliably.
 - `boop theme list` exposes boop's built-in themes plus the built-in ADB city/class palette names, so themes like `ashtan`, `depthswalker`, and `targossas` work directly in boop.
 - Trace buffer records recent boop decisions/commands for post-mortem debugging (`boop trace show`).
-- Status, home/control/config, party, and debug blocker rows use stable `code -- label` wording; held automation also shows affected `systems` and `waits` fragments where available.
+- Blockers display as code -- label | +N more; trace/debug list all active blocker owners.
 - Attack-line gagging can be toggled separately for your own attacks and other players' attacks, replacing matched lines with `Who: What -> Victim`.
 - Self attack gag summaries coalesce repeated same-source/same-type damage such as multihit weapon attacks and gear procs, and append total damage before balance time.
 - Battlerage attack lines on the same target fold into the pending self attack summary so their damage remains visible when standard and rage actions fire together.
@@ -143,6 +143,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop ragemode hybrid` uses the same conditional/priming logic, but falls back to normal damage when reserve logic would otherwise hold.
 - `boop ragemode tempo` is aff-first, but can spend on damage when rolling rage gain predicts quick recovery (10s window).
 - Tune tempo behavior with `boop set tempoRageWindowSeconds <seconds>` and `boop set tempoSqueezeEtaSeconds <seconds>`.
+- Repository terminal CI authority runs only after upstream GSD execution and every repository mutation finish: the parent pushes immutable final HEAD, then runs tools/wait_for_exact_ci.sh "$FINAL_SHA"; CI evidence is not committed, and any later mutation requires a rerun.
 - `boop stats login` shows current-login totals across boop on/off toggles; unlike `lifetime`, it is not persisted between logins.
 - `boop help` is workflow-first: it starts from common goals, then each topic shows first steps, common commands, advanced commands, and notes. Normal workflows include solo hunting, targeting, combat, interrupts, loot/gold, party, stats, and diagnostics.
 - `boop targeting` and `boop ragemode` now show current value + usage when called without arguments, and clear errors for invalid values.
