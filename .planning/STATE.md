@@ -4,15 +4,15 @@ milestone: v1.0
 milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
-status: ready_to_plan
-stopped_at: Phase 03 context gathered
-last_updated: "2026-07-25T22:52:42.573Z"
-last_activity: 2026-07-19
-last_activity_desc: Restored GMCP-backed IH denizen action filtering
+status: executing
+stopped_at: Phase 03 planned; ready to execute
+last_updated: "2026-07-26T00:37:21-07:00"
+last_activity: 2026-07-25
+last_activity_desc: Planned and verified all 9 Phase 03 plans
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 14
+  total_plans: 23
   completed_plans: 14
   percent: 33
 ---
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 ## Current Position
 
-Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — READY TO PLAN
-Plan: 0 of TBD
-Status: Phase 02 complete; next action is to plan Phase 03
-Last activity: 2026-07-19 — Restored GMCP-backed IH denizen action filtering
+Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — READY TO EXECUTE
+Plan: 0 of 9
+Status: Ready to execute
+Last activity: 2026-07-25 — Planned and verified all 9 Phase 03 plans
 
 Progress: [███░░░░░░░] 33%
 
@@ -88,10 +88,12 @@ Recent decisions affecting current work:
 - [Phase 02]: Plan 02-06 documented host Busted and Mudlet Busted availability limitations rather than treating environment failures as passing tests.
 - [Phase 02]: GitHub Actions run 29143523210 passed the real Mudlet/Busted package suite on commit 312ff01, closing the prior local Busted availability gap.
 - [Phase 02]: User live-confirmed compact blocker/trace readability after installing the rebuilt package.
+- [Phase 03 planning]: Commits whose staged paths are all under `.planning/` preserve the package version; any commit touching another path bumps all four version checkpoints.
+- [Phase 03 planning]: Final authority is the tracked repository extension `tools/wait_for_exact_ci.sh` against immutable final HEAD after all GSD mutations.
+- [Phase 03 planning]: Diagnose output uses a zero-argument FIFO/tombstone evidence queue so late output cannot release a newer interrupt generation.
 
 ### Pending Todos
 
-- Plan Phase 03: Queue, Interrupt, Gold, and Autowalk Regression Coverage.
 - [Add temporary prefixes and custom attacks](./todos/pending/2026-07-19-add-temporary-prefixes-and-custom-attacks.md) after Phase 4 command trust boundaries.
 - [Verify Infernal hyena maul summary](./todos/pending/2026-07-24-verify-infernal-hyena-maul-summary.md) during Phase 5 fixture expansion after capturing a successful ungagged live sequence.
 
@@ -115,6 +117,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T22:52:42.567Z
-Stopped at: Phase 03 context gathered
+Last session: 2026-07-26T00:37:21-07:00
+Stopped at: Phase 03 planned; ready to execute
 Resume file: .planning/phases/03-queue-interrupt-gold-and-autowalk-regression-coverage/03-CONTEXT.md

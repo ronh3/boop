@@ -87,7 +87,44 @@ Plans:
   4. `demonnicAutoWalker` remains optional, with explicit install/status feedback and no silent auto-update behavior.
   5. Regression coverage catches unsafe movement, attacks during holds, wrong-room loot commands, target-removal queue drift, and permanent walk stalls.
 
-**Plans**: TBD
+**Plans**: 9 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Canonical owner-keyed blockers and shared room-observation foundation
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-02-PLAN.md — Generation-owned queued interrupts and first-terminal callback safety
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03-03-PLAN.md — Generation-owned pull lifecycle without persisted enable mutation
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 03-04-PLAN.md — Staged gold core, runtime ownership, and focused gold specs
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 03-05-PLAN.md — Gold room/event/tick integration and cross-owner resumption
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 03-06-PLAN.md — Walker core, shared all-clear evaluator, and guarded emitter
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 03-07-PLAN.md — Walker stop/arrival/event integration and ownership outcomes
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 03-08-PLAN.md — Multi-owner UI/help and aggregate attack/prequeue coverage
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 03-09-PLAN.md — Cross-lifecycle matrix, docs, and exact-HEAD authoritative validation
 
 ### Phase 4: Command Validation and Trust Boundaries
 
@@ -141,7 +178,7 @@ Phases normally execute in numeric order. Phase 4 may be planned after Phase 2 i
 |-------|----------------|--------|-----------|
 | 1. Release Gates and State Contracts | 7/7 | Complete    | 2026-07-10 |
 | 2. State Ownership Repair and Safety Baseline | 7/7 | Complete    | 2026-07-11 |
-| 3. Queue, Interrupt, Gold, and Autowalk Regression Coverage | 0/TBD | Not started | - |
+| 3. Queue, Interrupt, Gold, and Autowalk Regression Coverage | 0/9 | Not started | - |
 | 4. Command Validation and Trust Boundaries | 0/TBD | Not started | - |
 | 5. Compact Summary Fixture Expansion and Focused Gag Fixes | 0/TBD | Not started | - |
 | 6. Docs, Help, and Live Release Verification | 0/TBD | Not started | - |
