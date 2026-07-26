@@ -157,6 +157,8 @@ describe("boop walk integration", function()
       available = true,
       attached = true,
     })
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
   end)
 
   after_each(function()

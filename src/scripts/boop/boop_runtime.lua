@@ -108,7 +108,13 @@ local DOMAIN_DEFAULTS = {
     roomSettled = false,
     moveQueued = false,
     arrivalRoom = "",
-    arrivalTimer = nil,
+    generation = 0,
+    roomGeneration = 0,
+    moveIssuedForRoomGeneration = false,
+    reservationId = 0,
+    refreshTimer = nil,
+    emitterTimer = nil,
+    refreshWarned = false,
   },
   diag = {
     hold = false,
@@ -888,13 +894,22 @@ function boop.runtime.clearAutomationIntent(reason, opts)
   end
 
   if includeWalk then
-    killOwnedTimer(state.walk.arrivalTimer)
+    local walkOwner = "walk:" .. tostring(tonumber(state.walk.generation) or 0)
+    killOwnedTimer(state.walk.refreshTimer)
+    killOwnedTimer(state.walk.emitterTimer)
+    state.walk.generation = (tonumber(state.walk.generation) or 0) + 1
     state.walk.active = false
     state.walk.owned = false
     state.walk.roomSettled = false
     state.walk.moveQueued = false
     state.walk.arrivalRoom = ""
-    state.walk.arrivalTimer = nil
+    state.walk.roomGeneration = 0
+    state.walk.moveIssuedForRoomGeneration = false
+    state.walk.reservationId = tonumber(state.walk.reservationId) or 0
+    state.walk.refreshTimer = nil
+    state.walk.emitterTimer = nil
+    state.walk.refreshWarned = false
+    boop.runtime.clearBlocker(walkOwner, tostring(reason or "automation clear"))
   end
 
   if includeGold then
@@ -1005,6 +1020,21 @@ function boop.runtime.context()
       equilibriumReadyAt = state.queue.equilibriumReadyAt,
       aliasAction = tostring(state.queue.aliasAction or ""),
       aliasDirty = state.queue.aliasDirty ~= false,
+    },
+    walk = {
+      active = not not state.walk.active,
+      owned = not not state.walk.owned,
+      roomSettled = not not state.walk.roomSettled,
+      moveQueued = not not state.walk.moveQueued,
+      arrivalRoom = tostring(state.walk.arrivalRoom or ""),
+      generation = tonumber(state.walk.generation) or 0,
+      roomGeneration = tonumber(state.walk.roomGeneration) or 0,
+      moveIssuedForRoomGeneration =
+        not not state.walk.moveIssuedForRoomGeneration,
+      reservationId = tonumber(state.walk.reservationId) or 0,
+      refreshTimer = state.walk.refreshTimer,
+      emitterTimer = state.walk.emitterTimer,
+      refreshWarned = not not state.walk.refreshWarned,
     },
     gold = {
       generation = tonumber(state.gold.generation) or 0,
