@@ -551,15 +551,19 @@ describe("boop walk integration", function()
   it("invalidates a reservation and reports one transition on package loss", function()
     local state = seedReadyWalk()
     assert.is_true(boop.walk.maybeAdvance("package loss"))
+    local oldRun = state.walk.generation
     local owner = currentWalkOwner()
     local emitter = state.walk.emitterTimer
     local warningCount = #feedback.warn
     local transitionCount = countContaining(trace_lines, "walker_unavailable")
+    local invalidationCount = countContaining(trace_lines, "external_lost")
 
     walker.setAvailable(false)
     timers.run(emitter)
 
     assert.are.equal(0, countRaised("demonwalker.move"))
+    assert.are.equal(oldRun + 1, state.walk.generation)
+    assert.are.equal(0, state.walk.roomGeneration)
     assert.is_false(state.walk.moveQueued)
     assert.is_nil(state.walk.emitterTimer)
     assert.are.equal(1, #feedback.warn - warningCount)
@@ -573,6 +577,10 @@ describe("boop walk integration", function()
     assert.are.equal(
       1,
       countContaining(trace_lines, "walker_unavailable") - transitionCount
+    )
+    assert.are.equal(
+      1,
+      countContaining(trace_lines, "external_lost") - invalidationCount
     )
     assertOwner(
       owner,
@@ -635,6 +643,190 @@ describe("boop walk integration", function()
       assert.are.equal(0, countRaised("demonwalker.move"))
     end)
   end
+
+  it("invalidates and clears ownership before one owned stop event", function()
+    resetCase({
+      available = true,
+      attached = false,
+    })
+    local state = seedReadyWalk({ owned = true })
+    local refreshTimer = timers.tempTimer(0.2, function() end)
+    state.walk.refreshTimer = refreshTimer
+    assert.is_true(boop.walk.maybeAdvance("owned stop ordering"))
+    local oldRun = state.walk.generation
+    local oldOwner = currentWalkOwner()
+    local oldReservation = state.walk.reservationId
+    local emitter = state.walk.emitterTimer
+    local firstStopSnapshot
+
+    _G.raiseEvent = function(name, ...)
+      walker.raisedEvents[#walker.raisedEvents + 1] = {
+        name = name,
+        args = { ... },
+      }
+      if name == "demonwalker.stop" and not firstStopSnapshot then
+        firstStopSnapshot = {
+          active = state.walk.active,
+          generation = state.walk.generation,
+          roomGeneration = state.walk.roomGeneration,
+          reservationId = state.walk.reservationId,
+          refreshTimer = state.walk.refreshTimer,
+          emitterTimer = state.walk.emitterTimer,
+          refreshCancelled = timers.cancelled[refreshTimer] == true,
+          emitterCancelled = timers.cancelled[emitter] == true,
+          owner = state.combat.blockersByOwner[oldOwner],
+        }
+      end
+    end
+
+    boop.walk.stop(false, false)
+
+    assert.are.equal(1, countRaised("demonwalker.stop"))
+    assert.is_table(firstStopSnapshot)
+    assert.is_false(firstStopSnapshot.active)
+    assert.are.equal(oldRun + 1, firstStopSnapshot.generation)
+    assert.are.equal(0, firstStopSnapshot.roomGeneration)
+    assert.are.equal(oldReservation, firstStopSnapshot.reservationId)
+    assert.is_nil(firstStopSnapshot.refreshTimer)
+    assert.is_nil(firstStopSnapshot.emitterTimer)
+    assert.is_true(firstStopSnapshot.refreshCancelled)
+    assert.is_true(firstStopSnapshot.emitterCancelled)
+    assert.is_nil(firstStopSnapshot.owner)
+    assert.are.equal(
+      "walk stopped -- boop-owned demonwalker run ended",
+      feedback.ok[#feedback.ok]
+    )
+
+    timers.run(emitter)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+  end)
+
+  it("detaches without stopping or disabling an attached external run", function()
+    resetCase({
+      available = true,
+      attached = true,
+    })
+    local state = seedReadyWalk({ owned = false })
+    assert.is_true(boop.walk.maybeAdvance("attached detach ordering"))
+    local oldOwner = currentWalkOwner()
+    local emitter = state.walk.emitterTimer
+
+    boop.walk.stop(false, false)
+
+    assert.are.equal(0, countRaised("demonwalker.stop"))
+    assert.is_true(walker.walker.enabled)
+    assert.is_false(state.walk.active)
+    assert.is_nil(state.combat.blockersByOwner[oldOwner])
+    assert.is_true(timers.cancelled[emitter])
+    assert.are.equal(
+      "walk detached -- external demonwalker run remains active",
+      feedback.ok[#feedback.ok]
+    )
+
+    timers.run(emitter)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+  end)
+
+  it("restarts with fresh room evidence and ignores the stopped emitter", function()
+    resetCase({
+      available = true,
+      attached = false,
+    })
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
+    assert.is_true(boop.walk.start())
+    local state = boop.runtime.state()
+    helper.seedRoomObservation(state.walk.arrivalRoom, {
+      generation = state.walk.roomGeneration,
+      infoSeen = true,
+      itemsSeen = true,
+    })
+    assert.is_true(boop.walk.onRoomSettled("first run complete"))
+    local oldRun = state.walk.generation
+    local oldRoomGeneration = state.walk.roomGeneration
+    local oldEmitter = state.walk.emitterTimer
+    local oldReservation = state.walk.reservationId
+
+    boop.walk.stop(true, false)
+    walker.setAttached(false)
+    assert.is_true(boop.walk.start())
+
+    local newRun = state.walk.generation
+    local newOwner = currentWalkOwner()
+    local observation = boop.runtime.roomObservationSnapshot()
+    assert.is_true(newRun > oldRun)
+    assert.is_true(observation.generation > oldRoomGeneration)
+    assert.is_true(observation.infoSeen)
+    assert.is_false(observation.itemsSeen)
+    assert.are.equal(observation.generation, state.walk.roomGeneration)
+    assert.is_false(state.walk.roomSettled)
+    assert.is_false(state.walk.moveQueued)
+    assert.is_false(state.walk.moveIssuedForRoomGeneration)
+    assert.are.equal(oldReservation, state.walk.reservationId)
+    assertOwner(
+      newOwner,
+      "walk_room_unsettled",
+      "current room evidence is incomplete"
+    )
+
+    local before = walkStateSnapshot()
+    timers.run(oldEmitter)
+    assert.are.same(before, walkStateSnapshot())
+    assert.are.equal(0, countRaised("demonwalker.move"))
+  end)
+
+  it("makes stale arrived, settled, room-change, and finished callbacks no-ops", function()
+    local state = seedReadyWalk({
+      generation = 20,
+      roomGeneration = 30,
+      owned = true,
+    })
+    helper.setRuntimeBlocker({
+      owner = currentWalkOwner(),
+      code = "walk_room_unsettled",
+      label = "current room evidence is incomplete",
+      systems = { walk = true },
+      waitsFor = { room = true, items = true },
+    })
+    local before = walkStateSnapshot()
+
+    assert.is_false(boop.walk.onArrived(19, 30))
+    assert.is_false(boop.walk.onRoomSettled("stale list", 19, 30))
+    assert.is_false(boop.walk.onRoomChange(19, 30))
+    assert.is_false(boop.walk.onFinished(19))
+
+    assert.are.same(before, walkStateSnapshot())
+    assert.are.equal(0, timers.nextId)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+    assert.are.equal(0, countRaised("demonwalker.stop"))
+  end)
+
+  it("reports the primary manual blocker and confirms no move was queued", function()
+    local state = seedReadyWalk()
+    helper.setRuntimeBlocker({
+      owner = "gmcp:ire",
+      code = "gmcp_ire_missing",
+      label = "GMCP IRE missing",
+      systems = { walk = true },
+      waitsFor = { gmcp = true },
+    })
+    local before = walkStateSnapshot()
+
+    local ok, code, label = boop.walk.move()
+
+    assert.is_false(ok)
+    assert.are.equal("gmcp_ire_missing", code)
+    assert.are.equal("GMCP IRE missing", label)
+    assert.are.same(before, walkStateSnapshot())
+    assert.is_true(
+      feedback.warn[#feedback.warn]:find("GMCP IRE missing", 1, true) ~= nil
+    )
+    assert.is_true(
+      feedback.warn[#feedback.warn]:find("no move queued", 1, true) ~= nil
+    )
+    assert.are.equal(0, timers.nextId)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+  end)
 
   it("requests one room refresh, then warns and remains held", function()
     assert.is_true(boop.walk.start())

@@ -24,9 +24,11 @@ describe("boop event-driven state transitions", function()
   local sent_commands
   local gmcp_requests
   local raised_events
+  local saved_demonwalker
 
   before_each(function()
     helper.reset()
+    saved_demonwalker = _G.demonwalker
     scheduled_callback = nil
     scheduled_callbacks = {}
     fake_epoch = 1000000
@@ -65,6 +67,7 @@ describe("boop event-driven state transitions", function()
 
   after_each(function()
     _G.getEpoch = saved_get_epoch
+    _G.demonwalker = saved_demonwalker
     if send_stub then
       send_stub:revert()
       send_stub = nil
@@ -1260,6 +1263,162 @@ describe("boop event-driven state transitions", function()
 
     assert.are.same(operation, copyGoldOperation(boop.state.gold.operation))
     assert.are.equal(sendsBeforeRemove, countGoldSends())
+  end)
+
+  it("routes current Room.Info and complete List through one walker owner", function()
+    _G.demonwalker = {
+      enabled = true,
+      init = function() return true end,
+    }
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
+    boop.config.targetCall = false
+    helper.setTarget("", "", "100%")
+    helper.setDenizens({})
+    helper.seedRoomObservation("1", {
+      generation = 7,
+      infoSeen = true,
+      itemsSeen = true,
+    })
+
+    local state = boop.runtime.state()
+    state.walk.active = true
+    state.walk.owned = false
+    state.walk.roomSettled = true
+    state.walk.moveQueued = false
+    state.walk.arrivalRoom = "1"
+    state.walk.generation = 12
+    state.walk.roomGeneration = 7
+    state.walk.moveIssuedForRoomGeneration = false
+    state.walk.reservationId = 3
+    state.walk.refreshTimer = nil
+    state.walk.emitterTimer = nil
+    state.walk.refreshWarned = false
+
+    assert.is_true(boop.walk.maybeAdvance("event ordering seed"))
+    local owner = "walk:12"
+    local oldEmitter = state.walk.emitterTimer
+    local oldEmitterCallback
+    for _, entry in ipairs(scheduled_callbacks) do
+      if entry.id == oldEmitter then
+        oldEmitterCallback = entry.callback
+      end
+    end
+    assert.is_function(oldEmitterCallback)
+    assert.are.equal(
+      "walk_move_pending",
+      state.combat.blockersByOwner[owner].code
+    )
+
+    gmcp.Room.Info = {
+      num = 1,
+      area = "Test Area",
+      exits = {},
+    }
+    boop.onRoomInfo()
+
+    local currentObservation = boop.runtime.roomObservationSnapshot()
+    assert.are.equal(12, state.walk.generation)
+    assert.are.equal(currentObservation.generation, state.walk.roomGeneration)
+    assert.is_false(currentObservation.itemsSeen)
+    assert.is_false(state.walk.roomSettled)
+    assert.is_false(state.walk.moveQueued)
+    assert.is_false(state.walk.moveIssuedForRoomGeneration)
+    assert.is_nil(state.walk.emitterTimer)
+    assert.stub(kill_timer_stub).was_called_with(oldEmitter)
+    assert.are.equal(
+      "walk_room_unsettled",
+      state.combat.blockersByOwner[owner].code
+    )
+
+    local roomGeneration = state.walk.roomGeneration
+    local reservationAfterRoomInfo = state.walk.reservationId
+    oldEmitterCallback()
+    assert.are.equal(0, countRaised("demonwalker.move"))
+    assert.are.equal(12, state.walk.generation)
+    assert.are.equal(roomGeneration, state.walk.roomGeneration)
+    assert.are.equal(reservationAfterRoomInfo, state.walk.reservationId)
+
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = {},
+    }
+    boop.onRoomItemsList()
+
+    assert.is_true(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.is_true(state.walk.roomSettled)
+    assert.is_true(state.walk.moveQueued)
+    assert.is_true(state.walk.moveIssuedForRoomGeneration)
+    assert.are.equal(reservationAfterRoomInfo + 1, state.walk.reservationId)
+    assert.are.equal(
+      "walk_move_pending",
+      state.combat.blockersByOwner[owner].code
+    )
+    local currentEmitter = state.walk.emitterTimer
+    local currentEmitterCallback
+    for _, entry in ipairs(scheduled_callbacks) do
+      if entry.id == currentEmitter then
+        currentEmitterCallback = entry.callback
+      end
+    end
+    assert.is_function(currentEmitterCallback)
+    currentEmitterCallback()
+    assert.are.equal(1, countRaised("demonwalker.move"))
+  end)
+
+  it("ignores stale arrived and finished adapter callbacks after restart", function()
+    _G.demonwalker = {
+      enabled = true,
+      init = function() return true end,
+    }
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
+    helper.seedRoomObservation("1", {
+      generation = 9,
+      infoSeen = true,
+      itemsSeen = false,
+    })
+    local state = boop.runtime.state()
+    state.walk.active = true
+    state.walk.owned = false
+    state.walk.generation = 22
+    state.walk.roomGeneration = 9
+    state.walk.arrivalRoom = "1"
+    helper.setRuntimeBlocker({
+      owner = "walk:22",
+      code = "walk_room_unsettled",
+      label = "current room evidence is incomplete",
+      systems = { walk = true },
+      waitsFor = { room = true, items = true },
+    })
+    local before = {
+      active = state.walk.active,
+      owned = state.walk.owned,
+      generation = state.walk.generation,
+      roomGeneration = state.walk.roomGeneration,
+      reservationId = state.walk.reservationId,
+      refreshTimer = state.walk.refreshTimer,
+      emitterTimer = state.walk.emitterTimer,
+      blocker = boop.runtime.blockersSnapshot(),
+      scheduled = #scheduled_callbacks,
+    }
+
+    assert.is_false(boop.onWalkArrived(21, 8))
+    assert.is_false(boop.onWalkFinished(21))
+
+    assert.are.same(before, {
+      active = state.walk.active,
+      owned = state.walk.owned,
+      generation = state.walk.generation,
+      roomGeneration = state.walk.roomGeneration,
+      reservationId = state.walk.reservationId,
+      refreshTimer = state.walk.refreshTimer,
+      emitterTimer = state.walk.emitterTimer,
+      blocker = boop.runtime.blockersSnapshot(),
+      scheduled = #scheduled_callbacks,
+    })
+    assert.are.equal(0, countRaised("demonwalker.move"))
+    assert.are.equal(0, countRaised("demonwalker.stop"))
   end)
 
   it("re-announces core gmcp supports on connection-ready events", function()
