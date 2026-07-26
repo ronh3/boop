@@ -802,7 +802,7 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
     },
     notes = {
       "These commands are meant for quick intervention while boop is otherwise managing attacks.",
-      "If the expected confirmation line is missed, the timeout releases the attack hold.",
+      "Pending interrupts are operation-owned; repeats do not resend or restart the timer.",
       "`diag` clears queued attacks first; the other queued interrupts preserve the queue style boop normally uses.",
     },
   },
@@ -829,7 +829,7 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
     },
     notes = {
       "Autogold only reacts to room items whose names contain `gold sovereign`.",
-      "With queueing on, pickup is prepended to the next queued standard attack; otherwise boop falls back to the game-side freestand queue.",
+      "Gold is get-confirm-put: pickup, packing, and attacks are separate queued effects.",
       "`merge` is the normal Foxhunt import mode. Use `dryrun` first if you want counts without changing boop lists.",
     },
   },
@@ -872,7 +872,9 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
     notes = {
       "`assist` prefixes attacks with assist. `leader-call` also waits for the leader's called target id in the current room.",
       "`leader` mode makes boop party-call each new target you engage.",
-      "If the walker package is missing, use `boop walk install` from inside Mudlet.",
+      "Movement requires current Room.Info plus a complete current room item list; prompts and timers never settle the room.",
+      "Walk stop ends a boop-owned run or detaches from an externally owned run.",
+      "Walker install is explicit; status, start, move, and package-loss paths never install or update it.",
       "Use quotes for multi-word class names when setting a roster.",
     },
   },

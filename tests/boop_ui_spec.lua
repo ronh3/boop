@@ -501,13 +501,70 @@ describe("boop ui home", function()
     assert.is_true(joined:find("Install the required demonnicAutoWalker package into Mudlet%.") ~= nil)
   end)
 
-  it("shows the walker install note in party help notes", function()
+  it("states operation-owned interrupt timing without stale broad release wording", function()
+    echoes = {}
+
+    boop.ui.help("interrupts")
+
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find(
+      "Pending interrupts are operation-owned; repeats do not resend or restart the timer.",
+      1,
+      true
+    ) ~= nil)
+    assert.is_nil(joined:find(
+      "If the expected confirmation line is missed, the timeout releases the attack hold.",
+      1,
+      true
+    ))
+  end)
+
+  it("states get-confirm-put gold timing without stale attack chaining", function()
+    echoes = {}
+
+    boop.ui.help("loot")
+
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find(
+      "Gold is get-confirm-put: pickup, packing, and attacks are separate queued effects.",
+      1,
+      true
+    ) ~= nil)
+    assert.is_nil(joined:find(
+      "With queueing on, pickup is prepended to the next queued standard attack; otherwise boop falls back to the game-side freestand queue.",
+      1,
+      true
+    ))
+  end)
+
+  it("states current-evidence, owned-stop, and explicit-install walker timing", function()
     echoes = {}
 
     boop.ui.help("party")
 
     local joined = table.concat(echoes, "\n")
-    assert.is_true(joined:find("If the walker package is missing, use `boop walk install` from inside Mudlet%.") ~= nil)
+    assert.is_true(joined:find(
+      "Movement requires current Room.Info plus a complete current room item list; prompts and timers never settle the room.",
+      1,
+      true
+    ) ~= nil)
+    assert.is_true(joined:find(
+      "Walk stop ends a boop-owned run or detaches from an externally owned run.",
+      1,
+      true
+    ) ~= nil)
+    assert.is_true(joined:find(
+      "Walker install is explicit; status, start, move, and package-loss paths never install or update it.",
+      1,
+      true
+    ) ~= nil)
+    assert.is_nil(joined:find("prompt marks the room settled", 1, true))
+    assert.is_nil(joined:find("timer marks the room settled", 1, true))
+    assert.is_nil(joined:find(
+      "boop walk stop always stops the external run",
+      1,
+      true
+    ))
   end)
 
   it("makes rich footer command breadcrumbs clickable", function()
@@ -571,12 +628,12 @@ describe("boop ui home", function()
   end)
 
   it("shows a consolidated party dashboard and separate roster manager", function()
-    helper.setClass("occultist")
+    helper.setClass("")
     boop.ui.setEnabled(true, true)
     boop.ui.assistCommand("Leader")
     boop.ui.modeCommand("leader-call")
     boop.ui.setConfigValue("partySize", "3")
-    boop.ui.rosterCommand("occultist infernal")
+    boop.ui.rosterCommand("occultist")
     boop.state.targeting.calledTargetId = "43"
 
     echoes = {}
@@ -593,7 +650,7 @@ describe("boop ui home", function()
       joined
     )
     assert.is_true(joined:find("Whitelist sync: NONE", 1, true) ~= nil)
-    assert.is_true(joined:find("Roster: infernal", 1, true) ~= nil)
+    assert.is_true(joined:find("Roster: occultist", 1, true) ~= nil)
     assert.is_true(joined:find("Quick: boop party assist <leader> | boop party targetcall on|off | boop party affcalls on|off | boop whitelist share [area] | boop whitelist receive", 1, true) ~= nil)
   end)
 

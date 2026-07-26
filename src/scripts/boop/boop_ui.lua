@@ -358,9 +358,19 @@ local function blockerKeyText(map)
   return table.concat(keys, ", ")
 end
 
-local function makeBlockerDetails(code, label, nextAction, systems, waitsFor, source)
+local function makeBlockerDetails(
+  code,
+  label,
+  nextAction,
+  systems,
+  waitsFor,
+  source,
+  owner,
+  additionalCount
+)
   local normalizedCode = tostring(code or "")
   local normalizedLabel = tostring(label or "")
+  local normalizedAdditionalCount = tonumber(additionalCount) or 0
   if normalizedCode == "" then
     normalizedCode = "ready"
   end
@@ -368,7 +378,11 @@ local function makeBlockerDetails(code, label, nextAction, systems, waitsFor, so
     normalizedLabel = normalizedCode
   end
   local text = normalizedCode .. " -- " .. normalizedLabel
+  if normalizedAdditionalCount > 0 then
+    text = text .. " | +" .. tostring(normalizedAdditionalCount) .. " more"
+  end
   return {
+    owner = tostring(owner or ""),
     code = normalizedCode,
     label = normalizedLabel,
     text = text,
@@ -379,6 +393,7 @@ local function makeBlockerDetails(code, label, nextAction, systems, waitsFor, so
     waitsText = blockerKeyText(waitsFor),
     source = tostring(source or ""),
     active = normalizedCode ~= "ready",
+    additionalCount = normalizedAdditionalCount,
   }
 end
 
@@ -388,38 +403,23 @@ local function currentBlockerDetails()
   if type(snapshot) == "table" and tostring(snapshot.code or "") ~= "" then
     local waits = blockerKeyText(snapshot.waitsFor)
     local nextAction = waits ~= "none" and ("wait for " .. waits) or "wait for blocker to clear"
-    return makeBlockerDetails(snapshot.code, snapshot.label, nextAction, snapshot.systems, snapshot.waitsFor, snapshot.source)
+    return makeBlockerDetails(
+      snapshot.code,
+      snapshot.label,
+      nextAction,
+      snapshot.systems,
+      snapshot.waitsFor,
+      snapshot.source,
+      snapshot.owner,
+      snapshot.additionalCount
+    )
   end
 
   if not boop.config.enabled then
     return makeBlockerDetails("boop_disabled", "boop disabled", "boop on", { combat = true, queue = true, gold = true, walk = true }, { manual = true }, "ui")
   end
-  if state.diag and state.diag.hold then
-    return makeBlockerDetails("diag_hold", "diagnose pause active", "wait for diag or use diag", { combat = true, queue = true }, { prompt = true }, "ui")
-  end
-  if state.combat and state.combat.fleeing then
-    return makeBlockerDetails("fleeing", "flee in progress", "let flee resolve", { combat = true, queue = true, gold = true, walk = true }, { prompt = true }, "ui")
-  end
-  if state.gold and (state.gold.autoGrabPending or state.gold.getPending or state.gold.putPending) then
-    return makeBlockerDetails("gold_pending", "loot handling pending", "wait for gold queue", { combat = true, gold = true, queue = true }, { gold = true }, "ui")
-  end
   if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
     return makeBlockerDetails("waiting_leader_target", "waiting for leader target call", "wait for pt target line", { combat = true, target = true }, { party = true }, "ui")
-  end
-  if boop.walk and boop.walk.isActive and boop.walk.isActive() and boop.walk.blockedReason then
-    local reason = boop.walk.blockedReason()
-    if reason and reason ~= "" and reason ~= "walk is not active" then
-      if reason == "room has not settled yet" then
-        return makeBlockerDetails("room_unsettled", reason, "wait for room gmcp", { walk = true }, { gmcp = true }, "walk")
-      end
-      if reason == "room still has a valid target" or reason == "current target still set" then
-        return makeBlockerDetails("engaged_target", "engaged target", "let boop clear the room", { combat = true, target = true, walk = true }, { target = true }, "walk")
-      end
-      if reason == "move already queued" then
-        return makeBlockerDetails("walk_move_queued", reason, "wait for movement", { walk = true }, { room = true }, "walk")
-      end
-      return makeBlockerDetails("walk_blocked", reason, "boop walk status", { walk = true }, { manual = true }, "walk")
-    end
   end
   local targetId = tostring(state.targeting and state.targeting.currentTargetId or "")
   if targetId ~= "" then
@@ -436,6 +436,31 @@ local function currentBlockerDetails()
     return makeBlockerDetails("room_clear", "room clear", "boop walk start", {}, {}, "ui")
   end
   return makeBlockerDetails("ready", "ready", "let boop attack", {}, {}, "ui")
+end
+
+local function allBlockerDetails()
+  local snapshots = boop.runtime
+    and boop.runtime.blockersSnapshot
+    and boop.runtime.blockersSnapshot()
+    or {}
+  local details = {}
+  for _, snapshot in ipairs(snapshots) do
+    local waits = blockerKeyText(snapshot.waitsFor)
+    local nextAction = waits ~= "none"
+      and ("wait for " .. waits)
+      or "wait for blocker to clear"
+    details[#details + 1] = makeBlockerDetails(
+      snapshot.code,
+      snapshot.label,
+      nextAction,
+      snapshot.systems,
+      snapshot.waitsFor,
+      snapshot.source,
+      snapshot.owner,
+      0
+    )
+  end
+  return details
 end
 
 currentBlocker = function()
@@ -465,6 +490,40 @@ local function echoBlockerDetails(details)
   local text = blockerDetailText(details)
   if text ~= "" then
     boop.util.echo("Blocker details: " .. text)
+  end
+end
+
+local function echoAllBlockerDetails(details)
+  details = details or {}
+  if cecho then
+    uiPrintSection("all active blocker owners")
+    if #details == 0 then
+      uiPrintRow(nil, "Owners", "none", "grey")
+      return
+    end
+    for _, detail in ipairs(details) do
+      local text = detail.text
+      local metadata = blockerDetailText(detail)
+      if metadata ~= "" then
+        text = text .. " | " .. metadata
+      end
+      uiPrintRow(nil, detail.owner, text, blockerColor(detail))
+    end
+    return
+  end
+
+  boop.util.echo("ALL ACTIVE BLOCKER OWNERS")
+  if #details == 0 then
+    boop.util.echo("(none)")
+    return
+  end
+  for _, detail in ipairs(details) do
+    local text = detail.owner .. " | " .. detail.text
+    local metadata = blockerDetailText(detail)
+    if metadata ~= "" then
+      text = text .. " | " .. metadata
+    end
+    boop.util.echo(text)
   end
 end
 
@@ -4751,6 +4810,7 @@ function boop.ui.debug()
     if blockerDetails and blockerDetails.waitsText ~= "none" then
       uiPrintRow(nil, "Waits for", blockerDetails.waitsText, "cyan")
     end
+    echoAllBlockerDetails(allBlockerDetails())
 
     uiPrintSection("combat state")
     uiPrintRow(6, "Eq / Bal", string.format("%s / %s", tostring(eq), tostring(bal)), "cyan")
@@ -4772,6 +4832,7 @@ function boop.ui.debug()
   boop.util.echo(string.format("Runtime: enabled %s | mode %s | class %s", enabled, tostring(mode), tostring(class)))
   boop.util.echo(string.format("Flow: blocker %s | next %s", blocker, nextAction))
   echoBlockerDetails(blockerDetails)
+  echoAllBlockerDetails(allBlockerDetails())
   boop.util.echo(string.format("Combat: eq/bal %s/%s | rage %s | denizens %s", tostring(eq), tostring(bal), tostring(rage), tostring(denizenCount)))
   boop.util.echo("Target: " .. targetShown)
   boop.util.echo(string.format("Diagnostics: trace %d | gag own %s | gag others %s | gag mobs %s", traceCount, boolText(not not boop.config.gagOwnAttacks), boolText(not not boop.config.gagOthersAttacks), boolText(not not boop.config.gagMobAttacks)))
