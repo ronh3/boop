@@ -29,6 +29,16 @@ describe("boop tick", function()
     return count
   end
 
+  local function seedLifecycleOwner(owner, code, label, systems, waitsFor)
+    helper.setRuntimeBlocker({
+      owner = owner,
+      code = code,
+      label = label,
+      systems = systems or { combat = true, queue = true },
+      waitsFor = waitsFor or {},
+    })
+  end
+
   local function countGoldSends(fromIndex)
     local count = 0
     for index = fromIndex or 1, #sent do
@@ -200,6 +210,186 @@ describe("boop tick", function()
 
     assert.stub(send_stub).was_not_called()
   end)
+
+  local aggregatePairs = {
+    {
+      name = "interrupt plus gold",
+      owners = {
+        {
+          owner = "interrupt:31",
+          code = "interrupt_pending",
+          label = "interrupt pending",
+          systems = { combat = true, queue = true },
+          waitsFor = { prompt = true },
+        },
+        {
+          owner = "gold:32",
+          code = "gold_pickup_pending",
+          label = "gold pickup pending",
+          systems = { combat = true, gold = true, queue = true, walk = true },
+          waitsFor = { gold = true },
+        },
+      },
+    },
+    {
+      name = "pull plus room",
+      owners = {
+        {
+          owner = "pull:33",
+          code = "pull_away",
+          label = "pull away",
+          systems = { combat = true, queue = true, target = true, walk = true },
+          waitsFor = { room = true },
+        },
+        {
+          owner = "room:observation",
+          code = "room_partial",
+          label = "partial room state",
+          systems = {
+            combat = true,
+            gold = true,
+            queue = true,
+            target = true,
+            walk = true,
+          },
+          waitsFor = { gmcp = true, room = true },
+        },
+      },
+    },
+    {
+      name = "gold plus walk",
+      owners = {
+        {
+          owner = "gold:34",
+          code = "gold_pack_pending",
+          label = "gold pack pending",
+          systems = { combat = true, gold = true, queue = true, walk = true },
+          waitsFor = { inventory = true },
+        },
+        {
+          owner = "walk:35",
+          code = "walk_move_pending",
+          label = "move already queued",
+          systems = { combat = true, queue = true, walk = true },
+          waitsFor = { room = true },
+        },
+      },
+    },
+  }
+
+  for _, pairEntry in ipairs(aggregatePairs) do
+    for _, firstIndex in ipairs({ 1, 2 }) do
+      local pair = pairEntry
+      local clearFirst = firstIndex
+      local clearSecond = firstIndex == 1 and 2 or 1
+      it("keeps combat effects at zero for " .. pair.name .. " when owner " .. clearFirst .. " clears first", function()
+        local first = pair.owners[clearFirst]
+        local second = pair.owners[clearSecond]
+        boop.config.useQueueing = true
+        seedLifecycleOwner(
+          pair.owners[1].owner,
+          pair.owners[1].code,
+          pair.owners[1].label,
+          pair.owners[1].systems,
+          pair.owners[1].waitsFor
+        )
+        seedLifecycleOwner(
+          pair.owners[2].owner,
+          pair.owners[2].code,
+          pair.owners[2].label,
+          pair.owners[2].systems,
+          pair.owners[2].waitsFor
+        )
+
+        boop.tick()
+        assert.are.equal(0, #sent)
+        assert.are.equal(0, #scheduled)
+
+        assert.is_true(boop.runtime.clearBlocker(
+          first.owner,
+          "first lifecycle complete"
+        ))
+        boop.tick()
+
+        assert.are.equal(0, #sent)
+        assert.are.equal(0, #scheduled)
+        assert.is_table(
+          boop.runtime.state().combat.blockersByOwner[second.owner]
+        )
+
+        assert.is_true(boop.runtime.clearBlocker(
+          second.owner,
+          "final lifecycle complete"
+        ))
+        boop.tick()
+
+        assert.are.equal(
+          1,
+          countSent("setalias BOOP_ATTACK command hound at 42")
+        )
+        assert.are.equal(
+          1,
+          countSent("queue addclearfull freestand BOOP_ATTACK")
+        )
+        assert.are.equal(1, countSent("harry 42"))
+        assert.are.equal(0, countSent("command hound at 42"))
+      end)
+    end
+  end
+
+  local manualReleaseCases = {
+    {
+      name = "disabled",
+      hold = function()
+        boop.ui.setEnabled(false, true)
+      end,
+      release = function()
+        boop.ui.setEnabled(true, true)
+      end,
+    },
+    {
+      name = "manual targeting",
+      hold = function()
+        boop.ui.setTargetingMode("manual", true)
+      end,
+      release = function()
+        boop.ui.setTargetingMode("auto", true)
+      end,
+    },
+  }
+
+  for _, releaseEntry in ipairs(manualReleaseCases) do
+    local case = releaseEntry
+    it("permits one fresh evaluation only after explicit " .. case.name .. " release", function()
+      gmcp.Char.Vitals.bal = "0"
+      gmcp.Char.Vitals.eq = "0"
+      boop.state.queue.aliasAction = "existing queued action"
+      boop.state.queue.aliasDirty = false
+      boop.onBalanceUsed("balance", 3)
+      assert.are.equal(1, #scheduled)
+      local capturedPrequeue = scheduled[1].callback
+
+      case.hold()
+      capturedPrequeue()
+      boop.tick()
+
+      assert.are.equal(0, #sent)
+      assert.are.equal("existing queued action", boop.state.queue.aliasAction)
+      assert.is_false(boop.state.queue.prequeuedStandard)
+
+      case.release()
+      gmcp.Char.Vitals.bal = "1"
+      gmcp.Char.Vitals.eq = "1"
+      boop.tick()
+
+      assert.are.equal(1, countSent("settarget 42"))
+      assert.are.equal(1, countSent("command hound at 42"))
+      assert.are.equal(1, countSent("harry 42"))
+      assert.are.equal(0, countSent(
+        "setalias BOOP_ATTACK command hound at 42"
+      ))
+    end)
+  end
 
   local fleeStages = {
     "initial_get",
