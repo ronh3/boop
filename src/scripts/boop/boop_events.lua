@@ -608,6 +608,8 @@ local function armGoldPendingTimeout(generation, expectedPhase)
     if not active or active.timeoutTimer ~= timerId then
       return
     end
+    active.timeoutTimer = false
+    boop.markGoldQueueIntent(active.packTarget)
     if not goldDispatchAuthorized(active) then
       return
     end
