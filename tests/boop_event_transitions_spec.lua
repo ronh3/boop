@@ -14,6 +14,8 @@ describe("boop event-driven state transitions", function()
   local tick_stub
   local flush_gold_stub
   local walk_advance_stub
+  local walk_arrived_adapter_stub
+  local walk_finished_adapter_stub
   local saved_get_epoch
   local scheduled_callback
   local scheduled_callbacks
@@ -111,6 +113,14 @@ describe("boop event-driven state transitions", function()
     if walk_advance_stub then
       walk_advance_stub:revert()
       walk_advance_stub = nil
+    end
+    if walk_arrived_adapter_stub then
+      walk_arrived_adapter_stub:revert()
+      walk_arrived_adapter_stub = nil
+    end
+    if walk_finished_adapter_stub then
+      walk_finished_adapter_stub:revert()
+      walk_finished_adapter_stub = nil
     end
     if flush_gold_stub then
       flush_gold_stub:revert()
@@ -1419,6 +1429,28 @@ describe("boop event-driven state transitions", function()
     })
     assert.are.equal(0, countRaised("demonwalker.move"))
     assert.are.equal(0, countRaised("demonwalker.stop"))
+  end)
+
+  it("treats Mudlet event names as adapter metadata instead of generation tokens", function()
+    local arrivedRunGeneration = "unset"
+    local arrivedRoomGeneration = "unset"
+    local finishedRunGeneration = "unset"
+    walk_arrived_adapter_stub = stub(boop.walk, "onArrived", function(runGeneration, roomGeneration)
+      arrivedRunGeneration = runGeneration
+      arrivedRoomGeneration = roomGeneration
+      return true
+    end)
+    walk_finished_adapter_stub = stub(boop.walk, "onFinished", function(runGeneration)
+      finishedRunGeneration = runGeneration
+      return true
+    end)
+
+    assert.is_true(boop.onWalkArrived("demonwalker.arrived"))
+    assert.is_true(boop.onWalkFinished("demonwalker.finished"))
+
+    assert.is_nil(arrivedRunGeneration)
+    assert.is_nil(arrivedRoomGeneration)
+    assert.is_nil(finishedRunGeneration)
   end)
 
   it("re-announces core gmcp supports on connection-ready events", function()

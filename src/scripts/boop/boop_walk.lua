@@ -192,7 +192,11 @@ local function armArrivalFallback(reason)
       and tostring(liveObservation.roomId or "") == currentRoomId()
       and tonumber(liveObservation.generation) == roomGeneration
     if settled then
-      boop.walk.onRoomSettled(reason or "room refresh settled")
+      boop.walk.onRoomSettled(
+        reason or "room refresh settled",
+        runGeneration,
+        roomGeneration
+      )
       return
     end
 
@@ -441,10 +445,9 @@ local function emitReservedMove(runGeneration, roomGeneration, reservationId)
   )
   if not ok then
     if code == "walker_unavailable" then
-      walk.emitterTimer = nil
-      walk.moveQueued = false
-      walk.moveIssuedForRoomGeneration = false
       local owner = "walk:" .. tostring(runGeneration)
+      boop.walk.invalidateCurrentGeneration("external_lost")
+      resetRuntimeFlags()
       if boop.runtime and boop.runtime.setBlocker then
         boop.runtime.setBlocker(
           owner,
@@ -607,10 +610,38 @@ function boop.walk.start(options)
     return true
   end
 
-  local oldOwner = "walk:" .. tostring(tonumber(walk.generation) or 0)
-  boop.walk.invalidateCurrentGeneration("start")
+  local oldGeneration = tonumber(walk.generation) or 0
+  local oldOwner = "walk:" .. tostring(oldGeneration)
+  local priorOwner = "walk:" .. tostring(oldGeneration - 1)
+  boop.walk.invalidateCurrentGeneration("restart")
   if boop.runtime and boop.runtime.clearBlocker then
     boop.runtime.clearBlocker(oldOwner, "walk restart")
+    if oldGeneration > 0 then
+      boop.runtime.clearBlocker(priorOwner, "walk restart")
+    end
+  end
+  local observation = boop.runtime
+    and boop.runtime.startRoomObservation
+    and boop.runtime.startRoomObservation(currentRoomId())
+    or {}
+  walk.roomGeneration = tonumber(observation.generation) or 0
+  walk.arrivalRoom = tostring(observation.roomId or "")
+  if boop.runtime and boop.runtime.setBlocker then
+    boop.runtime.setBlocker(
+      "walk:" .. tostring(walk.generation),
+      "walk_room_unsettled",
+      WALK_REASON_LABELS.room_unsettled,
+      { walk = true },
+      { room = true, items = true },
+      {
+        source = "walk",
+        observed = {
+          room = walk.arrivalRoom,
+          roomGeneration = walk.roomGeneration,
+          items = false,
+        },
+      }
+    )
   end
   walk.active = true
   walk.owned = not attached()
@@ -634,60 +665,103 @@ function boop.walk.start(options)
     boop.util.ok("walk attached to current demonwalker run")
   end
 
-  boop.walk.onArrived()
+  boop.walk.onArrived(walk.generation, walk.roomGeneration)
   return true
 end
 
 function boop.walk.stop(silent, external)
   local walk = walkState()
   local wasActive = walk.active == true
+  if not wasActive then
+    return false
+  end
   local wasOwned = walk.owned == true
   local owner = "walk:" .. tostring(tonumber(walk.generation) or 0)
+  local transitionReason = wasOwned
+    and "operator_stop_owned"
+    or "operator_detach_attached"
 
-  boop.walk.invalidateCurrentGeneration("stop")
+  boop.walk.invalidateCurrentGeneration(transitionReason)
   if boop.runtime and boop.runtime.clearBlocker then
-    boop.runtime.clearBlocker(owner, "walk stopped")
+    boop.runtime.clearBlocker(owner, transitionReason)
   end
   resetRuntimeFlags()
 
-  if wasActive and wasOwned and not external and raiseEvent then
+  if wasOwned and not external and raiseEvent then
     raiseEvent("demonwalker.stop")
   end
-  if not silent and wasActive then
+  if not silent then
     if wasOwned then
-      boop.util.ok("walk stopped in current room")
+      boop.util.ok("walk stopped -- boop-owned demonwalker run ended")
     else
-      boop.util.ok("walk detached in current room")
+      boop.util.ok("walk detached -- external demonwalker run remains active")
     end
   end
+  return true
 end
 
-function boop.walk.onFinished()
+function boop.walk.onFinished(runGeneration)
   local walk = walkState()
   local wasActive = walk.active == true
+  if not wasActive
+      or (
+        runGeneration ~= nil
+        and tonumber(runGeneration) ~= tonumber(walk.generation)
+      ) then
+    return false
+  end
   local owner = "walk:" .. tostring(tonumber(walk.generation) or 0)
-  boop.walk.invalidateCurrentGeneration("finished")
+  boop.walk.invalidateCurrentGeneration("external_finished")
   if boop.runtime and boop.runtime.clearBlocker then
-    boop.runtime.clearBlocker(owner, "walk finished")
+    boop.runtime.clearBlocker(owner, "external_finished")
   end
   resetRuntimeFlags()
-  if wasActive then
-    boop.util.info("walk finished")
-  end
+  boop.util.info("walk finished")
+  return true
 end
 
-function boop.walk.onArrived()
+function boop.walk.onArrived(runGeneration, roomGeneration)
   local walk = walkState()
-  if not walk.active then
+  local observation = boop.runtime
+    and boop.runtime.roomObservationSnapshot
+    and boop.runtime.roomObservationSnapshot()
+    or {}
+  if not walk.active
+      or (
+        runGeneration ~= nil
+        and tonumber(runGeneration) ~= tonumber(walk.generation)
+      )
+      or (
+        roomGeneration ~= nil
+        and tonumber(roomGeneration) ~= tonumber(observation.generation)
+      ) then
     return false
   end
   armArrivalFallback("arrival fallback")
   return true
 end
 
-function boop.walk.onRoomSettled(reason)
+function boop.walk.onRoomSettled(reason, runGeneration, roomGeneration)
   local walk = walkState()
+  if (
+        runGeneration ~= nil
+        and tonumber(runGeneration) ~= tonumber(walk.generation)
+      )
+      or (
+        roomGeneration ~= nil
+        and tonumber(roomGeneration) ~= tonumber(walk.roomGeneration)
+      ) then
+    return false, "walk_inactive", WALK_REASON_LABELS.walk_inactive
+  end
   if not walk.active then
+    if not walk.moveQueued
+        and boop.runtime
+        and boop.runtime.clearBlocker then
+      boop.runtime.clearBlocker(
+        "walk:" .. tostring(walk.generation),
+        tostring(reason or "inactive room settled")
+      )
+    end
     return false, "walk_inactive", WALK_REASON_LABELS.walk_inactive
   end
 
@@ -738,9 +812,21 @@ function boop.walk.onRoomSettled(reason)
   return boop.walk.maybeAdvance(reason or "room settled")
 end
 
-function boop.walk.onRoomChange()
+function boop.walk.onRoomChange(runGeneration, roomGeneration)
   local walk = walkState()
-  if not walk.active then
+  local observation = boop.runtime
+    and boop.runtime.roomObservationSnapshot
+    and boop.runtime.roomObservationSnapshot()
+    or {}
+  if not walk.active
+      or (
+        runGeneration ~= nil
+        and tonumber(runGeneration) ~= tonumber(walk.generation)
+      )
+      or (
+        roomGeneration ~= nil
+        and tonumber(roomGeneration) ~= tonumber(observation.generation)
+      ) then
     return false
   end
   armArrivalFallback("room change fallback")
@@ -806,7 +892,9 @@ function boop.walk.move()
   local walk = walkState()
   local ok, code, label = boop.walk.maybeAdvance("manual move")
   if not ok and label then
-    boop.util.warn("walk move blocked: " .. tostring(label))
+    boop.util.warn(
+      "walk move blocked: " .. tostring(label) .. "; no move queued"
+    )
   end
   return ok, code, label
 end

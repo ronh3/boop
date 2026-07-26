@@ -1153,6 +1153,9 @@ function boop.onRoomItemsList()
     boop.requestRoomItemsOnce("incomplete room item list")
     return
   end
+  local walk = boop.state and boop.state.walk or {}
+  local walkGeneration = tonumber(walk.generation) or 0
+  local walkRoomGeneration = tonumber(walk.roomGeneration) or 0
   local activeBeforeList = currentGoldOperation()
   local activeGeneration = activeBeforeList and activeBeforeList.generation or nil
   local activePhase = activeBeforeList and activeBeforeList.phase or nil
@@ -1191,10 +1194,15 @@ function boop.onRoomItemsList()
       and boop.tick then
     boop.tick()
   end
-  if shouldHold("walk") then
-    traceHeld("walk", "room items list")
-  elseif boop.walk and boop.walk.onRoomSettled then
-    boop.walk.onRoomSettled("room items list")
+  if boop.walk and boop.walk.onRoomSettled then
+    local advanced = boop.walk.onRoomSettled(
+      "room items list",
+      walkGeneration,
+      walkRoomGeneration
+    )
+    if not advanced and shouldHold("walk") then
+      traceHeld("walk", "room items list")
+    end
   end
 end
 
@@ -1349,6 +1357,9 @@ function boop.onRoomInfo()
   local previousRoom = targeting.room
   local previousRoomText = boop.util.trim(tostring(previousRoom or ""))
   local currentRoomText = boop.util.trim(tostring(info.num or ""))
+  local walk = boop.state.walk or {}
+  local walkGeneration = tonumber(walk.generation) or 0
+  local roomGeneration = observation and tonumber(observation.generation) or 0
 
   if previousRoomText ~= currentRoomText then
     targeting.movedRooms = true
@@ -1373,11 +1384,11 @@ function boop.onRoomInfo()
     else
       combat.fleeing = false
     end
-    if boop.walk and boop.walk.onRoomChange then
-      boop.walk.onRoomChange()
-    end
   else
     targeting.movedRooms = false
+  end
+  if boop.walk and boop.walk.onRoomChange then
+    boop.walk.onRoomChange(walkGeneration, roomGeneration)
   end
 
   targeting.room = info.num
@@ -1420,16 +1431,18 @@ function boop.onRoomInfo()
   boop.requestRoomItemsOnce("room info awaiting complete item list")
 end
 
-function boop.onWalkArrived()
+function boop.onWalkArrived(runGeneration, roomGeneration)
   if boop.walk and boop.walk.onArrived then
-    boop.walk.onArrived()
+    return boop.walk.onArrived(tonumber(runGeneration), tonumber(roomGeneration))
   end
+  return false
 end
 
-function boop.onWalkFinished()
+function boop.onWalkFinished(runGeneration)
   if boop.walk and boop.walk.onFinished then
-    boop.walk.onFinished()
+    return boop.walk.onFinished(tonumber(runGeneration))
   end
+  return false
 end
 
 function boop.onTargetSet()
