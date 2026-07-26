@@ -732,9 +732,7 @@ function boop.onGoldCommandFailure(line)
 end
 
 function boop.onDiagReadyLine()
-  if not boop.state or not boop.state.diag.hold then return end
-  boop.state.diag.awaitPrompt = true
-  boop.trace.log("diag ready line seen")
+  return boop.runtime.markOldestDiagEvidenceResult()
 end
 
 function boop.events.register()

@@ -112,6 +112,9 @@ local DOMAIN_DEFAULTS = {
     awaitPrompt = false,
     timeoutTimer = nil,
     label = "",
+    generation = 0,
+    operation = false,
+    evidenceQueue = {},
   },
   trace = {
     buffer = {},
@@ -566,6 +569,121 @@ function boop.runtime.shouldHold(system, exceptOwner)
   return false
 end
 
+function boop.runtime.enqueueDiagEvidence(generation)
+  local state = boop.runtime.ensureState()
+  state.diag.evidenceQueue = state.diag.evidenceQueue or {}
+  local record = {
+    generation = tonumber(generation) or 0,
+    resultSeen = false,
+    terminal = false,
+    tombstone = false,
+  }
+  state.diag.evidenceQueue[#state.diag.evidenceQueue + 1] = record
+  return record
+end
+
+function boop.runtime.completeInterrupt(generation, terminalReason)
+  local state = boop.runtime.ensureState()
+  local operation = state.diag.operation
+  local expectedGeneration = tonumber(generation)
+  if type(operation) ~= "table"
+      or operation.generation ~= expectedGeneration
+      or operation.terminal then
+    return false
+  end
+
+  operation.terminal = true
+  local reason = tostring(terminalReason or "")
+  if reason == "timeout" and operation.completionMode == "result_then_prompt" then
+    for _, record in ipairs(state.diag.evidenceQueue or {}) do
+      if type(record) == "table" and record.generation == expectedGeneration then
+        record.terminal = true
+        record.tombstone = true
+        break
+      end
+    end
+  end
+
+  local timerId = operation.timeoutTimer
+  operation.timeoutTimer = nil
+  if timerId and killTimer then
+    killTimer(timerId)
+  end
+
+  boop.runtime.clearBlocker(operation.blockerOwner, reason)
+
+  local name = tostring(operation.name or "interrupt")
+  local owner = tostring(operation.blockerOwner or "")
+  state.diag.operation = false
+  state.diag.hold = false
+  state.diag.awaitPrompt = false
+  state.diag.timeoutTimer = nil
+  state.diag.label = ""
+
+  if reason == "timeout" then
+    if boop.util and boop.util.warn then
+      boop.util.warn(name .. " timeout; attacks resumed")
+    end
+  elseif boop.util and boop.util.ok then
+    boop.util.ok(name .. " complete; attacks resumed")
+  end
+  trace(string.format(
+    "interrupt terminal: %s | generation=%s | name=%s | reason=%s",
+    owner,
+    tostring(expectedGeneration or ""),
+    name,
+    reason
+  ))
+  return true
+end
+
+function boop.runtime.markOldestDiagEvidenceResult()
+  local state = boop.runtime.ensureState()
+  local head = state.diag.evidenceQueue and state.diag.evidenceQueue[1] or nil
+  if type(head) ~= "table" or head.resultSeen then
+    return false
+  end
+
+  head.resultSeen = true
+  local operation = state.diag.operation
+  if type(operation) == "table"
+      and not operation.terminal
+      and operation.name == "diag"
+      and operation.completionMode == "result_then_prompt"
+      and operation.generation == head.generation then
+    operation.resultSeen = true
+    state.diag.awaitPrompt = true
+  end
+  return true
+end
+
+function boop.runtime.consumeOldestDiagEvidencePrompt()
+  local state = boop.runtime.ensureState()
+  local queue = state.diag.evidenceQueue or {}
+  local head = queue[1]
+  if type(head) ~= "table" or not head.resultSeen then
+    return false, false
+  end
+
+  table.remove(queue, 1)
+  if head.terminal or head.tombstone then
+    return true, false
+  end
+
+  local operation = state.diag.operation
+  if type(operation) == "table"
+      and not operation.terminal
+      and operation.name == "diag"
+      and operation.completionMode == "result_then_prompt"
+      and operation.generation == head.generation then
+    return true, boop.runtime.completeInterrupt(
+      head.generation,
+      "diagnose_result_prompt"
+    )
+  end
+  return true, false
+end
+
 local function blockerCanAutoClear(blocker)
   if type(blocker) ~= "table" or tostring(blocker.code or "") == "" then
     return false
@@ -1007,15 +1125,26 @@ local function promptStep(context)
   local effects = {}
   local runTick = true
 
-  if state.diag.hold then
-    if state.diag.awaitPrompt then
-      effects[#effects + 1] = {
-        kind = "diag_complete",
-        label = state.diag.label ~= "" and state.diag.label or "diag",
-      }
+  local evidenceHead = state.diag.evidenceQueue and state.diag.evidenceQueue[1] or nil
+  local operation = state.diag.operation
+  if type(evidenceHead) == "table" then
+    if evidenceHead.resultSeen then
+      local _, completed = boop.runtime.consumeOldestDiagEvidencePrompt()
+      runTick = completed
+    elseif type(operation) == "table" and not operation.terminal then
+      runTick = false
+    end
+  elseif type(operation) == "table" and not operation.terminal then
+    if operation.completionMode == "prompt" then
+      runTick = boop.runtime.completeInterrupt(
+        operation.generation,
+        "prompt_complete"
+      )
     else
       runTick = false
     end
+  elseif state.diag.hold then
+    runTick = false
   end
 
   effects[#effects + 1] = { kind = "gag_prompt" }
@@ -1062,20 +1191,6 @@ function boop.runtime.applyEffects(result, context)
         if boop.attacks.execute(effect.plan, effect.context or context) then
           didAction = true
         end
-      end
-    elseif effect.kind == "diag_complete" then
-      state.diag.hold = false
-      state.diag.awaitPrompt = false
-      state.diag.label = ""
-      if state.diag.timeoutTimer then
-        killTimer(state.diag.timeoutTimer)
-        state.diag.timeoutTimer = nil
-      end
-      if boop.util and boop.util.ok then
-        boop.util.ok((effect.label or "diag") .. " complete; attacks resumed")
-      end
-      if boop.trace and boop.trace.log then
-        boop.trace.log((effect.label or "diag") .. " complete")
       end
     elseif effect.kind == "gag_prompt" then
       if boop.gag and boop.gag.onPrompt then

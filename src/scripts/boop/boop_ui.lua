@@ -1247,35 +1247,72 @@ end
 
 local function queueInterrupt(label, command, opts)
   opts = opts or {}
-  boop.state = boop.state or {}
-  if boop.state.queue.prequeueTimer then
-    killTimer(boop.state.queue.prequeueTimer)
-    boop.state.queue.prequeueTimer = nil
+  local state = boop.runtime.state()
+  local active = state.diag.operation
+  if type(active) == "table" and not active.terminal then
+    boop.util.info(string.format(
+      "%s still pending; %s not queued",
+      tostring(active.name or "interrupt"),
+      tostring(label or "interrupt")
+    ))
+    return false
   end
-  boop.state.queue.prequeuedStandard = false
-  boop.state.diag.hold = true
-  boop.state.diag.awaitPrompt = opts.awaitPrompt and true or false
-  boop.state.diag.label = tostring(label or "interrupt")
-  boop.state.queue.aliasDirty = true
 
-  if boop.state.diag.timeoutTimer then
-    killTimer(boop.state.diag.timeoutTimer)
-    boop.state.diag.timeoutTimer = nil
+  if state.queue.prequeueTimer then
+    killTimer(state.queue.prequeueTimer)
+    state.queue.prequeueTimer = nil
+  end
+  state.queue.prequeuedStandard = false
+  state.queue.aliasDirty = true
+
+  local generation = (tonumber(state.diag.generation) or 0) + 1
+  local name = tostring(label or "interrupt")
+  local completionMode = tostring(opts.completionMode or "prompt")
+  local blockerOwner = "interrupt:" .. tostring(generation)
+  local operation = {
+    generation = generation,
+    name = name,
+    command = tostring(command or ""),
+    completionMode = completionMode,
+    resultSeen = false,
+    terminal = false,
+    blockerOwner = blockerOwner,
+    timeoutTimer = nil,
+    startedAt = os.time(),
+  }
+  state.diag.generation = generation
+  state.diag.operation = operation
+  state.diag.hold = true
+  state.diag.awaitPrompt = completionMode == "prompt"
+  state.diag.timeoutTimer = nil
+  state.diag.label = name
+
+  boop.runtime.setBlocker(
+    blockerOwner,
+    "interrupt_pending",
+    name .. " pending",
+    { combat = true, queue = true },
+    {},
+    {
+      source = "interrupt",
+      observed = {
+        generation = generation,
+        completionMode = completionMode,
+      },
+    }
+  )
+
+  if completionMode == "result_then_prompt" then
+    boop.runtime.enqueueDiagEvidence(generation)
   end
 
   local timeout = tonumber(boop.config.diagTimeoutSeconds) or 8
   if timeout > 0 then
-    local timeoutLabel = boop.state.diag.label
-    boop.state.diag.timeoutTimer = tempTimer(timeout, function()
-      boop.state.diag.timeoutTimer = nil
-      if boop.state.diag.hold then
-        boop.state.diag.hold = false
-        boop.state.diag.awaitPrompt = false
-        boop.state.diag.label = ""
-        boop.util.warn(timeoutLabel .. " timeout; attacks resumed")
-        boop.trace.log(timeoutLabel .. " timeout resume")
-      end
+    local timerId = tempTimer(timeout, function()
+      boop.runtime.completeInterrupt(generation, "timeout")
     end)
+    operation.timeoutTimer = timerId
+    state.diag.timeoutTimer = timerId
   end
 
   if opts.clearQueue then
@@ -1283,13 +1320,19 @@ local function queueInterrupt(label, command, opts)
   end
   send("queue addclearfull freestand " .. command, false)
   boop.util.info(opts.infoMessage or (tostring(label) .. " queued; attacks paused"))
-  boop.trace.log((opts.traceLabel or tostring(label)) .. " queued")
+  boop.trace.log(string.format(
+    "%s queued | owner=%s | generation=%s",
+    opts.traceLabel or name,
+    blockerOwner,
+    tostring(generation)
+  ))
+  return true
 end
 
 function boop.ui.diag()
   queueInterrupt("diag", "diagnose", {
     clearQueue = true,
-    awaitPrompt = false,
+    completionMode = "result_then_prompt",
     infoMessage = "diag queued; attacks paused until diagnose line + prompt",
   })
 end
@@ -1297,7 +1340,7 @@ end
 function boop.ui.matic()
   queueInterrupt("matic", "ldeck draw matic", {
     clearQueue = false,
-    awaitPrompt = true,
+    completionMode = "prompt",
     infoMessage = "matic queued; attacks paused until next prompt",
   })
 end
@@ -1305,7 +1348,7 @@ end
 function boop.ui.catarin()
   queueInterrupt("catarin", "ldeck draw catarin", {
     clearQueue = false,
-    awaitPrompt = true,
+    completionMode = "prompt",
     infoMessage = "catarin queued; attacks paused until next prompt",
   })
 end
@@ -1313,7 +1356,7 @@ end
 function boop.ui.fly()
   queueInterrupt("fly", "fly", {
     clearQueue = false,
-    awaitPrompt = true,
+    completionMode = "prompt",
     infoMessage = "fly queued; attacks paused until next prompt",
   })
 end
@@ -1321,7 +1364,7 @@ end
 function boop.ui.touchShield()
   queueInterrupt("ts", "touch shield", {
     clearQueue = false,
-    awaitPrompt = true,
+    completionMode = "prompt",
     infoMessage = "touch shield queued; attacks paused until next prompt",
   })
 end
@@ -1336,7 +1379,7 @@ function boop.ui.leap(direction)
 
   queueInterrupt("leap", "leap " .. dir, {
     clearQueue = false,
-    awaitPrompt = true,
+    completionMode = "prompt",
     infoMessage = "leap queued; attacks paused until next prompt",
   })
 end
