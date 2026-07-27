@@ -41,6 +41,35 @@ describe("boop pull command", function()
     return count
   end
 
+  local function pullTimer()
+    local pull = boop.state.combat.pullState
+    local timer_id = type(pull) == "table" and pull.timeoutTimer or nil
+    assert.is_number(timer_id)
+    assert.is_table(scheduled[timer_id])
+    assert.are.equal(boop.config.diagTimeoutSeconds, scheduled[timer_id].delay)
+    return timer_id, scheduled[timer_id]
+  end
+
+  local function pullTimerCount()
+    local count = 0
+    for _, timer in pairs(scheduled) do
+      if timer.delay == boop.config.diagTimeoutSeconds then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
+  local function killedCount(timer_id)
+    local count = 0
+    for _, killed_id in ipairs(killed) do
+      if killed_id == timer_id then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
   local function seedUnrelatedOwner()
     helper.setRuntimeBlocker({
       owner = "test:unrelated",
@@ -232,10 +261,11 @@ describe("boop pull command", function()
 
     boop.ui.pullCommand("mage", "north")
     local generation = boop.state.combat.pullState.generation
-    local timeout_callback = scheduled[1].callback
+    local timeout_id, timeout = pullTimer()
+    local timeout_callback = timeout.callback
 
     moveTo("2")
-    assertActivePull(generation, "away", 1, "north|harry mage|leap south")
+    assertActivePull(generation, "away", timeout_id, "north|harry mage|leap south")
     assertPullBlocker(generation, "pull_active")
 
     moveTo("1")
@@ -243,11 +273,11 @@ describe("boop pull command", function()
     assert.is_false(boop.state.combat.pullState)
     assert.is_nil(blockerFor("pull:" .. tostring(generation)))
     assert.is_table(blockerFor("test:unrelated"))
-    assert.are.same({ 1 }, killed)
+    assert.are.equal(1, killedCount(timeout_id))
     assert.are.same({ "pull queued: north|harry mage|leap south", "pull complete" }, ok_messages)
     assert.are.equal(0, #warn_messages)
     assert.are.equal(1, #sent)
-    assert.are.equal(1, #scheduled)
+    assert.are.equal(1, pullTimerCount())
     assert.are.equal(0, tick_count)
     assert.are.equal(5, pullTraceCount())
     assert.are.equal(0, #enabled_calls)
@@ -343,10 +373,11 @@ describe("boop pull command", function()
     seedUnrelatedOwner()
 
     boop.ui.pullCommand("mage", "north")
+    local timeout_id, timeout = pullTimer()
     moveTo("2")
     assert.are.equal("away", boop.state.combat.pullState.phase)
 
-    scheduled[1].callback()
+    timeout.callback()
 
     assert.is_true(boop.config.enabled)
     assertActivePull(1, "timed_out_away", nil, "north|harry mage|leap south")
@@ -354,9 +385,9 @@ describe("boop pull command", function()
     assert.are.equal("2", blocker.observed.currentRoom)
     assert.is_table(blockerFor("test:unrelated"))
     assert.are.same({ "pull timeout; hold remains until return" }, warn_messages)
-    assert.are.equal(0, #killed)
+    assert.are.equal(0, killedCount(timeout_id))
     assert.are.equal(1, #sent)
-    assert.are.equal(1, #scheduled)
+    assert.are.equal(1, pullTimerCount())
     assert.are.equal(0, tick_count)
 
     moveTo("1")
@@ -369,9 +400,9 @@ describe("boop pull command", function()
       "pull complete after timeout",
     }, ok_messages)
     assert.are.equal(1, #warn_messages)
-    assert.are.equal(0, #killed)
+    assert.are.equal(0, killedCount(timeout_id))
     assert.are.equal(1, #sent)
-    assert.are.equal(1, #scheduled)
+    assert.are.equal(1, pullTimerCount())
     assert.are.equal(0, tick_count)
     assert.are.equal(0, #enabled_calls)
     assert.are.equal(0, #saved_enabled)
@@ -382,12 +413,15 @@ describe("boop pull command", function()
     seedUnrelatedOwner()
 
     boop.ui.pullCommand("mage", "north")
-    local old_timeout = scheduled[1].callback
+    local old_timeout_id, old_timeout_timer = pullTimer()
+    local old_timeout = old_timeout_timer.callback
     moveTo("2")
     moveTo("1")
 
     boop.ui.pullCommand("mage", "north")
-    assertActivePull(2, "outbound", 2, "north|harry mage|leap south")
+    local new_timeout_id = pullTimer()
+    assert.are_not.equal(old_timeout_id, new_timeout_id)
+    assertActivePull(2, "outbound", new_timeout_id, "north|harry mage|leap south")
     assertPullBlocker(2, "pull_active")
 
     local operation = boop.state.combat.pullState
@@ -492,30 +526,31 @@ describe("boop pull command", function()
 
   it("keeps an operator-disabled session disabled after every terminal path", function()
     local terminal_scenarios = {
-      function()
+      function(_)
         moveTo("2")
         moveTo("1")
       end,
-      function()
-        scheduled[#scheduled].callback()
+      function(timeout_id)
+        scheduled[timeout_id].callback()
       end,
-      function()
+      function(timeout_id)
         moveTo("2")
-        scheduled[#scheduled].callback()
+        scheduled[timeout_id].callback()
         moveTo("1")
       end,
     }
 
     for _, finish in ipairs(terminal_scenarios) do
       boop.ui.pullCommand("mage", "north")
-      finish()
+      local timeout_id = pullTimer()
+      finish(timeout_id)
       assert.is_false(boop.config.enabled)
       assert.is_false(boop.state.combat.pullState)
     end
 
     assert.are.equal(3, boop.state.combat.pullGeneration)
     assert.are.equal(3, #sent)
-    assert.are.equal(3, #scheduled)
+    assert.are.equal(3, pullTimerCount())
     assert.are.equal(0, #enabled_calls)
     assert.are.equal(0, #saved_enabled)
   end)
