@@ -4,9 +4,9 @@ milestone: v1.0
 milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
-status: ready_for_verification
-stopped_at: Completed 03-13-PLAN.md
-last_updated: "2026-07-27T02:56:34.993Z"
+status: awaiting_live_verification
+stopped_at: Phase 03 post-fix live UAT
+last_updated: "2026-07-27T03:12:00.000Z"
 last_activity: 2026-07-26
 last_activity_desc: Completed Plan 03-13 canonical same-room gold gap closure
 progress:
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 ## Current Position
 
-Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — READY FOR VERIFICATION
+Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — LIVE VERIFICATION
 Plan: 13 of 13
-Status: Plan 03-13 complete; ready for Phase 03 verification
-Last activity: 2026-07-26 — Completed Plan 03-13 canonical same-room gold gap closure
+Status: Automated verification passed 5/5; two post-fix live UAT checks remain
+Last activity: 2026-07-26 — Verified Phase 03 implementation and prepared post-fix live UAT
 
 Progress: [██████████] 100%
 
@@ -54,7 +54,7 @@ Progress: [██████████] 100%
 **Recent Trend:**
 
 - Last 5 plans: Phase 03 P09 (10m), Phase 03 P10 (7m), Phase 03 P11 (17m), Phase 03 P12 (7m), Phase 03 P13 (11m)
-- Trend: Phase 03 implementation is complete with fenced room evidence and same-room gold validation ready for verification
+- Trend: Phase 03 implementation and automated verification are complete; live room-ordering and gold reruns remain
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -97,7 +97,6 @@ Recent decisions affecting current work:
 - [Phase 03]: Keep DEFERRED_ROOM and PICKUP_PENDING tied to current room evidence, then clear room identity before inventory-owned PACK_PENDING.
 - [Phase 03]: Dispatch get and put as independent freestand queue commands; combat execution emits only its supplied action.
 - [Phase 03]: Give real auto-flee precedence only inside the active-gold branch, preserving established broad blocker ordering for non-gold ticks.
-- [Phase 03]: Treat every current Room.Info observation as invalidation evidence for DEFERRED_ROOM and PICKUP_PENDING while preserving PACK_PENDING.
 - [Phase 03]: Advance deferred room evidence without sending, then let one normal tick emit flush_gold and call flushPendingGold once.
 - [Phase 03]: Replace direct gold-terminal walker advancement with a generation-guarded zero-delay tick.
 - [Phase 03]: Use shared current-room observation as the only walker settlement authority; capped timers may warn but never stamp settlement.
@@ -133,8 +132,8 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Plan 03-13 canonical same-room gold gap closure is complete; Phase 03 is ready for verification.
-- Local real-Mudlet evidence remains unavailable; parent exact-final-HEAD CI/live UAT still follows all remaining mutations.
+- Phase 03 automated verification is 5/5 with no implementation gaps; UAT Tests 1 and 2 must be repeated against package 0.1.423.
+- Local real-Mudlet evidence remains unavailable; parent exact-final-HEAD CI and live Achaea UAT remain external gates.
 
 ### Quick Tasks Completed
 
@@ -152,6 +151,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-27T02:56:34.987Z
-Stopped at: Completed 03-13-PLAN.md
+Last session: 2026-07-27T03:12:00.000Z
+Stopped at: Phase 03 post-fix live UAT
 Resume file: None

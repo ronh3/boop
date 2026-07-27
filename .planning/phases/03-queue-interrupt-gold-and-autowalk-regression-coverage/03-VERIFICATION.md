@@ -1,191 +1,178 @@
 ---
 phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
-verified: 2026-07-26T21:42:51Z
+verified: 2026-07-27T03:07:43Z
 status: human_needed
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 re_verification:
-  previous_status: gaps_found
-  previous_score: 4/5
+  previous_status: human_needed
+  previous_score: 5/5
   gaps_closed:
-    - "A matching current gold timeout fired under an unrelated owner now consumes operation.timeoutTimer, permitting one later normal flush_gold and eliminating the permanent gold_pending walk stall."
+    - "G-03-1: Serialized Inv-to-Room response fences now reject pre-barrier Lists, drain invalidated epochs FIFO, preserve complete same-room evidence, make tokenless arrival non-authorizing, and release one guarded move."
+    - "G-03-2: Canonical copied room evidence now owns gold acquisition; same-room Info preserves pickup, actual room change alone cancels room ownership, confirmed success alone creates roomless packing, and either removal order produces one put."
+    - "The trace fixture now publishes room data through the production response fence instead of bypassing the accepted-observation contract."
   gaps_remaining: []
   regressions: []
 human_verification:
-  - test: "Exercise diag, a queued interrupt, and pull while a real target or gold lifecycle coexists with autogold and demonnicAutoWalker."
-    expected: "No automatic attack, get/put command, or walker move occurs until the exact owner and every other relevant owner release; exactly one next action then resumes."
-    why_human: "Achaea server queue completion, real GMCP callback ordering, and the external walker process are outside the host Busted harness."
-  - test: "Create gold evidence in room A, move to room B before pickup/retry evidence, then separately confirm pickup before moving prior to packing."
-    expected: "No room-A get/retry is sent in room B; an inventory-owned put may finish after movement; loot is never chained with an attack."
-    why_human: "Real Achaea item lines and room/inventory GMCP timing require a live profile."
-  - test: "Check walk status/start/move/install without demonnicAutoWalker, then compare stopping a boop-owned run with detaching from an already-running external run."
-    expected: "Only explicit install requests package installation, no path silently updates, owned stop emits once, and attached stop does not stop the external run."
-    why_human: "Mudlet package-manager prompts and a real demonnicAutoWalker process are external integrations."
+  - test: "Repeat the live cross-owner walk flow that exposed G-03-1, including an observed room List before Room.Info, a same-room Info refresh, stop/restart, and diag/interrupt/pull ownership."
+    expected: "Pre-barrier and stale responses authorize nothing; the requested Inv-to-Room pair settles the current room; no attack, loot, or move occurs while any owner remains; aggregate all-clear releases exactly one next action and one walker move."
+    why_human: "Real Achaea GMCP ordering, server queue completion, and the external demonwalker process are outside the diagnostic host harness."
+  - test: "Repeat the live gold flow that exposed G-03-2: acquire current-room gold, receive same-room Info, exercise removal-before-success and success-before-removal, then separately move before pickup and after confirmed pickup."
+    expected: "Current-room evidence queues one get; same-room Info preserves it; actual movement cancels room-owned acquisition once; removal alone cannot transfer ownership; confirmed pickup permits one roomless put after movement; no loot command is chained with combat."
+    why_human: "Real Achaea item lines, inventory confirmation, and room/inventory GMCP timing require a live profile."
 ---
 
 # Phase 3: Queue, Interrupt, Gold, and Autowalk Regression Coverage Verification Report
 
 **Phase Goal:** Timing-sensitive command paths cannot attack, loot, or walk while another safety hold or room-state blocker owns the next action.
-**Verified:** 2026-07-26T21:42:51Z
+**Verified:** 2026-07-27T03:07:43Z
 **Status:** human_needed
-**Re-verification:** Yes — after Plan 03-10 gap closure
-**Verified HEAD:** `8412e4164995ccb9356f009be2fdbba7f9bb976b`
-**Package version:** `0.1.416`
+**Re-verification:** Yes — after UAT gap Plans 03-11, 03-12, and 03-13 plus the trace-fixture regression
+**Verified HEAD:** `d9a3fc9c7e48632f42e838489e75f619534a57b3`
+**Branch:** `codex/pre-1.0-hardening-pass`
+**Package version:** `0.1.423`
 
 ## Goal Achievement
 
-The previous deterministic implementation gap is closed. The current timeout callback relinquishes only its matching timer authority before checking other owners. Runtime can therefore resume one unchanged gold stage after aggregate all-clear, while attacks and walk remain held. The no-pack terminal path then reaches the existing guarded walker reservation and emitter exactly once.
+The phase goal is implemented and behaviorally exercised at the current HEAD. The prior live UAT defects are no longer present in the code path: ambiguous room Lists cannot become authority, current evidence is accepted only through a serialized response fence, same-room Info is preserving, tokenless walker arrival cannot settle or move, and gold ownership crosses from room to inventory only on confirmed pickup.
 
-All five roadmap truths have implementation and passing behavioral evidence. The report remains `human_needed`, rather than `passed`, because the verifier contract requires human confirmation for the real Achaea/Mudlet and external walker boundaries. Phase 6 owns the recorded real-Mudlet and live-release evidence; these items are not implementation gaps and no terminal CI claim is made here.
+All five roadmap truths have passing behavioral evidence. The overall status remains `human_needed` because the two live Achaea flows that originally found G-03-1 and G-03-2 have not been repeated after their fixes. The already-passed optional-walker UAT is not carried forward. No implementation gap remains, and this report makes no exact-final-HEAD GitHub CI claim.
 
 ### Observable Truths
 
 | # | Roadmap truth | Status | Evidence |
 |---|---|---|---|
-| 1 | `diag`, queued interrupts, `pull`, and manual holds prevent automatic attacks until their prompt, room, or timeout release condition is satisfied. | ✓ VERIFIED | Quick regression: the clean Phase 03 host aggregate passed 207/207, and 11 exact-name pull lifecycle tests passed. Owner exclusion and aggregate hold logic remain wired through `boop_runtime.lua`; Plan 03-10 did not modify runtime or pull code. |
-| 2 | Gold pickup, pack/stash, retry, warning, and stale-pending behavior cannot send in the wrong room or bypass active safety holds. | ✓ VERIFIED | Full re-check: pickup and packing exact-name cases passed; the 16 owner/stage matrix cases passed; generation, phase, room identity, inventory boundary, retry counts, zero-send behavior, and replacement timer identity are asserted. |
-| 3 | `boop walk` start, stop, move, and status reflect room settlement and blockers, and emit `demonwalker.move` only when safe. | ✓ VERIFIED | The exact no-pack recovery test passed through public gold entry points, terminal reevaluation, `maybeAdvance`, and the guarded emitter: zero movement before terminal, one reservation, one event, duplicate emitter no-op. |
-| 4 | `demonnicAutoWalker` remains optional, with explicit install/status feedback and no silent auto-update behavior. | ✓ VERIFIED | `boop.walk.install()` is still the only package-install path. Walk/UI regression tests passed in the 207-case aggregate; `boop_walk.lua` is unchanged by Plan 03-10. |
-| 5 | Regression coverage catches unsafe movement, attacks during holds, wrong-room loot commands, target-removal queue drift, and permanent walk stalls. | ✓ VERIFIED | The formerly absent timeout-under-owner ordering is now covered by three exact-name tests, 19 escaped-group cases, the 76-case focused aggregate, stale-generation coverage, the two-owner release matrix, and the final one-move walk path. |
+| 1 | `diag`, queued interrupts, `pull`, and manual holds prevent automatic attacks until their exact release condition is satisfied. | ✓ VERIFIED | Owner-keyed aggregate gating is implemented by `shouldHold` in `boop_runtime.lua:768`. The exact aggregate attack test passed 1/1, and the broader state/runtime/safety/event/trace/UI/walk run passed 153/153. |
+| 2 | Gold pickup, pack/stash, retry, warning, and stale-pending behavior cannot send in the wrong room or bypass active safety holds. | ✓ VERIFIED | `canonicalGoldEvidence` and `goldDispatchAuthorized` (`boop_events.lua:510-541`) require copied accepted items plus exact room/generation/item identity and aggregate all-clear. Both exact same-room pipeline tests passed 1/1; the focused aggregate passed 132/132. |
+| 3 | `boop walk` start, stop, move, and status reflect room settlement and blocker reasons, and emit `demonwalker.move` only when safe. | ✓ VERIFIED | Start opens a fresh fence, arrival is hint-only, settlement requires the accepted observation, and the emitter rechecks run/room/reservation/all-clear (`boop_walk.lua:495-822`). The stop/restart stale-drain-to-one-move test passed 1/1. |
+| 4 | `demonnicAutoWalker` remains optional, with explicit install/status feedback and no silent auto-update behavior. | ✓ VERIFIED | `boop.walk.install` is the sole install path (`boop_walk.lua:396`); status/start/move do not install or update. The exact optional-walker test passed 1/1, and the corresponding live UAT previously passed. |
+| 5 | Regression coverage catches unsafe movement, attacks during holds, wrong-room loot, target-removal queue drift, stale callbacks/retries, and permanent walk stalls. | ✓ VERIFIED | Named fence, gold, aggregate-owner, timeout, optional-walker, and trace tests passed 9/9 in separate exact-name invocations; the 132- and 153-case aggregates also passed with zero failures/errors/pending. |
 
 **Score:** 5/5 roadmap truths verified (0 present-but-behavior-unverified)
 
-### Re-verification Scope
+### Gap Closure Mapping
 
-| Scope | Result | Notes |
-|---|---|---|
-| Previous failed truth | ✓ CLOSED | Fully checked at implementation, artifact, wiring, data-flow, and behavioral levels. |
-| Previous truths 1-4 | ✓ NO REGRESSION | Quick source sanity plus focused behavioral regression. |
-| Plan 03-10 truths | 5/5 verified | Matching-token consumption, fail-closed ownership, lifecycle identity, one resumed stage, and terminal walker progress all have passing behavior tests. |
-| PLAN artifact declarations | 52/52 passed | `verify.artifacts` passed every declaration across plans 03-01 through 03-10. |
-| PLAN key-link declarations | 24/24 passed | `verify.key-links` passed every declaration; the previously semantically broken timer/runtime link was also traced manually. |
-| Plan 03-09 terminal authority | Parent-owned, not claimed | The parent must push immutable final HEAD and run `tools/wait_for_exact_ci.sh` after this report and any phase/UAT planning mutations are committed. |
+| Gap | Required outcome | Current code/test evidence | Status |
+|---|---|---|---|
+| G-03-1 | Resolve live List/Info ordering without stale-room authority, preserve same-room state, and emit one move after stop/restart. | `startRoomObservation` invalidates but retains old fences (`boop_runtime.lua:221`); `beginRoomResponseFence` records authority before sends (`boop_runtime.lua:270`, `boop_events.lua:295`); `observeRoomItemsList` consumes only the queue head in Inv→Room order (`boop_runtime.lua:328`); same-room `onRoomInfo` preserves complete evidence (`boop_events.lua:1317`); `onWalkArrived` discards all event arguments (`boop_events.lua:1465`). Exact serialized-fence and tokenless-restart tests each passed 1/1. | ✓ CLOSED |
+| G-03-2 | Preserve current pickup across same-room Info, cancel only actual movement, use confirmed success as the inventory transfer, and issue one independent put. | `onRoomInfo` determines same-room before lifecycle cancellation; `canonicalGoldEvidence` reads only accepted copied items; `transferGoldToPacking` clears room identity; room removal remains observational; get success is the transfer authority (`boop_events.lua:510-541`, `929-985`, `1089`, `1221`, `1317`). Exact either-order and wrong-room/movement tests each passed 1/1. | ✓ CLOSED |
+| Trace fixture | Exercise, rather than bypass, the response-fence contract. | `tests/boop_trace_spec.lua:35` opens the fence and publishes Inv then Room before trace assertions. The exact trace test passed 1/1 and is included in the 153/153 aggregate. | ✓ CLOSED |
 
 ## Required Artifacts
 
+All 13 PLAN frontmatter checks passed: **63/63 artifact declarations** and **35/35 key-link declarations**.
+
 | Artifact | Expected | Status | Details |
 |---|---|---|---|
-| `src/scripts/boop/boop_events.lua` | Generation/phase/token-owned gold timeout, pickup, packing, retry, and terminal lifecycle | ✓ VERIFIED | Substantive and wired. The Plan 03-10 production diff is exactly the two-line token consumption/synchronization before authorization. |
-| `src/scripts/boop/boop_runtime.lua` | Aggregate owner gates and one `flush_gold` effect when a live gold stage has no timer | ✓ VERIFIED | Unchanged by Plan 03-10; current non-terminal gold returns before attack/walk and flushes only after all unrelated owners clear. |
-| `src/scripts/boop/boop_walk.lua` | Shared safety evaluator, reservation identity, and guarded external event emitter | ✓ VERIFIED | Unchanged by Plan 03-10; both automatic and reserved checks reject non-terminal gold and all other unsafe state. |
-| `tests/support/boop_host_busted_helper.lua` | Tracked, diagnostic-only focused host bootstrap | ✓ VERIFIED | Requires `BOOP_REPO_ROOT`, loads the allowlisted source modules in package order, and contains no `/tmp`, install, network, or manifest mutation path. |
-| `tests/boop_gold_retry_spec.lua` | Pickup/packing fired-token, duplicate, stale, identity, retry, and replacement-token checks | ✓ VERIFIED | The exact cases invoke captured callbacks and never assign `operation.timeoutTimer`. |
-| `tests/boop_tick_spec.lua` | Four gold stages × four owner classes with real timeout and two-owner release ordering | ✓ VERIFIED | `readyBlockedStage` resolves the current timer ID and invokes its callback; no manual token clearing remains. |
-| `tests/boop_walk_spec.lua` | No-pack terminal recovery through normal walker reservation/emitter | ✓ VERIFIED | Uses public gold success and normal terminal tick; it does not clear the operation or call the private emitter directly. |
-| `README.md`, `DESIGN.md`, `UIDESIGN.md`, `tests/README.md` | Operator, architecture, UI, and test-authority contracts | ✓ VERIFIED | Quick sanity confirms owner, room-evidence, staged-gold, optional-walker, and authority-boundary wording remains present. |
+| `src/scripts/boop/boop_runtime.lua` | Owner aggregation, serialized response-fence queue, copied accepted observations, exact releases | ✓ VERIFIED | Substantive and wired through events, gold, targets, tick, and walker. Invalid fences remain drain-only queue records; accepted snapshots are deep copies. |
+| `src/scripts/boop/boop_events.lua` | Fence request/consumption, actual-room-change detection, staged gold lifecycle, tokenless walker adapter | ✓ VERIFIED | Substantive and wired. The fence is recorded before exact `Char.Items.Inv` then `Char.Items.Room` sends; only an `accepted` room transition reaches targets, gold, settlement, and tick. |
+| `src/scripts/boop/boop_walk.lua` | Optional integration, lifecycle ownership, shared safety evaluator, one-shot guarded emitter | ✓ VERIFIED | Substantive and wired. Start/stop/arrival/room-settlement paths retain generation and reservation identity through final emission. |
+| `src/scripts/boop/boop_util.lua` | Combat action dispatch independent from gold commands | ✓ VERIFIED | No get/put chaining is added to supplied combat actions; gold sends through its separate freestand command path. |
+| `tests/boop_event_transitions_spec.lua` | Fence ordering, wrong-room cancellation, owner/event interleavings, target-removal drift | ✓ VERIFIED | Current assertions cover pre-barrier, invalidated, delayed, duplicate, same-room, stale-callback, and one-shot terminal behavior. |
+| `tests/boop_gold_spec.lua`, `tests/boop_gold_retry_spec.lua`, `tests/boop_tick_spec.lua` | Canonical evidence, get-confirm-put ordering, retry/timer/owner behavior | ✓ VERIFIED | Both removal orders, removal non-authority, roomless packing, actual-change cancellation, fired-token consumption, and unchanged-stage resumption are exercised. |
+| `tests/boop_walk_spec.lua` | Arrival, stop/restart, stale drains/timers, blockers, one move, optional package behavior | ✓ VERIFIED | Current tests assert same-room reservation preservation, invalidated response draining, exact one move, stale no-ops, timeout visibility, and no implicit install/update. |
+| `tests/boop_trace_spec.lua` | Trace behavior through canonical room acceptance | ✓ VERIFIED | HEAD `d9a3fc9` routes trace room fixtures through the production Inv→Room fence. |
 
 ## Key Link Verification
 
 | From | To | Via | Status | Details |
 |---|---|---|---|---|
-| Gold timeout callback | Current gold operation | Captured generation + phase + exact timer ID | ✓ WIRED | A stale generation/phase/token returns before mutation. A matching callback clears `timeoutTimer` and synchronizes `pendingTimer` before authorization. |
-| `boop_events.lua` | `boop_runtime.lua` | Cleared timer allows `tickStep` to emit one `flush_gold` | ✓ WIRED | While another owner remains, tick returns held. After final release, one normal tick delegates to `boop.flushPendingGold`. |
-| Runtime `flush_gold` | Gold command/retry stage | `applyEffects` → `flushPendingGold` → `queueGoldCommands` | ✓ WIRED | Exactly one unchanged get/put send occurs and a distinct replacement timer is armed without changing retries. |
-| Gold terminal | Walker evaluator | Generation-guarded terminal tick after `state.gold.operation = false` | ✓ WIRED | Walk is unreachable while gold is non-terminal; no-pack success schedules normal reevaluation, then one reservation. |
-| Walker reservation | External event | Run/room/reservation identity plus final safety recheck | ✓ WIRED | The emitter raises `demonwalker.move` once and becomes inert after clearing its token. |
-| Room/target adapters | Loot, queue, and walk gates | Current room observation and exact owner records | ✓ WIRED | Passing event-transition tests cover wrong-room evidence, target-removal queue drift, and stale callback no-ops. |
+| Room boundary | Response authority | `startRoomObservation` → `beginRoomResponseFence` before two ordered GMCP requests | ✓ WIRED | Fresh start or actual room change owns generation reset; same-room complete Info does not reset. |
+| GMCP item Lists | Accepted room data | Queue-head `await_inv` → `await_room`, exact generation/room/current-GMCP checks, deep copy | ✓ WIRED | Pre-barrier, out-of-order, invalidated, duplicate, nil, and stale responses do not reach consumers. |
+| Accepted room data | Targets, gold, tick, walker | `onRoomItemsList` branches only on `transition.status == "accepted"` | ✓ WIRED | No persistent `gmcp.Char.Items.List` fallback authorizes current-room behavior. |
+| Tokenless arrival | Current incomplete epoch | Event adapter drops all arguments; `onArrived` may only call the already-capped fence requester | ✓ WIRED | Arrival never creates evidence, advances a generation, settles, reserves, or emits. |
+| Gold evidence | Get/retry | Exact copied accepted item + operation room/generation/item + aggregate owner checks | ✓ WIRED | Same-room acquisition survives; actual movement cancels; wrong-room and stale callbacks send nothing. |
+| Pickup success | Packing | `onGoldGetSuccess` → roomless `PACK_PENDING` → one guarded put | ✓ WIRED | Removal alone is observational. Packing can survive movement and remains independent from combat actions. |
+| Aggregate all-clear | Attack/gold/walk boundaries | Every relevant owner checked; only the lifecycle's exact owner may be excluded | ✓ WIRED | Clearing one of two owners cannot emit; one normal reevaluation occurs only after final release. |
+| Walker reservation | `demonwalker.move` | Run generation + room generation + reservation + package + full final safety recheck | ✓ WIRED | Stale timers and callbacks are zero-effect; an accepted clear room emits one move. |
 
 ## Data-Flow Trace (Level 4)
 
-| Artifact | Data variable | Source | Produces real data | Status |
+| Artifact | Data | Source | Produces authoritative data | Status |
 |---|---|---|---|---|
-| `boop_events.lua` | `state.gold.operation` | Gold text/GMCP room evidence, get/put result handlers, failures, room changes, and captured timers | Yes | ✓ FLOWING |
-| `boop_events.lua` | `operation.timeoutTimer` / `state.gold.pendingTimer` | `tempTimer` ID and `markGoldQueueIntent` compatibility synchronization | Yes; a fired matching token becomes false/nil before any hold branch | ✓ FLOWING |
-| `boop_runtime.lua` | `combat.blockersByOwner` | Interrupt, pull, room, gold, flee, target, and walk lifecycles | Yes; aggregate `shouldHold` checks all owners except only the exact lifecycle owner | ✓ FLOWING |
-| `boop_runtime.lua` | `flush_gold` effect | Current non-terminal gold operation with no timer and aggregate all-clear | Yes; delegated to production `flushPendingGold` | ✓ FLOWING |
-| `boop_walk.lua` | Run/room/reservation state | Current room observation, operator walk lifecycle, terminal tick, and timer emitter | Yes; final safety recheck raises one external event | ✓ FLOWING |
-
-### Closed Gap Trace
-
-1. `armGoldPendingTimeout(generation, expectedPhase)` captures the timer ID and re-resolves the current generation and phase when it fires.
-2. A stale or replaced timer fails `active.timeoutTimer ~= timerId` and returns with no mutation.
-3. A matching timer sets `active.timeoutTimer = false` and calls `markGoldQueueIntent`, making the compatibility `pendingTimer` nil before checking other owners.
-4. If another owner still holds gold/walk, authorization returns false with zero sends, zero retry changes, zero movement, and the same lifecycle identity.
-5. Runtime tick continues to hold while any unrelated owner remains.
-6. After final-owner release, one normal tick sees no timer, emits one `flush_gold`, resumes the unchanged pickup/packing stage, and arms one distinct replacement timeout.
-7. For no-pack pickup success, the gold lifecycle terminates and schedules its existing generation-guarded normal tick. Only then can walker evaluation reserve one move and the guarded emitter raise one event.
+| `boop_runtime.lua` | `roomObservation.fenceQueue` / `acceptedItems` | Explicit request fence and copied GMCP Inv→Room responses | Yes; FIFO queue-head acceptance tied to current room and generation | ✓ FLOWING |
+| `boop_events.lua` | `state.gold.operation` | Accepted copied room observation, gold item identity, success/failure/removal/room events | Yes; room-owned acquisition becomes roomless packing only on success | ✓ FLOWING |
+| `boop_runtime.lua` | `combat.blockersByOwner` | Diag, interrupt, pull, room, gold, target, flee, and walker lifecycles | Yes; sorted snapshots and aggregate `shouldHold` retain every unrelated owner | ✓ FLOWING |
+| `boop_walk.lua` | Run/room/reservation state | Operator lifecycle plus accepted room observation | Yes; one timer callback performs the final all-clear recheck before the external event | ✓ FLOWING |
+| `boop_trace_spec.lua` | Trace room item fixture | Production fence helper at current HEAD | Yes; no direct persistent-GMCP shortcut | ✓ FLOWING |
 
 ## Behavioral Spot-Checks
 
 | Behavior | Command/check | Result | Status |
 |---|---|---|---|
-| Exact pickup timeout under owner | Busted JSON `--name` with tracked helper | 1 success, 0 failures/errors/pending; exact selected record | ✓ PASS |
-| Exact packing timeout under owner | Busted JSON `--name` with tracked helper | 1 success, 0 failures/errors/pending; exact selected record | ✓ PASS |
-| Exact timeout recovery to guarded walker move | Busted JSON `--name` with tracked helper | 1 success, 0 failures/errors/pending; exact selected record | ✓ PASS |
-| Stale timeout cannot consume a replacement generation token | Exact-name Busted JSON case | 1 success, 0 failures/errors/pending | ✓ PASS |
-| Escaped timeout-under-owner group | `--filter='timeout%-under%-owner'` over gold retry/tick/walk | 19 successes, 0 failures, 0 errors, 0 pending | ✓ PASS |
-| Focused gap aggregate | Gold retry + tick + walk specs | 76 successes, 0 failures, 0 errors, 0 pending | ✓ PASS |
-| Prior-passed Phase 03 regression | Runtime, interrupt, diag/timeout, gold, events, tick, prequeue, walk, UI, trace | 207 successes, 0 failures, 0 errors, 0 pending | ✓ PASS |
-| Pull ownership lifecycle | 11 exact-name pull lifecycle cases | 11/11 passed | ✓ PASS |
-| Lua syntax | `luac -p` over all 56 production Lua files plus helper and three changed specs | 60/60 parsed | ✓ PASS |
+| Plan 03-13 focused aggregate | Host Busted: gold + gold retry + event transitions + tick + walk | 132 successes, 0 failures, 0 errors, 0 pending | ✓ PASS |
+| Broader parent-equivalent regression | Host Busted: state contract + runtime + safety + event transitions + trace + UI + walk | 153 successes, 0 failures, 0 errors, 0 pending | ✓ PASS |
+| Serialized invalidated-fence draining | Exact Busted name in `boop_event_transitions_spec.lua` | 1 success | ✓ PASS |
+| Tokenless stop/restart to one move | Exact Busted name in `boop_walk_spec.lua` | 1 success | ✓ PASS |
+| Gold success/removal either order | Exact Busted name in `boop_gold_spec.lua` | 1 success | ✓ PASS |
+| Wrong-room gold and actual-change cancellation | Exact Busted name in `boop_event_transitions_spec.lua` | 1 success | ✓ PASS |
+| Aggregate attack and gold/walk ownership | Two exact Busted names in runtime/tick specs | 2/2 successes | ✓ PASS |
+| Fired timeout to one guarded move | Exact Busted name in `boop_walk_spec.lua` | 1 success | ✓ PASS |
+| Optional walker no implicit install/update | Exact Busted name in `boop_walk_spec.lua` | 1 success | ✓ PASS |
+| Trace fixture through response fence | Exact Busted name in `boop_trace_spec.lua` | 1 success | ✓ PASS |
+| Lua syntax | `luac -p` over every Lua file under `src/` and `tests/` | Exit 0 | ✓ PASS |
 | Release/version/state gates | `python3 tools/check_release_gates.py` | `[OK] versions`, `[OK] manifests`, `[OK] state-drift` | ✓ PASS |
-| Package construction | `muddle` under PTY | Muddler 1.1.0 built `build/boop Hunter.mpackage` at `0.1.416` | ✓ PASS |
-| Plan 03-10 source scope | Git diff from `63fc2b9^` through HEAD | Runtime/walk byte-for-byte unchanged; only two behavior lines added to `boop_events.lua` | ✓ PASS |
+| Package construction | `muddle` under PTY | Muddler 1.1.0 built `build/boop Hunter.mpackage` at 0.1.423 | ✓ PASS |
 
-The tracked helper intentionally loads the focused Occultist profile only. An exploratory command that also selected the full pull spec produced two out-of-scope Psion/Dragon profile-selection failures because those profiles are not in that helper's allowlist. This is a harness-scope result, not a Plan 03-10 regression: neither pull/profile production nor those tests changed, all 203 other selected records passed, the supported 207-case Phase 03 aggregate passed, and all 11 pull lifecycle/ownership cases passed by exact name.
+Host Busted is diagnostic evidence only. It does not replace the real Mudlet execution environment.
 
 ## Probe Execution
 
-Step 7c was skipped: Phase 03 declares no probe scripts, and repository probe discovery found none.
+Step 7c was skipped: no Phase 03 PLAN/SUMMARY declares a probe, and repository discovery found no `scripts/**/tests/probe-*.sh` files.
 
 ## Requirements Coverage
 
-| Requirement | Source plans | Description | Status | Evidence |
-|---|---|---|---|---|
-| SAFE-02 | 03-01, 03-02, 03-03, 03-08, 03-09 | Interrupt, pull, diag, and manual holds prevent attacks until exact release | ✓ SATISFIED | Runtime/interrupt/diag/prequeue regression plus 11 exact pull lifecycle tests pass; aggregate owners prevent attack effects. |
-| SAFE-04 | 03-01, 03-04, 03-05, 03-08, 03-09, 03-10 | Gold pickup/packing/retry/stale behavior cannot use wrong-room evidence or bypass holds | ✓ SATISFIED | The repaired timer transition, room/generation/inventory guards, retry matrices, wrong-room event tests, and exact timeout cases pass. |
-| WALK-01 | 03-01, 03-06, 03-07, 03-09 | Walk start/stop/move/status/settlement/event coverage | ✓ SATISFIED | Walk/UI tests cover lifecycle, settlement, blockers, reservations, stale callbacks, package loss, and event emission. |
-| WALK-02 | 03-01, 03-06, 03-07, 03-08, 03-09, 03-10 | No walker advancement while any unsafe state remains | ✓ SATISFIED | Gold remains blocking through timeout recovery and resumes movement only after terminal; all evaluator and emitter gates are tested. |
-| WALK-03 | 03-06, 03-08, 03-09 | Optional external walker with explicit install/status and no silent update | ✓ SATISFIED | Only explicit install calls the package API; status/start/move never install/update; regression tests pass. |
+| Requirement | Source plans | Status | Evidence |
+|---|---|---|---|
+| SAFE-02 | 03-01, 03-02, 03-03, 03-08, 03-09 | ✓ SATISFIED | Exact-owner interrupt/pull/diag/manual gates and two-owner attack/prequeue release behavior are implemented and included in the 153/153 regression. |
+| SAFE-04 | 03-01, 03-04, 03-05, 03-08 through 03-11, 03-13 | ✓ SATISFIED | Canonical response-fenced gold evidence, actual-change cancellation, get-confirm-put transfer, retries, stale callbacks, and aggregate holds pass the named and 132-case checks. |
+| WALK-01 | 03-01, 03-06, 03-07, 03-09, 03-11, 03-12 | ✓ SATISFIED | Start/stop/move/status, settlement, blocker reasons, tokenless arrival, stale generations, and event emission are implemented and tested. |
+| WALK-02 | 03-01, 03-06 through 03-13 | ✓ SATISFIED | Target, denizen, leader, gold, diag, pull, flee, room, package, and aggregate owners are rechecked through reservation emission; one safe move follows release. |
+| WALK-03 | 03-06 through 03-09, 03-11, 03-12 | ✓ SATISFIED | The walker remains optional; only explicit install uses the package API; status/start/move never install or update. |
 
-No Phase 03 requirement is orphaned: all five roadmap requirement IDs appear in phase plans and map to implementation plus behavioral evidence.
+No Phase 03 requirement is orphaned. All five IDs are mapped exclusively to Phase 03 in `REQUIREMENTS.md` and are claimed by phase plans.
 
 ## Anti-Patterns Found
 
-| File | Line/pattern | Severity | Impact |
+| File/scope | Pattern | Severity | Impact |
 |---|---|---|---|
-| Plan 03-10 modified production/tests | `TBD`, `FIXME`, `XXX`, `TODO`, `HACK`, `PLACEHOLDER` scan | None | No unresolved debt marker or placeholder implementation found. |
-| `tests/support/boop_host_busted_helper.lua` | No-op Mudlet globals | ℹ️ Info | Intentional diagnostic host substitutes only; they do not flow into shipped package behavior or claim Mudlet equivalence. |
+| Phase 03 source/tests/docs | `TBD`, `FIXME`, `XXX` | None | No unresolved debt marker or blocker. |
+| Phase 03 source/tests/docs | `TODO`, `HACK`, `PLACEHOLDER`, user-visible placeholder wording | None | No incomplete implementation found. Existing “not available” messages are intentional fail-closed operator diagnostics. |
+| Focused host tests | Synthetic GMCP, timer, package, and event stubs | ℹ️ Info | Intentional deterministic test infrastructure; it is why live Achaea confirmation remains required. |
 
 ## Human Verification Required
 
-### 1. Cross-owner attack/loot/walk release
+### 1. Live serialized room fence and aggregate release
 
-**Test:** In a safe Achaea test area with autogold and demonnicAutoWalker enabled, exercise `diag`, one queued interrupt, and `pull` while a target or gold lifecycle is present. Inspect status, command output, and movement before and after real prompt/return/current-room-list release.
+**Test:** Repeat the UAT flow that exposed G-03-1 with tracing enabled: observe a room List before Room.Info, repeat same-room Info, exercise stop/restart, and overlap diag, interrupt, or pull with target/gold ownership.
 
-**Expected:** No automatic standard/rage attack, get/put command, or walker movement occurs while any relevant owner remains. Once the exact owner and all other relevant owners clear, exactly one next action resumes.
+**Expected:** Early and stale Lists authorize nothing. Room.Info requests one Inv→Room pair, the accepted pair settles the current room, same-room Info preserves it, and no attack/loot/move occurs before aggregate all-clear. Exactly one next action and one walker move then occur.
 
-**Why human:** Actual server queues, GMCP ordering, and the external walker process are not represented by the diagnostic host harness.
+**Why human:** Real GMCP ordering, server queue timing, and demonwalker execution are external to the host harness.
 
-### 2. Wrong-room gold and pack transfer
+### 2. Live canonical same-room gold pipeline
 
-**Test:** Cause gold evidence in room A, move to room B before pickup/retry evidence, then separately confirm pickup and move before the configured pack/stash step.
+**Test:** Repeat the UAT flow that exposed G-03-2. Verify current-room acquisition through same-room Info; exercise removal-before-success and success-before-removal; move before pickup in one run and after confirmed pickup in another.
 
-**Expected:** No room-A get or retry is sent in room B. A confirmed inventory-owned put may finish after movement. No loot command is chained with an attack.
+**Expected:** One current-room get is sent. Same-room Info does not cancel it. Actual movement cancels room-owned acquisition once. Removal alone never creates packing. Confirmed pickup permits one roomless put even after movement. Combat commands contain no get/put chaining.
 
-**Why human:** This validates real Achaea item lines and room/inventory GMCP timing.
+**Why human:** Achaea item lines, inventory confirmation, and room/inventory GMCP callback timing require a live profile.
 
-### 3. Optional walker and stop ownership
+## External Authority Boundaries
 
-**Test:** In a profile without demonnicAutoWalker, run walk status/start/move and then explicit install. In a profile with the package, compare stopping a boop-owned run with detaching from an already-running external walk.
-
-**Expected:** Status/start/move never install or update. Explicit install gives visible feedback. Owned stop emits one stop; attached stop detaches without stopping the external run.
-
-**Why human:** Package-manager prompts and a real walker process are external integrations.
-
-## External Authority and Deferred Validation
-
-- `/tmp/Mudlet.AppImage` is absent. Host Busted is diagnostic evidence, not Mudlet-equivalent evidence.
-- Phase 6 explicitly owns recorded Muddler, real-Mudlet-profile, and live Achaea release evidence. The human items above are preserved because they cross those external boundaries; they are not code gaps.
-- The parent orchestrator owns the immutable-final-HEAD push and `tools/wait_for_exact_ci.sh` gate after this report and all planning/UAT mutations are committed. This report does not claim terminal CI.
-- `git status` was clean after verification commands and before writing this report. No temporary verification files were created.
+- `/tmp/Mudlet.AppImage` is absent, so no local real-Mudlet suite was run.
+- The independently passing 132/132 and 153/153 host Busted runs are diagnostic, not Mudlet-equivalent authority.
+- The optional walker/stop-ownership live UAT already passed and is not an outstanding item.
+- Phase 6 owns recorded real-Mudlet and live-release evidence.
+- The parent owns the immutable-final-HEAD push and `tools/wait_for_exact_ci.sh` gate after this uncommitted report is inspected and committed. This report does not claim exact-final-HEAD GitHub CI.
+- Verification commands left the worktree clean before this report was written. Generated Muddler output is ignored and unstaged.
 
 ## Gaps Summary
 
-No implementation gap remains. Plan 03-10 closes the only previous deterministic failure without modifying runtime or walker policy and without adding an alternate bypass. Automated goal evidence is 5/5; the phase is `human_needed` solely for the three real-environment checks above.
+No code or regression gap remains. G-03-1, G-03-2, and the trace-fixture mismatch are closed at HEAD `d9a3fc9` with synchronized package version `0.1.423`. Automated score is 5/5 with no behavior-unverified truth. Status is `human_needed` solely for the two post-fix live Achaea UAT reruns.
 
 ---
 
-_Verified: 2026-07-26T21:42:51Z_
+_Verified: 2026-07-27T03:07:43Z_
 _Verifier: Codex (gsd-verifier)_

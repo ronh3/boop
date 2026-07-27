@@ -1,41 +1,49 @@
 ---
-status: diagnosed
+status: testing
 phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-27T01:12:23Z
+updated: 2026-07-27T03:12:00Z
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
 
 ## Current Test
 
-[testing complete]
+number: 1
+name: Live serialized room fence and aggregate release
+expected: |
+  Normal walker movement settles from the requested inventory-to-room response pair without a persistent room_partial hold. Same-room Room.Info refreshes preserve settlement, and overlapping safety owners prevent attacks, loot, and movement until aggregate all-clear releases exactly one next action.
+awaiting: user response
 
 ## Tests
 
 ### 1. Cross-owner attack, loot, and walk release
 
 expected: |
-  In a safe Achaea test area with autogold and demonnicAutoWalker enabled, exercising `diag`, one queued interrupt, and `pull` while a real target or gold lifecycle is active sends no automatic attack, loot command, or walker move until every relevant owner releases. Exactly one next action resumes after aggregate all-clear.
-result: issue
-reported: "Walk appears not to receive complete room state. The live trace shows gmcp.Char.Items.List arriving before gmcp.Room.Info; Room.Info then starts a new items:false generation even when moved=no, and the walker remains held until another room list arrives."
-severity: major
+  With boop 0.1.423 installed, room settlement accepts the live GMCP ordering, same-room refreshes preserve the accepted room, and stop/restart cannot reuse stale evidence. No automatic attack, loot command, or walker move occurs while another safety owner remains; exactly one next action resumes after all owners release.
+
+  Easy check:
+  1. Run `boop trace clear`, `boop trace on`, and `boop walk stop`, then start a normal route with `boop walk start`.
+  2. Let the walker cross several rooms. In one room, run `ql` to force a same-room refresh; stop and restart the walker once.
+  3. Run `boop trace show 100`. There must be no room_partial hold that persists until an unrelated later GMCP event, and each settled room must produce at most one walker move.
+  4. During one room transition, start one normal safety lifecycle you already use (`diag`, a queued interrupt, or `pull`). No attack, get/put, or walker move may occur until that lifecycle and every other visible blocker clear; then exactly one next action should resume.
+result: pending
+previous_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room Info created a new partial generation and stalled the walker."
 
 ### 2. Wrong-room gold and pack transfer
 
 expected: |
-  Gold evidence created in room A cannot cause a room-A get or retry after moving to room B. A confirmed inventory-owned put may finish after movement, and no loot command is chained with an attack.
+  With boop 0.1.423 installed, current-room gold queues one get without requiring exit/re-entry. Same-room Room.Info preserves pickup, actual movement cancels room-owned acquisition, and confirmed pickup permits exactly one inventory-owned put even if movement follows. No loot command is chained with an attack.
 
   Easy check:
   1. Stop the walker, then run `boop trace clear`, `boop trace on`, `boop autogold on`, and configure a valid `boop pack <container>`.
-  2. In room A beside an exit, kill a mob and move manually to room B as soon as the first `get sovereigns` is queued. Wait at least five seconds, then run `boop trace show 40`.
-  3. The initial get may have been sent in room A, but there must be no get or retry sent after the room change; the old room-owned gold operation should end with `reason=room_changed`.
-  4. Repeat, but let pickup succeed first. Move after `gold_pack_pending` or the put is queued; the inventory-owned put may finish after movement, and no standard/rage command may contain get or put.
-result: issue
-reported: "The get gold command was never sent after killing the mob. After exiting and re-entering the room, it was picked up. The gold was never put in the pack."
-severity: major
+  2. Kill one mob and stay in the room. Immediately after the get is queued, run `ql`. The get must not be cancelled by the same-room refresh, and the gold must be put in the configured pack without leaving and re-entering.
+  3. Repeat and move to the next room before pickup confirms. Wait five seconds; no old-room get or retry may be sent in the new room.
+  4. Repeat once more, but move only after pickup confirms or `gold_pack_pending` appears. Exactly one put may finish after movement. Run `boop trace show 100` and confirm no standard/rage attack command contains get or put.
+result: pending
+previous_result: "Before Plans 03-11/03-13, pickup required exit/re-entry and a same-room Room.Info cancelled the queued get before packing."
 
 ### 3. Optional walker and stop ownership
 
@@ -53,8 +61,8 @@ result: pass
 
 total: 3
 passed: 1
-issues: 2
-pending: 0
+issues: 0
+pending: 2
 skipped: 0
 blocked: 0
 
@@ -62,7 +70,7 @@ blocked: 0
 
 - gap_id: G-03-1
   truth: "Room settlement accepts either live GMCP arrival order, preserves complete evidence across same-room Room.Info refreshes, and releases hunting and walker ownership exactly once when the current room is complete."
-  status: failed
+  status: resolved
   reason: "User reported a live walker stall. Trace evidence shows Char.Items.List before Room.Info, followed by a new items:false observation for moved=no; only a later duplicate room list clears room_partial."
   severity: major
   test: 1
@@ -80,11 +88,15 @@ blocked: 0
     - "Use validated demonwalker.arrived/current-room identity as a transition hint, never as standalone room evidence."
     - "Keep ambiguous list-first evidence unbound until safely reconciled, and reject stale old-room lists without replacing denizens or releasing owners."
     - "Add regressions for list-before-info, info-before-list, same-room refresh, stale prior-room lists, delayed refresh, and initial/non-movement walker arrival."
-  debug_session: ".planning/debug/phase-03-room-evidence-ordering.md"
+  debug_session: ".planning/debug/resolved/phase-03-room-evidence-ordering.md"
+  resolved_by:
+    - "03-11-PLAN.md"
+    - "03-12-PLAN.md"
+  verification: "03-VERIFICATION.md reports the implementation gap closed at 0.1.423; post-fix live UAT Test 1 remains pending."
 
 - gap_id: G-03-2
   truth: "Room-owned pickup is cancelled only by an actual room change; confirmed pickup transfers to inventory-owned packing, which may complete after movement, and loot is never chained with an attack."
-  status: failed
+  status: resolved
   reason: "User reported that no get was sent after the kill; after exit and re-entry the get was finally queued, but no put followed. Trace shows the same-room Room.Info cancelled pickup generation 9 as room_changed immediately after the get was queued, so the subsequent item removal could not transfer the operation to packing."
   severity: major
   test: 2
@@ -98,4 +110,8 @@ blocked: 0
     - "Cancel room-owned gold only after confirming the room ID actually changed."
     - "Reconcile list-before-info evidence so a current-room gold add/list can advance pickup without requiring exit and re-entry."
     - "Add a regression for list -> get queued -> same-room Room.Info -> get success/item removal -> inventory-owned put."
-  debug_session: ".planning/debug/phase-03-gold-same-room-cancellation.md"
+  debug_session: ".planning/debug/resolved/phase-03-gold-same-room-cancellation.md"
+  resolved_by:
+    - "03-11-PLAN.md"
+    - "03-13-PLAN.md"
+  verification: "03-VERIFICATION.md reports the implementation gap closed at 0.1.423; post-fix live UAT Test 2 remains pending."

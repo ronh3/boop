@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "Diagnose Phase 03 UAT gap G-03-1 only. Goal: find_root_cause_only."
 created: 2026-07-26T00:00:00-07:00
-updated: 2026-07-26T00:40:00-07:00
+updated: 2026-07-26T20:12:00-07:00
 ---
 
 ## Current Focus
@@ -10,7 +10,7 @@ updated: 2026-07-26T00:40:00-07:00
 hypothesis: CONFIRMED — an ordered-pair room state machine treats event arrival order as room identity and treats every Room.Info as movement; this discards valid evidence, rearms release, and cannot safely reconcile a room-ID-less List.
 test: Completed through source tracing, history, focused specs, and deterministic host harnesses.
 expecting: Confirmed.
-next_action: return diagnose-only ROOT CAUSE FOUND; do not modify or commit repository files
+next_action: Post-fix live UAT is tracked in Phase 03 Test 1.
 
 ## Symptoms
 
