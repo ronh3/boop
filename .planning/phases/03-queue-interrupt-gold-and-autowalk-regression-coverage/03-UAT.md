@@ -66,7 +66,7 @@ blocked: 0
   reason: "User reported a live walker stall. Trace evidence shows Char.Items.List before Room.Info, followed by a new items:false observation for moved=no; only a later duplicate room list clears room_partial."
   severity: major
   test: 1
-  root_cause: "boop.onRoomInfo starts a fresh room observation for every Room.Info event and startRoomObservation always resets itemsSeen=false. A complete list that arrived first is bound to the previous generation, while same-room refreshes unnecessarily invalidate settled evidence and room-owned gold."
+  root_cause: "Phase 03 models settlement as an ordered Room.Info -> Char.Items.List pair. boop.onRoomInfo starts a fresh itemsSeen=false observation before determining whether the room changed, so same-room refreshes discard valid evidence and may stall or double-advance the walker. Because List has no room ID, the current stamp path can also authenticate stale old-room items against the persistent new Room.Info table."
   artifacts:
     - path: "src/scripts/boop/boop_events.lua"
       issue: "onRoomInfo unconditionally starts a new observation and invalidates room-owned gold before determining whether the room ID actually changed."
@@ -78,8 +78,9 @@ blocked: 0
     - "Treat Room.Info and Char.Items.List as an unordered event pair while retaining fail-closed room identity checks."
     - "Preserve settled item evidence and room-owned gold on same-room Room.Info updates; invalidate them only on an actual room ID change."
     - "Use validated demonwalker.arrived/current-room identity as a transition hint, never as standalone room evidence."
+    - "Keep ambiguous list-first evidence unbound until safely reconciled, and reject stale old-room lists without replacing denizens or releasing owners."
     - "Add regressions for list-before-info, info-before-list, same-room refresh, stale prior-room lists, delayed refresh, and initial/non-movement walker arrival."
-  debug_session: ""
+  debug_session: ".planning/debug/phase-03-room-evidence-ordering.md"
 
 - gap_id: G-03-2
   truth: "Room-owned pickup is cancelled only by an actual room change; confirmed pickup transfers to inventory-owned packing, which may complete after movement, and loot is never chained with an attack."
@@ -87,7 +88,7 @@ blocked: 0
   reason: "User reported that no get was sent after the kill; after exit and re-entry the get was finally queued, but no put followed. Trace shows the same-room Room.Info cancelled pickup generation 9 as room_changed immediately after the get was queued, so the subsequent item removal could not transfer the operation to packing."
   severity: major
   test: 2
-  root_cause: "boop.onRoomInfo terminates DEFERRED_ROOM and PICKUP_PENDING before comparing the incoming room ID with targeting.room. A same-room Room.Info therefore destroys the live pickup operation, and list-before-info ordering can also leave the original operation deferred until timeout."
+  root_cause: "Two linked defects occur at separate transitions: the Info-first-only observation model cannot retain and reconcile List-before-Info evidence, delaying pickup; then boop.onRoomInfo terminates DEFERRED_ROOM and PICKUP_PENDING before comparing the incoming room ID with targeting.room, so same-room Info destroys the live pickup before success can transfer it to inventory-owned packing."
   artifacts:
     - path: "src/scripts/boop/boop_events.lua"
       issue: "onRoomInfo calls completeGoldOperation(..., room_changed) for room-owned stages even when traceRoomInfo later reports moved=no."
@@ -97,4 +98,4 @@ blocked: 0
     - "Cancel room-owned gold only after confirming the room ID actually changed."
     - "Reconcile list-before-info evidence so a current-room gold add/list can advance pickup without requiring exit and re-entry."
     - "Add a regression for list -> get queued -> same-room Room.Info -> get success/item removal -> inventory-owned put."
-  debug_session: ""
+  debug_session: ".planning/debug/phase-03-gold-same-room-cancellation.md"
