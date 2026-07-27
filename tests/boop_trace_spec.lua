@@ -38,6 +38,25 @@ describe("boop trace gmcp events", function()
     end
   end
 
+  local function publishAcceptedRoomList(items)
+    local observation = boop.runtime.roomObservationSnapshot()
+    if not observation.refreshAttempted then
+      assert.is_true(boop.requestRoomItemsOnce("trace test room response"))
+    end
+
+    gmcp.Char.Items.List = {
+      location = "inv",
+      items = {},
+    }
+    boop.onRoomItemsList()
+
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = items,
+    }
+    boop.onRoomItemsList()
+  end
+
   it("logs room info transitions and room item gmcp events", function()
     gmcp.Room.Info = {
       num = 15,
@@ -47,14 +66,10 @@ describe("boop trace gmcp events", function()
 
     boop.onRoomInfo()
 
-    gmcp.Char.Items.List = {
-      location = "room",
-      items = {
-        { id = "1", name = "a gold sovereign" },
-        { id = "42", name = "a vicious gnoll soldier", attrib = "m" },
-      },
-    }
-    boop.onRoomItemsList()
+    publishAcceptedRoomList({
+      { id = "1", name = "a gold sovereign" },
+      { id = "42", name = "a vicious gnoll soldier", attrib = "m" },
+    })
 
     gmcp.Char.Items.Add = {
       location = "room",
@@ -132,15 +147,11 @@ describe("boop trace gmcp events", function()
     helper.setArea("Test Area")
     helper.setClass("Occultist")
     helper.learnSkill("Lycantha", "Domination")
-    gmcp.Char.Items.List = {
-      location = "room",
-      items = {
-        { id = "42", name = "a first denizen", attrib = "m" },
-        { id = "43", name = "an excluded denizen", attrib = "mx" },
-        { id = "44", name = "a valid replacement", attrib = "m" },
-      },
-    }
-    boop.onRoomItemsList()
+    publishAcceptedRoomList({
+      { id = "42", name = "a first denizen", attrib = "m" },
+      { id = "43", name = "an excluded denizen", attrib = "mx" },
+      { id = "44", name = "a valid replacement", attrib = "m" },
+    })
     helper.setTarget("42", "a first denizen", "80%")
     helper.seedAutomationIntent()
     boop.config.enabled = true
