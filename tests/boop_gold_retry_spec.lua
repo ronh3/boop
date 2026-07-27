@@ -77,15 +77,17 @@ describe("boop generation-owned gold retry handling", function()
 
   local function startPickup(pack, roomId, roomGeneration)
     local room = tostring(roomId or "1")
+    local items = { goldItem("9001") }
     gmcp.Room.Info.num = room
     helper.seedRoomObservation(room, {
       generation = roomGeneration or 1,
       infoSeen = true,
       itemsSeen = true,
+      acceptedItems = items,
     })
     gmcp.Char.Items.List = {
       location = "room",
-      items = { goldItem("9001") },
+      items = items,
     }
     boop.config.goldPack = pack or ""
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
@@ -187,6 +189,11 @@ describe("boop generation-owned gold retry handling", function()
     assert.are.equal(sendsBeforeRetry, #sent)
     assert.are.equal(0, currentOperation().putRetries)
 
+    gmcp.Char.Items.List = {
+      location = "inv",
+      items = {},
+    }
+    boop.onRoomItemsList()
     gmcp.Char.Items.List = {
       location = "room",
       items = {},

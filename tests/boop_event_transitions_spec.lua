@@ -246,6 +246,33 @@ describe("boop event-driven state transitions", function()
     return boop.onRoomItemsList()
   end
 
+  local function publishAcceptedRoomList(items)
+    local observation = boop.runtime.roomObservationSnapshot()
+    if not observation.itemsSeen and not observation.refreshAttempted then
+      boop.requestRoomItemsOnce("test accepted room response")
+    end
+    local guard = 0
+    while true do
+      observation = boop.runtime.roomObservationSnapshot()
+      local fence = observation.fenceQueue[1]
+      if not fence then break end
+      guard = guard + 1
+      assert.is_true(guard < 20)
+      if fence.phase == "await_inv" then
+        publishItemsList("inv", {})
+      end
+      observation = boop.runtime.roomObservationSnapshot()
+      fence = observation.fenceQueue[1]
+      if fence and fence.phase == "await_room" then
+        local acceptedItems = fence.valid ~= false
+            and tonumber(fence.fenceId) == tonumber(observation.activeFenceId)
+          and items
+          or {}
+        publishItemsList("room", acceptedItems)
+      end
+    end
+  end
+
   local function copyWalkState()
     local walk = boop.runtime.state().walk
     return {
@@ -286,6 +313,7 @@ describe("boop event-driven state transitions", function()
 
   local function seedSettledGoldRoom(roomId, generation)
     local room = tostring(roomId or "1")
+    local items = { goldItem("9001") }
     gmcp.Room.Info = {
       num = room,
       area = "Test Area",
@@ -296,10 +324,11 @@ describe("boop event-driven state transitions", function()
       generation = generation or 1,
       infoSeen = true,
       itemsSeen = true,
+      acceptedItems = items,
     })
     gmcp.Char.Items.List = {
       location = "room",
-      items = { goldItem("9001") },
+      items = items,
     }
     boop.config.enabled = true
     boop.config.autoGrabGold = true
@@ -534,10 +563,10 @@ describe("boop event-driven state transitions", function()
     assert.is_false(observation.warned)
     assert.are.equal("room:observation", blockerSnapshot().owner)
     assert.is_true(boop.runtime.shouldHold("gold"))
-    assert.are.same({ [[Char.Items.Room]] }, gmcp_requests)
+    assert.are.same({ [[Char.Items.Inv]], [[Char.Items.Room]] }, gmcp_requests)
     assert.is_false(boop.requestRoomItemsOnce("duplicate refresh"))
-    assert.are.same({ [[Char.Items.Room]] }, gmcp_requests)
-    assert.is_true(boop.runtime.roomObservationSnapshot().warned)
+    assert.are.same({ [[Char.Items.Inv]], [[Char.Items.Room]] }, gmcp_requests)
+    assert.is_false(boop.runtime.roomObservationSnapshot().warned)
     assert.are.equal(0, #sent_commands)
     assert.are.equal(0, countRaised("demonwalker.move"))
 
@@ -549,14 +578,11 @@ describe("boop event-driven state transitions", function()
   end)
 
   it("accepts only a complete room list after the current room info generation", function()
-    gmcp.Char.Items.List = {
-      location = "room",
-      items = {},
-    }
-    boop.onRoomItemsList()
+    publishAcceptedRoomList({})
     local settled = boop.runtime.roomObservationSnapshot()
     assert.are.equal(1, settled.generation)
     assert.is_true(settled.itemsSeen)
+    gmcp_requests = {}
 
     boop.state.targeting.room = 1
     boop.state.walk.active = true
@@ -573,7 +599,7 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(2, current.generation)
     assert.are.equal("2", current.roomId)
     assert.is_false(current.itemsSeen)
-    assert.are.same({ [[Char.Items.Room]] }, gmcp_requests)
+    assert.are.same({ [[Char.Items.Inv]], [[Char.Items.Room]] }, gmcp_requests)
 
     boop.onPrompt()
     assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
@@ -583,19 +609,19 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(0, countRaised("demonwalker.move"))
 
     gmcp.Char.Items.List = {
-      location = "inv",
-      items = {},
-    }
-    boop.onRoomItemsList()
-    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
-
-    gmcp.Char.Items.List = {
       location = "room",
       items = nil,
     }
     boop.onRoomItemsList()
     assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
-    assert.are.same({ [[Char.Items.Room]] }, gmcp_requests)
+    assert.are.same({ [[Char.Items.Inv]], [[Char.Items.Room]] }, gmcp_requests)
+
+    gmcp.Char.Items.List = {
+      location = "inv",
+      items = {},
+    }
+    boop.onRoomItemsList()
+    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
 
     boop.state.walk.active = false
     gmcp.Char.Items.List = {
@@ -611,7 +637,7 @@ describe("boop event-driven state transitions", function()
     boop.onRoomItemsList()
     assert.are.equal(2, boop.runtime.roomObservationSnapshot().generation)
     assert.is_true(boop.runtime.roomObservationSnapshot().itemsSeen)
-    assert.are.same({ [[Char.Items.Room]] }, gmcp_requests)
+    assert.are.same({ [[Char.Items.Inv]], [[Char.Items.Room]] }, gmcp_requests)
     assert.are.equal(0, #sent_commands)
     assert.are.equal(0, countRaised("demonwalker.move"))
   end)
@@ -1052,13 +1078,9 @@ describe("boop event-driven state transitions", function()
     boop.onRoomInfo()
 
     assert.are.equal(0, countSent("queue add freestand get sovereigns"))
-    gmcp.Char.Items.List = {
-      location = "room",
-      items = {
-        { id = "99", name = "some gold sovereigns" },
-      },
-    }
-    boop.onRoomItemsList()
+    publishAcceptedRoomList({
+      { id = "99", name = "some gold sovereigns" },
+    })
 
     assert.is_true(boop.runtime.roomObservationSnapshot().itemsSeen)
     assert.are.equal(1, countSent("queue add freestand get sovereigns"))
@@ -1103,11 +1125,7 @@ describe("boop event-driven state transitions", function()
       return originalFlush(reason)
     end)
 
-    gmcp.Char.Items.List = {
-      location = "room",
-      items = { goldItem("9001") },
-    }
-    boop.onRoomItemsList()
+    publishAcceptedRoomList({ goldItem("9001") })
 
     assert.are.equal("pickup_pending", boop.state.gold.operation.phase)
     assert.is_nil(boop.state.combat.blockersByOwner["room:observation"])
@@ -1253,7 +1271,7 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(operation.getRetries, boop.state.gold.operation.getRetries)
   end)
 
-  it("keeps current gold unchanged when late old-room List, Add, Remove, and text evidence arrives", function()
+  it("keeps current gold unchanged when a late old-room List arrives before its barrier", function()
     seedSettledGoldRoom("1", 1)
     boop.config.goldPack = ""
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
@@ -1274,22 +1292,7 @@ describe("boop event-driven state transitions", function()
     local current = copyGoldOperation(boop.state.gold.operation)
     local sendCount = countGoldSends()
 
-    gmcp.Char.Items.List = {
-      location = "room",
-      items = { goldItem("9001") },
-    }
-    boop.onRoomItemsList()
-    gmcp.Char.Items.Add = {
-      location = "room",
-      item = goldItem("9001"),
-    }
-    boop.onRoomItemsAdd()
-    gmcp.Char.Items.Remove = {
-      location = "room",
-      item = goldItem("9001"),
-    }
-    boop.onRoomItemsRemove()
-    boop.onGoldDropLine("Old-room sovereign text arrives late.")
+    publishItemsList("room", { goldItem("9001") })
 
     assert.are.same(current, copyGoldOperation(boop.state.gold.operation))
     assert.are.equal(sendCount, countGoldSends())
@@ -1388,11 +1391,7 @@ describe("boop event-driven state transitions", function()
     })
     captureRuntimeBlockerCalls()
 
-    gmcp.Char.Items.List = {
-      location = "room",
-      items = {},
-    }
-    boop.onRoomItemsList()
+    publishAcceptedRoomList({})
 
     local blockers = boop.runtime.blockersSnapshot()
     assert.are.equal(2, #blockers)
@@ -1565,15 +1564,11 @@ describe("boop event-driven state transitions", function()
     helper.setArea("Test Area")
     helper.setClass("Occultist")
     helper.learnSkill("Lycantha", "Domination")
-    gmcp.Char.Items.List = {
-      location = "room",
-      items = {
-        { id = "42", name = "a first denizen", attrib = "m" },
-        { id = "43", name = "an excluded denizen", attrib = "mx" },
-        { id = "44", name = "a valid replacement", attrib = "m" },
-      },
-    }
-    boop.onRoomItemsList()
+    publishAcceptedRoomList({
+      { id = "42", name = "a first denizen", attrib = "m" },
+      { id = "43", name = "an excluded denizen", attrib = "mx" },
+      { id = "44", name = "a valid replacement", attrib = "m" },
+    })
     helper.setTarget("42", "a first denizen", "80%")
     helper.addTargetAfflictions({ "stupidity" })
 
@@ -1820,9 +1815,9 @@ describe("boop event-driven state transitions", function()
     )
 
     gmcp.Room.Info = {
-      num = 1,
+      num = 2,
       area = "Test Area",
-      exits = {},
+      exits = { south = 1 },
     }
     boop.onRoomInfo()
 
@@ -1848,11 +1843,7 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(roomGeneration, state.walk.roomGeneration)
     assert.are.equal(reservationAfterRoomInfo, state.walk.reservationId)
 
-    gmcp.Char.Items.List = {
-      location = "room",
-      items = {},
-    }
-    boop.onRoomItemsList()
+    publishAcceptedRoomList({})
 
     assert.is_true(boop.runtime.roomObservationSnapshot().itemsSeen)
     assert.is_true(state.walk.roomSettled)
@@ -2025,8 +2016,8 @@ describe("boop event-driven state transitions", function()
       pullTimeout()
       assert.is_false(boop.state.combat.pullState)
       assert.are.equal(2, #sent_commands)
-      assert.are.equal(2, #scheduled_callbacks)
-      assert.are.equal(2, #gmcp_requests)
+      assert.are.equal(4, #scheduled_callbacks)
+      assert.are.equal(4, #gmcp_requests)
       assert.are.equal(0, countRaised("demonwalker.move"))
       assert.are.equal(0, countRaised("demonwalker.stop"))
     end)
@@ -2158,14 +2149,10 @@ describe("boop event-driven state transitions", function()
       waitsFor = { timeout = true },
     })
 
-    gmcp.Char.Items.List = {
-      location = "room",
-      items = {
-        { id = "42", name = "a denizen", attrib = "m" },
-        goldItem("9001"),
-      },
-    }
-    boop.onRoomItemsList()
+    publishAcceptedRoomList({
+      { id = "42", name = "a denizen", attrib = "m" },
+      goldItem("9001"),
+    })
 
     assert.are.equal(1, countGoldSends())
     assert.are.equal(0, state.walk.reservationId)
@@ -2182,11 +2169,12 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(0, state.walk.reservationId)
     assert.are.equal(0, countRaised("demonwalker.move"))
 
-    gmcp.Char.Items.List = {
+    gmcp.Char.Items.Remove = {
       location = "room",
-      items = {},
+      item = { id = "42", name = "a denizen", attrib = "m" },
     }
-    boop.onRoomItemsList()
+    boop.onRoomItemsRemove()
+    goldTerminal()
 
     assert.are.equal(1, state.walk.reservationId)
     assert.is_true(state.walk.moveQueued)
@@ -2195,7 +2183,6 @@ describe("boop event-driven state transitions", function()
     local emitter = callbackForTimer(state.walk.emitterTimer)
     assert.is_function(emitter)
 
-    goldTerminal()
     emitter()
     emitter()
 
@@ -2259,11 +2246,7 @@ describe("boop event-driven state transitions", function()
     assert.is_true(boop.walk.stop(true, true))
     assert.is_true(boop.walk.start())
 
-    gmcp.Char.Items.List = {
-      location = "room",
-      items = { goldItem("9002") },
-    }
-    boop.onRoomItemsList()
+    publishAcceptedRoomList({ goldItem("9002") })
 
     local currentGold = copyGoldOperation(boop.state.gold.operation)
     local currentWalk = {

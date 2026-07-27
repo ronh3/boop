@@ -74,8 +74,13 @@ local DOMAIN_DEFAULTS = {
       roomId = "",
       infoSeen = false,
       itemsSeen = false,
+      acceptedItems = {},
+      fenceQueue = {},
+      activeFenceId = false,
+      nextFenceId = 1,
       refreshAttempted = false,
       refreshReason = "",
+      refreshTimeoutTimer = false,
       warned = false,
     },
   },
@@ -183,58 +188,251 @@ function boop.runtime.state()
   return boop.runtime.ensureState()
 end
 
-function boop.runtime.startRoomObservation(roomId)
+local function normalizeRoomId(roomId)
+  return tostring(roomId or ""):match("^%s*(.-)%s*$")
+end
+
+local function roomObservationState()
   local state = boop.runtime.ensureState()
-  local previous = state.targeting.roomObservation
-  local generation = type(previous) == "table" and tonumber(previous.generation) or 0
-  local normalizedRoomId = tostring(roomId or "")
+  local observation = state.targeting.roomObservation
+  if type(observation) ~= "table" then
+    observation = deepCopy(DOMAIN_DEFAULTS.targeting.roomObservation)
+    state.targeting.roomObservation = observation
+  end
+  observation.generation = tonumber(observation.generation) or 0
+  observation.roomId = normalizeRoomId(observation.roomId)
+  observation.infoSeen = not not observation.infoSeen
+  observation.itemsSeen = not not observation.itemsSeen
+  observation.acceptedItems = type(observation.acceptedItems) == "table"
+    and observation.acceptedItems
+    or {}
+  observation.fenceQueue = type(observation.fenceQueue) == "table"
+    and observation.fenceQueue
+    or {}
+  observation.activeFenceId = observation.activeFenceId or false
+  observation.nextFenceId = math.max(1, tonumber(observation.nextFenceId) or 1)
+  observation.refreshAttempted = not not observation.refreshAttempted
+  observation.refreshReason = tostring(observation.refreshReason or "")
+  observation.refreshTimeoutTimer = observation.refreshTimeoutTimer or false
+  observation.warned = not not observation.warned
+  return observation
+end
+
+function boop.runtime.startRoomObservation(roomId, opts)
+  opts = type(opts) == "table" and opts or {}
+  local boundary = tostring(opts.boundary or "fresh_start")
+  if boundary ~= "room_change" and boundary ~= "fresh_start" then
+    return false
+  end
+  local state = boop.runtime.ensureState()
+  local previous = roomObservationState()
+  local generation = tonumber(previous.generation) or 0
+  local normalizedRoomId = normalizeRoomId(roomId)
+  local fences = previous.fenceQueue
+  for _, fence in ipairs(fences) do
+    fence.valid = false
+  end
+  if previous.refreshTimeoutTimer and killTimer then
+    killTimer(previous.refreshTimeoutTimer)
+  end
   state.targeting.roomObservation = {
     generation = generation + 1,
     roomId = normalizedRoomId,
     infoSeen = normalizedRoomId ~= "",
     itemsSeen = false,
+    acceptedItems = {},
+    fenceQueue = fences,
+    activeFenceId = false,
+    nextFenceId = previous.nextFenceId,
     refreshAttempted = false,
-    refreshReason = "",
+    refreshReason = tostring(opts.reason or ""),
+    refreshTimeoutTimer = false,
     warned = false,
   }
   return boop.runtime.roomObservationSnapshot()
 end
 
-function boop.runtime.stampRoomItemsObservation()
-  local state = boop.runtime.ensureState()
-  local observation = state.targeting.roomObservation
-  if type(observation) ~= "table"
-      or not observation.infoSeen
-      or tostring(observation.roomId or "") == "" then
+function boop.runtime.observeRoomInfo(roomId, opts)
+  opts = type(opts) == "table" and opts or {}
+  local normalizedRoomId = normalizeRoomId(roomId)
+  local observation = roomObservationState()
+  if opts.movedRooms or opts.freshStart or opts.boundary == "room_change"
+      or opts.boundary == "fresh_start" then
+    return boop.runtime.startRoomObservation(normalizedRoomId, opts)
+  end
+  if normalizedRoomId == "" or normalizedRoomId ~= observation.roomId then
     return false
   end
-  local currentRoomId = tostring(
+  observation.infoSeen = true
+  return boop.runtime.roomObservationSnapshot()
+end
+
+function boop.runtime.beginRoomResponseFence(reason)
+  local observation = roomObservationState()
+  if not observation.infoSeen
+      or observation.itemsSeen
+      or observation.roomId == ""
+      or observation.refreshAttempted then
+    return false
+  end
+  local fenceId = observation.nextFenceId
+  observation.nextFenceId = fenceId + 1
+  local fence = {
+    fenceId = fenceId,
+    generation = observation.generation,
+    roomId = observation.roomId,
+    phase = "await_inv",
+    valid = true,
+  }
+  observation.fenceQueue[#observation.fenceQueue + 1] = fence
+  observation.activeFenceId = fenceId
+  observation.refreshAttempted = true
+  observation.refreshReason = tostring(reason or "room item evidence missing")
+  return deepCopy(fence)
+end
+
+function boop.runtime.setRoomResponseFenceTimer(fenceId, timerId)
+  local observation = roomObservationState()
+  if tonumber(observation.activeFenceId) ~= tonumber(fenceId) then
+    return false
+  end
+  observation.refreshTimeoutTimer = timerId or false
+  return true
+end
+
+function boop.runtime.timeoutRoomResponseFence(fenceId, timerId)
+  local observation = roomObservationState()
+  if tonumber(observation.activeFenceId) ~= tonumber(fenceId)
+      or observation.itemsSeen
+      or observation.refreshTimeoutTimer ~= timerId then
+    return false
+  end
+  observation.refreshTimeoutTimer = false
+  if observation.warned then
+    return false
+  end
+  observation.warned = true
+  return true
+end
+
+local function currentRoomId()
+  return normalizeRoomId(
     gmcp
       and gmcp.Room
       and gmcp.Room.Info
       and gmcp.Room.Info.num
       or ""
   )
-  if currentRoomId == "" or currentRoomId ~= tostring(observation.roomId or "") then
-    return false
+end
+
+function boop.runtime.observeRoomItemsList(location, items)
+  local observation = roomObservationState()
+  local queue = observation.fenceQueue
+  local fence = queue[1]
+  local normalizedLocation = tostring(location or ""):lower()
+  local copiedItems = type(items) == "table" and deepCopy(items) or false
+  if type(fence) ~= "table" then
+    return {
+      status = "orphan",
+      location = normalizedLocation,
+    }
   end
+
+  if normalizedLocation == "inv" then
+    if fence.phase ~= "await_inv" then
+      return {
+        status = "duplicate",
+        fenceId = fence.fenceId,
+      }
+    end
+    fence.phase = "await_room"
+    if not fence.valid then
+      return {
+        status = "drained",
+        fenceId = fence.fenceId,
+        location = normalizedLocation,
+      }
+    end
+    if not copiedItems then
+      fence.phase = "await_inv"
+      return {
+        status = "rejected",
+        fenceId = fence.fenceId,
+        location = normalizedLocation,
+      }
+    end
+    return {
+      status = "inventory",
+      fenceId = fence.fenceId,
+      items = copiedItems or {},
+    }
+  end
+
+  if normalizedLocation ~= "room" then
+    return {
+      status = "ignored",
+      fenceId = fence.fenceId,
+      location = normalizedLocation,
+    }
+  end
+  if fence.phase ~= "await_room" then
+    return {
+      status = "awaiting_inv",
+      fenceId = fence.fenceId,
+    }
+  end
+
+  table.remove(queue, 1)
+  if not fence.valid then
+    return {
+      status = "drained",
+      fenceId = fence.fenceId,
+      location = normalizedLocation,
+    }
+  end
+  if not copiedItems
+      or tonumber(fence.generation) ~= tonumber(observation.generation)
+      or normalizeRoomId(fence.roomId) ~= observation.roomId
+      or currentRoomId() ~= observation.roomId then
+    return {
+      status = "rejected",
+      fenceId = fence.fenceId,
+      location = normalizedLocation,
+    }
+  end
+
   observation.itemsSeen = true
-  return true
+  observation.acceptedItems = copiedItems
+  if tonumber(observation.activeFenceId) == tonumber(fence.fenceId) then
+    observation.activeFenceId = false
+  end
+  if observation.refreshTimeoutTimer and killTimer then
+    killTimer(observation.refreshTimeoutTimer)
+  end
+  observation.refreshTimeoutTimer = false
+  return {
+    status = "accepted",
+    fenceId = fence.fenceId,
+    generation = observation.generation,
+    roomId = observation.roomId,
+    items = deepCopy(copiedItems),
+  }
 end
 
 function boop.runtime.roomObservationSnapshot()
-  local state = boop.runtime.ensureState()
-  local observation = state.targeting.roomObservation
-  if type(observation) ~= "table" then
-    observation = DOMAIN_DEFAULTS.targeting.roomObservation
-  end
+  local observation = roomObservationState()
   return {
     generation = tonumber(observation.generation) or 0,
     roomId = tostring(observation.roomId or ""),
     infoSeen = not not observation.infoSeen,
     itemsSeen = not not observation.itemsSeen,
+    acceptedItems = deepCopy(observation.acceptedItems),
+    fenceQueue = deepCopy(observation.fenceQueue),
+    activeFenceId = observation.activeFenceId or false,
+    nextFenceId = tonumber(observation.nextFenceId) or 1,
     refreshAttempted = not not observation.refreshAttempted,
     refreshReason = tostring(observation.refreshReason or ""),
+    refreshTimeoutTimer = observation.refreshTimeoutTimer or false,
     warned = not not observation.warned,
   }
 end

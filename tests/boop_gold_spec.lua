@@ -50,6 +50,7 @@ describe("boop staged gold handling", function()
       generation = generation or 1,
       infoSeen = true,
       itemsSeen = true,
+      acceptedItems = items,
     })
     gmcp.Char.Items.List = {
       location = "room",
@@ -58,6 +59,15 @@ describe("boop staged gold handling", function()
   end
 
   local function publishRoomList(items)
+    local observation = boop.runtime.roomObservationSnapshot()
+    local fence = observation.fenceQueue[1]
+    if fence and fence.phase == "await_inv" then
+      gmcp.Char.Items.List = {
+        location = "inv",
+        items = {},
+      }
+      boop.onRoomItemsList()
+    end
     gmcp.Char.Items.List = {
       location = "room",
       items = items,
@@ -139,8 +149,9 @@ describe("boop staged gold handling", function()
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
 
     assert.are.equal(0, #sent)
-    assert.are.equal(1, #sent_gmcp)
-    assert.are.equal("Char.Items.Room", sent_gmcp[1])
+    assert.are.equal(2, #sent_gmcp)
+    assert.are.equal("Char.Items.Inv", sent_gmcp[1])
+    assert.are.equal("Char.Items.Room", sent_gmcp[2])
     local deferred = currentOperation()
     assert.are.equal(1, deferred.generation)
     assert.are.equal("deferred_room", deferred.phase)
@@ -159,7 +170,7 @@ describe("boop staged gold handling", function()
     assert.are.equal(deferredFlushTimer, afterDuplicates.flushTimer)
     assert.are.equal(deferredTimeoutTimer, afterDuplicates.timeoutTimer)
     assert.are.equal(0, #sent)
-    assert.are.equal(1, #sent_gmcp)
+    assert.are.equal(2, #sent_gmcp)
 
     publishRoomList({ goldItem("9001") })
 
@@ -181,7 +192,7 @@ describe("boop staged gold handling", function()
     assert.are.equal(pickupFlushTimer, final.flushTimer)
     assert.are.equal(pickupTimeoutTimer, final.timeoutTimer)
     assert.are.equal(1, #sent)
-    assert.are.equal(1, #sent_gmcp)
+    assert.are.equal(2, #sent_gmcp)
   end)
 
   it("queues get, transfers to inventory-owned packing, then queues put", function()

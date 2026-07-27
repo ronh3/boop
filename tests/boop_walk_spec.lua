@@ -390,8 +390,9 @@ describe("boop walk integration", function()
     assert.is_false(state.walk.moveQueued)
     assert.is_false(state.walk.moveIssuedForRoomGeneration)
     assert.are.equal(0, state.walk.reservationId)
-    assert.are.equal(1, #sent_gmcp)
-    assert.are.equal("Char.Items.Room", sent_gmcp[1])
+    assert.are.equal(2, #sent_gmcp)
+    assert.are.equal("Char.Items.Inv", sent_gmcp[1])
+    assert.are.equal("Char.Items.Room", sent_gmcp[2])
 
     local blocker = assertOwner(
       owner,
@@ -521,6 +522,15 @@ describe("boop walk integration", function()
         },
       },
     }
+    helper.seedRoomObservation(
+      boop.runtime.roomObservationSnapshot().roomId,
+      {
+        generation = boop.runtime.roomObservationSnapshot().generation,
+        infoSeen = true,
+        itemsSeen = true,
+        acceptedItems = gmcp.Char.Items.List.items,
+      }
+    )
 
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
     local operation = boop.state.gold.operation
@@ -962,7 +972,7 @@ describe("boop walk integration", function()
     local owner = currentWalkOwner()
     local refreshTimer = state.walk.refreshTimer
     assert.is_number(refreshTimer)
-    assert.are.equal(1, #sent_gmcp)
+    assert.are.equal(2, #sent_gmcp)
     local warningCount = #feedback.warn
     local traceCount = countContaining(trace_lines, "room_refresh_exhausted")
 
@@ -973,7 +983,7 @@ describe("boop walk integration", function()
     assert.is_nil(state.walk.refreshTimer)
     assert.is_true(state.walk.refreshWarned)
     assert.are.equal(0, countRaised("demonwalker.move"))
-    assert.are.equal(1, #sent_gmcp)
+    assert.are.equal(2, #sent_gmcp)
     assert.are.equal(1, #feedback.warn - warningCount)
     assert.is_true(
       feedback.warn[#feedback.warn]:find(
