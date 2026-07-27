@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
-status: ready_to_execute
-stopped_at: Planned 03-15-PLAN.md
-last_updated: "2026-07-27T11:22:39Z"
+status: awaiting_verification
+stopped_at: Completed 03-15-PLAN.md
+last_updated: "2026-07-27T12:13:59.710Z"
 last_activity: 2026-07-27
-last_activity_desc: Planned verified Phase 03 gap closure for test contracts and exact-CI suite isolation
+last_activity_desc: Plan 03-15 implementation complete; exact-SHA CI and live UAT pending
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 29
-  completed_plans: 28
-  percent: 97
+  completed_plans: 29
+  percent: 100
 ---
 
 # Project State
@@ -28,19 +28,19 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 ## Current Position
 
-Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — READY TO EXECUTE
-Plan: 14 of 15 complete
-Status: Plan 03-15 is verified and ready to close diagnose, pull timer-identity, and real-Mudlet suite-isolation gaps
-Last activity: 2026-07-27 — Added and independently verified Wave 15 gap plan
+Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — AWAITING VERIFICATION
+Plan: 15 of 15 complete
+Status: Awaiting parent exact-final-SHA CI before live UAT
+Last activity: 2026-07-27 — Plan 03-15 implementation complete; exact-SHA CI and live UAT pending
 
-Progress: [█████████░] 97%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 28
-- Average duration: 15 min
+- Total plans completed: 29
+- Average duration: 14 min
 - Total execution time: 6.8 hours
 
 **By Phase:**
@@ -49,12 +49,12 @@ Progress: [█████████░] 97%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 14/15 | 177m | ~13 min |
+| 03 | 15/15 | 180m | 12 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 03 P10 (7m), Phase 03 P11 (17m), Phase 03 P12 (7m), Phase 03 P13 (11m), Phase 03 P14 (11m)
-- Trend: Wave 15 is planned to restore five fixture contracts and eliminate the exact-CI shared-state reset cascade
+- Last 5 plans: Phase 03 P11 (17m), Phase 03 P12 (7m), Phase 03 P13 (11m), Phase 03 P14 (11m), Phase 03 P15 (3m)
+- Trend: All Phase 03 plans are implemented; exact-final-SHA CI and live UAT remain pending
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -73,6 +73,7 @@ Progress: [█████████░] 97%
 | Phase 03 P12 | 7m | 2 tasks | 7 files |
 | Phase 03 P13 | 11m | 2 tasks | 7 files |
 | Phase 03 P14 | 11m | 3 tasks | 10 files |
+| Phase 03 P15 | 3m | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,7 @@ Recent decisions affecting current work:
 - [Phase 03]: Keep the prompt-only lifecycle observer enabled independently from hunting automation; all combat, gag, target, gold, and walk triggers stay under boop.
 - [Phase 03]: Reuse the exact gmcp:ire owner and reconcile current IRE at explicit lifecycle and event boundaries without support requests on evidence-only paths.
 - [Phase 03]: Warn on incomplete room-response fences at 8.0 seconds while retaining room:observation fail closed.
+- [Phase 03]: Plan 03-15 kept exact owner and timer identity canonical, preserved host-versus-real-Mudlet authority boundaries, and left exact-SHA CI and live UAT to the parent.
 
 ### Pending Todos
 
@@ -138,9 +140,9 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Plan 03-14 closes the disabled reconnect `gmcp:ire` recovery deadlock and premature room-response warning in focused coverage.
-- Re-verification found two diagnose-timeout fixtures that expect disabled prompt automation and three pull fixtures that identify operation timers only by their 8.0-second delay.
-- Plan 03-15 is ready to restore those five tests and shared-suite reachability; exact-final-HEAD CI and live Achaea UAT remain external gates.
+- Plan 03-15 restored the two diagnose-timeout contracts, three operation-owned pull timer contracts, and lifecycle suite isolation.
+- Local real-Mudlet execution remains unavailable; the Occultist-only host helper is not authoritative for unchanged Psion and Dragon pull profiles.
+- Parent exact-final-HEAD CI and live Achaea UAT remain blocking external gates before Phase 03 can be marked complete.
 
 ### Quick Tasks Completed
 
@@ -158,6 +160,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-27T11:22:39Z
-Stopped at: Planned and verified 03-15-PLAN.md
+Last session: 2026-07-27T12:12:45.581Z
+Stopped at: Completed 03-15-PLAN.md
 Resume file: None
