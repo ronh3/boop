@@ -1,6 +1,6 @@
 ---
 phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
-verified: 2026-07-27T03:20:48Z
+verified: 2026-07-27T03:28:41Z
 status: human_needed
 score: 5/5 must-haves verified
 behavior_unverified: 0
@@ -13,6 +13,7 @@ re_verification:
     - "G-03-2: Canonical copied room evidence now owns gold acquisition; same-room Info preserves pickup, actual room change alone cancels room ownership, confirmed success alone creates roomless packing, and either removal order produces one put."
     - "The trace fixture now publishes room data through the production response fence instead of bypassing the accepted-observation contract."
     - "Pull lifecycle tests now identify operation-owned timeout IDs instead of treating room-response fence timers as pull timers."
+    - "Standalone inventory Lists rebuild wield state without becoming room authority, while invalidated and duplicate fenced responses remain drain-only."
   gaps_remaining: []
   regressions: []
 human_verification:
@@ -27,12 +28,12 @@ human_verification:
 # Phase 3: Queue, Interrupt, Gold, and Autowalk Regression Coverage Verification Report
 
 **Phase Goal:** Timing-sensitive command paths cannot attack, loot, or walk while another safety hold or room-state blocker owns the next action.
-**Verified:** 2026-07-27T03:20:48Z
+**Verified:** 2026-07-27T03:28:41Z
 **Status:** human_needed
-**Re-verification:** Yes — after UAT gap Plans 03-11, 03-12, and 03-13 plus trace and pull-timer fixture regressions
-**Verified HEAD:** `dd5c2e9238e8a44dc10b06136e0bd9a9e7996cef`
+**Re-verification:** Yes — after UAT gap Plans 03-11, 03-12, and 03-13 plus trace, pull-timer, and standalone-inventory regressions
+**Verified HEAD:** `b9843eb27de74eb07eb4d248ad79161d8d544508`
 **Branch:** `codex/pre-1.0-hardening-pass`
-**Package version:** `0.1.424`
+**Package version:** `0.1.425`
 
 ## Goal Achievement
 
@@ -60,6 +61,7 @@ All five roadmap truths have passing behavioral evidence. The overall status rem
 | G-03-2 | Preserve current pickup across same-room Info, cancel only actual movement, use confirmed success as the inventory transfer, and issue one independent put. | `onRoomInfo` determines same-room before lifecycle cancellation; `canonicalGoldEvidence` reads only accepted copied items; `transferGoldToPacking` clears room identity; room removal remains observational; get success is the transfer authority (`boop_events.lua:510-541`, `929-985`, `1089`, `1221`, `1317`). Exact either-order and wrong-room/movement tests each passed 1/1. | ✓ CLOSED |
 | Trace fixture | Exercise, rather than bypass, the response-fence contract. | `tests/boop_trace_spec.lua:35` opens the fence and publishes Inv then Room before trace assertions. The exact trace test passed 1/1 and is included in the 153/153 aggregate. | ✓ CLOSED |
 | Pull timer fixture | Keep pull timeout assertions exact after room movement begins scheduling response-fence timers. | `tests/boop_pull_spec.lua` captures each pull operation's `timeoutTimer`, distinguishes it from 0.35-second response-fence timers, and asserts stale callbacks remain no-ops. The four CI-identified lifecycle cases passed 4/4 locally. | ✓ CLOSED |
+| Standalone inventory regression | Preserve wield tracking for valid inventory Lists that are not part of a room-response fence. | `observeRoomItemsList` now returns copied inventory evidence when no fence exists, while retaining duplicate and invalidated-fence rejection. The wield plus event-transition set passed 49/49. | ✓ CLOSED |
 
 ## Required Artifacts
 
@@ -67,7 +69,7 @@ All 13 PLAN frontmatter checks passed: **63/63 artifact declarations** and **35/
 
 | Artifact | Expected | Status | Details |
 |---|---|---|---|
-| `src/scripts/boop/boop_runtime.lua` | Owner aggregation, serialized response-fence queue, copied accepted observations, exact releases | ✓ VERIFIED | Substantive and wired through events, gold, targets, tick, and walker. Invalid fences remain drain-only queue records; accepted snapshots are deep copies. |
+| `src/scripts/boop/boop_runtime.lua` | Owner aggregation, serialized response-fence queue, copied accepted observations, exact releases | ✓ VERIFIED | Substantive and wired through events, gold, targets, tick, and walker. Invalid fences remain drain-only queue records; standalone inventory Lists remain independently available for wield tracking. |
 | `src/scripts/boop/boop_events.lua` | Fence request/consumption, actual-room-change detection, staged gold lifecycle, tokenless walker adapter | ✓ VERIFIED | Substantive and wired. The fence is recorded before exact `Char.Items.Inv` then `Char.Items.Room` sends; only an `accepted` room transition reaches targets, gold, settlement, and tick. |
 | `src/scripts/boop/boop_walk.lua` | Optional integration, lifecycle ownership, shared safety evaluator, one-shot guarded emitter | ✓ VERIFIED | Substantive and wired. Start/stop/arrival/room-settlement paths retain generation and reservation identity through final emission. |
 | `src/scripts/boop/boop_util.lua` | Combat action dispatch independent from gold commands | ✓ VERIFIED | No get/put chaining is added to supplied combat actions; gold sends through its separate freestand command path. |
@@ -115,9 +117,10 @@ All 13 PLAN frontmatter checks passed: **63/63 artifact declarations** and **35/
 | Optional walker no implicit install/update | Exact Busted name in `boop_walk_spec.lua` | 1 success | ✓ PASS |
 | Trace fixture through response fence | Exact Busted name in `boop_trace_spec.lua` | 1 success | ✓ PASS |
 | Pull timeout identity with response fences | Four exact Busted names in `boop_pull_spec.lua` | 4 successes, 0 failures/errors/pending | ✓ PASS |
+| Standalone inventory and fenced room transitions | Host Busted: wield + event transitions | 49 successes, 0 failures/errors/pending | ✓ PASS |
 | Lua syntax | `luac -p` over every Lua file under `src/` and `tests/` | Exit 0 | ✓ PASS |
 | Release/version/state gates | `python3 tools/check_release_gates.py` | `[OK] versions`, `[OK] manifests`, `[OK] state-drift` | ✓ PASS |
-| Package construction | `muddle` under PTY | Muddler 1.1.0 built `build/boop Hunter.mpackage` at 0.1.424 | ✓ PASS |
+| Package construction | `muddle` under PTY | Muddler 1.1.0 built `build/boop Hunter.mpackage` at 0.1.425 | ✓ PASS |
 
 Host Busted is diagnostic evidence only. It does not replace the real Mudlet execution environment.
 
@@ -165,7 +168,7 @@ No Phase 03 requirement is orphaned. All five IDs are mapped exclusively to Phas
 
 ## External Authority Boundaries
 
-- The previous exact-SHA real-Mudlet CI run exposed four stale pull-timer fixture assumptions; those assertions are corrected at verified HEAD and await the parent final-SHA rerun.
+- The previous exact-SHA real-Mudlet runs exposed stale pull-timer fixture assumptions and a suppressed standalone-inventory path; both are corrected at verified HEAD and await the parent final-SHA rerun.
 - The independently passing 132/132 and 153/153 host Busted runs are diagnostic, not Mudlet-equivalent authority.
 - The optional walker/stop-ownership live UAT already passed and is not an outstanding item.
 - Phase 6 owns recorded real-Mudlet and live-release evidence.
@@ -174,9 +177,9 @@ No Phase 03 requirement is orphaned. All five IDs are mapped exclusively to Phas
 
 ## Gaps Summary
 
-No code or regression gap remains. G-03-1, G-03-2, the trace fixture, and the pull-timer fixture mismatch are closed at HEAD `dd5c2e9` with synchronized package version `0.1.424`. Automated score is 5/5 with no behavior-unverified truth. Status is `human_needed` solely for the two post-fix live Achaea UAT reruns.
+No code or regression gap remains. G-03-1, G-03-2, the trace fixture, pull-timer fixture, and standalone-inventory regression are closed at HEAD `b9843eb` with synchronized package version `0.1.425`. Automated score is 5/5 with no behavior-unverified truth. Status is `human_needed` solely for the two post-fix live Achaea UAT reruns.
 
 ---
 
-_Verified: 2026-07-27T03:20:48Z_
+_Verified: 2026-07-27T03:28:41Z_
 _Verifier: Codex (gsd-verifier)_

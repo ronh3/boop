@@ -4,7 +4,7 @@ phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-27T03:20:48Z
+updated: 2026-07-27T03:28:41Z
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -22,7 +22,7 @@ awaiting: user response
 ### 1. Cross-owner attack, loot, and walk release
 
 expected: |
-  With boop 0.1.424 installed, room settlement accepts the live GMCP ordering, same-room refreshes preserve the accepted room, and stop/restart cannot reuse stale evidence. No automatic attack, loot command, or walker move occurs while another safety owner remains; exactly one next action resumes after all owners release.
+  With boop 0.1.425 installed, room settlement accepts the live GMCP ordering, same-room refreshes preserve the accepted room, and stop/restart cannot reuse stale evidence. No automatic attack, loot command, or walker move occurs while another safety owner remains; exactly one next action resumes after all owners release.
 
   Easy check:
   1. Run `boop trace clear`, `boop trace on`, and `boop walk stop`, then start a normal route with `boop walk start`.
@@ -35,7 +35,7 @@ previous_result: "Before Plans 03-11/03-12, List-before-Info followed by same-ro
 ### 2. Wrong-room gold and pack transfer
 
 expected: |
-  With boop 0.1.424 installed, current-room gold queues one get without requiring exit/re-entry. Same-room Room.Info preserves pickup, actual movement cancels room-owned acquisition, and confirmed pickup permits exactly one inventory-owned put even if movement follows. No loot command is chained with an attack.
+  With boop 0.1.425 installed, current-room gold queues one get without requiring exit/re-entry. Same-room Room.Info preserves pickup, actual movement cancels room-owned acquisition, and confirmed pickup permits exactly one inventory-owned put even if movement follows. No loot command is chained with an attack.
 
   Easy check:
   1. Stop the walker, then run `boop trace clear`, `boop trace on`, `boop autogold on`, and configure a valid `boop pack <container>`.
@@ -92,7 +92,7 @@ blocked: 0
   resolved_by:
     - "03-11-PLAN.md"
     - "03-12-PLAN.md"
-  verification: "03-VERIFICATION.md reports the implementation gap closed at 0.1.424; post-fix live UAT Test 1 remains pending."
+  verification: "03-VERIFICATION.md reports the implementation gap closed at 0.1.425; post-fix live UAT Test 1 remains pending."
 
 - gap_id: G-03-2
   truth: "Room-owned pickup is cancelled only by an actual room change; confirmed pickup transfers to inventory-owned packing, which may complete after movement, and loot is never chained with an attack."
@@ -114,4 +114,4 @@ blocked: 0
   resolved_by:
     - "03-11-PLAN.md"
     - "03-13-PLAN.md"
-  verification: "03-VERIFICATION.md reports the implementation gap closed at 0.1.424; post-fix live UAT Test 2 remains pending."
+  verification: "03-VERIFICATION.md reports the implementation gap closed at 0.1.425; post-fix live UAT Test 2 remains pending."

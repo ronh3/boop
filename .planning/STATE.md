@@ -132,8 +132,8 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Phase 03 automated verification is 5/5 with no implementation gaps; UAT Tests 1 and 2 must be repeated against package 0.1.424.
-- The prior exact-SHA Mudlet run exposed and prompted correction of stale pull-timer fixture assumptions; parent exact-final-HEAD CI and live Achaea UAT remain external gates.
+- Phase 03 automated verification is 5/5 with no implementation gaps; UAT Tests 1 and 2 must be repeated against package 0.1.425.
+- Prior exact-SHA Mudlet runs exposed and prompted correction of stale pull-timer fixture assumptions plus standalone inventory-list suppression; parent exact-final-HEAD CI and live Achaea UAT remain external gates.
 
 ### Quick Tasks Completed
 
@@ -151,6 +151,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-27T03:20:48.000Z
+Last session: 2026-07-27T03:28:41.000Z
 Stopped at: Phase 03 post-fix live UAT
 Resume file: None
