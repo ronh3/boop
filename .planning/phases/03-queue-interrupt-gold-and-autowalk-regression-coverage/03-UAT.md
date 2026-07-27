@@ -4,7 +4,7 @@ phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-27T05:23:33Z
+updated: 2026-07-27T05:34:37Z
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -42,7 +42,7 @@ expected: |
   4. Repeat once more, but move only after pickup confirms or `gold_pack_pending` appears. Exactly one put may finish after movement. Run `boop trace show 100` and confirm no standard/rage attack command contains get or put.
 result: blocked
 blocked_by: other
-reason: "Gold was recognized in GMCP, but no gold operation or get command followed. Test 1's false gmcp_ire_missing owner remains active and blocks the gold system, so later Test 2 steps cannot produce valid evidence."
+reason: "Gold was recognized in GMCP, but the reconnect snapshot showed boop enabled=false, so autogold correctly did not start an operation. The same snapshot showed gmcp_ire_missing still active with GMCP observed and only prompt evidence missing, so Test 2 must be rerun after that recovery deadlock is fixed and boop is explicitly enabled."
 previous_result: "Before Plans 03-11/03-13, pickup required exit/re-entry and a same-room Room.Info cancelled the queued get before packing."
 
 ### 3. Optional walker and stop ownership
@@ -119,16 +119,21 @@ blocked: 1
 - gap_id: G-03-3
   truth: "A live walk settles from current room evidence and advances once after all blockers clear; valid gmcp.IRE data releases the recovery blocker without requiring Char.Status to repeat."
   status: failed
-  reason: "User reported Test 1 did not pass. Trace evidence shows every settled room remains held by gmcp_ire_missing, response-fence warnings recur before live room lists arrive, and the final restarted generation remains unsettled."
+  reason: "User reported Test 1 did not pass. Trace evidence shows every settled room remains held by gmcp_ire_missing and response-fence warnings recur before live room lists arrive. A focused reconnect snapshot then proved the owner had gmcpSeen=true and observed ire=true but promptSeen=false while boop enabled=false."
   severity: major
   test: 1
-  root_cause: "IRE readiness is reconciled only on connection and Char.Status. When Char.Status arrives before IRE.Display or IRE.Target, the later IRE GMCP event has no recovery handler, so gmcp:ire never records GMCP evidence and prompts cannot clear the blocker."
+  root_cause: "The GMCP recovery owner requires both GMCP and prompt evidence, but boop.triggers.syncEnabled disables the entire boop trigger folder whenever hunting is off. The only boop.onPrompt boundary lives inside that folder, so a connection-time owner can observe valid IRE while disabled but can never observe the prompt needed to clear. Starting walk or enabling automation can therefore inherit a stale highest-priority owner and deadlock before any command produces a new prompt."
   artifacts:
+    - path: "src/scripts/boop/boop_init.lua"
+      issue: "boop.triggers.setEnabled toggles the whole boop trigger folder from config.enabled, including lifecycle evidence needed while hunting is disabled."
+    - path: "src/triggers/boop/Core/Prompt.lua"
+      issue: "The sole prompt observer calls boop.onPrompt from inside the folder disabled by boop off."
     - path: "src/scripts/boop/boop_events.lua"
-      issue: "Event registration observes IRE.Target payloads for targeting but has no IRE readiness event path, while reconcileIreSupport is called only from onCharStatus."
+      issue: "gmcp:ire declares both gmcp and prompt waits, but has no enable-boundary recovery for prompt evidence missed while its trigger was disabled."
     - path: "src/scripts/boop/boop_events.lua"
       issue: "The fixed 0.35-second room-response warning fires before normal live room-list responses in every sampled room, obscuring whether a response is actually lost."
   missing:
-    - "Reconcile gmcp:ire recovery when requested IRE.Display or IRE.Target data actually arrives, preserving the declared GMCP-plus-prompt release contract."
-    - "Cover login ordering where Char.Status precedes IRE.Display and no second Char.Status follows."
+    - "Keep the minimal prompt/lifecycle evidence boundary active while hunting is off, without re-enabling combat, gag, or automation triggers."
+    - "Reconcile current IRE evidence at connection and enable boundaries so GMCP and prompt may arrive in either order without leaving a stale owner."
+    - "Cover disabled reconnect -> IRE observed -> prompt observed -> enable, plus enable-before-next-prompt, with exact owner release and zero automation while disabled."
     - "Calibrate or redefine the room-response timeout so ordinary live response latency is not reported as an incomplete fence while genuine missing responses remain fail closed."
