@@ -1,239 +1,227 @@
 ---
 phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
-verified: 2026-07-27T07:34:23Z
-status: gaps_found
-score: 4/5 must-haves verified
+verified: 2026-07-27T12:21:27Z
+status: human_needed
+score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 re_verification:
-  previous_status: human_needed
-  previous_score: 5/5
+  previous_status: gaps_found
+  previous_score: 4/5
   gaps_closed:
-    - "G-03-3 implementation: disabled IRE/prompt evidence now releases only gmcp:ire in either order, lifecycle prompt observation is isolated from hunting automation, and the room-response warning is 8.0 seconds and fail closed."
-  gaps_remaining:
-    - "Two tracked diagnose-timeout regressions still assume prompt runtime processing while hunting is disabled and fail after the intentional disabled lifecycle return."
-    - "Three tracked pull lifecycle regressions identify pull timers by their 8.0-second delay and now collide with the 8.0-second room-response warning timer."
-  regressions:
-    - "tests/boop_diag_timeout_spec.lua: two exact named tests fail."
-    - "tests/boop_pull_spec.lua: three exact owner/timer lifecycle tests fail because pullTimerCount() counts response-fence timers."
-gaps:
-  - truth: "Diagnose timeout and tombstone regression coverage remains executable after disabled lifecycle observation is separated from automation."
-    status: failed
-    reason: "Two exact named tests fail because boop.onPrompt() now correctly returns before runtime processing when boop.config.enabled is false, but the timeout fixtures did not establish the enabled precondition required by the runtime diagnose flow."
-    artifacts:
-      - path: "tests/boop_diag_timeout_spec.lua"
-        issue: "The cases at lines 116 and 186 leave enabled=false, then expect onPrompt() to consume diagnose evidence; assertions fail at lines 164 and 198."
-      - path: "src/scripts/boop/boop_events.lua"
-        issue: "The intentional disabled return at lines 1764-1765 exposes the stale fixture assumption; the implementation behavior is covered by the passing lifecycle test."
-    missing:
-      - "Make runtime diagnose-timeout cases establish enabled=true before expecting prompt runtime processing."
-      - "Retain or add a separate disabled-path assertion proving prompt evidence remains automation-inert and fail closed."
-      - "Rerun the two exact diagnose-timeout cases and the authoritative real-Mudlet suite."
-  - truth: "Pull lifecycle regression coverage distinguishes the operation-owned timeout from room-response warning timers."
-    status: failed
-    reason: "ROOM_RESPONSE_FENCE_WARNING_SECONDS now equals diagTimeoutSeconds (8.0). pullTimerCount() classifies timers only by delay, so room transitions inflate the count and three exact pull lifecycle tests fail."
-    artifacts:
-      - path: "tests/boop_pull_spec.lua"
-        issue: "pullTimerCount() at lines 53-60 counts every timer whose delay is 8.0; exact failures occur at lines 280, 390, and 553."
-      - path: "src/scripts/boop/boop_events.lua"
-        issue: "The valid 8.0-second room-response timer at lines 48 and 327 now collides with the test helper's delay-based identity heuristic."
-    missing:
-      - "Identify and count pull timers by state.combat.pullState.timeoutTimer or captured operation-owned timer IDs, never by delay."
-      - "Keep response-fence timers in the fixture and assert that stale pull callbacks remain zero-effect while those unrelated timers coexist."
-      - "Rerun the three exact pull lifecycle cases and the authoritative real-Mudlet suite."
+    - "Diagnose timeout/tombstone fixtures now establish enabled runtime prompt processing while the separate disabled lifecycle contract remains automation-inert."
+    - "Pull lifecycle assertions now identify the operation-owned timeout by state.combat.pullState.timeoutTimer while equal-delay room-response timers coexist."
+  gaps_remaining: []
+  regressions: []
+deferred:
+  - truth: "In-game pull help precisely distinguishes timeout-at-origin release from timeout-away hold-until-return behavior."
+    addressed_in: "Phase 6"
+    evidence: "Phase 6 success criterion 3 requires README, command help, UIDESIGN guidance, and dashboard copy to match every changed command surface or operator workflow."
+human_verification:
+  - test: "Push the immutable final committed HEAD and run tools/wait_for_exact_ci.sh against that exact SHA."
+    expected: "main.yml succeeds with a matching headSha and the complete packaged real-Mudlet Busted run reports zero failures and zero errors, including the Psion and Dragon pull-profile cases."
+    why_human: "Current HEAD is not on origin, /tmp/Mudlet.AppImage is unavailable, and the host bootstrap loads only the Occultist profile."
+  - test: "In real Mudlet while boop is disabled, exercise IRE-event then prompt, prompt then IRE-event, and enable-before-prompt recovery with an unrelated blocker installed."
+    expected: "Only gmcp:ire clears after both evidence items; the unrelated owner survives, enable-before-prompt remains held until the prompt, and disabled callbacks emit no attack, target, gold, queue, gag, or walker side effects."
+    why_human: "Host tests cannot prove installed trigger-folder state and live Mudlet GMCP/prompt event sequencing."
+  - test: "Rerun the live room-settlement/cross-owner walk flow from 03-UAT.md, including same-room ql, stop/restart, a diag during transition, ordinary latency, and one forced incomplete room response."
+    expected: "No attack, get/put, or demonwalker.move occurs while any owner remains; each settled room emits at most one move; sub-8-second responses stay quiet; an incomplete 8-second fence warns once and remains fail closed."
+    why_human: "This depends on live GMCP response ordering, timer latency, and the external demonnicAutoWalker integration."
+  - test: "Rerun the live wrong-room gold and pack-transfer flow from 03-UAT.md."
+    expected: "Same-room ql preserves one pickup, movement before confirmation produces no stale get/retry, confirmed pickup permits exactly one inventory-owned put after movement, and no combat command contains get or put."
+    why_human: "Live inventory/room GMCP and Achaea command confirmations cannot be reproduced authoritatively by the host stubs."
 ---
 
 # Phase 3: Queue, Interrupt, Gold, and Autowalk Regression Coverage Verification Report
 
 **Phase Goal:** Timing-sensitive command paths cannot attack, loot, or walk while another safety hold or room-state blocker owns the next action.
-**Verified:** 2026-07-27T07:34:23Z
-**Status:** gaps_found
-**Re-verification:** Yes — after gap Plan 03-14
-**Verified HEAD:** `e0aade29d06325137c9437be2c4f11a967619a9a`
+**Verified:** 2026-07-27T12:21:27Z
+**Status:** human_needed
+**Re-verification:** Yes — after Plan 03-15 gap closure
+**Verified HEAD:** `2a82dbdb52239c71b06122bf84252a1502936516`
 **Branch:** `codex/pre-1.0-hardening-pass`
-**Package version:** `0.1.427`
+**Package version:** `0.1.429`
 
 ## Goal Achievement
 
-Plan 03-14's implementation goal is present, wired, and passes its four exact named behavioral tests. G-03-3 is therefore closed at the automated implementation level.
+The Phase 03 implementation goal is present, substantive, wired, and exercised by focused behavioral tests. The two automated gaps from the previous report are closed at current HEAD:
 
-The phase cannot pass verification yet. Plan 03-14's 109-case aggregate omitted two timing-sensitive suites affected by its changes. Independent exact-name execution found two failing diagnose-timeout tests and three failing pull lifecycle tests. These are tracked repository specs included in the real-Mudlet CI test directory, not the deliberately discarded 41-spec host run. Roadmap success criterion 5—working regression coverage for timing-sensitive ownership—therefore fails.
+- `tests/boop_diag_timeout_spec.lua` now enables automation in both prompt-consuming timeout/tombstone cases; the isolated file passes 3/3.
+- `tests/boop_pull_spec.lua` resolves pull timeout identity from `state.combat.pullState.timeoutTimer`; all three previously failing lifecycle cases pass independently while unrelated 8.0-second response-fence timers remain in the fixture.
+- `tests/boop_lifecycle_spec.lua` restores replaced package tables after every case; the lifecycle-to-menu canary passes 17/17 without reset or teardown errors.
 
-Live Achaea/Mudlet validation is also still pending. The existing `03-UAT.md` remains `partial`; this report does not mark any live test passed.
+The phase is not fully verified yet. The complete packaged real-Mudlet suite has not run at the immutable final SHA, and the existing live UAT history remains partial. Those are external/runtime authority checks, not observable automated implementation failures, so the status is `human_needed`, not `gaps_found`.
 
 ### Observable Truths
 
 | # | Roadmap truth | Status | Evidence |
 |---|---|---|---|
-| 1 | `diag`, queued interrupts, `pull`, and manual holds prevent automatic attacks until their exact release condition is satisfied. | ✓ VERIFIED | Exact owner logic is wired through `shouldHold`, `completeInterrupt`, and generation-owned pull state. `boop_interrupt_spec.lua` passed 3/3, `boop_diag_spec.lua` passed 3/3, six exact pull owner/generation cases passed, and prequeue/tick suites passed 13/13 and 30/30. |
-| 2 | Gold pickup, pack/stash, retry, warning, and stale-pending behavior cannot send in the wrong room or bypass active safety holds. | ✓ VERIFIED | The 109-case aggregate passed; isolated gold retry passed 9/9 and tick passed 30/30. Canonical copied room evidence and exact operation room/generation/item checks remain wired in `boop_events.lua`. |
-| 3 | `boop walk` start, stop, move, and status reflect settlement/blocker state and emit only when safe. | ✓ VERIFIED | Isolated `boop_walk_spec.lua` passed 39/39; the phase aggregate also passed. Final reservation emission still rechecks run generation, room generation, reservation identity, package availability, and aggregate all-clear. |
-| 4 | `demonnicAutoWalker` remains optional with explicit install/status behavior and no silent update. | ✓ VERIFIED | Manifest/source inspection found no install/update path outside explicit install; the isolated walker suite includes and passed `never installs or updates from status, start, or move`. |
-| 5 | Regression coverage catches unsafe movement, attacks during holds, wrong-room loot, target-removal queue drift, stale callbacks/retries, and permanent walk stalls. | ✗ FAILED | Core gold/walk/target suites pass, but five exact tracked timing tests fail after 03-14: two diagnose-timeout cases and three pull timer/owner cases. The plan aggregate did not include either affected spec. |
+| 1 | `diag`, queued interrupts, `pull`, and manual holds prevent automatic attacks until their prompt, room, or timeout release condition is satisfied. | ✓ VERIFIED | Exact-owner operations are wired through `setBlocker`, `shouldHold`, `completeInterrupt`, and generation-owned pull state. Verifier-run lifecycle/diag/diag-timeout/interrupt/prequeue/tick checks passed 102/102 in isolated host processes; the three exact pull lifecycle cases also passed independently. |
+| 2 | Gold pickup, pack/stash, retry, warning, and stale-pending behavior cannot send commands in the wrong room or bypass active safety holds. | ✓ VERIFIED | Gold dispatch checks the exact operation owner, canonical copied room observation, room ID/generation, item identity, and unrelated combat/queue/gold/walk owners before sending. Verifier-run gold and retry specs passed 8/8 and 9/9; event-transition and tick specs passed 46/46 and 30/30. |
+| 3 | `boop walk` start, stop, move, and status reflect room settlement/blockers and emit `demonwalker.move` only when safe. | ✓ VERIFIED | Start creates a fresh room epoch and exact walk owner; normal/manual movement shares `evaluateAllClear`; the reserved emitter rechecks run, room generation, reservation ID, package availability, settlement, and every unrelated hold. Verifier-run walk spec passed 39/39. |
+| 4 | `demonnicAutoWalker` remains optional with explicit install/status feedback and no silent auto-update. | ✓ VERIFIED | Production search finds `installPackage` only inside `boop.walk.install`; `demonwalker.move` and `.stop` each have one guarded emitter. The walk test `never installs or updates from status, start, or move` is part of the passing 39-case spec. |
+| 5 | Regression coverage catches unsafe movement, attacks during holds, wrong-room loot, target-removal queue drift, and permanent walk stalls. | ✓ VERIFIED | Named tests cover both blocker clear orders, captured prequeue callbacks, response-fence ordering, stale room/gold callbacks, target-removal queue drift, timeout-under-owner liveness, and one guarded walk move. All relevant verifier-run host specs passed. |
 
-**Score:** 4/5 roadmap truths verified (0 present-but-behavior-unverified)
+**Score:** 5/5 roadmap truths verified (0 present-but-behavior-unverified)
 
-### Plan 03-14 Must-Haves
+### Plan Must-Have Audit
 
-| # | Plan 03-14 truth | Status | Evidence |
+| Scope | Status | Evidence |
+|---|---|---|
+| Plans 03-01 through 03-13 implementation/test must-haves | ✓ VERIFIED | Owner registry, interrupt/pull operations, staged gold, response-fenced room evidence, walker reservation/emission, UI snapshots, and cross-lifecycle regressions exist in production/test code and pass focused host checks. |
+| Plan 03-14 disabled-safe lifecycle and 8-second warning must-haves | ✓ VERIFIED automated | Active prompt-only lifecycle folder, disabled early returns, exact `gmcp:ire` evidence, and warning-only room timeout are wired. Four lifecycle tests pass. Live ordering/latency remains below under Human Verification. |
+| Plan 03-15 fixture isolation and diagnose/pull contract must-haves | ✓ VERIFIED | Exact package-table restoration, explicit enabled diagnose preconditions, operation timer identity, and bounded host processes are present and pass. |
+| Plan 03-15 complete packaged real-Mudlet suite must-have | ? UNCERTAIN — HUMAN REQUIRED | CI wiring exists, but current HEAD is ahead of origin and no matching successful `main.yml` run exists. The local AppImage is absent. |
+| Plan 03-15 UAT blocking boundary | ✓ VERIFIED | Live UAT remains correctly blocked pending exact-SHA CI; this report does not overwrite or mark the existing UAT passed. |
+| Plans 03-08/03-09 exact help coherence | ↪ DEFERRED TO PHASE 6 | `boop_ui_registry.lua:778` retains an ambiguous legacy pull-timeout sentence. Phase 6 explicitly owns command-help/documentation coherence. It does not weaken runtime safety. |
+
+### Deferred Items
+
+| # | Item | Addressed In | Evidence |
 |---|---|---|---|
-| 1 | Disabled hunting leaves only lifecycle prompt/IRE evidence active; hunting triggers remain disabled. | ✓ VERIFIED | `src/triggers/triggers.json` has active `boop lifecycle` and inactive `boop`; the lifecycle child manifest contains exactly one `Prompt`; the exact lifecycle-boundary test passed. |
-| 2 | IRE→prompt and prompt→IRE release only `gmcp:ire`, without Char.Status/enable, while unrelated owners survive. | ✓ VERIFIED | `reconcileIreSupport` records only exact-owner IRE evidence; `notePromptObserved` requires both declared evidence bits. The exact ordering test passed 1/1. |
-| 3 | Disabled reconnect clears stale `gmcp_ire_missing` before enable when both evidence items arrive; enable-before-prompt remains held. | ✓ VERIFIED | Both disabled orderings and enable-before-prompt are asserted in the passing exact ordering test. |
-| 4 | Disabled lifecycle callbacks cause no runtime step/apply, gag, target/gold/walk mutation, send, support request, or automation event. | ✓ VERIFIED | `onPrompt` returns at `boop_events.lua:1764` before runtime processing; Target Set/Info return at lines 1507/1533 after evidence-only reconciliation. The exact zero-side-effect test passed 1/1. |
-| 5 | A 4.5-second accepted response is quiet; an incomplete 8.0-second response warns once and retains `room:observation`. | ✓ VERIFIED | Named constant and timer wiring are present; `timeoutRoomResponseFence` is one-shot and does not clear the owner. The exact room-warning test passed 1/1. |
-
-### Gap Closure Mapping
-
-| Gap | Automated status | Evidence | Live status |
-|---|---|---|---|
-| G-03-1 | ✓ CLOSED | Serialized Inv→Room response fences, same-room preservation, stale drain behavior, and walker settlement remain covered by the passing event/walk aggregate. | UAT Test 1 rerun pending. |
-| G-03-2 | ✓ CLOSED | Canonical gold evidence, actual-change cancellation, success-owned packing, and wrong-room rejection remain covered by passing gold/event tests. | UAT Test 2 rerun pending. |
-| G-03-3 | ✓ CLOSED in code/tests | All four exact `boop lifecycle recovery gap-03-3 ...` tests passed at HEAD. | Live disabled reconnect, room latency, and original blocked UAT rerun pending. |
+| 1 | Clarify pull help so timeout-at-origin release and timeout-away hold-until-return are stated exactly. | Phase 6 | Phase 6 success criterion 3 requires command help and docs to match changed behavior. |
 
 ## Required Artifacts
 
-The artifact helper reported **70/71 existing** declarations and **41/41 key links**. The sole non-existing path is intentional: Plan 03-14 declares `src/triggers/boop/Core/Prompt.lua` as the removed legacy dispatcher. Manual semantic verification confirms its absence is the required state, so all 71 artifact declarations conform to their stated intent.
+The artifact helper reported 74/75 declarations present. The one reported absence is intentional: Plan 03-14 requires the legacy `src/triggers/boop/Core/Prompt.lua` dispatcher to be removed. Manual semantic review therefore resolves the artifact contract as 75/75.
 
 | Artifact | Expected | Status | Details |
 |---|---|---|---|
-| `tests/boop_lifecycle_spec.lua` | Four focused G-03-3 regressions | ✓ VERIFIED | 591 substantive lines; exactly four `gap-03-3` cases; all four pass individually. |
-| `src/triggers/triggers.json` | Separate lifecycle and hunting folders | ✓ VERIFIED | `boop lifecycle` is active; `boop` is inactive by default. |
-| `src/triggers/boop_lifecycle/triggers.json` | Prompt-only lifecycle manifest | ✓ VERIFIED | Exactly one active non-folder child, `Prompt`, using `return isPrompt()`. |
-| `src/triggers/boop_lifecycle/Prompt.lua` | Thin lifecycle dispatcher | ✓ VERIFIED | Calls only `boop.onPrompt()`. |
-| `src/triggers/boop/Core/Prompt.lua` | Legacy duplicate removed | ✓ VERIFIED (ABSENT AS REQUIRED) | File is absent; no other prompt Lua file exists under `src/triggers/boop`. |
-| `src/triggers/boop/Core/triggers.json` | No duplicate Core prompt entry | ✓ VERIFIED | Contains only hunting-owned Core triggers; no `Prompt` entry. |
-| `src/scripts/boop/boop_init.lua` | Independent folder synchronization and enable-boundary IRE reconciliation | ✓ VERIFIED | Always attempts lifecycle enable, then independently enables/disables hunting automation; enabled path reconciles IRE before automation synchronization. |
-| `src/scripts/boop/boop_events.lua` | Canonical IRE observation, disabled early returns, event registration, 8-second warning | ✓ VERIFIED | Substantive and wired at connection, Char.Status, enable, Display/Target events, prompt, and response-fence timeout boundaries. |
-| `tests/boop_diag_timeout_spec.lua` | Diagnose timeout/tombstone regression coverage | ✗ REGRESSION | Two exact tests fail because fixtures retain disabled state while expecting runtime prompt consumption. |
-| `tests/boop_pull_spec.lua` | Pull owner/timer/race regression coverage | ✗ REGRESSION | Three exact lifecycle tests fail because delay-based timer classification collides with the new 8.0-second room warning. |
+| `src/scripts/boop/boop_runtime.lua` | Exact-owner blockers, room response fences, interrupt terminal, aggregate tick gates | ✓ VERIFIED | Substantive implementation; owner set/clear/exclusion is wired into runtime effects. |
+| `src/scripts/boop/boop_events.lua` | Room/GMCP adapters, staged gold, prompt lifecycle boundary | ✓ VERIFIED | Accepts only current fenced room snapshots, gates gold, handles pull return, and exits before automation while disabled. |
+| `src/scripts/boop/boop_ui.lua` | Interrupt and pull operation creation | ✓ VERIFIED | Creates exact generation owners/timers, rejects repeats, and leaves saved enabled intent unchanged. |
+| `src/scripts/boop/boop_walk.lua` | Shared movement gate and guarded external emitter | ✓ VERIFIED | Start/stop/detach/arrival/settlement/reservation behavior is substantive and wired to `demonwalker` events. |
+| `src/scripts/boop/boop_util.lua` | Combat dispatch without chained gold | ✓ VERIFIED | `executeAction` sends only the supplied combat action; gold uses its separate freestand queue path. |
+| `src/triggers/boop_lifecycle/triggers.json` and `Prompt.lua` | Always-available prompt evidence only | ✓ VERIFIED | Top-level lifecycle folder is active and has exactly one prompt child calling `boop.onPrompt()`. |
+| `src/triggers/boop/Core/Prompt.lua` | Legacy prompt dispatcher removed | ✓ VERIFIED — ABSENT AS REQUIRED | File does not exist; no duplicate Core prompt entry remains. |
+| `tests/boop_lifecycle_spec.lua` | Disabled lifecycle and fixture-isolation regressions | ✓ VERIFIED | 610 substantive lines; restores exact package-table references; 4/4 pass. |
+| `tests/boop_diag_timeout_spec.lua` | Timeout/tombstone contracts with correct runtime preconditions | ✓ VERIFIED | Prompt-consuming cases explicitly set `boop.config.enabled = true`; 3/3 pass. |
+| `tests/boop_pull_spec.lua` | Operation-owned timer and stale callback contracts | ✓ VERIFIED | Uses `pullState.timeoutTimer`; all three actionable cases pass independently. |
+| Gold, walk, runtime, event, prequeue, tick specs | Phase-wide behavioral coverage | ✓ VERIFIED | Verifier-run focused files pass with zero failures/errors. |
+| `.github/workflows/main.yml` and `tools/wait_for_exact_ci.sh` | Complete packaged Mudlet suite and exact-SHA authority | ✓ WIRED / ? NOT EXECUTED | CI imports the built package and runs the complete tests directory; exact-SHA script validates origin, `headSha`, success, and immutable worktree. No current final-SHA result exists. |
 
 ## Key Link Verification
 
+The key-link helper reported 44/46. Both reported failures are pattern-escaping false negatives and pass manual inspection, yielding 46/46 semantic links:
+
+- `tests/boop_diag_timeout_spec.lua` sets `boop.config.enabled = true` before both prompt-consuming cases, and `boop.onPrompt()` retains the disabled early return.
+- `tests/boop_pull_spec.lua` reads `boop.state.combat.pullState.timeoutTimer` in `pullTimer()` and invokes the captured callback while separately counting unrelated timers.
+
 | From | To | Via | Status | Details |
 |---|---|---|---|---|
-| Top-level trigger manifest | Lifecycle child manifest | `boop lifecycle` folder registration | ✓ WIRED | Muddler discovered and packaged the lifecycle Prompt. |
-| Lifecycle Prompt | `boop.onPrompt` | Thin dispatcher | ✓ WIRED | Exactly one prompt script exists. |
-| Display/Target events | `boop.onIreSupportObserved` | Anonymous event registrations | ✓ WIRED | ButtonActions, FixedFont, Ohmap, Target.Set, and Target.Info are registered once to the intended handlers. |
-| Connection/Char.Status/enable/prompt/events | Canonical `gmcp:ire` owner | `reconcileIreSupport` → `noteGmcpObserved` / `notePromptObserved` | ✓ WIRED | No second lifecycle owner or direct clear path was found. |
-| Disabled lifecycle callbacks | Safety boundary | Early returns before runtime/target automation | ✓ WIRED | Exact side-effect counters remain zero in the passing lifecycle test. |
-| Response fence timer | Warning-only timeout | `timeoutRoomResponseFence` | ✓ WIRED | Warning is one-shot; `room:observation` remains active. |
-| Plan 03-14 aggregate | Diagnose/pull regression specs | Test selection | ✗ NOT WIRED | The 109-case command omitted `boop_diag_timeout_spec.lua` and `boop_pull_spec.lua`, so both fixture regressions escaped GREEN verification. |
+| Owner registry | Tick, prequeue, gold, walk | `shouldHold(system, exceptOwner)` | ✓ WIRED | Exact self-owner exclusion never suppresses unrelated owners. |
+| Room.Info and item Lists | Runtime observation | serialized Inv→Room fence | ✓ WIRED | Only copied accepted current-epoch room items reach consumers. |
+| Accepted room observation | Targets, gold, walker | one adapter application path | ✓ WIRED | Pre-barrier, stale, duplicate, and mismatched Lists do not authorize downstream effects. |
+| Interrupt command | Runtime terminal | generation + `interrupt:<generation>` | ✓ WIRED | Prompt/result/timeout terminal clears only the exact owner. |
+| Pull command and Room.Info | Pull terminal | generation, phase, origin room, exact timer | ✓ WIRED | Timeout-away keeps the owner; matching return completes once. |
+| Gold operation | Queue command | exact room/generation/item plus aggregate holds | ✓ WIRED | Get-confirm-put is independent from combat dispatch. |
+| Walker reservation | External walker | final reservation/all-clear recheck | ✓ WIRED | One `demonwalker.move` emitter exists. |
+| Lifecycle prompt/IRE events | `gmcp:ire` owner | evidence-only disabled observers | ✓ WIRED | Disabled callbacks reconcile lifecycle evidence and return before runtime automation. |
+| GitHub Actions | Complete tests directory | packaged real-Mudlet profile | ✓ WIRED / ? NOT RUN AT FINAL SHA | Authority exists but is pending execution. |
 
 ## Data-Flow Trace (Level 4)
 
 | Artifact | Data | Source | Produces authoritative data | Status |
 |---|---|---|---|---|
-| `boop_events.lua` | IRE evidence | Current `gmcp.IRE.Target`/`Display` at explicit lifecycle/event boundaries | Yes; only `gmcp:ire` receives IRE evidence | ✓ FLOWING |
-| `boop_runtime.lua` | Prompt/GMCP evidence bits | `notePromptObserved` and exact-owner `noteGmcpObserved` | Yes; auto-clear requires every declared evidence bit | ✓ FLOWING |
-| `boop_init.lua` | Trigger-folder enabled state | Persisted `boop.config.enabled` | Yes; lifecycle remains active while hunting automation follows enabled state | ✓ FLOWING |
-| `boop_events.lua` / `boop_runtime.lua` | Room warning state | Current response-fence ID, generation, room, and timer ID | Yes; accepted evidence cancels; matching incomplete timer warns once | ✓ FLOWING |
-| `tests/boop_pull_spec.lua` | Pull timer identity | Timer delay comparison | No; 8.0-second room and pull timers are indistinguishable | ✗ HOLLOW TEST HEURISTIC |
+| `boop_runtime.lua` | Active safety owners | Exact lifecycle set/clear operations | Yes; immutable sorted snapshots and exact-owner exclusion | ✓ FLOWING |
+| `boop_events.lua` | Current room items | Room.Info epoch plus serialized Inv→Room response fence | Yes; deep-copied accepted items only | ✓ FLOWING |
+| Gold operation | Pickup/pack stage | Accepted room snapshot, command confirmation, inventory transfer | Yes; room-owned get becomes roomless inventory-owned put only after success | ✓ FLOWING |
+| `boop_walk.lua` | Move reservation | Current settled room, target/denizen state, gold/diag/pull/flee state, blocker snapshot | Yes; captured run/room/reservation reaches one guarded emitter | ✓ FLOWING |
+| Lifecycle observer | IRE/prompt evidence | Installed GMCP events and prompt-only lifecycle trigger | Yes in code/host tests; installed live ordering still needs UAT | ⚠ LIVE CHECK PENDING |
 
 ## Behavioral Spot-Checks
 
 | Behavior | Command/check | Result | Status |
 |---|---|---|---|
-| Four exact G-03-3 lifecycle behaviors | Four separate Busted `--name` invocations | 4 successes, 0 failures/errors | ✓ PASS |
-| Plan 03-14 focused GREEN | Persistence + safety + event transitions + walk + gold + lifecycle | 109 successes, 0 failures/errors | ✓ PASS |
-| Prior-phase isolated gate | Safety, state contract, and walk in separate processes | 4 + 3 + 39 = 46 successes | ✓ PASS |
-| Interrupt ownership | Isolated `boop_interrupt_spec.lua` | 3 successes | ✓ PASS |
-| Normal diagnose ownership | Isolated `boop_diag_spec.lua` | 3 successes | ✓ PASS |
-| Queue/prequeue ownership | Isolated `boop_prequeue_spec.lua` | 13 successes | ✓ PASS |
-| Gold retry and runtime tick | Isolated gold retry and tick specs | 9 + 30 successes | ✓ PASS |
-| Runtime and trace ownership | Isolated runtime and trace specs | 14 + 5 successes | ✓ PASS |
-| Pull generation/owner core | Six exact named pull tests | 6 successes | ✓ PASS |
-| Diagnose stale-output/tombstone cases | Two exact named tests | 0/2 pass; assertions fail at lines 164 and 198 | ✗ FAIL |
-| Pull return/timeout timer-count cases | Three exact named tests | 0/3 pass; observed counts 3/2/7 instead of 1/1/3 | ✗ FAIL |
-| Psion/Dragon pull host checks | Two exact named host tests | Diagnostic-only failures because the host helper loads only the Occultist profile | ℹ EXCLUDED FROM BLOCKER COUNT |
-| Lua syntax | `luac -p` over all `src/` and `tests/` Lua files | Exit 0 | ✓ PASS |
+| Affected Plan 03-15 suites | Seven isolated `busted --helper=tests/support/boop_host_busted_helper.lua <spec>` processes | 102 successes, 0 failures, 0 errors | ✓ PASS |
+| Lifecycle shared-state restoration | Lifecycle + menu wiring in one deliberate process | 17 successes, 0 failures, 0 errors | ✓ PASS |
+| Three prior pull timer regressions | Three independent exact-name Busted invocations | 1 success each; 0 failures/errors | ✓ PASS |
+| Runtime/gold/retry/walk contracts | Four isolated focused specs | 14 + 8 + 9 + 39 successes; 0 failures/errors | ✓ PASS |
+| Prior-phase safety/state/walk canary | Safety + state-contract + walk specs | 4 + 3 + 39 successes; 0 failures/errors | ✓ PASS |
+| Complete host pull diagnostic | Full `tests/boop_pull_spec.lua` under Occultist-only helper | 11 successes, exactly 2 Psion/Dragon profile exclusions, 0 errors | ℹ DIAGNOSTIC ONLY |
+| Lua syntax | `luac -p` over 24 phase-relevant Lua files | Exit 0 | ✓ PASS |
 | Release gates | `python3 tools/check_release_gates.py` | versions, manifests, state-drift all `[OK]` | ✓ PASS |
-| Package construction | `muddle` | Muddler 1.1.0 built `boop Hunter 0.1.427` | ✓ PASS |
-
-The deliberately invalid attempt to run all 41 host specs in one shared Lua process was not repeated and is not counted.
+| Diff/worktree pre-write check | `git diff --check`; `git status --short` | Clean before this report replacement | ✓ PASS |
+| Muddler package construction | Parent-provided current-HEAD evidence | Muddler 1.1.0 built package 0.1.429 | ✓ PASS — PARENT EVIDENCE |
+| Complete local real-Mudlet suite | `/tmp/Mudlet.AppImage` availability check | AppImage absent | ? SKIP |
+| Exact-final-SHA `main.yml` | Local HEAD/origin comparison | HEAD `2a82dbd`; origin branch `150b3e3`; no final-SHA gate | ? HUMAN REQUIRED |
 
 ## Probe Execution
 
-Step 7c: **SKIPPED**. No Phase 03 PLAN/SUMMARY declares a probe, and no `scripts/**/tests/probe-*.sh` file exists.
+No Phase 03 plan/summary declares a probe, and no conventional `scripts/*/tests/probe-*.sh` files were discovered.
+
+| Probe | Command | Result | Status |
+|---|---|---|---|
+| None | Discovery only | No probes declared or found | SKIPPED |
 
 ## Requirements Coverage
 
-| Requirement | Source plans | Status | Evidence |
-|---|---|---|---|
-| SAFE-02 | 03-01, 03-02, 03-03, 03-08, 03-09, 03-14 | ⚠ PARTIAL / BLOCKED | Exact-owner implementation and core diag/interrupt/pull tests pass, but two diagnose-timeout and three pull lifecycle regression tests are not green after 03-14. |
-| SAFE-04 | 03-01, 03-04, 03-05, 03-08 through 03-11, 03-13, 03-14 | ✓ SATISFIED | Canonical response-fenced gold, exact room/generation/item checks, retries, owner holds, and independent get/put behavior pass focused tests. |
-| WALK-01 | 03-01, 03-06, 03-07, 03-09, 03-11, 03-12, 03-14 | ✓ SATISFIED | Start/stop/move/status, settlement, tokenless arrival, and warning behavior are implemented and covered by passing walk/event/lifecycle tests. |
-| WALK-02 | 03-01, 03-06 through 03-14 | ✓ SATISFIED | Walker emission remains gated by canonical room evidence and aggregate exact owners; isolated walk passed 39/39. |
-| WALK-03 | 03-06 through 03-09, 03-11, 03-12, 03-14 | ✓ SATISFIED | Optional package behavior and no implicit install/update remain implemented and tested. |
+Every requirement ID declared across all 15 PLAN frontmatter blocks is present in `.planning/REQUIREMENTS.md`. Their union exactly matches the five requirements mapped to Phase 03; no orphaned Phase 03 requirement exists.
 
-Every requirement ID declared in all 14 PLAN frontmatters exists in `.planning/REQUIREMENTS.md`, maps to Phase 3, and is accounted for above. No Phase 03 requirement is orphaned.
-
-## Commit and Version Verification
-
-| Commit | Claimed purpose | Actual path/content evidence | Status |
-|---|---|---|---|
-| `8b84c94` | RED lifecycle contract | Adds `tests/boop_lifecycle_spec.lua` and synchronizes version 0.1.426 without production behavior changes | ✓ VERIFIED |
-| `e42fc7c` | GREEN lifecycle implementation | Adds lifecycle manifest/Prompt, removes Core Prompt, changes init/events/tests, and synchronizes 0.1.427 | ✓ VERIFIED |
-| `e0aade2` | Planning closeout | Changes only `.planning/ROADMAP.md`, `.planning/STATE.md`, and `03-14-SUMMARY.md` | ✓ VERIFIED |
-
-Current version fields are synchronized at `0.1.427`: `mfile.version`, `mfile.title`, `boop.version`, and the `CODEX.md` checkpoint. No build output or `.mpackage` is tracked.
+| Requirement | Source Plans | Description | Status | Evidence |
+|---|---|---|---|---|
+| SAFE-02 | 03-01, 02, 03, 08, 09, 14, 15 | Interrupt, pull, diag, and manual holds prevent attacks until exact release. | ✓ SATISFIED | Exact-owner runtime plus passing interrupt/diag/pull/prequeue/tick/lifecycle tests. |
+| SAFE-04 | 03-01, 04, 05, 08, 09, 10, 11, 13, 14 | Gold cannot act in the wrong room or bypass safety holds. | ✓ SATISFIED | Canonical room evidence, staged gold ownership, passing gold/retry/event/tick tests. |
+| WALK-01 | 03-01, 06, 07, 08, 09, 11, 12, 14 | Walk tests cover start/stop/move/settlement/reasons/external emission. | ✓ SATISFIED | Passing 39-case walk spec plus event-transition integration. |
+| WALK-02 | 03-01, 06, 07, 08, 09, 10, 11, 12, 13, 14 | Walker advancement remains blocked by unsafe room/runtime state. | ✓ SATISFIED | Shared all-clear and reserved-emitter recheck; timeout-under-owner liveness passes. |
+| WALK-03 | 03-06, 07, 08, 09, 12, 14 | External walker remains optional and explicit. | ✓ SATISFIED | Single explicit install path, no update path, passing package-loss/install/status tests. |
 
 ## Anti-Patterns Found
 
-| File/scope | Pattern | Severity | Impact |
-|---|---|---|---|
-| Phase 03 declared source/tests/docs | `TBD`, `FIXME`, `XXX` | None | No unresolved debt-marker blocker found. |
-| Phase 03 declared source/tests/docs | `TODO`, `HACK`, `PLACEHOLDER`, not-implemented wording | None material | Two “placeholder” matches are documentation/test terminology, not stubs. |
-| `tests/boop_diag_timeout_spec.lua` | Fixture no longer matches explicit enabled/disabled lifecycle semantics | 🛑 BLOCKER | Two tracked regression tests fail. |
-| `tests/boop_pull_spec.lua` | Delay used as timer identity | 🛑 BLOCKER | Three tracked regression tests fail after both timers became 8.0 seconds. |
+| File | Line | Pattern | Severity | Impact |
+|---|---|---|---|---|
+| `src/scripts/boop/boop_ui_registry.lua` | 778 | Legacy pull-timeout help is less precise than current timeout-away ownership behavior | ⚠ Warning — deferred | Operator wording should distinguish timeout-at-origin release from timeout-away hold-until-return. Phase 6 owns final help/doc coherence. Runtime behavior is unaffected. |
+| Phase-modified source/tests | — | `TBD`, `FIXME`, `XXX`, placeholder, or empty user-visible implementation | None | No blocker debt markers or substantive stubs found. |
 
-## Human Verification Required After Automated Gaps Close
+## Human Verification Required
 
-### 1. Disabled IRE evidence in both orders
+### 1. Exact-final-SHA packaged real-Mudlet CI
 
-**Test:** Run the Plan 03-14 live handoff scenarios for IRE event→prompt and prompt→IRE event while `boop off`, without Char.Status or enable; repeat duplicate inputs and preserve a seeded unrelated owner.
+**Test:** After this verification and all remaining planning mutations are committed, push the immutable final HEAD and run `tools/wait_for_exact_ci.sh "$FINAL_SHA"`.
 
-**Expected:** `gmcp:ire` remains until both `gmcpSeen` and `promptSeen` are true, then only that owner clears. The unrelated owner survives, and trace shows no attack, target update, get/put, queue execution, gag, or walker move.
+**Expected:** A successful `main.yml` run whose `headSha` exactly equals `FINAL_SHA`; the complete packaged Busted directory reports zero failures and zero errors, including Psion and Dragon pull cases.
 
-**Why human:** Real Achaea GMCP event ordering and Mudlet prompt delivery are outside the host harness.
+**Why human:** Current HEAD has not been pushed, the local AppImage is absent, and host execution cannot load every class profile.
 
-### 2. Enable-before-prompt recovery
+### 2. Disabled lifecycle recovery
 
-**Test:** Observe current IRE while disabled, run `boop on` before the next prompt, inspect the owner, then cause one prompt with `ql`.
+**Test:** In real Mudlet with `boop off`, exercise IRE→prompt and prompt→IRE orderings with an unrelated blocker, then test enabling before the next prompt.
 
-**Expected:** Enable leaves `gmcp:ire` held with `gmcpSeen=true` and `promptSeen=false`; the next prompt clears it once and a duplicate prompt is idempotent.
+**Expected:** `gmcp:ire` clears only after both evidence items, the unrelated owner survives, enable-before-prompt remains held, and disabled evidence produces no automation side effect.
 
-**Why human:** This crosses live trigger-folder activation, merged GMCP state, and prompt timing.
+**Why human:** Installed trigger activation and live GMCP/prompt ordering are not authoritative in the host harness.
 
-### 3. Ordinary and forced-missing room response timing
+### 3. Live room settlement and cross-owner walk
 
-**Test:** Walk through at least five normal transitions, then use the reversible `boop.onRoomItemsList` suppression from the Plan 03-14 handoff for nine seconds and restore it immediately.
+**Test:** Rerun UAT Test 1, including same-room `ql`, stop/restart, a `diag` during transition, ordinary response latency, and one forced incomplete response.
 
-**Expected:** Normal responses inside 8.0 seconds do not warn and emit at most one move per settled room. Forced missing evidence warns/traces once, retains `room:observation`, and emits no move, attack, get, or put.
+**Expected:** No attack, loot, queue, or movement side effect while any owner remains; exactly one eligible next action after all owners clear; at most one move per settled room; one fail-closed warning only after an incomplete 8-second fence.
 
-**Why human:** Real server response latency and external demonwalker behavior require Mudlet/Achaea.
+**Why human:** Requires live Achaea GMCP timing and the real external walker.
 
-### 4. Existing UAT Tests 1 and 2
+### 4. Live wrong-room gold and pack transfer
 
-**Test:** Rerun `03-UAT.md` Test 1 (cross-owner room/walk release with diag/interrupt/pull) and Test 2 (same-room gold, wrong-room cancellation, and inventory-owned packing).
+**Test:** Rerun UAT Test 2 with one same-room refresh, movement before pickup confirmation, and movement after confirmed pickup.
 
-**Expected:** No action occurs until every exact owner clears; then exactly one eligible action resumes. Gold sends one get and one matching put, same-room Info preserves pickup, actual movement cancels only room-owned acquisition, and no combat command contains get/put.
+**Expected:** Same-room refresh preserves exactly one get; wrong-room stale work sends nothing; confirmed pickup permits exactly one inventory-owned put after movement; no attack command contains loot.
 
-**Why human:** These are the live flows that exposed G-03-1, G-03-2, and G-03-3.
+**Why human:** Requires live room/inventory GMCP and actual command confirmation lines.
 
-## External Authority Boundaries
+The optional-walker ownership UAT already passed and does not need to be repeated unless the package/runtime changed.
 
-- `/tmp/Mudlet.AppImage` is absent. Host Busted remains diagnostic and is not a substitute for real Mudlet.
-- Parent exact-final-HEAD GitHub Actions CI has not run and is not claimed. The tracked CI includes all 41 specs, including the five exact cases currently failing locally.
-- Live Achaea UAT has not run after 03-14 and is not claimed.
-- The optional walker ownership UAT previously passed, but Tests 1 and 2 plus the new G-03-3 handoff remain unresolved.
-- Phase 6 owns final recorded package/release evidence, but it does not explicitly defer or waive these Phase 03 regression failures.
+## Adversarial Disconfirmation
+
+- **Partially verified boundary:** Packaged real-Mudlet execution is wired but not run at final SHA; host success is not treated as equivalent.
+- **Potentially misleading test signal:** The complete host pull file exits nonzero for exactly two profile cases because the helper loads only Occultist. Only the three isolated timer-identity cases count as host GREEN; Psion/Dragon remain CI-only.
+- **Uncovered host error path:** Live trigger-folder activation, GMCP event ordering/latency, and external walker behavior cannot be proven by local stubs and are explicitly routed to human verification.
 
 ## Gaps Summary
 
-G-03-3's code path is implemented and its four focused tests pass, but Phase 03's regression contract is not complete. Plan 03-14 changed disabled prompt semantics and made the room warning equal the pull timeout without running the affected diagnose-timeout and pull specs. Five deterministic tracked tests now fail. Fix those test contracts and rerun verification; after automated gaps close, status should return to `human_needed` until the four live rerun groups above pass.
+No automated implementation gaps remain at current HEAD. The previous diagnose-timeout and pull timer-identity gaps are closed, and the roadmap goal is supported by passing focused behavior tests.
+
+Phase completion still requires the exact-final-SHA packaged real-Mudlet CI gate followed by the live lifecycle, room/walk, and gold reruns above. Existing `03-UAT.md` history remains unchanged: its optional-walker test passed, while the previously failed/blocked flows still need post-fix reruns.
 
 ---
 
-_Verified: 2026-07-27T07:34:23Z_
+_Verified: 2026-07-27T12:21:27Z_
 _Verifier: Codex (gsd-verifier)_
