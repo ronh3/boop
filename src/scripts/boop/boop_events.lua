@@ -32,10 +32,12 @@ local function isGoldItem(item)
   return false
 end
 
-local function findRoomGoldItem(items)
+local function findRoomGoldItem(items, expectedId)
   if type(items) ~= "table" then return nil end
+  local wanted = tostring(expectedId or "")
   for _, item in ipairs(items) do
-    if isGoldItem(item) then
+    if isGoldItem(item)
+        and (wanted == "" or tostring(item.id or "") == wanted) then
       return item
     end
   end
@@ -505,6 +507,37 @@ local function currentGoldOperation(generation, expectedPhase)
   return operation
 end
 
+local function canonicalGoldEvidence(
+  observation,
+  roomId,
+  roomGeneration,
+  expectedItemId
+)
+  if type(observation) ~= "table" then
+    return false, nil
+  end
+  local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
+  local canonicalRoom = boop.util.trim(tostring(
+    state and state.targeting and state.targeting.room or ""
+  ))
+  local expectedRoom = boop.util.trim(roomId or "")
+  local expectedItem = tostring(expectedItemId or "")
+  if expectedRoom == ""
+      or (canonicalRoom ~= "" and canonicalRoom ~= expectedRoom)
+      or tostring(observation.roomId or "") ~= expectedRoom
+      or tonumber(observation.generation) ~= tonumber(roomGeneration)
+      or observation.infoSeen ~= true
+      or observation.itemsSeen ~= true
+      or observation.activeFenceId then
+    return false, nil
+  end
+  local goldItem = findRoomGoldItem(
+    observation.acceptedItems,
+    expectedItem
+  )
+  return goldItem ~= nil, goldItem
+end
+
 local function goldDispatchAuthorized(operation)
   local current = currentGoldOperation(
     operation and operation.generation,
@@ -536,33 +569,20 @@ local function goldDispatchAuthorized(operation)
     and boop.runtime.roomObservationSnapshot
     and boop.runtime.roomObservationSnapshot()
     or {}
-  local currentRoom = tostring(
-    gmcp
-      and gmcp.Room
-      and gmcp.Room.Info
-      and gmcp.Room.Info.num
-      or ""
-  )
-  if currentRoom == ""
-      or currentRoom ~= tostring(operation.roomId or "")
-      or tonumber(observation.generation) ~= tonumber(operation.roomGeneration)
-      or tostring(observation.roomId or "") ~= tostring(operation.roomId or "")
-      or not observation.infoSeen then
-    return false
-  end
-  if operation.phase == GOLD_PHASE.DEFERRED_ROOM then
-    return true
-  end
-  if operation.phase ~= GOLD_PHASE.PICKUP_PENDING or not observation.itemsSeen then
-    return false
-  end
-
-  local goldItem = findRoomGoldItem(observation.acceptedItems)
-  if not goldItem then
+  if operation.phase ~= GOLD_PHASE.DEFERRED_ROOM
+      and operation.phase ~= GOLD_PHASE.PICKUP_PENDING then
     return false
   end
   local expectedItem = tostring(operation.goldItemId or "")
-  return expectedItem == "" or tostring(goldItem.id or "") == expectedItem
+  if expectedItem == "" then
+    return false
+  end
+  return canonicalGoldEvidence(
+    observation,
+    operation.roomId,
+    operation.roomGeneration,
+    expectedItem
+  )
 end
 
 function boop.clearGoldQueueIntent()
@@ -763,18 +783,22 @@ startGoldOperation = function(source, observation, packTarget)
   local roomId = tostring(observation.roomId or "")
   local roomGeneration = tonumber(observation.generation) or 0
   local operation = currentGoldOperation()
-
-  local currentGoldItem = findRoomGoldItem(observation.acceptedItems)
-  local evidenceComplete = observation.infoSeen
-    and observation.itemsSeen
-    and roomId ~= ""
-    and tostring(
-      gmcp
-        and gmcp.Room
-        and gmcp.Room.Info
-        and gmcp.Room.Info.num
-        or ""
-    ) == roomId
+  local canonicalRoom = boop.util.trim(tostring(
+    state and state.targeting and state.targeting.room or ""
+  ))
+  if roomId ~= "" and canonicalRoom ~= "" and roomId ~= canonicalRoom then
+    return false
+  end
+  local requestedItemId = tostring(observation.goldItemId or "")
+  local expectedItemId = operation
+    and tostring(operation.goldItemId or "")
+    or requestedItemId
+  local evidenceComplete, currentGoldItem = canonicalGoldEvidence(
+    observation,
+    roomId,
+    roomGeneration,
+    expectedItemId
+  )
 
   if operation then
     if operation.phase == GOLD_PHASE.PACK_PENDING then
@@ -832,7 +856,7 @@ startGoldOperation = function(source, observation, packTarget)
     roomId = roomId,
     roomGeneration = roomGeneration,
     goldItemId = tostring(
-      currentGoldItem and currentGoldItem.id or observation.goldItemId or ""
+      currentGoldItem and currentGoldItem.id or requestedItemId
     ),
     packTarget = boop.util.trim(packTarget or ""),
     getRetries = 0,

@@ -69,6 +69,7 @@ describe("boop tick", function()
       generation = 1,
       infoSeen = true,
       itemsSeen = true,
+      acceptedItems = { goldItem("9001") },
     })
     gmcp.Char.Items.List = {
       location = "room",
