@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
 status: executing
-stopped_at: Completed 03-11-PLAN.md
-last_updated: "2026-07-27T02:30:29.942Z"
+stopped_at: Completed 03-12-PLAN.md
+last_updated: "2026-07-27T02:42:01.440Z"
 last_activity: 2026-07-26
-last_activity_desc: Completed Plan 03-11 serialized room-response fence gap closure
+last_activity_desc: Completed Plan 03-12 tokenless walker arrival gap closure
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 27
-  completed_plans: 25
-  percent: 93
+  completed_plans: 26
+  percent: 96
 ---
 
 # Project State
@@ -29,19 +29,19 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — EXECUTING
-Plan: 12 of 13
-Status: Plan 03-11 complete; ready for Plan 03-12
-Last activity: 2026-07-26 — Completed Plan 03-11 serialized room-response fence gap closure
+Plan: 13 of 13
+Status: Plan 03-12 complete; ready for Plan 03-13
+Last activity: 2026-07-26 — Completed Plan 03-12 tokenless walker arrival gap closure
 
-Progress: [█████████░] 93%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 25
+- Total plans completed: 26
 - Average duration: 15 min
-- Total execution time: 6.3 hours
+- Total execution time: 6.4 hours
 
 **By Phase:**
 
@@ -49,12 +49,12 @@ Progress: [█████████░] 93%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 11 | 148m | ~13 min |
+| 03 | 12 | 155m | ~13 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 03 P07 (14m), Phase 03 P08 (12m), Phase 03 P09 (10m), Phase 03 P10 (7m), Phase 03 P11 (17m)
-- Trend: Phase 03 gap closure now centers on production evidence identity and live lifecycle gaps rather than owner-core construction
+- Last 5 plans: Phase 03 P08 (12m), Phase 03 P09 (10m), Phase 03 P10 (7m), Phase 03 P11 (17m), Phase 03 P12 (7m)
+- Trend: Phase 03 gap closure now centers on fenced production evidence and final same-room gold validation
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -70,6 +70,7 @@ Progress: [█████████░] 93%
 | Phase 03 P09 | 10m | 3 tasks | 9 files |
 | Phase 03 P10 | 7m | 2 tasks | 8 files |
 | Phase 03 P11 | 17m | 2 tasks | 10 files |
+| Phase 03 P12 | 7m | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Use only serialized Inv-to-Room response order plus unchanged room generation as production List authority.
 - [Phase 03]: Keep invalidated room-response fences in FIFO order as zero-effect drains ahead of newer epochs.
 - [Phase 03]: Preserve complete same-room observations and invalidate room-owned state only on actual movement or explicit fresh start.
+- [Phase 03]: Discard every demonwalker.arrived argument; tokenless arrival can only request the current capped response fence.
+- [Phase 03]: Open a fresh-start fence from walk.start and preserve complete same-room reservations across arrival and Room.Info.
+- [Phase 03]: Use canonical accepted observation identity, not persistent GMCP tables, for walker settlement and emission.
 
 ### Pending Todos
 
@@ -125,7 +129,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Plan 03-11 response-fence gap closure is complete; Plans 03-12 and 03-13 remain before Phase 03 verification.
+- Plan 03-12 tokenless-arrival gap closure is complete; Plan 03-13 remains before Phase 03 verification.
 - Local real-Mudlet evidence remains unavailable; parent exact-final-HEAD CI/live UAT still follows all remaining mutations.
 
 ### Quick Tasks Completed
@@ -144,6 +148,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-27T02:30:29.937Z
-Stopped at: Completed 03-11-PLAN.md
+Last session: 2026-07-27T02:42:01.435Z
+Stopped at: Completed 03-12-PLAN.md
 Resume file: None
