@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = boop.version or "0.1.426"
+boop.version = boop.version or "0.1.427"
 
 boop.defaults = {
   enabled = false,
@@ -68,15 +68,27 @@ boop.gmcp = boop.gmcp or {}
 boop.triggers = boop.triggers or {}
 
 local BOOP_TRIGGER_FOLDER = "boop"
+local BOOP_LIFECYCLE_TRIGGER_FOLDER = "boop lifecycle"
 
 function boop.triggers.setEnabled(enabled)
-  local fn = enabled and enableTrigger or disableTrigger
-  if type(fn) ~= "function" then
-    return false
+  local automationFn = enabled and enableTrigger or disableTrigger
+  local lifecycleOk = false
+  if type(enableTrigger) == "function" then
+    lifecycleOk = pcall(
+      enableTrigger,
+      BOOP_LIFECYCLE_TRIGGER_FOLDER
+    )
   end
 
-  local ok = pcall(fn, BOOP_TRIGGER_FOLDER)
-  return ok and true or false
+  local reconcileOk = true
+  if enabled and type(boop.reconcileIreSupport) == "function" then
+    reconcileOk = pcall(boop.reconcileIreSupport, "enable")
+  end
+  local automationOk = false
+  if type(automationFn) == "function" then
+    automationOk = pcall(automationFn, BOOP_TRIGGER_FOLDER)
+  end
+  return lifecycleOk and reconcileOk and automationOk
 end
 
 function boop.triggers.syncEnabled()

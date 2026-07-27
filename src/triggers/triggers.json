@@ -4,5 +4,11 @@
     "isActive": "no",
     "isFolder": "yes",
     "script": ""
+  },
+  {
+    "name": "boop lifecycle",
+    "isActive": "yes",
+    "isFolder": "yes",
+    "script": ""
   }
 ]

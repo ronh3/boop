@@ -1675,6 +1675,7 @@ describe("boop event-driven state transitions", function()
   end)
 
   it("keeps singleton GMCP, room, and target owners isolated at event boundaries", function()
+    boop.config.enabled = true
     helper.setRuntimeBlocker({
       owner = "gmcp:ire",
       code = "gmcp_ire_missing",
@@ -1713,8 +1714,11 @@ describe("boop event-driven state transitions", function()
 
     boop.onPrompt()
     blockers = boop.runtime.blockersSnapshot()
-    assert.are.equal(1, #blockers)
-    assert.are.equal("gmcp:ire", blockers[1].owner)
+    assert.are.equal(0, #blockers)
+    assert.are.equal(
+      "gmcp:ire",
+      clear_blocker_calls[#clear_blocker_calls - 1][1]
+    )
     assert.are.equal("target:loss", clear_blocker_calls[#clear_blocker_calls][1])
   end)
 
@@ -1973,6 +1977,7 @@ describe("boop event-driven state transitions", function()
   end)
 
   it("clears tracked shield state when gmcp target set changes", function()
+    boop.config.enabled = true
     helper.setDenizens({
       { id = "77", name = "a game-selected denizen" },
     })
@@ -1988,11 +1993,14 @@ describe("boop event-driven state transitions", function()
     assert.is_false(boop.state.targeting.targetShield)
     assert.stub(kill_timer_stub).was_called_with(55)
     assert.stub(send_stub).was_not_called_with("settarget 77", false)
-    assert.are.equal("target:loss", note_gmcp_calls[1][1])
-    assert.are.equal("target", note_gmcp_calls[1][2])
+    assert.are.equal("gmcp:ire", note_gmcp_calls[1][1])
+    assert.are.equal("ire", note_gmcp_calls[1][2])
+    assert.are.equal("target:loss", note_gmcp_calls[#note_gmcp_calls][1])
+    assert.are.equal("target", note_gmcp_calls[#note_gmcp_calls][2])
   end)
 
   it("clears tracked shield state when gmcp target info changes", function()
+    boop.config.enabled = true
     helper.setTarget("42", "a test denizen", "80%")
     boop.state.targeting.targetShield = { attempted = false, timer = 56 }
     gmcp.IRE.Target.Info.id = "78"
@@ -2006,11 +2014,14 @@ describe("boop event-driven state transitions", function()
     assert.is_false(boop.state.targeting.targetShield)
     assert.stub(kill_timer_stub).was_called_with(56)
     assert.stub(send_stub).was_not_called_with("settarget 78", false)
-    assert.are.equal("target:loss", note_gmcp_calls[1][1])
-    assert.are.equal("target", note_gmcp_calls[1][2])
+    assert.are.equal("gmcp:ire", note_gmcp_calls[1][1])
+    assert.are.equal("ire", note_gmcp_calls[1][2])
+    assert.are.equal("target:loss", note_gmcp_calls[#note_gmcp_calls][1])
+    assert.are.equal("target", note_gmcp_calls[#note_gmcp_calls][2])
   end)
 
   it("clears stale target name when gmcp target set clears", function()
+    boop.config.enabled = true
     helper.setTarget("42", "a test denizen", "80%")
     boop.state.targeting.targetShield = { attempted = false, timer = 58 }
     gmcp.IRE.Target.Set = ""

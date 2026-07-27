@@ -45,6 +45,7 @@ local function findRoomGoldItem(items, expectedId)
 end
 
 local AUTO_GOLD_FLUSH_SECONDS = 0.35
+local ROOM_RESPONSE_FENCE_WARNING_SECONDS = 8.0
 local GOLD_READY_QUEUE = "freestand"
 local GOLD_PHASE = {
   DEFERRED_ROOM = "deferred_room",
@@ -206,7 +207,11 @@ local function requestCoreSupportsThrottled(forceNow)
   return true
 end
 
-local function enterGmcpIreBlocker(source, supportAlreadyRequested)
+local function enterGmcpIreBlocker(
+  source,
+  supportAlreadyRequested,
+  requestIfMissing
+)
   local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
   local previous = state
     and state.combat
@@ -235,22 +240,40 @@ local function enterGmcpIreBlocker(source, supportAlreadyRequested)
     if type(stateBlocker) == "table" then
       stateBlocker.lastRetryAt = nowSeconds()
     end
-  else
+  elseif requestIfMissing then
     requestCoreSupportsThrottled(firstEntry)
   end
   warnBlocker(blocker)
   return blocker
 end
 
-local function reconcileIreSupport(source)
+function boop.reconcileIreSupport(source, options)
+  options = type(options) == "table" and options or {}
+  local requestIfMissing = options.requestIfMissing
+  if requestIfMissing == nil then
+    requestIfMissing = true
+  end
   if ireReady() then
     if runtime() and boop.runtime.noteGmcpObserved then
       boop.runtime.noteGmcpObserved("gmcp:ire", "ire")
     end
     return true
   end
-  enterGmcpIreBlocker(source)
+  enterGmcpIreBlocker(
+    source,
+    options.supportAlreadyRequested == true,
+    requestIfMissing
+  )
   return false
+end
+
+function boop.onIreSupportObserved(source)
+  return boop.reconcileIreSupport(
+    source or "ire event",
+    {
+      requestIfMissing = false,
+    }
+  )
 end
 
 local function enterRoomBlocker(code, label, observed)
@@ -301,7 +324,7 @@ function boop.requestRoomItemsOnce(reason)
 
   local timerId = false
   if tempTimer then
-    timerId = tempTimer(0.35, function()
+    timerId = tempTimer(ROOM_RESPONSE_FENCE_WARNING_SECONDS, function()
       warnRoomResponseFence(fence, timerId)
     end)
     boop.runtime.setRoomResponseFenceTimer(fence.fenceId, timerId)
@@ -1139,6 +1162,9 @@ function boop.events.register()
   add("gmcp.Char.Items.Remove", "boop.onRoomItemsRemove")
   add("gmcp.Char.Items.Update", "boop.onItemsUpdate")
   add("gmcp.Room.Info", "boop.onRoomInfo")
+  add("gmcp.IRE.Display.ButtonActions", "boop.onIreSupportObserved")
+  add("gmcp.IRE.Display.FixedFont", "boop.onIreSupportObserved")
+  add("gmcp.IRE.Display.Ohmap", "boop.onIreSupportObserved")
   add("gmcp.IRE.Target.Set", "boop.onTargetSet")
   add("gmcp.IRE.Target.Info", "boop.onTargetInfo")
   add("gmcp.Char.Status", "boop.onCharStatus")
@@ -1158,11 +1184,10 @@ function boop.onConnectionEvent()
       requestSkills = true,
     })
   end
-  if not ireReady() then
-    enterGmcpIreBlocker("connection", true)
-  elseif runtime() and boop.runtime.noteGmcpObserved then
-    boop.runtime.noteGmcpObserved("gmcp:ire", "ire")
-  end
+  boop.reconcileIreSupport("connection", {
+    supportAlreadyRequested = true,
+    requestIfMissing = false,
+  })
 end
 
 function boop.onRoomItemsList()
@@ -1478,6 +1503,10 @@ end
 
 function boop.onTargetSet()
   if not gmcp or not gmcp.IRE or not gmcp.IRE.Target or not gmcp.IRE.Target.Set then return end
+  boop.onIreSupportObserved("gmcp.IRE.Target.Set")
+  if not boop.config or not boop.config.enabled then
+    return true
+  end
   noteTargetGmcpObserved()
   local newId = tostring(gmcp.IRE.Target.Set or "")
   if boop.targets and boop.targets.applyTarget then
@@ -1499,8 +1528,12 @@ end
 
 function boop.onTargetInfo()
   if not gmcp or not gmcp.IRE or not gmcp.IRE.Target or not gmcp.IRE.Target.Info then return end
-  noteTargetGmcpObserved()
   local info = gmcp.IRE.Target.Info
+  boop.onIreSupportObserved("gmcp.IRE.Target.Info")
+  if not boop.config or not boop.config.enabled then
+    return true
+  end
+  noteTargetGmcpObserved()
   if info.id then
     local newId = tostring(info.id or "")
     if boop.targets and boop.targets.applyTarget then
@@ -1516,7 +1549,7 @@ end
 
 function boop.onCharStatus()
   if not gmcp or not gmcp.Char or not gmcp.Char.Status then return end
-  reconcileIreSupport("char status")
+  boop.reconcileIreSupport("char status")
   if gmcp.Char.Status.class then
     local newClass = gmcp.Char.Status.class
     if boop.state.combat.class ~= newClass then
@@ -1722,8 +1755,14 @@ function boop.tick()
 end
 
 function boop.onPrompt()
+  boop.reconcileIreSupport("prompt", {
+    requestIfMissing = false,
+  })
   if runtime() and boop.runtime.notePromptObserved then
     boop.runtime.notePromptObserved()
+  end
+  if not boop.config or not boop.config.enabled then
+    return false
   end
   if boop.runtime and boop.runtime.step and boop.runtime.applyEffects then
     local context = boop.runtime.context()

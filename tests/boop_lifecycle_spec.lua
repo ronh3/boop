@@ -98,7 +98,7 @@ describe("boop lifecycle recovery", function()
     boop.gmcp = {
       lastSupportAnnounceAt = 0,
     }
-    gmcp = {
+    replaceGlobal("gmcp", {
       Char = {
         Items = {},
         Status = {
@@ -126,7 +126,7 @@ describe("boop lifecycle recovery", function()
           exits = {},
         },
       },
-    }
+    })
     replaceGlobal("getEpoch", function()
       return 0
     end)
@@ -249,6 +249,8 @@ describe("boop lifecycle recovery", function()
     replaceFunction(boop, "requestCoreSupports", function(_)
       return true
     end)
+    replaceGlobal("enableTrigger", function(_) end)
+    replaceGlobal("disableTrigger", function(_) end)
 
     boop.config.enabled = false
     gmcp.IRE = nil
