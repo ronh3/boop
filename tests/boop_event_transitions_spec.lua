@@ -14,8 +14,12 @@ describe("boop event-driven state transitions", function()
   local tick_stub
   local flush_gold_stub
   local walk_advance_stub
+  local walk_settled_stub
   local walk_arrived_adapter_stub
   local walk_finished_adapter_stub
+  local targets_update_stub
+  local util_warn_stub
+  local trace_log_stub
   local saved_get_epoch
   local scheduled_callback
   local scheduled_callbacks
@@ -114,6 +118,10 @@ describe("boop event-driven state transitions", function()
       walk_advance_stub:revert()
       walk_advance_stub = nil
     end
+    if walk_settled_stub then
+      walk_settled_stub:revert()
+      walk_settled_stub = nil
+    end
     if walk_arrived_adapter_stub then
       walk_arrived_adapter_stub:revert()
       walk_arrived_adapter_stub = nil
@@ -129,6 +137,18 @@ describe("boop event-driven state transitions", function()
     if tick_stub then
       tick_stub:revert()
       tick_stub = nil
+    end
+    if targets_update_stub then
+      targets_update_stub:revert()
+      targets_update_stub = nil
+    end
+    if util_warn_stub then
+      util_warn_stub:revert()
+      util_warn_stub = nil
+    end
+    if trace_log_stub then
+      trace_log_stub:revert()
+      trace_log_stub = nil
     end
   end)
 
@@ -198,6 +218,49 @@ describe("boop event-driven state transitions", function()
       id = tostring(id or "9001"),
       name = "some gold sovereigns",
       attrib = "t",
+    }
+  end
+
+  local function denizenItem(id, name)
+    return {
+      id = tostring(id or "42"),
+      name = tostring(name or "a test denizen"),
+      attrib = "m",
+    }
+  end
+
+  local function inventoryItem(id, name, attrib)
+    return {
+      id = tostring(id or "7001"),
+      name = tostring(name or "a test weapon"),
+      attrib = tostring(attrib or "l"),
+      icon = "weapon",
+    }
+  end
+
+  local function publishItemsList(location, items)
+    gmcp.Char.Items.List = {
+      location = location,
+      items = items,
+    }
+    return boop.onRoomItemsList()
+  end
+
+  local function copyWalkState()
+    local walk = boop.runtime.state().walk
+    return {
+      active = walk.active,
+      owned = walk.owned,
+      roomSettled = walk.roomSettled,
+      moveQueued = walk.moveQueued,
+      arrivalRoom = walk.arrivalRoom,
+      generation = walk.generation,
+      roomGeneration = walk.roomGeneration,
+      moveIssuedForRoomGeneration = walk.moveIssuedForRoomGeneration,
+      reservationId = walk.reservationId,
+      refreshTimer = walk.refreshTimer,
+      emitterTimer = walk.emitterTimer,
+      refreshWarned = walk.refreshWarned,
     }
   end
 
@@ -553,6 +616,425 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(0, countRaised("demonwalker.move"))
   end)
 
+  it("room-response-fence enforces Inv then Room before binding", function()
+    boop.config.enabled = true
+    boop.config.autoGrabGold = true
+    boop.config.useQueueing = false
+    boop.config.goldPack = ""
+    boop.state.targeting.room = "1"
+    helper.setDenizens({
+      { id = "10", name = "the prior-room denizen" },
+    })
+
+    local targetUpdates = 0
+    local walkSettlements = 0
+    local tickCalls = 0
+    local originalUpdate = boop.targets.updateRoomItems
+    local originalTick = boop.tick
+    targets_update_stub = stub(boop.targets, "updateRoomItems", function(items)
+      targetUpdates = targetUpdates + 1
+      return originalUpdate(items)
+    end)
+    walk_settled_stub = stub(boop.walk, "onRoomSettled", function()
+      walkSettlements = walkSettlements + 1
+      return false
+    end)
+    tick_stub = stub(boop, "tick", function()
+      tickCalls = tickCalls + 1
+      return originalTick()
+    end)
+
+    gmcp.Room.Info = {
+      num = "2",
+      area = "Test Area",
+      exits = { south = "1" },
+    }
+    boop.onRoomInfo()
+    local requestsAfterInfo = {
+      gmcp_requests[1],
+      gmcp_requests[2],
+    }
+
+    publishItemsList("room", {
+      denizenItem("20", "a pre-barrier impostor"),
+      goldItem("9020"),
+    })
+    local early = {
+      updates = targetUpdates,
+      settlements = walkSettlements,
+      ticks = tickCalls,
+      goldSends = countGoldSends(),
+      denizen = boop.state.targeting.denizens[1]
+        and boop.state.targeting.denizens[1].name,
+      roomOwnerPresent = blockerFor("room:observation") ~= nil,
+    }
+
+    publishItemsList("inv", {
+      inventoryItem("7001", "a fenced left-hand weapon", "l"),
+    })
+    local afterInventory = {
+      updates = targetUpdates,
+      settlements = walkSettlements,
+      ticks = tickCalls,
+      goldSends = countGoldSends(),
+      wielded = boop.state.inventory.wieldedLeft
+        and boop.state.inventory.wieldedLeft.id,
+    }
+
+    publishItemsList("room", {
+      denizenItem("21", "the accepted current denizen"),
+      goldItem("9021"),
+    })
+    local accepted = boop.runtime.roomObservationSnapshot()
+    local afterAccepted = {
+      updates = targetUpdates,
+      settlements = walkSettlements,
+      ticks = tickCalls,
+      goldSends = countGoldSends(),
+      denizen = boop.state.targeting.denizens[1]
+        and boop.state.targeting.denizens[1].name,
+      roomOwnerPresent = blockerFor("room:observation") ~= nil,
+      itemsSeen = accepted.itemsSeen,
+    }
+
+    publishItemsList("room", {
+      denizenItem("22", "a duplicate room response"),
+    })
+    publishItemsList("inv", {
+      inventoryItem("7002", "a duplicate inventory response", "l"),
+    })
+
+    local acceptedName = accepted.acceptedItems
+      and accepted.acceptedItems[1]
+      and accepted.acceptedItems[1].name
+      or false
+    if accepted.acceptedItems and accepted.acceptedItems[1] then
+      accepted.acceptedItems[1].name = "mutated snapshot"
+    end
+    if gmcp.Char.Items.List.items and gmcp.Char.Items.List.items[1] then
+      gmcp.Char.Items.List.items[1].name = "mutated persistent list"
+    end
+    local immutable = boop.runtime.roomObservationSnapshot()
+
+    assert.are.same({
+      requests = { "Char.Items.Inv", "Char.Items.Room" },
+      early = {
+        updates = 0,
+        settlements = 0,
+        ticks = 0,
+        goldSends = 0,
+        denizen = "the prior-room denizen",
+        roomOwnerPresent = true,
+      },
+      inventory = {
+        updates = 0,
+        settlements = 0,
+        ticks = 0,
+        goldSends = 0,
+        wielded = "7001",
+      },
+      accepted = {
+        updates = 1,
+        settlements = 1,
+        ticks = 1,
+        goldSends = 1,
+        denizen = "the accepted current denizen",
+        roomOwnerPresent = false,
+        itemsSeen = true,
+      },
+      finalUpdates = 1,
+      finalSettlements = 1,
+      finalTicks = 1,
+      finalGoldSends = 1,
+      finalWielded = "7001",
+      copiedAcceptedName = "the accepted current denizen",
+      immutableAcceptedName = "the accepted current denizen",
+    }, {
+      requests = requestsAfterInfo,
+      early = early,
+      inventory = afterInventory,
+      accepted = afterAccepted,
+      finalUpdates = targetUpdates,
+      finalSettlements = walkSettlements,
+      finalTicks = tickCalls,
+      finalGoldSends = countGoldSends(),
+      finalWielded = boop.state.inventory.wieldedLeft
+        and boop.state.inventory.wieldedLeft.id,
+      copiedAcceptedName = acceptedName,
+      immutableAcceptedName = immutable.acceptedItems
+        and immutable.acceptedItems[1]
+        and immutable.acceptedItems[1].name
+        or false,
+    }, "ROOM_RESPONSE_FENCE_BROKEN: room evidence bound outside Inv then Room")
+  end)
+
+  it("room-response-fence drains an invalidated epoch before the next epoch", function()
+    boop.config.enabled = false
+    boop.state.targeting.room = "1"
+    helper.setDenizens({
+      { id = "10", name = "the retained denizen" },
+    })
+
+    local targetUpdates = 0
+    local walkSettlements = 0
+    local tickCalls = 0
+    local originalUpdate = boop.targets.updateRoomItems
+    targets_update_stub = stub(boop.targets, "updateRoomItems", function(items)
+      targetUpdates = targetUpdates + 1
+      return originalUpdate(items)
+    end)
+    walk_settled_stub = stub(boop.walk, "onRoomSettled", function()
+      walkSettlements = walkSettlements + 1
+      return false
+    end)
+    tick_stub = stub(boop, "tick", function()
+      tickCalls = tickCalls + 1
+    end)
+
+    gmcp.Room.Info = {
+      num = "2",
+      area = "Room A",
+      exits = { south = "1" },
+    }
+    boop.onRoomInfo()
+    gmcp.Room.Info = {
+      num = "3",
+      area = "Room B",
+      exits = { south = "2" },
+    }
+    boop.onRoomInfo()
+
+    publishItemsList("inv", {
+      inventoryItem("7101", "room A delayed inventory", "l"),
+    })
+    publishItemsList("room", {
+      denizenItem("201", "room A stale denizen"),
+    })
+    publishItemsList("room", {
+      denizenItem("301", "room B early denizen"),
+    })
+    local afterDrainedA = {
+      updates = targetUpdates,
+      settlements = walkSettlements,
+      ticks = tickCalls,
+      denizen = boop.state.targeting.denizens[1]
+        and boop.state.targeting.denizens[1].name,
+      wielded = boop.state.inventory.wieldedLeft
+        and boop.state.inventory.wieldedLeft.id
+        or false,
+    }
+
+    publishItemsList("inv", {
+      inventoryItem("7102", "room B current inventory", "l"),
+    })
+    publishItemsList("inv", {
+      inventoryItem("7199", "room B duplicate inventory", "l"),
+    })
+    local afterBInventory = boop.state.inventory.wieldedLeft
+      and boop.state.inventory.wieldedLeft.id
+      or false
+
+    gmcp.Room.Info = {
+      num = "4",
+      area = "Room C",
+      exits = { south = "3" },
+    }
+    boop.onRoomInfo()
+    publishItemsList("room", {
+      denizenItem("302", "room B delayed denizen"),
+    })
+    publishItemsList("inv", {
+      inventoryItem("7103", "room C current inventory", "l"),
+    })
+    publishItemsList("room", {
+      denizenItem("401", "room C accepted denizen"),
+    })
+
+    local observation = boop.runtime.roomObservationSnapshot()
+    assert.are.same({
+      requests = {
+        "Char.Items.Inv",
+        "Char.Items.Room",
+        "Char.Items.Inv",
+        "Char.Items.Room",
+        "Char.Items.Inv",
+        "Char.Items.Room",
+      },
+      afterDrainedA = {
+        updates = 0,
+        settlements = 0,
+        ticks = 0,
+        denizen = "the retained denizen",
+        wielded = false,
+      },
+      afterBInventory = "7102",
+      finalUpdates = 1,
+      finalSettlements = 1,
+      finalTicks = 1,
+      finalDenizen = "room C accepted denizen",
+      finalWielded = "7103",
+      roomId = "4",
+      itemsSeen = true,
+      queueDepth = 0,
+    }, {
+      requests = gmcp_requests,
+      afterDrainedA = afterDrainedA,
+      afterBInventory = afterBInventory,
+      finalUpdates = targetUpdates,
+      finalSettlements = walkSettlements,
+      finalTicks = tickCalls,
+      finalDenizen = boop.state.targeting.denizens[1]
+        and boop.state.targeting.denizens[1].name,
+      finalWielded = boop.state.inventory.wieldedLeft
+        and boop.state.inventory.wieldedLeft.id
+        or false,
+      roomId = observation.roomId,
+      itemsSeen = observation.itemsSeen,
+      queueDepth = type(observation.fenceQueue) == "table"
+        and #observation.fenceQueue
+        or -1,
+    }, "ROOM_RESPONSE_FENCE_BROKEN: invalidated epochs were not drain-only")
+  end)
+
+  it("room-response-fence preserves complete same-room evidence and caps missing responses", function()
+    boop.config.enabled = true
+    boop.config.autoGrabGold = true
+    boop.config.useQueueing = false
+    boop.config.goldPack = ""
+    boop.state.targeting.room = ""
+
+    gmcp.Room.Info = {
+      num = "1",
+      area = "Test Area",
+      exits = {},
+    }
+    boop.onRoomInfo()
+    publishItemsList("inv", {})
+    publishItemsList("room", {
+      denizenItem("41", "the complete same-room denizen"),
+      goldItem("9041"),
+    })
+
+    local state = boop.runtime.state()
+    state.walk.active = true
+    state.walk.owned = false
+    state.walk.roomSettled = true
+    state.walk.moveQueued = true
+    state.walk.arrivalRoom = "1"
+    state.walk.generation = 12
+    state.walk.roomGeneration =
+      boop.runtime.roomObservationSnapshot().generation
+    state.walk.moveIssuedForRoomGeneration = true
+    state.walk.reservationId = 5
+    state.walk.refreshTimer = 333
+    state.walk.emitterTimer = 334
+    state.walk.refreshWarned = false
+    helper.setRuntimeBlocker({
+      owner = "walk:12",
+      code = "walk_move_pending",
+      label = "move already queued",
+      systems = { walk = true },
+      waitsFor = { room = true },
+    })
+
+    local beforeSame = {
+      observation = boop.runtime.roomObservationSnapshot(),
+      denizens = boop.state.targeting.denizens,
+      gold = copyGoldOperation(boop.state.gold.operation),
+      blockers = boop.runtime.blockersSnapshot(),
+      walk = copyWalkState(),
+      requests = #gmcp_requests,
+      sends = #sent_commands,
+      events = #raised_events,
+      timers = #scheduled_callbacks,
+    }
+
+    boop.onRoomInfo()
+
+    local afterSame = {
+      observation = boop.runtime.roomObservationSnapshot(),
+      denizens = boop.state.targeting.denizens,
+      gold = copyGoldOperation(boop.state.gold.operation),
+      blockers = boop.runtime.blockersSnapshot(),
+      walk = copyWalkState(),
+      requests = #gmcp_requests,
+      sends = #sent_commands,
+      events = #raised_events,
+      timers = #scheduled_callbacks,
+    }
+
+    state.walk.active = false
+    state.walk.moveQueued = false
+    state.walk.moveIssuedForRoomGeneration = false
+    state.walk.refreshTimer = nil
+    state.walk.emitterTimer = nil
+    boop.runtime.clearBlocker("walk:12", "missing-response setup")
+
+    local warnings = {}
+    local traces = {}
+    util_warn_stub = stub(boop.util, "warn", function(message)
+      warnings[#warnings + 1] = tostring(message)
+    end)
+    trace_log_stub = stub(boop.trace, "log", function(message)
+      traces[#traces + 1] = tostring(message)
+    end)
+
+    gmcp.Room.Info = {
+      num = "2",
+      area = "Missing Response Room",
+      exits = { south = "1" },
+    }
+    boop.onRoomInfo()
+    local warningBaseline = #warnings
+    local traceBaseline = #traces
+    publishItemsList("room", {
+      denizenItem("99", "an out-of-order room denizen"),
+    })
+    local timeoutObservation = boop.runtime.roomObservationSnapshot()
+    local timeoutCallback = callbackForTimer(
+      timeoutObservation.refreshTimeoutTimer
+    )
+    if timeoutCallback then
+      timeoutCallback()
+    end
+    local missing = boop.runtime.roomObservationSnapshot()
+    local timeoutTraceCount = 0
+    for i = traceBaseline + 1, #traces do
+      if traces[i]:find("room response fence", 1, true) then
+        timeoutTraceCount = timeoutTraceCount + 1
+      end
+    end
+
+    assert.are.same({
+      beforeSame = beforeSame,
+      afterSame = beforeSame,
+      missing = {
+        requests = 4,
+        itemsSeen = false,
+        warned = true,
+        refreshAttempted = true,
+        warningCount = 1,
+        timeoutTraceCount = 1,
+        roomOwnerPresent = true,
+        denizen = "the complete same-room denizen",
+      },
+    }, {
+      beforeSame = beforeSame,
+      afterSame = afterSame,
+      missing = {
+        requests = #gmcp_requests,
+        itemsSeen = missing.itemsSeen,
+        warned = missing.warned,
+        refreshAttempted = missing.refreshAttempted,
+        warningCount = #warnings - warningBaseline,
+        timeoutTraceCount = timeoutTraceCount,
+        roomOwnerPresent = blockerFor("room:observation") ~= nil,
+        denizen = boop.state.targeting.denizens[1]
+          and boop.state.targeting.denizens[1].name,
+      },
+    }, "ROOM_RESPONSE_FENCE_BROKEN: same-room evidence reset or missing response escaped the cap")
+  end)
+
   it("holds loot until a complete list stamps the current room observation", function()
     boop.config.enabled = true
     boop.config.autoGrabGold = true
@@ -813,7 +1295,7 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(sendCount, countGoldSends())
   end)
 
-  it("invalidates a current room-owned stage on Room.Info and makes its captured timers stale", function()
+  it("invalidates a current room-owned stage on an actual room change and makes its captured timers stale", function()
     seedSettledGoldRoom("1", 1)
     boop.config.goldPack = ""
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
@@ -824,9 +1306,9 @@ describe("boop event-driven state transitions", function()
     end
 
     gmcp.Room.Info = {
-      num = 1,
+      num = 2,
       area = "Test Area",
-      exits = {},
+      exits = { south = 1 },
     }
     boop.onRoomInfo()
 

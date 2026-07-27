@@ -16,6 +16,22 @@ local function resetTableData(tbl)
   end
 end
 
+local function deepCopy(value, seen)
+  if type(value) ~= "table" then
+    return value
+  end
+  seen = seen or {}
+  if seen[value] then
+    return seen[value]
+  end
+  local out = {}
+  seen[value] = out
+  for key, entry in pairs(value) do
+    out[key] = deepCopy(entry, seen)
+  end
+  return out
+end
+
 local function norm(value)
   value = tostring(value or "")
   return value:lower():gsub("^%s+", ""):gsub("%s+$", "")
@@ -147,7 +163,9 @@ function M.reset()
   resetTableData(boop.state)
   boop.state.init()
   if boop.runtime and boop.runtime.startRoomObservation then
-    boop.runtime.startRoomObservation(gmcp.Room.Info.num)
+    boop.runtime.startRoomObservation(gmcp.Room.Info.num, {
+      boundary = "fresh_start",
+    })
   end
 
   resetTableData(boop.afflictions)
@@ -247,13 +265,54 @@ end
 function M.seedRoomObservation(roomId, opts)
   opts = opts or {}
   local state = boop.runtime.state()
+  local generation = tonumber(opts.generation) or 1
+  local normalizedRoomId = tostring(roomId or "")
+  local fenceQueue = deepCopy(opts.fenceQueue or opts.fences or {})
+  if opts.fenced == true and #fenceQueue == 0 then
+    fenceQueue[1] = {
+      fenceId = tonumber(opts.fenceId) or 1,
+      generation = generation,
+      roomId = normalizedRoomId,
+      phase = tostring(opts.fencePhase or "await_inv"),
+      valid = opts.fenceValid ~= false,
+    }
+  end
+
+  local highestFenceId = 0
+  for _, fence in ipairs(fenceQueue) do
+    highestFenceId = math.max(
+      highestFenceId,
+      tonumber(fence and fence.fenceId) or 0
+    )
+  end
+
+  local activeFenceId = opts.activeFenceId
+  if activeFenceId == nil then
+    for i = #fenceQueue, 1, -1 do
+      local fence = fenceQueue[i]
+      if type(fence) == "table"
+          and fence.valid ~= false
+          and tonumber(fence.generation) == generation then
+        activeFenceId = tonumber(fence.fenceId) or false
+        break
+      end
+    end
+  end
+
   local observation = {
-    generation = tonumber(opts.generation) or 1,
-    roomId = tostring(roomId or ""),
+    generation = generation,
+    roomId = normalizedRoomId,
     infoSeen = opts.infoSeen ~= false,
     itemsSeen = opts.itemsSeen == true,
-    refreshAttempted = opts.refreshAttempted == true,
+    acceptedItems = deepCopy(opts.acceptedItems or opts.items or {}),
+    fenceQueue = fenceQueue,
+    activeFenceId = activeFenceId or false,
+    nextFenceId = tonumber(opts.nextFenceId)
+      or math.max(highestFenceId + 1, 1),
+    refreshAttempted = opts.refreshAttempted == true
+      or #fenceQueue > 0,
     refreshReason = tostring(opts.refreshReason or ""),
+    refreshTimeoutTimer = opts.refreshTimeoutTimer or false,
     warned = opts.warned == true,
   }
   state.targeting.roomObservation = observation
