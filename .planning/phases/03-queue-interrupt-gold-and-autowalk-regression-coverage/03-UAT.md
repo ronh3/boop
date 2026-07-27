@@ -1,21 +1,17 @@
 ---
-status: testing
+status: partial
 phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-27T03:28:41Z
+updated: 2026-07-27T05:23:33Z
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
 
 ## Current Test
 
-number: 1
-name: Live serialized room fence and aggregate release
-expected: |
-  Normal walker movement settles from the requested inventory-to-room response pair without a persistent room_partial hold. Same-room Room.Info refreshes preserve settlement, and overlapping safety owners prevent attacks, loot, and movement until aggregate all-clear releases exactly one next action.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -29,7 +25,9 @@ expected: |
   2. Let the walker cross several rooms. In one room, run `ql` to force a same-room refresh; stop and restart the walker once.
   3. Run `boop trace show 100`. There must be no room_partial hold that persists until an unrelated later GMCP event, and each settled room must produce at most one walker move.
   4. During one room transition, start one normal safety lifecycle you already use (`diag`, a queued interrupt, or `pull`). No attack, get/put, or walker move may occur until that lifecycle and every other visible blocker clear; then exactly one next action should resume.
-result: pending
+result: issue
+reported: "Check output.md. Do not believe that we passed."
+severity: major
 previous_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room Info created a new partial generation and stalled the walker."
 
 ### 2. Wrong-room gold and pack transfer
@@ -38,11 +36,13 @@ expected: |
   With boop 0.1.425 installed, current-room gold queues one get without requiring exit/re-entry. Same-room Room.Info preserves pickup, actual movement cancels room-owned acquisition, and confirmed pickup permits exactly one inventory-owned put even if movement follows. No loot command is chained with an attack.
 
   Easy check:
-  1. Stop the walker, then run `boop trace clear`, `boop trace on`, `boop autogold on`, and configure a valid `boop pack <container>`.
+  1. Stop the walker, then run `boop on`, `boop trace clear`, `boop trace on`, `boop autogold on`, and configure a valid `boop pack <container>`.
   2. Kill one mob and stay in the room. Immediately after the get is queued, run `ql`. The get must not be cancelled by the same-room refresh, and the gold must be put in the configured pack without leaving and re-entering.
   3. Repeat and move to the next room before pickup confirms. Wait five seconds; no old-room get or retry may be sent in the new room.
   4. Repeat once more, but move only after pickup confirms or `gold_pack_pending` appears. Exactly one put may finish after movement. Run `boop trace show 100` and confirm no standard/rage attack command contains get or put.
-result: pending
+result: blocked
+blocked_by: other
+reason: "Gold was recognized in GMCP, but no gold operation or get command followed. Test 1's false gmcp_ire_missing owner remains active and blocks the gold system, so later Test 2 steps cannot produce valid evidence."
 previous_result: "Before Plans 03-11/03-13, pickup required exit/re-entry and a same-room Room.Info cancelled the queued get before packing."
 
 ### 3. Optional walker and stop ownership
@@ -61,10 +61,10 @@ result: pass
 
 total: 3
 passed: 1
-issues: 0
-pending: 2
+issues: 1
+pending: 0
 skipped: 0
-blocked: 0
+blocked: 1
 
 ## Gaps
 
@@ -115,3 +115,20 @@ blocked: 0
     - "03-11-PLAN.md"
     - "03-13-PLAN.md"
   verification: "03-VERIFICATION.md reports the implementation gap closed at 0.1.425; post-fix live UAT Test 2 remains pending."
+
+- gap_id: G-03-3
+  truth: "A live walk settles from current room evidence and advances once after all blockers clear; valid gmcp.IRE data releases the recovery blocker without requiring Char.Status to repeat."
+  status: failed
+  reason: "User reported Test 1 did not pass. Trace evidence shows every settled room remains held by gmcp_ire_missing, response-fence warnings recur before live room lists arrive, and the final restarted generation remains unsettled."
+  severity: major
+  test: 1
+  root_cause: "IRE readiness is reconciled only on connection and Char.Status. When Char.Status arrives before IRE.Display or IRE.Target, the later IRE GMCP event has no recovery handler, so gmcp:ire never records GMCP evidence and prompts cannot clear the blocker."
+  artifacts:
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "Event registration observes IRE.Target payloads for targeting but has no IRE readiness event path, while reconcileIreSupport is called only from onCharStatus."
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "The fixed 0.35-second room-response warning fires before normal live room-list responses in every sampled room, obscuring whether a response is actually lost."
+  missing:
+    - "Reconcile gmcp:ire recovery when requested IRE.Display or IRE.Target data actually arrives, preserving the declared GMCP-plus-prompt release contract."
+    - "Cover login ordering where Char.Status precedes IRE.Display and no second Char.Status follows."
+    - "Calibrate or redefine the room-response timeout so ordinary live response latency is not reported as an incomplete fence while genuine missing responses remain fail closed."
