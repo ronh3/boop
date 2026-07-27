@@ -1478,6 +1478,159 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(sendsAfterInvalidation, countGoldSends())
   end)
 
+  it("same-room-gold-pipeline rejects wrong-room gold and cancels actual movement once", function()
+    _G.demonwalker = {
+      enabled = true,
+      init = function() return true end,
+    }
+    boop.config.enabled = true
+    boop.config.autoGrabGold = true
+    boop.config.useQueueing = false
+    boop.config.goldPack = "pack"
+    boop.config.targetingMode = "auto"
+    boop.state.targeting.room = ""
+
+    gmcp.Room.Info = {
+      num = "1",
+      area = "Room A",
+      exits = {},
+    }
+    boop.onRoomInfo()
+    publishItemsList("inv", {})
+    publishItemsList("room", {
+      denizenItem("101", "the retained room A denizen"),
+      goldItem("9001"),
+    })
+
+    local operation = copyGoldOperation(boop.state.gold.operation)
+    assert.are.equal("pickup_pending", operation.phase)
+    assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+    local oldTimeout = callbackForTimer(operation.timeoutTimer)
+    assert.is_function(oldTimeout)
+
+    local state = boop.runtime.state()
+    state.walk.active = true
+    state.walk.owned = false
+    state.walk.roomSettled = true
+    state.walk.moveQueued = false
+    state.walk.arrivalRoom = "1"
+    state.walk.generation = 44
+    state.walk.roomGeneration =
+      boop.runtime.roomObservationSnapshot().generation
+    state.walk.moveIssuedForRoomGeneration = false
+    state.walk.reservationId = 7
+    helper.setRuntimeBlocker({
+      owner = "walk:44",
+      code = "walk_room_unsettled",
+      label = "walker waits for current room",
+      systems = { walk = true },
+      waitsFor = { room = true, items = true },
+    })
+    captureRuntimeBlockerCalls()
+
+    gmcp.Room.Info = {
+      num = "2",
+      area = "Room B",
+      exits = { south = "1" },
+    }
+    boop.onRoomInfo()
+    gmcp.Room.Info = {
+      num = "3",
+      area = "Room C",
+      exits = { south = "2" },
+    }
+    boop.onRoomInfo()
+
+    local function goldOwnerClearCount()
+      local count = 0
+      for _, call in ipairs(clear_blocker_calls) do
+        if tostring(call[1] or "") == tostring(operation.blockerOwner) then
+          count = count + 1
+        end
+      end
+      return count
+    end
+
+    assert.is_false(boop.state.gold.operation)
+    assert.are.equal(1, goldOwnerClearCount())
+    local sendsAfterMove = countGoldSends()
+    local denizenAfterMove = boop.state.targeting.denizens[1]
+      and boop.state.targeting.denizens[1].name
+      or false
+    local reservationAfterMove = state.walk.reservationId
+
+    publishItemsList("room", {
+      denizenItem("201", "a pre-barrier wrong-room denizen"),
+      goldItem("9201"),
+    })
+    publishItemsList("inv", {})
+    publishItemsList("room", {
+      denizenItem("202", "an invalidated-fence denizen"),
+      goldItem("9202"),
+    })
+    publishItemsList("room", {
+      denizenItem("203", "an early current-fence denizen"),
+      goldItem("9203"),
+    })
+    oldTimeout()
+    assert.is_false(boop.onGoldGetSuccess())
+    assert.is_false(boop.onGoldCommandFailure("late wrong-room retry"))
+
+    assert.are.equal(sendsAfterMove, countGoldSends())
+    assert.are.equal(denizenAfterMove, boop.state.targeting.denizens[1].name)
+    assert.are.equal(reservationAfterMove, state.walk.reservationId)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+    assert.are.equal(1, goldOwnerClearCount())
+    assert.is_table(blockerFor("walk:44"))
+
+    boop.config.useQueueing = true
+    boop.executeAction("warp 42")
+    boop.executeRageAction("harry 42")
+    assert.are.equal(
+      "setalias BOOP_ATTACK warp 42",
+      sent_commands[#sent_commands - 2].command
+    )
+    assert.are.equal(
+      "queue addclearfull freestand BOOP_ATTACK",
+      sent_commands[#sent_commands - 1].command
+    )
+    assert.are.equal("harry 42", sent_commands[#sent_commands].command)
+    for i = #sent_commands - 2, #sent_commands do
+      assert.is_nil(sent_commands[i].command:find("sovereigns", 1, true))
+    end
+
+    helper.reset()
+    sent_commands = {}
+    gmcp_requests = {}
+    raised_events = {}
+    scheduled_callbacks = {}
+    scheduled_callback = nil
+    boop.config.enabled = true
+    boop.config.autoGrabGold = false
+    boop.config.useQueueing = false
+    boop.config.goldPack = ""
+    boop.state.targeting.room = ""
+    gmcp.Room.Info = {
+      num = "1",
+      area = "Canonical Room",
+      exits = {},
+    }
+    boop.onRoomInfo()
+    publishItemsList("inv", {})
+    publishItemsList("room", { goldItem("9301") })
+    assert.is_false(boop.state.gold.operation)
+
+    boop.state.targeting.room = "2"
+    boop.config.autoGrabGold = true
+    boop.onGoldDropLine("Wrong-room sovereigns appear.")
+
+    assert.are.equal(
+      0,
+      countGoldSends(),
+      "GOLD_SAME_ROOM_PIPELINE_BROKEN: persistent GMCP authorized wrong-room gold"
+    )
+  end)
+
   it("schedules one terminal reevaluation and makes a stale pack terminal a zero-effect no-op", function()
     seedSettledGoldRoom("1", 1)
     boop.config.goldPack = "pack"

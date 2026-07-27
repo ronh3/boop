@@ -104,6 +104,16 @@ describe("boop staged gold handling", function()
     })
   end
 
+  local function countSent(command)
+    local count = 0
+    for _, entry in ipairs(sent) do
+      if entry.command == command then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
   before_each(function()
     helper.reset()
     sent = {}
@@ -328,6 +338,146 @@ describe("boop staged gold handling", function()
       assert.are.equal(sendsBeforeSuccess + 1, #sent)
       assert.are.equal("queue add freestand put sovereigns in pack", sent[#sent].command)
     end
+  end)
+
+  it("same-room-gold-pipeline queues one inventory-owned put in either removal order", function()
+    local function openFencedRoom(autoGrab)
+      helper.reset()
+      sent = {}
+      sent_gmcp = {}
+      scheduled = {}
+      boop.config.enabled = true
+      boop.config.autoGrabGold = autoGrab ~= false
+      boop.config.useQueueing = false
+      boop.config.goldPack = "pack"
+      boop.state.targeting.room = ""
+      gmcp.Room.Info = {
+        area = "TEST",
+        num = "1",
+        exits = {},
+      }
+
+      boop.onRoomInfo()
+
+      assert.are.same({
+        "Char.Items.Inv",
+        "Char.Items.Room",
+      }, sent_gmcp)
+
+      gmcp.Char.Items.List = {
+        location = "room",
+        items = { goldItem("8001") },
+      }
+      boop.onRoomItemsList()
+      assert.is_false(boop.state.gold.operation)
+      assert.are.equal(0, countSent("queue add freestand get sovereigns"))
+
+      gmcp.Char.Items.List = {
+        location = "inv",
+        items = {},
+      }
+      boop.onRoomItemsList()
+      assert.is_false(boop.state.gold.operation)
+      assert.are.equal(0, countSent("queue add freestand get sovereigns"))
+
+      gmcp.Char.Items.List = {
+        location = "room",
+        items = { goldItem("9001") },
+      }
+      boop.onRoomItemsList()
+      return boop.state.gold.operation
+    end
+
+    local function removeGold()
+      gmcp.Char.Items.Remove = {
+        location = "room",
+        item = goldItem("9001"),
+      }
+      boop.onRoomItemsRemove()
+    end
+
+    local function runRemovalOrder(successFirst)
+      local pickup = openFencedRoom(true)
+      assert.is_table(pickup)
+      assert.are.equal(1, pickup.generation)
+      assert.are.equal("pickup_pending", pickup.phase)
+      assert.are.equal("1", pickup.roomId)
+      assert.are.equal("9001", pickup.goldItemId)
+      assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+
+      boop.onGoldDropLine("More sovereigns spill onto the ground.")
+      publishGoldAdd("9001")
+      gmcp.Char.Items.List = {
+        location = "room",
+        items = { goldItem("9001") },
+      }
+      boop.onRoomItemsList()
+      assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+
+      local beforeSameRoom = copyOperation(currentOperation())
+      boop.onRoomInfo()
+      assert.are.same(beforeSameRoom, copyOperation(currentOperation()))
+
+      if successFirst then
+        assert.is_true(boop.onGoldGetSuccess())
+        removeGold()
+      else
+        removeGold()
+        assert.are.same(beforeSameRoom, copyOperation(currentOperation()))
+        assert.are.equal(
+          0,
+          countSent("queue add freestand put sovereigns in pack")
+        )
+        assert.is_true(boop.onGoldGetSuccess())
+      end
+
+      local packing = copyOperation(currentOperation())
+      assert.are.equal("pack_pending", packing.phase)
+      assert.are.equal("", packing.roomId)
+      assert.are.equal(0, packing.roomGeneration)
+      assert.are.equal("", packing.goldItemId)
+      assert.are.equal(
+        1,
+        countSent("queue add freestand put sovereigns in pack")
+      )
+
+      assert.is_false(boop.onGoldGetSuccess())
+      removeGold()
+      assert.are.equal(
+        1,
+        countSent("queue add freestand put sovereigns in pack")
+      )
+
+      gmcp.Room.Info = {
+        area = "TEST",
+        num = "2",
+        exits = { south = "1" },
+      }
+      boop.onRoomInfo()
+      assert.are.same(packing, copyOperation(currentOperation()))
+      assert.is_true(boop.onGoldPutSuccess())
+      assert.is_false(boop.onGoldPutSuccess())
+      assert.is_false(boop.state.gold.operation)
+      assert.are.equal(
+        1,
+        countSent("queue add freestand put sovereigns in pack")
+      )
+    end
+
+    runRemovalOrder(false)
+    runRemovalOrder(true)
+
+    openFencedRoom(false)
+    assert.is_false(boop.state.gold.operation)
+    gmcp.Room.Info.num = "stale-persistent-room"
+    boop.config.autoGrabGold = true
+    boop.onGoldDropLine("A final handful of sovereigns spills.")
+
+    assert.are.equal(
+      1,
+      countSent("queue add freestand get sovereigns"),
+      "GOLD_SAME_ROOM_PIPELINE_BROKEN: copied accepted evidence depended on persistent GMCP"
+    )
   end)
 
   it("dispatches only the supplied combat action without gold prefixing or mark-intent", function()
