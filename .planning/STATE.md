@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
-status: ready_to_execute
-stopped_at: Phase 03 Plan 03-14 ready for gap execution
-last_updated: "2026-07-27T06:49:24.000Z"
-last_activity: 2026-07-26
-last_activity_desc: Planned G-03-3 disabled-safe lifecycle recovery closure
+status: ready_for_verification
+stopped_at: Completed 03-14-PLAN.md
+last_updated: "2026-07-27T07:23:22.664Z"
+last_activity: 2026-07-27
+last_activity_desc: Completed Plan 03-14; Phase 03 live UAT remains pending
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 28
-  completed_plans: 27
-  percent: 96
+  completed_plans: 28
+  percent: 100
 ---
 
 # Project State
@@ -28,20 +28,20 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 ## Current Position
 
-Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — GAP CLOSURE READY
-Plan: 14 of 14 (13 executed)
-Status: Plan 03-14 verified; ready to execute G-03-3 closure
-Last activity: 2026-07-26 — Planned disabled-safe lifecycle recovery and room-response timing closure
+Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — READY FOR VERIFICATION
+Plan: 14 of 14
+Status: All plans executed; live Mudlet UAT and exact-final-HEAD CI remain pending
+Last activity: 2026-07-27 — Completed disabled-safe lifecycle recovery and room-response timing closure
 
-Progress: [█████████░] 96%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 27
+- Total plans completed: 28
 - Average duration: 15 min
-- Total execution time: 6.6 hours
+- Total execution time: 6.8 hours
 
 **By Phase:**
 
@@ -49,12 +49,12 @@ Progress: [█████████░] 96%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 13/14 | 166m | ~13 min |
+| 03 | 14/14 | 177m | ~13 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 03 P09 (10m), Phase 03 P10 (7m), Phase 03 P11 (17m), Phase 03 P12 (7m), Phase 03 P13 (11m)
-- Trend: Phase 03 has one verified gap-closure plan ready; live room-ordering and gold reruns follow its execution
+- Last 5 plans: Phase 03 P10 (7m), Phase 03 P11 (17m), Phase 03 P12 (7m), Phase 03 P13 (11m), Phase 03 P14 (11m)
+- Trend: All Phase 03 plans are executed; live lifecycle, room-ordering, and gold UAT plus exact-final-HEAD CI remain
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -72,6 +72,7 @@ Progress: [█████████░] 96%
 | Phase 03 P11 | 17m | 2 tasks | 10 files |
 | Phase 03 P12 | 7m | 2 tasks | 7 files |
 | Phase 03 P13 | 11m | 2 tasks | 7 files |
+| Phase 03 P14 | 11m | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Preserve same-room acquisition, cancel only on actual movement, and transfer to roomless packing only after confirmed pickup.
 - [Phase 03 planning]: Keep a prompt-only lifecycle trigger active while hunting automation is disabled; every combat, gag, targeting, gold, queue, and walker trigger remains under the independently toggled automation folder.
 - [Phase 03 planning]: Reconcile canonical `gmcp:ire` evidence from post-connection IRE Target/Display events and the prompt boundary so IRE and prompt may arrive in either order without `Char.Status` or enable.
+- [Phase 03]: Keep the prompt-only lifecycle observer enabled independently from hunting automation; all combat, gag, target, gold, and walk triggers stay under boop.
+- [Phase 03]: Reuse the exact gmcp:ire owner and reconcile current IRE at explicit lifecycle and event boundaries without support requests on evidence-only paths.
+- [Phase 03]: Warn on incomplete room-response fences at 8.0 seconds while retaining room:observation fail closed.
 
 ### Pending Todos
 
@@ -134,7 +138,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Plan 03-14 must close the disabled reconnect `gmcp:ire` recovery deadlock and premature room-response warning before UAT Tests 1 and 2 are repeated.
+- Plan 03-14 closes the disabled reconnect `gmcp:ire` recovery deadlock and premature room-response warning in automated coverage; live UAT Tests 1 and 2 remain to be repeated.
 - Prior exact-SHA Mudlet runs exposed and prompted correction of stale pull-timer fixture assumptions plus standalone inventory-list suppression; parent exact-final-HEAD CI and live Achaea UAT remain external gates.
 
 ### Quick Tasks Completed
@@ -153,6 +157,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-27T03:28:41.000Z
-Stopped at: Phase 03 post-fix live UAT
+Last session: 2026-07-27T07:23:22.657Z
+Stopped at: Completed 03-14-PLAN.md
 Resume file: None
