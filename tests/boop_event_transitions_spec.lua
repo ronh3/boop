@@ -1061,6 +1061,157 @@ describe("boop event-driven state transitions", function()
     }, "ROOM_RESPONSE_FENCE_BROKEN: same-room evidence reset or missing response escaped the cap")
   end)
 
+  it("arrival-tokenless-fence requests no authorizing evidence", function()
+    _G.demonwalker = {
+      enabled = true,
+      init = function() return true end,
+    }
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
+    boop.config.targetCall = false
+    boop.state.targeting.room = "1"
+    helper.setTarget("", "", "100%")
+    helper.setDenizens({})
+    helper.seedRoomObservation("1", {
+      generation = 7,
+      infoSeen = true,
+      itemsSeen = true,
+      acceptedItems = {},
+    })
+    gmcp.Room.Info = {
+      num = "1",
+      area = "Test Area",
+      exits = {},
+    }
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = {
+        denizenItem("901", "persistent stale arrival denizen"),
+        goldItem("9901"),
+      },
+    }
+
+    local startOk = boop.walk.start()
+    local state = boop.runtime.state()
+    local owner = "walk:" .. tostring(state.walk.generation)
+    local afterStart = {
+      observation = boop.runtime.roomObservationSnapshot(),
+      walk = copyWalkState(),
+      blockers = boop.runtime.blockersSnapshot(),
+      denizens = boop.state.targeting.denizens,
+      requests = #gmcp_requests,
+      sends = #sent_commands,
+      events = #raised_events,
+    }
+
+    publishItemsList("room", {
+      denizenItem("902", "pre-barrier arrival denizen"),
+      goldItem("9902"),
+    })
+    local beforeArrival = {
+      observation = boop.runtime.roomObservationSnapshot(),
+      walk = copyWalkState(),
+      blockers = boop.runtime.blockersSnapshot(),
+      denizens = boop.state.targeting.denizens,
+      requests = #gmcp_requests,
+      sends = #sent_commands,
+      events = #raised_events,
+    }
+
+    local eventArrival = boop.onWalkArrived("demonwalker.arrived")
+    local numericArrival = boop.onWalkArrived(999, 999)
+    local afterArrival = {
+      observation = boop.runtime.roomObservationSnapshot(),
+      walk = copyWalkState(),
+      blockers = boop.runtime.blockersSnapshot(),
+      denizens = boop.state.targeting.denizens,
+      requests = #gmcp_requests,
+      sends = #sent_commands,
+      events = #raised_events,
+    }
+
+    publishItemsList("inv", {
+      inventoryItem("7201", "arrival-fenced weapon", "l"),
+    })
+    local afterInventory = {
+      itemsSeen = boop.runtime.roomObservationSnapshot().itemsSeen,
+      wielded = boop.state.inventory.wieldedLeft
+        and boop.state.inventory.wieldedLeft.id
+        or false,
+      reservationId = state.walk.reservationId,
+      moveCount = countRaised("demonwalker.move"),
+    }
+
+    publishItemsList("room", {})
+    local emitter = state.walk.emitterTimer
+    local emitterCallback = callbackForTimer(emitter)
+    if emitterCallback then
+      emitterCallback()
+      emitterCallback()
+    end
+
+    local settled = boop.runtime.roomObservationSnapshot()
+    local walkOwner = blockerFor(owner)
+    assert.are.same({
+      startOk = true,
+      arrivals = { true, true },
+      start = {
+        itemsSeen = false,
+        acceptedCount = 0,
+        queueDepth = 1,
+        requestPair = { "Char.Items.Inv", "Char.Items.Room" },
+        refreshTimer = nil,
+      },
+      preBarrierPreserved = afterStart,
+      arrivalPreserved = beforeArrival,
+      inventory = {
+        itemsSeen = false,
+        wielded = "7201",
+        reservationId = 0,
+        moveCount = 0,
+      },
+      settled = {
+        itemsSeen = true,
+        queueDepth = 0,
+        reservationId = 1,
+        moveQueued = true,
+        moveIssued = true,
+        ownerCode = "walk_move_pending",
+        moveCount = 1,
+        requestCount = 2,
+        timerCount = 2,
+        denizenCount = 0,
+        goldSendCount = 0,
+      },
+    }, {
+      startOk = startOk,
+      arrivals = { eventArrival, numericArrival },
+      start = {
+        itemsSeen = afterStart.observation.itemsSeen,
+        acceptedCount = #afterStart.observation.acceptedItems,
+        queueDepth = #afterStart.observation.fenceQueue,
+        requestPair = gmcp_requests,
+        refreshTimer = afterStart.walk.refreshTimer,
+      },
+      preBarrierPreserved = beforeArrival,
+      arrivalPreserved = afterArrival,
+      inventory = afterInventory,
+      settled = {
+        itemsSeen = settled.itemsSeen,
+        queueDepth = #settled.fenceQueue,
+        reservationId = state.walk.reservationId,
+        moveQueued = state.walk.moveQueued,
+        moveIssued = state.walk.moveIssuedForRoomGeneration,
+        ownerCode = walkOwner and walkOwner.code or false,
+        moveCount = countRaised("demonwalker.move"),
+        requestCount = #gmcp_requests,
+        timerCount = #scheduled_callbacks,
+        denizenCount = #boop.state.targeting.denizens,
+        goldSendCount = countGoldSends(),
+      },
+    }, "ARRIVAL_TOKENLESS_FENCE_BROKEN: tokenless arrival created authority or rearmed")
+  end)
+
   it("holds loot until a complete list stamps the current room observation", function()
     boop.config.enabled = true
     boop.config.autoGrabGold = true
@@ -1866,7 +2017,7 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(1, countRaised("demonwalker.move"))
   end)
 
-  it("ignores stale arrived and finished adapter callbacks after restart", function()
+  it("ignores a stale finished adapter callback after restart", function()
     _G.demonwalker = {
       enabled = true,
       init = function() return true end,
@@ -1903,7 +2054,6 @@ describe("boop event-driven state transitions", function()
       scheduled = #scheduled_callbacks,
     }
 
-    assert.is_false(boop.onWalkArrived(21, 8))
     assert.is_false(boop.onWalkFinished(21))
 
     assert.are.same(before, {
@@ -2286,12 +2436,10 @@ describe("boop event-driven state transitions", function()
   end)
 
   it("treats Mudlet event names as adapter metadata instead of generation tokens", function()
-    local arrivedRunGeneration = "unset"
-    local arrivedRoomGeneration = "unset"
+    local arrivedArgumentCounts = {}
     local finishedRunGeneration = "unset"
-    walk_arrived_adapter_stub = stub(boop.walk, "onArrived", function(runGeneration, roomGeneration)
-      arrivedRunGeneration = runGeneration
-      arrivedRoomGeneration = roomGeneration
+    walk_arrived_adapter_stub = stub(boop.walk, "onArrived", function(...)
+      arrivedArgumentCounts[#arrivedArgumentCounts + 1] = select("#", ...)
       return true
     end)
     walk_finished_adapter_stub = stub(boop.walk, "onFinished", function(runGeneration)
@@ -2300,10 +2448,10 @@ describe("boop event-driven state transitions", function()
     end)
 
     assert.is_true(boop.onWalkArrived("demonwalker.arrived"))
+    assert.is_true(boop.onWalkArrived(999, 999))
     assert.is_true(boop.onWalkFinished("demonwalker.finished"))
 
-    assert.is_nil(arrivedRunGeneration)
-    assert.is_nil(arrivedRoomGeneration)
+    assert.are.same({ 0, 0 }, arrivedArgumentCounts)
     assert.is_nil(finishedRunGeneration)
   end)
 

@@ -34,6 +34,14 @@ describe("boop walk integration", function()
     return count
   end
 
+  local function publishItemsList(location, items)
+    gmcp.Char.Items.List = {
+      location = location,
+      items = items,
+    }
+    return boop.onRoomItemsList()
+  end
+
   local function countContaining(lines, needle)
     local count = 0
     for _, line in ipairs(lines or {}) do
@@ -913,7 +921,211 @@ describe("boop walk integration", function()
     assert.are.equal(0, countRaised("demonwalker.move"))
   end)
 
-  it("makes stale arrived, settled, room-change, and finished callbacks no-ops", function()
+  it("arrival-tokenless-fence preserves a complete same-room reservation", function()
+    local state = seedReadyWalk({
+      moveQueued = true,
+      moveIssuedForRoomGeneration = true,
+      reservationId = 6,
+      emitterTimer = 700,
+    })
+    boop.state.targeting.room = "101"
+    helper.setRuntimeBlocker({
+      owner = currentWalkOwner(),
+      code = "walk_move_pending",
+      label = "move already queued",
+      systems = { walk = true },
+      waitsFor = { room = true },
+    })
+
+    local before = {
+      observation = boop.runtime.roomObservationSnapshot(),
+      walk = walkStateSnapshot(),
+      denizens = boop.state.targeting.denizens,
+      requests = #sent_gmcp,
+      sends = #sent,
+      events = #walker.raisedEvents,
+      timers = timers.nextId,
+    }
+
+    local firstArrival = boop.onWalkArrived("demonwalker.arrived")
+    boop.onRoomInfo()
+    local secondArrival = boop.onWalkArrived("demonwalker.arrived")
+    local syntheticArrival = boop.onWalkArrived(999, 999)
+
+    local after = {
+      observation = boop.runtime.roomObservationSnapshot(),
+      walk = walkStateSnapshot(),
+      denizens = boop.state.targeting.denizens,
+      requests = #sent_gmcp,
+      sends = #sent,
+      events = #walker.raisedEvents,
+      timers = timers.nextId,
+    }
+
+    assert.are.same({
+      arrivals = { true, true, true },
+      before = before,
+      after = before,
+    }, {
+      arrivals = { firstArrival, secondArrival, syntheticArrival },
+      before = before,
+      after = after,
+    }, "ARRIVAL_TOKENLESS_FENCE_BROKEN: complete same-room reservation was rearmed")
+  end)
+
+  it("arrival-tokenless-fence restart drains old responses before one move", function()
+    resetCase({
+      available = true,
+      attached = false,
+    })
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
+    boop.config.targetCall = false
+    boop.state.targeting.room = "1"
+    helper.setTarget("", "", "100%")
+    helper.setDenizens({})
+    gmcp.Room.Info = {
+      num = "1",
+      area = "Test Area",
+      exits = {},
+    }
+
+    local firstStart = boop.walk.start()
+    local state = boop.runtime.state()
+    local oldRun = state.walk.generation
+    local oldObservation = boop.runtime.roomObservationSnapshot()
+    local oldFenceTimer = oldObservation.refreshTimeoutTimer
+    local oldArrivalTimer = state.walk.refreshTimer
+
+    boop.walk.stop(true, false)
+    local stoppedBeforeArrival = {
+      observation = boop.runtime.roomObservationSnapshot(),
+      walk = walkStateSnapshot(),
+      requests = #sent_gmcp,
+      timers = timers.nextId,
+      events = #walker.raisedEvents,
+    }
+    local stoppedArrival = boop.onWalkArrived("demonwalker.arrived")
+    local stoppedAfterArrival = {
+      observation = boop.runtime.roomObservationSnapshot(),
+      walk = walkStateSnapshot(),
+      requests = #sent_gmcp,
+      timers = timers.nextId,
+      events = #walker.raisedEvents,
+    }
+
+    walker.setAttached(false)
+    local secondStart = boop.walk.start()
+    local newRun = state.walk.generation
+    local newObservation = boop.runtime.roomObservationSnapshot()
+    local newFenceTimer = newObservation.refreshTimeoutTimer
+    local newArrivalTimer = state.walk.refreshTimer
+    local restartArrival = boop.onWalkArrived("demonwalker.arrived")
+
+    publishItemsList("inv", {
+      { id = "7101", name = "old inventory response", attrib = "l" },
+    })
+    publishItemsList("room", {
+      { id = "201", name = "old room response", attrib = "m" },
+    })
+    local afterOldResponses = {
+      itemsSeen = boop.runtime.roomObservationSnapshot().itemsSeen,
+      queueDepth = #boop.runtime.roomObservationSnapshot().fenceQueue,
+      reservationId = state.walk.reservationId,
+      moveQueued = state.walk.moveQueued,
+      moveCount = countRaised("demonwalker.move"),
+    }
+
+    publishItemsList("inv", {
+      { id = "7102", name = "new inventory response", attrib = "l" },
+    })
+    publishItemsList("room", {})
+    local currentEmitter = state.walk.emitterTimer
+    if currentEmitter and timers.callback(currentEmitter) then
+      timers.run(currentEmitter)
+    end
+
+    for _, timerId in ipairs({
+      oldFenceTimer,
+      oldArrivalTimer,
+      newFenceTimer,
+      newArrivalTimer,
+    }) do
+      if timerId and timerId ~= currentEmitter and timers.callback(timerId) then
+        timers.run(timerId)
+      end
+    end
+    if currentEmitter and timers.callback(currentEmitter) then
+      timers.run(currentEmitter)
+    end
+
+    local completeArrival = boop.onWalkArrived("demonwalker.arrived")
+    boop.onRoomInfo()
+    publishItemsList("room", {
+      { id = "999", name = "duplicate room response", attrib = "m" },
+    })
+
+    local finalObservation = boop.runtime.roomObservationSnapshot()
+    local finalOwner = state.combat.blockersByOwner[
+      "walk:" .. tostring(state.walk.generation)
+    ]
+    assert.are.same({
+      starts = { true, true },
+      stoppedArrival = false,
+      stoppedPreserved = stoppedBeforeArrival,
+      restartArrival = true,
+      completeArrival = true,
+      runAdvanced = true,
+      freshGeneration = true,
+      requests = {
+        "Char.Items.Inv",
+        "Char.Items.Room",
+        "Char.Items.Inv",
+        "Char.Items.Room",
+      },
+      afterOldResponses = {
+        itemsSeen = false,
+        queueDepth = 1,
+        reservationId = 0,
+        moveQueued = false,
+        moveCount = 0,
+      },
+      final = {
+        itemsSeen = true,
+        queueDepth = 0,
+        reservationId = 1,
+        moveQueued = true,
+        moveIssued = true,
+        ownerCode = "walk_move_pending",
+        moveCount = 1,
+        timerCount = 3,
+        warningCount = 0,
+      },
+    }, {
+      starts = { firstStart, secondStart },
+      stoppedArrival = stoppedArrival,
+      stoppedPreserved = stoppedAfterArrival,
+      restartArrival = restartArrival,
+      completeArrival = completeArrival,
+      runAdvanced = newRun > oldRun,
+      freshGeneration = newObservation.generation > oldObservation.generation,
+      requests = sent_gmcp,
+      afterOldResponses = afterOldResponses,
+      final = {
+        itemsSeen = finalObservation.itemsSeen,
+        queueDepth = #finalObservation.fenceQueue,
+        reservationId = state.walk.reservationId,
+        moveQueued = state.walk.moveQueued,
+        moveIssued = state.walk.moveIssuedForRoomGeneration,
+        ownerCode = finalOwner and finalOwner.code or false,
+        moveCount = countRaised("demonwalker.move"),
+        timerCount = timers.nextId,
+        warningCount = #feedback.warn,
+      },
+    }, "ARRIVAL_TOKENLESS_FENCE_BROKEN: restart reused or rearmed stale arrival authority")
+  end)
+
+  it("makes stale settled, room-change, and finished callbacks no-ops", function()
     local state = seedReadyWalk({
       generation = 20,
       roomGeneration = 30,
@@ -928,7 +1140,6 @@ describe("boop walk integration", function()
     })
     local before = walkStateSnapshot()
 
-    assert.is_false(boop.walk.onArrived(19, 30))
     assert.is_false(boop.walk.onRoomSettled("stale list", 19, 30))
     assert.is_false(boop.walk.onRoomChange(19, 30))
     assert.is_false(boop.walk.onFinished(19))
@@ -966,35 +1177,37 @@ describe("boop walk integration", function()
     assert.are.equal(0, countRaised("demonwalker.move"))
   end)
 
-  it("requests one room refresh, then warns and remains held", function()
+  it("caps one response fence, then warns and remains held", function()
     assert.is_true(boop.walk.start())
     local state = boop.runtime.state()
     local owner = currentWalkOwner()
-    local refreshTimer = state.walk.refreshTimer
+    local refreshTimer =
+      boop.runtime.roomObservationSnapshot().refreshTimeoutTimer
     assert.is_number(refreshTimer)
+    assert.is_nil(state.walk.refreshTimer)
     assert.are.equal(2, #sent_gmcp)
     local warningCount = #feedback.warn
-    local traceCount = countContaining(trace_lines, "room_refresh_exhausted")
+    local traceCount = countContaining(trace_lines, "room response fence timeout")
 
     timers.run(refreshTimer)
 
     assert.is_false(state.walk.roomSettled)
     assert.is_false(state.walk.moveQueued)
     assert.is_nil(state.walk.refreshTimer)
-    assert.is_true(state.walk.refreshWarned)
+    assert.is_true(boop.runtime.roomObservationSnapshot().warned)
     assert.are.equal(0, countRaised("demonwalker.move"))
     assert.are.equal(2, #sent_gmcp)
     assert.are.equal(1, #feedback.warn - warningCount)
     assert.is_true(
       feedback.warn[#feedback.warn]:find(
-        "room item refresh completed without settlement",
+        "room_partial -- room response fence incomplete",
         1,
         true
       ) ~= nil
     )
     assert.are.equal(
       1,
-      countContaining(trace_lines, "room_refresh_exhausted") - traceCount
+      countContaining(trace_lines, "room response fence timeout") - traceCount
     )
     assertOwner(owner, "walk_room_unsettled", "current room evidence is incomplete")
 
@@ -1002,7 +1215,7 @@ describe("boop walk integration", function()
     assert.are.equal(1, #feedback.warn - warningCount)
     assert.are.equal(
       1,
-      countContaining(trace_lines, "room_refresh_exhausted") - traceCount
+      countContaining(trace_lines, "room response fence timeout") - traceCount
     )
   end)
 
