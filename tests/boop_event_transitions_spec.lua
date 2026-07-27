@@ -727,7 +727,7 @@ describe("boop event-driven state transitions", function()
       denizenItem("22", "a duplicate room response"),
     })
     publishItemsList("inv", {
-      inventoryItem("7002", "a duplicate inventory response", "l"),
+      inventoryItem("7002", "an unsolicited inventory response", "l"),
     })
 
     local acceptedName = accepted.acceptedItems
@@ -772,7 +772,7 @@ describe("boop event-driven state transitions", function()
       finalSettlements = 1,
       finalTicks = 1,
       finalGoldSends = 1,
-      finalWielded = "7001",
+      finalWielded = "7002",
       copiedAcceptedName = "the accepted current denizen",
       immutableAcceptedName = "the accepted current denizen",
     }, {

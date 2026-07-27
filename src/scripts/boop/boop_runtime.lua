@@ -331,14 +331,21 @@ function boop.runtime.observeRoomItemsList(location, items)
   local fence = queue[1]
   local normalizedLocation = tostring(location or ""):lower()
   local copiedItems = type(items) == "table" and deepCopy(items) or false
-  if type(fence) ~= "table" then
-    return {
-      status = "orphan",
-      location = normalizedLocation,
-    }
-  end
 
   if normalizedLocation == "inv" then
+    if type(fence) ~= "table" then
+      if not copiedItems then
+        return {
+          status = "rejected",
+          location = normalizedLocation,
+        }
+      end
+      return {
+        status = "inventory",
+        location = normalizedLocation,
+        items = copiedItems,
+      }
+    end
     if fence.phase ~= "await_inv" then
       return {
         status = "duplicate",
@@ -364,7 +371,14 @@ function boop.runtime.observeRoomItemsList(location, items)
     return {
       status = "inventory",
       fenceId = fence.fenceId,
-      items = copiedItems or {},
+      items = copiedItems,
+    }
+  end
+
+  if type(fence) ~= "table" then
+    return {
+      status = "orphan",
+      location = normalizedLocation,
     }
   end
 
