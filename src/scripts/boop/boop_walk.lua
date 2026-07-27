@@ -16,7 +16,6 @@ local WALK_REASON_LABELS = {
   pull_pending = "pull is pending",
   flee_active = "flee is active",
   walker_lost_before_emit = "demonnicAutoWalker became unavailable",
-  room_refresh_exhausted = "room item refresh completed without settlement",
 }
 boop.walk.packageUrl = boop.walk.packageUrl or WALKER_PACKAGE_URL
 
@@ -114,110 +113,6 @@ local function cancelArrivalTimer()
   end
 end
 
-local function armArrivalFallback(reason)
-  local walk = walkState()
-  cancelArrivalTimer()
-  if walk.emitterTimer then
-    if killTimer then
-      killTimer(walk.emitterTimer)
-    end
-    walk.emitterTimer = nil
-  end
-
-  local roomId = currentRoomId()
-  local observation = boop.runtime
-      and boop.runtime.roomObservationSnapshot
-      and boop.runtime.roomObservationSnapshot()
-    or {}
-  if boop.runtime
-      and boop.runtime.startRoomObservation
-      and roomId ~= ""
-      and (
-        tostring(observation.roomId or "") ~= roomId
-        or not observation.infoSeen
-      ) then
-    observation = boop.runtime.startRoomObservation(roomId)
-  end
-
-  walk.moveQueued = false
-  walk.moveIssuedForRoomGeneration = false
-  walk.roomSettled = false
-  walk.arrivalRoom = roomId
-  walk.roomGeneration = tonumber(observation.generation) or 0
-  walk.refreshWarned = false
-
-  local owner = "walk:" .. tostring(tonumber(walk.generation) or 0)
-  if boop.runtime and boop.runtime.setBlocker then
-    boop.runtime.setBlocker(
-      owner,
-      "walk_room_unsettled",
-      WALK_REASON_LABELS.room_unsettled,
-      { walk = true },
-      { room = true, items = true },
-      {
-        source = "walk",
-        observed = {
-          room = roomId,
-          roomGeneration = walk.roomGeneration,
-          items = observation.itemsSeen == true,
-        },
-      }
-    )
-  end
-
-  if boop.requestRoomItemsOnce then
-    boop.requestRoomItemsOnce(reason or "walk room evidence missing")
-  end
-
-  local runGeneration = tonumber(walk.generation) or 0
-  local roomGeneration = tonumber(walk.roomGeneration) or 0
-  local refreshTimer
-  refreshTimer = tempTimer(0.2, function()
-    local liveWalk = walkState()
-    if liveWalk.refreshTimer ~= refreshTimer
-        or not liveWalk.active
-        or tonumber(liveWalk.generation) ~= runGeneration
-        or tonumber(liveWalk.roomGeneration) ~= roomGeneration then
-      return
-    end
-    liveWalk.refreshTimer = nil
-
-    local liveObservation = boop.runtime
-        and boop.runtime.roomObservationSnapshot
-        and boop.runtime.roomObservationSnapshot()
-      or {}
-    local settled = liveObservation.infoSeen == true
-      and liveObservation.itemsSeen == true
-      and tostring(liveObservation.roomId or "") ~= ""
-      and tostring(liveObservation.roomId or "") == currentRoomId()
-      and tonumber(liveObservation.generation) == roomGeneration
-    if settled then
-      boop.walk.onRoomSettled(
-        reason or "room refresh settled",
-        runGeneration,
-        roomGeneration
-      )
-      return
-    end
-
-    if not liveWalk.refreshWarned then
-      liveWalk.refreshWarned = true
-      if boop.util and boop.util.warn then
-        boop.util.warn(WALK_REASON_LABELS.room_refresh_exhausted)
-      end
-      if boop.trace and boop.trace.log then
-        boop.trace.log(
-          "room_refresh_exhausted: run="
-            .. tostring(runGeneration)
-            .. " roomGeneration="
-            .. tostring(roomGeneration)
-        )
-      end
-    end
-  end)
-  walk.refreshTimer = refreshTimer
-end
-
 local function resetRuntimeFlags()
   local walk = walkState()
   cancelArrivalTimer()
@@ -255,11 +150,11 @@ local function walkSnapshot()
       and boop.runtime.roomObservationSnapshot
       and boop.runtime.roomObservationSnapshot()
     or {}
-  local roomId = currentRoomId()
+  local roomId = tostring(observation.roomId or "")
   local roomSettled = observation.infoSeen == true
     and observation.itemsSeen == true
-    and tostring(observation.roomId or "") ~= ""
-    and tostring(observation.roomId or "") == roomId
+    and roomId ~= ""
+    and roomId == tostring(walk.arrivalRoom or "")
     and tonumber(observation.generation)
       == (tonumber(walk.roomGeneration) or 0)
   local denizenId = boop.targets
@@ -458,7 +353,7 @@ local function emitReservedMove(runGeneration, roomGeneration, reservationId)
           {
             source = "walk",
             observed = {
-              room = currentRoomId(),
+              room = tostring(walk.arrivalRoom or ""),
               roomGeneration = roomGeneration,
             },
           }
@@ -622,7 +517,10 @@ function boop.walk.start(options)
   end
   local observation = boop.runtime
     and boop.runtime.startRoomObservation
-    and boop.runtime.startRoomObservation(currentRoomId())
+    and boop.runtime.startRoomObservation(currentRoomId(), {
+      boundary = "fresh_start",
+      reason = "walk fresh start",
+    })
     or {}
   walk.roomGeneration = tonumber(observation.generation) or 0
   walk.arrivalRoom = tostring(observation.roomId or "")
@@ -665,7 +563,9 @@ function boop.walk.start(options)
     boop.util.ok("walk attached to current demonwalker run")
   end
 
-  boop.walk.onArrived(walk.generation, walk.roomGeneration)
+  if boop.requestRoomItemsOnce then
+    boop.requestRoomItemsOnce("walk start awaiting room fence")
+  end
   return true
 end
 
@@ -720,24 +620,23 @@ function boop.walk.onFinished(runGeneration)
   return true
 end
 
-function boop.walk.onArrived(runGeneration, roomGeneration)
+function boop.walk.onArrived()
   local walk = walkState()
-  local observation = boop.runtime
-    and boop.runtime.roomObservationSnapshot
-    and boop.runtime.roomObservationSnapshot()
-    or {}
-  if not walk.active
-      or (
-        runGeneration ~= nil
-        and tonumber(runGeneration) ~= tonumber(walk.generation)
-      )
-      or (
-        roomGeneration ~= nil
-        and tonumber(roomGeneration) ~= tonumber(observation.generation)
-      ) then
+  if not walk.active then
     return false
   end
-  armArrivalFallback("arrival fallback")
+
+  local observation = boop.runtime
+      and boop.runtime.roomObservationSnapshot
+      and boop.runtime.roomObservationSnapshot()
+    or {}
+  if observation.infoSeen ~= true or observation.itemsSeen ~= true then
+    if boop.requestRoomItemsOnce then
+      boop.requestRoomItemsOnce(
+        "tokenless walker arrival awaiting room fence"
+      )
+    end
+  end
   return true
 end
 
@@ -772,7 +671,8 @@ function boop.walk.onRoomSettled(reason, runGeneration, roomGeneration)
   local settled = observation.infoSeen == true
     and observation.itemsSeen == true
     and tostring(observation.roomId or "") ~= ""
-    and tostring(observation.roomId or "") == currentRoomId()
+    and tostring(observation.roomId or "")
+      == tostring(walk.arrivalRoom or "")
     and tonumber(observation.generation)
       == (tonumber(walk.roomGeneration) or 0)
   if not settled then
@@ -788,7 +688,7 @@ function boop.walk.onRoomSettled(reason, runGeneration, roomGeneration)
         {
           source = "walk",
           observed = {
-            room = currentRoomId(),
+            room = tostring(observation.roomId or ""),
             roomGeneration = walk.roomGeneration,
             items = observation.itemsSeen == true,
           },
@@ -829,7 +729,38 @@ function boop.walk.onRoomChange(runGeneration, roomGeneration)
       ) then
     return false
   end
-  armArrivalFallback("room change fallback")
+
+  cancelArrivalTimer()
+  if walk.emitterTimer then
+    if killTimer then
+      killTimer(walk.emitterTimer)
+    end
+    walk.emitterTimer = nil
+  end
+  walk.moveQueued = false
+  walk.moveIssuedForRoomGeneration = false
+  walk.roomSettled = false
+  walk.arrivalRoom = tostring(observation.roomId or "")
+  walk.roomGeneration = tonumber(observation.generation) or 0
+  walk.refreshWarned = false
+
+  if boop.runtime and boop.runtime.setBlocker then
+    boop.runtime.setBlocker(
+      "walk:" .. tostring(tonumber(walk.generation) or 0),
+      "walk_room_unsettled",
+      WALK_REASON_LABELS.room_unsettled,
+      { walk = true },
+      { room = true, items = true },
+      {
+        source = "walk",
+        observed = {
+          room = walk.arrivalRoom,
+          roomGeneration = walk.roomGeneration,
+          items = observation.itemsSeen == true,
+        },
+      }
+    )
+  end
   return true
 end
 
@@ -862,7 +793,7 @@ function boop.walk.maybeAdvance(reason)
       {
         source = "walk",
         observed = {
-          room = currentRoomId(),
+          room = tostring(walk.arrivalRoom or ""),
           roomGeneration = roomGeneration,
           reservationId = reservationId,
         },

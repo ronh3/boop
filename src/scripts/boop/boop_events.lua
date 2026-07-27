@@ -1438,9 +1438,9 @@ function boop.onRoomInfo()
   boop.requestRoomItemsOnce("room info awaiting complete item list")
 end
 
-function boop.onWalkArrived(runGeneration, roomGeneration)
+function boop.onWalkArrived(...)
   if boop.walk and boop.walk.onArrived then
-    return boop.walk.onArrived(tonumber(runGeneration), tonumber(roomGeneration))
+    return boop.walk.onArrived()
   end
   return false
 end
