@@ -1,6 +1,6 @@
 ---
 phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
-verified: 2026-07-27T03:07:43Z
+verified: 2026-07-27T03:20:48Z
 status: human_needed
 score: 5/5 must-haves verified
 behavior_unverified: 0
@@ -12,6 +12,7 @@ re_verification:
     - "G-03-1: Serialized Inv-to-Room response fences now reject pre-barrier Lists, drain invalidated epochs FIFO, preserve complete same-room evidence, make tokenless arrival non-authorizing, and release one guarded move."
     - "G-03-2: Canonical copied room evidence now owns gold acquisition; same-room Info preserves pickup, actual room change alone cancels room ownership, confirmed success alone creates roomless packing, and either removal order produces one put."
     - "The trace fixture now publishes room data through the production response fence instead of bypassing the accepted-observation contract."
+    - "Pull lifecycle tests now identify operation-owned timeout IDs instead of treating room-response fence timers as pull timers."
   gaps_remaining: []
   regressions: []
 human_verification:
@@ -26,12 +27,12 @@ human_verification:
 # Phase 3: Queue, Interrupt, Gold, and Autowalk Regression Coverage Verification Report
 
 **Phase Goal:** Timing-sensitive command paths cannot attack, loot, or walk while another safety hold or room-state blocker owns the next action.
-**Verified:** 2026-07-27T03:07:43Z
+**Verified:** 2026-07-27T03:20:48Z
 **Status:** human_needed
-**Re-verification:** Yes — after UAT gap Plans 03-11, 03-12, and 03-13 plus the trace-fixture regression
-**Verified HEAD:** `d9a3fc9c7e48632f42e838489e75f619534a57b3`
+**Re-verification:** Yes — after UAT gap Plans 03-11, 03-12, and 03-13 plus trace and pull-timer fixture regressions
+**Verified HEAD:** `dd5c2e9238e8a44dc10b06136e0bd9a9e7996cef`
 **Branch:** `codex/pre-1.0-hardening-pass`
-**Package version:** `0.1.423`
+**Package version:** `0.1.424`
 
 ## Goal Achievement
 
@@ -58,6 +59,7 @@ All five roadmap truths have passing behavioral evidence. The overall status rem
 | G-03-1 | Resolve live List/Info ordering without stale-room authority, preserve same-room state, and emit one move after stop/restart. | `startRoomObservation` invalidates but retains old fences (`boop_runtime.lua:221`); `beginRoomResponseFence` records authority before sends (`boop_runtime.lua:270`, `boop_events.lua:295`); `observeRoomItemsList` consumes only the queue head in Inv→Room order (`boop_runtime.lua:328`); same-room `onRoomInfo` preserves complete evidence (`boop_events.lua:1317`); `onWalkArrived` discards all event arguments (`boop_events.lua:1465`). Exact serialized-fence and tokenless-restart tests each passed 1/1. | ✓ CLOSED |
 | G-03-2 | Preserve current pickup across same-room Info, cancel only actual movement, use confirmed success as the inventory transfer, and issue one independent put. | `onRoomInfo` determines same-room before lifecycle cancellation; `canonicalGoldEvidence` reads only accepted copied items; `transferGoldToPacking` clears room identity; room removal remains observational; get success is the transfer authority (`boop_events.lua:510-541`, `929-985`, `1089`, `1221`, `1317`). Exact either-order and wrong-room/movement tests each passed 1/1. | ✓ CLOSED |
 | Trace fixture | Exercise, rather than bypass, the response-fence contract. | `tests/boop_trace_spec.lua:35` opens the fence and publishes Inv then Room before trace assertions. The exact trace test passed 1/1 and is included in the 153/153 aggregate. | ✓ CLOSED |
+| Pull timer fixture | Keep pull timeout assertions exact after room movement begins scheduling response-fence timers. | `tests/boop_pull_spec.lua` captures each pull operation's `timeoutTimer`, distinguishes it from 0.35-second response-fence timers, and asserts stale callbacks remain no-ops. The four CI-identified lifecycle cases passed 4/4 locally. | ✓ CLOSED |
 
 ## Required Artifacts
 
@@ -72,7 +74,8 @@ All 13 PLAN frontmatter checks passed: **63/63 artifact declarations** and **35/
 | `tests/boop_event_transitions_spec.lua` | Fence ordering, wrong-room cancellation, owner/event interleavings, target-removal drift | ✓ VERIFIED | Current assertions cover pre-barrier, invalidated, delayed, duplicate, same-room, stale-callback, and one-shot terminal behavior. |
 | `tests/boop_gold_spec.lua`, `tests/boop_gold_retry_spec.lua`, `tests/boop_tick_spec.lua` | Canonical evidence, get-confirm-put ordering, retry/timer/owner behavior | ✓ VERIFIED | Both removal orders, removal non-authority, roomless packing, actual-change cancellation, fired-token consumption, and unchanged-stage resumption are exercised. |
 | `tests/boop_walk_spec.lua` | Arrival, stop/restart, stale drains/timers, blockers, one move, optional package behavior | ✓ VERIFIED | Current tests assert same-room reservation preservation, invalidated response draining, exact one move, stale no-ops, timeout visibility, and no implicit install/update. |
-| `tests/boop_trace_spec.lua` | Trace behavior through canonical room acceptance | ✓ VERIFIED | HEAD `d9a3fc9` routes trace room fixtures through the production Inv→Room fence. |
+| `tests/boop_trace_spec.lua` | Trace behavior through canonical room acceptance | ✓ VERIFIED | The trace fixture routes room data through the production Inv→Room fence. |
+| `tests/boop_pull_spec.lua` | Pull lifecycle isolation from unrelated timers | ✓ VERIFIED | Pull assertions follow exact operation-owned timeout IDs while room-response fence timers coexist during movement. |
 
 ## Key Link Verification
 
@@ -111,9 +114,10 @@ All 13 PLAN frontmatter checks passed: **63/63 artifact declarations** and **35/
 | Fired timeout to one guarded move | Exact Busted name in `boop_walk_spec.lua` | 1 success | ✓ PASS |
 | Optional walker no implicit install/update | Exact Busted name in `boop_walk_spec.lua` | 1 success | ✓ PASS |
 | Trace fixture through response fence | Exact Busted name in `boop_trace_spec.lua` | 1 success | ✓ PASS |
+| Pull timeout identity with response fences | Four exact Busted names in `boop_pull_spec.lua` | 4 successes, 0 failures/errors/pending | ✓ PASS |
 | Lua syntax | `luac -p` over every Lua file under `src/` and `tests/` | Exit 0 | ✓ PASS |
 | Release/version/state gates | `python3 tools/check_release_gates.py` | `[OK] versions`, `[OK] manifests`, `[OK] state-drift` | ✓ PASS |
-| Package construction | `muddle` under PTY | Muddler 1.1.0 built `build/boop Hunter.mpackage` at 0.1.423 | ✓ PASS |
+| Package construction | `muddle` under PTY | Muddler 1.1.0 built `build/boop Hunter.mpackage` at 0.1.424 | ✓ PASS |
 
 Host Busted is diagnostic evidence only. It does not replace the real Mudlet execution environment.
 
@@ -161,7 +165,7 @@ No Phase 03 requirement is orphaned. All five IDs are mapped exclusively to Phas
 
 ## External Authority Boundaries
 
-- `/tmp/Mudlet.AppImage` is absent, so no local real-Mudlet suite was run.
+- The previous exact-SHA real-Mudlet CI run exposed four stale pull-timer fixture assumptions; those assertions are corrected at verified HEAD and await the parent final-SHA rerun.
 - The independently passing 132/132 and 153/153 host Busted runs are diagnostic, not Mudlet-equivalent authority.
 - The optional walker/stop-ownership live UAT already passed and is not an outstanding item.
 - Phase 6 owns recorded real-Mudlet and live-release evidence.
@@ -170,9 +174,9 @@ No Phase 03 requirement is orphaned. All five IDs are mapped exclusively to Phas
 
 ## Gaps Summary
 
-No code or regression gap remains. G-03-1, G-03-2, and the trace-fixture mismatch are closed at HEAD `d9a3fc9` with synchronized package version `0.1.423`. Automated score is 5/5 with no behavior-unverified truth. Status is `human_needed` solely for the two post-fix live Achaea UAT reruns.
+No code or regression gap remains. G-03-1, G-03-2, the trace fixture, and the pull-timer fixture mismatch are closed at HEAD `dd5c2e9` with synchronized package version `0.1.424`. Automated score is 5/5 with no behavior-unverified truth. Status is `human_needed` solely for the two post-fix live Achaea UAT reruns.
 
 ---
 
-_Verified: 2026-07-27T03:07:43Z_
+_Verified: 2026-07-27T03:20:48Z_
 _Verifier: Codex (gsd-verifier)_
