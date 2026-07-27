@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
-status: gaps_found
-stopped_at: Verification found post-03-14 regression gaps
-last_updated: "2026-07-27T07:39:03Z"
+status: ready_to_execute
+stopped_at: Planned 03-15-PLAN.md
+last_updated: "2026-07-27T11:22:39Z"
 last_activity: 2026-07-27
-last_activity_desc: Verified Plan 03-14; five automated regression gaps require a new gap plan
+last_activity_desc: Planned verified Phase 03 gap closure for test contracts and exact-CI suite isolation
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 28
+  total_plans: 29
   completed_plans: 28
-  percent: 100
+  percent: 97
 ---
 
 # Project State
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 ## Current Position
 
-Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — GAPS FOUND
-Plan: 14 of 14
-Status: All plans executed; two diagnose-timeout and three pull timer-identity regressions require gap planning
-Last activity: 2026-07-27 — Re-verification scored 4/5; automated gaps found before live UAT
+Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — READY TO EXECUTE
+Plan: 14 of 15 complete
+Status: Plan 03-15 is verified and ready to close diagnose, pull timer-identity, and real-Mudlet suite-isolation gaps
+Last activity: 2026-07-27 — Added and independently verified Wave 15 gap plan
 
-Progress: [██████████] 100%
+Progress: [█████████░] 97%
 
 ## Performance Metrics
 
@@ -49,12 +49,12 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 14/14 | 177m | ~13 min |
+| 03 | 14/15 | 177m | ~13 min |
 
 **Recent Trend:**
 
 - Last 5 plans: Phase 03 P10 (7m), Phase 03 P11 (17m), Phase 03 P12 (7m), Phase 03 P13 (11m), Phase 03 P14 (11m)
-- Trend: All Phase 03 plans are executed; automated verification found five fixture regressions requiring another gap plan
+- Trend: Wave 15 is planned to restore five fixture contracts and eliminate the exact-CI shared-state reset cascade
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -140,7 +140,7 @@ Recent decisions affecting current work:
 
 - Plan 03-14 closes the disabled reconnect `gmcp:ire` recovery deadlock and premature room-response warning in focused coverage.
 - Re-verification found two diagnose-timeout fixtures that expect disabled prompt automation and three pull fixtures that identify operation timers only by their 8.0-second delay.
-- Phase 03 remains pending until a new gap plan restores those five tests; exact-final-HEAD CI and live Achaea UAT remain external gates.
+- Plan 03-15 is ready to restore those five tests and shared-suite reachability; exact-final-HEAD CI and live Achaea UAT remain external gates.
 
 ### Quick Tasks Completed
 
@@ -158,6 +158,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-27T07:39:03Z
-Stopped at: Phase 03 verification gaps found after Plan 03-14
+Last session: 2026-07-27T11:22:39Z
+Stopped at: Planned and verified 03-15-PLAN.md
 Resume file: None
