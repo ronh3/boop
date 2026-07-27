@@ -4,11 +4,11 @@ milestone: v1.0
 milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
-status: ready_for_verification
-stopped_at: Completed 03-14-PLAN.md
-last_updated: "2026-07-27T07:23:22.664Z"
+status: gaps_found
+stopped_at: Verification found post-03-14 regression gaps
+last_updated: "2026-07-27T07:39:03Z"
 last_activity: 2026-07-27
-last_activity_desc: Completed Plan 03-14; Phase 03 live UAT remains pending
+last_activity_desc: Verified Plan 03-14; five automated regression gaps require a new gap plan
 progress:
   total_phases: 6
   completed_phases: 2
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 ## Current Position
 
-Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — READY FOR VERIFICATION
+Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — GAPS FOUND
 Plan: 14 of 14
-Status: All plans executed; live Mudlet UAT and exact-final-HEAD CI remain pending
-Last activity: 2026-07-27 — Completed disabled-safe lifecycle recovery and room-response timing closure
+Status: All plans executed; two diagnose-timeout and three pull timer-identity regressions require gap planning
+Last activity: 2026-07-27 — Re-verification scored 4/5; automated gaps found before live UAT
 
 Progress: [██████████] 100%
 
@@ -54,7 +54,7 @@ Progress: [██████████] 100%
 **Recent Trend:**
 
 - Last 5 plans: Phase 03 P10 (7m), Phase 03 P11 (17m), Phase 03 P12 (7m), Phase 03 P13 (11m), Phase 03 P14 (11m)
-- Trend: All Phase 03 plans are executed; live lifecycle, room-ordering, and gold UAT plus exact-final-HEAD CI remain
+- Trend: All Phase 03 plans are executed; automated verification found five fixture regressions requiring another gap plan
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -138,8 +138,9 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Plan 03-14 closes the disabled reconnect `gmcp:ire` recovery deadlock and premature room-response warning in automated coverage; live UAT Tests 1 and 2 remain to be repeated.
-- Prior exact-SHA Mudlet runs exposed and prompted correction of stale pull-timer fixture assumptions plus standalone inventory-list suppression; parent exact-final-HEAD CI and live Achaea UAT remain external gates.
+- Plan 03-14 closes the disabled reconnect `gmcp:ire` recovery deadlock and premature room-response warning in focused coverage.
+- Re-verification found two diagnose-timeout fixtures that expect disabled prompt automation and three pull fixtures that identify operation timers only by their 8.0-second delay.
+- Phase 03 remains pending until a new gap plan restores those five tests; exact-final-HEAD CI and live Achaea UAT remain external gates.
 
 ### Quick Tasks Completed
 
@@ -157,6 +158,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-27T07:23:22.657Z
-Stopped at: Completed 03-14-PLAN.md
+Last session: 2026-07-27T07:39:03Z
+Stopped at: Phase 03 verification gaps found after Plan 03-14
 Resume file: None
