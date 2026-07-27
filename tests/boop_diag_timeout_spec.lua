@@ -122,6 +122,7 @@ describe("boop diagnose timeout", function()
       waitsFor = { room = true },
     })
 
+    boop.config.enabled = true
     boop.ui.diag()
     local first_generation = boop.state.diag.operation.generation
     scheduled[1].callback()
@@ -184,6 +185,7 @@ describe("boop diagnose timeout", function()
   end)
 
   it("drains a timed-out head once and makes every later terminal call a no-op", function()
+    boop.config.enabled = true
     boop.ui.diag()
     local generation = boop.state.diag.operation.generation
     scheduled[1].callback()

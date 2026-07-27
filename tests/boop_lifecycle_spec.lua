@@ -13,6 +13,18 @@ end
 describe("boop lifecycle recovery", function()
   local savedGlobals
   local savedFunctions
+  local savedPackageFields
+
+  local function restorePackageFields()
+    if type(savedPackageFields) ~= "table" then
+      return
+    end
+    boop.state = savedPackageFields.state
+    boop.config = savedPackageFields.config
+    boop.handlers = savedPackageFields.handlers
+    boop.gmcp = savedPackageFields.gmcp
+    savedPackageFields = nil
+  end
 
   local function replaceGlobal(name, value)
     if savedGlobals[name] == nil then
@@ -80,6 +92,12 @@ describe("boop lifecycle recovery", function()
   end
 
   before_each(function()
+    savedPackageFields = {
+      state = boop.state,
+      config = boop.config,
+      handlers = boop.handlers,
+      gmcp = boop.gmcp,
+    }
     savedGlobals = {}
     savedFunctions = {}
     boop.state = {}
@@ -142,17 +160,18 @@ describe("boop lifecycle recovery", function()
   end)
 
   after_each(function()
-    for index = #savedFunctions, 1, -1 do
+    for index = #(savedFunctions or {}), 1, -1 do
       local entry = savedFunctions[index]
       entry.owner[entry.name] = entry.value
     end
-    for name, entry in pairs(savedGlobals) do
+    for name, entry in pairs(savedGlobals or {}) do
       if entry.existed then
         rawset(_G, name, entry.value)
       else
         rawset(_G, name, nil)
       end
     end
+    restorePackageFields()
   end)
 
   it("gap-03-3 keeps only lifecycle evidence active while disabled", function()
