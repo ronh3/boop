@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
-status: executing
-stopped_at: Completed 03-12-PLAN.md
-last_updated: "2026-07-27T02:42:01.440Z"
+status: ready_for_verification
+stopped_at: Completed 03-13-PLAN.md
+last_updated: "2026-07-27T02:56:34.993Z"
 last_activity: 2026-07-26
-last_activity_desc: Completed Plan 03-12 tokenless walker arrival gap closure
+last_activity_desc: Completed Plan 03-13 canonical same-room gold gap closure
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 27
-  completed_plans: 26
-  percent: 96
+  completed_plans: 27
+  percent: 100
 ---
 
 # Project State
@@ -28,20 +28,20 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 ## Current Position
 
-Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — EXECUTING
+Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — READY FOR VERIFICATION
 Plan: 13 of 13
-Status: Plan 03-12 complete; ready for Plan 03-13
-Last activity: 2026-07-26 — Completed Plan 03-12 tokenless walker arrival gap closure
+Status: Plan 03-13 complete; ready for Phase 03 verification
+Last activity: 2026-07-26 — Completed Plan 03-13 canonical same-room gold gap closure
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 26
+- Total plans completed: 27
 - Average duration: 15 min
-- Total execution time: 6.4 hours
+- Total execution time: 6.6 hours
 
 **By Phase:**
 
@@ -49,12 +49,12 @@ Progress: [██████████] 96%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 12 | 155m | ~13 min |
+| 03 | 13 | 166m | ~13 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 03 P08 (12m), Phase 03 P09 (10m), Phase 03 P10 (7m), Phase 03 P11 (17m), Phase 03 P12 (7m)
-- Trend: Phase 03 gap closure now centers on fenced production evidence and final same-room gold validation
+- Last 5 plans: Phase 03 P09 (10m), Phase 03 P10 (7m), Phase 03 P11 (17m), Phase 03 P12 (7m), Phase 03 P13 (11m)
+- Trend: Phase 03 implementation is complete with fenced room evidence and same-room gold validation ready for verification
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -71,6 +71,7 @@ Progress: [██████████] 96%
 | Phase 03 P10 | 7m | 2 tasks | 8 files |
 | Phase 03 P11 | 17m | 2 tasks | 10 files |
 | Phase 03 P12 | 7m | 2 tasks | 7 files |
+| Phase 03 P13 | 11m | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Discard every demonwalker.arrived argument; tokenless arrival can only request the current capped response fence.
 - [Phase 03]: Open a fresh-start fence from walk.start and preserve complete same-room reservations across arrival and Room.Info.
 - [Phase 03]: Use canonical accepted observation identity, not persistent GMCP tables, for walker settlement and emission.
+- [Phase 03]: Use copied current-fence room observations for gold authorization; populated canonical targeting-room mismatches reject without any persistent-GMCP fallback.
+- [Phase 03]: Require exact operation room, room generation, and gold item identity before initial or retry gold sends.
+- [Phase 03]: Preserve same-room acquisition, cancel only on actual movement, and transfer to roomless packing only after confirmed pickup.
 
 ### Pending Todos
 
@@ -129,7 +133,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Plan 03-12 tokenless-arrival gap closure is complete; Plan 03-13 remains before Phase 03 verification.
+- Plan 03-13 canonical same-room gold gap closure is complete; Phase 03 is ready for verification.
 - Local real-Mudlet evidence remains unavailable; parent exact-final-HEAD CI/live UAT still follows all remaining mutations.
 
 ### Quick Tasks Completed
@@ -148,6 +152,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-27T02:42:01.435Z
-Stopped at: Completed 03-12-PLAN.md
+Last session: 2026-07-27T02:56:34.987Z
+Stopped at: Completed 03-13-PLAN.md
 Resume file: None
