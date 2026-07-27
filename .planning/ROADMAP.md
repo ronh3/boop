@@ -87,13 +87,17 @@ Plans:
   4. `demonnicAutoWalker` remains optional, with explicit install/status feedback and no silent auto-update behavior.
   5. Regression coverage catches unsafe movement, attacks during holds, wrong-room loot commands, target-removal queue drift, and permanent walk stalls.
 
-**Plans**: 13/13 plans executed
+**Plans**: 13/14 plans executed
 
 Plans:
 
 - [x] 03-11-PLAN.md
 - [x] 03-12-PLAN.md
 - [x] 03-13-PLAN.md
+
+**Wave 14** *(blocked on Wave 13 completion; ready for gap execution)*
+
+- [ ] 03-14-PLAN.md — Disabled-safe lifecycle evidence and calibrated room-response warning
 
 **Wave 1**
 

@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
-status: awaiting_live_verification
-stopped_at: Phase 03 post-fix live UAT
-last_updated: "2026-07-27T03:12:00.000Z"
+status: ready_to_execute
+stopped_at: Phase 03 Plan 03-14 ready for gap execution
+last_updated: "2026-07-27T06:49:24.000Z"
 last_activity: 2026-07-26
-last_activity_desc: Completed Plan 03-13 canonical same-room gold gap closure
+last_activity_desc: Planned G-03-3 disabled-safe lifecycle recovery closure
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 27
+  total_plans: 28
   completed_plans: 27
-  percent: 100
+  percent: 96
 ---
 
 # Project State
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 ## Current Position
 
-Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — LIVE VERIFICATION
-Plan: 13 of 13
-Status: Automated verification passed 5/5; two post-fix live UAT checks remain
-Last activity: 2026-07-26 — Verified Phase 03 implementation and prepared post-fix live UAT
+Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — GAP CLOSURE READY
+Plan: 14 of 14 (13 executed)
+Status: Plan 03-14 verified; ready to execute G-03-3 closure
+Last activity: 2026-07-26 — Planned disabled-safe lifecycle recovery and room-response timing closure
 
-Progress: [██████████] 100%
+Progress: [█████████░] 96%
 
 ## Performance Metrics
 
@@ -49,12 +49,12 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 13 | 166m | ~13 min |
+| 03 | 13/14 | 166m | ~13 min |
 
 **Recent Trend:**
 
 - Last 5 plans: Phase 03 P09 (10m), Phase 03 P10 (7m), Phase 03 P11 (17m), Phase 03 P12 (7m), Phase 03 P13 (11m)
-- Trend: Phase 03 implementation and automated verification are complete; live room-ordering and gold reruns remain
+- Trend: Phase 03 has one verified gap-closure plan ready; live room-ordering and gold reruns follow its execution
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -124,6 +124,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Use copied current-fence room observations for gold authorization; populated canonical targeting-room mismatches reject without any persistent-GMCP fallback.
 - [Phase 03]: Require exact operation room, room generation, and gold item identity before initial or retry gold sends.
 - [Phase 03]: Preserve same-room acquisition, cancel only on actual movement, and transfer to roomless packing only after confirmed pickup.
+- [Phase 03 planning]: Keep a prompt-only lifecycle trigger active while hunting automation is disabled; every combat, gag, targeting, gold, queue, and walker trigger remains under the independently toggled automation folder.
+- [Phase 03 planning]: Reconcile canonical `gmcp:ire` evidence from post-connection IRE Target/Display events and the prompt boundary so IRE and prompt may arrive in either order without `Char.Status` or enable.
 
 ### Pending Todos
 
@@ -132,7 +134,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Phase 03 automated verification is 5/5 with no implementation gaps; UAT Tests 1 and 2 must be repeated against package 0.1.425.
+- Plan 03-14 must close the disabled reconnect `gmcp:ire` recovery deadlock and premature room-response warning before UAT Tests 1 and 2 are repeated.
 - Prior exact-SHA Mudlet runs exposed and prompted correction of stale pull-timer fixture assumptions plus standalone inventory-list suppression; parent exact-final-HEAD CI and live Achaea UAT remain external gates.
 
 ### Quick Tasks Completed
