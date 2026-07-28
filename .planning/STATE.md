@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
 status: executing
-stopped_at: Completed 03-17-PLAN.md
-last_updated: "2026-07-28T07:49:20.419Z"
+stopped_at: Completed 03-18-PLAN.md
+last_updated: "2026-07-28T07:59:26.547Z"
 last_activity: 2026-07-28
-last_activity_desc: Plan 03-17 complete; Plan 03-18 ready
+last_activity_desc: Plan 03-18 complete; Plan 03-19 ready
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 33
-  completed_plans: 31
-  percent: 94
+  completed_plans: 32
+  percent: 97
 ---
 
 # Project State
@@ -29,19 +29,19 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
-Plan: 18 of 19
-Status: Ready to execute Plan 03-18
-Last activity: 2026-07-28 — Plan 03-17 complete; Plan 03-18 ready
+Plan: 19 of 19
+Status: Ready to execute Plan 03-19
+Last activity: 2026-07-28 — Plan 03-18 complete; Plan 03-19 ready
 
-Progress: [█████████░] 94%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 31
+- Total plans completed: 32
 - Average duration: 14 min
-- Total execution time: 7.0 hours
+- Total execution time: 7.1 hours
 
 **By Phase:**
 
@@ -49,12 +49,12 @@ Progress: [█████████░] 94%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 17/19 | 190m | 11 min |
+| 03 | 18/19 | 197m | 11 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 03 P13 (11m), Phase 03 P14 (11m), Phase 03 P15 (3m), Phase 03 P16 (6m), Phase 03 P17 (4m)
-- Trend: Plan 03-17 closed manual-walk status and inactive-stop feedback; two sequential gap plans remain before terminal CI and live UAT
+- Last 5 plans: Phase 03 P14 (11m), Phase 03 P15 (3m), Phase 03 P16 (6m), Phase 03 P17 (4m), Phase 03 P18 (7m)
+- Trend: Plan 03-18 closed session live-trace semantics; one sequential alias/documentation plan remains before terminal CI and live UAT
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -76,6 +76,7 @@ Progress: [█████████░] 94%
 | Phase 03 P15 | 3m | 3 tasks | 7 files |
 | Phase 03 P16 | 6m | 2 tasks | 7 files |
 | Phase 03 P17 | 4m | 3 tasks | 9 files |
+| Phase 03 P18 | 7m | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Manual targeting remains a hard automatic-walk hold; status projects code, label, and recovery action from the shared movement evaluator.
 - [Phase 03]: Inactive non-silent stop is acknowledged at the walk lifecycle boundary while silent calls and owned-stop versus attached-detach semantics remain unchanged.
 - [Phase 03]: Live walk UAT must prove the manual hold, then select automatic targeting before movement is expected.
+- [Phase 03]: Live trace mode remains runtime-only and cannot persist or independently enable collection.
+- [Phase 03]: Top-level package bootstrap resets only trace.live before guarded bootstrap, preserving the trace table and buffer.
+- [Phase 03]: Accepted trace appends stream once through direct non-tracing INFO feedback after trimming.
 
 ### Pending Todos
 
@@ -149,6 +153,7 @@ Recent decisions affecting current work:
 
 - Plan 03-16 closed G-03-5 with one exact-operation room-only revalidation while preserving copied List authority and aggregate blockers.
 - Plan 03-17 closed G-03-4 while preserving manual-targeting movement safety and owned-stop versus attached-detach semantics.
+- Plan 03-18 closed the state, command, and exact-once emission core of G-03-6; Plan 03-19 retains packaged alias and operator-documentation wiring.
 - Local real-Mudlet execution remains unavailable; the Occultist-only host helper is not authoritative for unchanged Psion and Dragon pull profiles.
 - Parent exact-final-HEAD CI and live Achaea UAT remain blocking external gates before Phase 03 can be marked complete.
 
@@ -168,6 +173,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-28T07:49:20.413Z
-Stopped at: Completed 03-17-PLAN.md
+Last session: 2026-07-28T07:59:26.542Z
+Stopped at: Completed 03-18-PLAN.md
 Resume file: None
