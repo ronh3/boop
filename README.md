@@ -82,7 +82,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - `ih` shows all valid object rows, but only GMCP-recognized denizens get whitelist/blacklist action labels.
 - Denizens on the global blacklist do not show `ih` whitelist/blacklist action labels.
 - `boop walk` integrates with `demonnicAutoWalker`; if it is missing, use `boop walk install`.
-- boop walk stop ends a boop-owned run or detaches from an external run.
+- Manual targeting is an intentional automatic-walk hold; use `boop targeting auto` before expecting route movement.
+- `boop walk stop` ends a boop-owned run or detaches from an external run; when no boop walk is active it reports `walk stop: no active boop walk`.
 - demonnicAutoWalker installation is explicit; runtime paths never install or update it.
 - Room settlement requires current Room.Info plus a complete current room item list; prompts and timers never settle the room.
 - Auto gold pickup grabs newly dropped room items whose names contain `gold sovereign`.

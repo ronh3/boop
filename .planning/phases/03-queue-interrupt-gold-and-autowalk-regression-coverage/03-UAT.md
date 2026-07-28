@@ -46,13 +46,38 @@ observed: "Clean reconnect, prompt-first, and enable-before-prompt checks passed
 ### 2. Cross-owner attack, loot, and walk release
 
 expected: |
-  With boop 0.1.429 installed, room settlement accepts the live GMCP ordering, same-room refreshes preserve the accepted room, and stop/restart cannot reuse stale evidence. No automatic attack, loot command, or walker move occurs while another safety owner remains; exactly one next action resumes after all owners release.
+  With boop 0.1.434 installed, manual targeting remains an intentional
+  automatic-walk hold and is reported as `manual_targeting`, not `room_clear`.
+  Room settlement accepts the live GMCP ordering, same-room refreshes preserve
+  the accepted room, and stop/restart cannot reuse stale evidence. No automatic
+  attack, loot command, or walker move occurs while another safety owner
+  remains; exactly one next action resumes after automatic targeting is
+  selected and all owners release.
 
   Easy check:
-  1. Run `boop on`, `boop trace clear`, `boop trace on`, and `boop walk stop`, then start a normal route with `boop walk start`.
-  2. Let the walker cross several rooms. In one room, run `ql` to force a same-room refresh; stop and restart the walker once.
-  3. During one room transition, run `diag`. No attack, get/put, or walker move may occur until `diag` and every other visible blocker clear; then exactly one next action should resume.
-  4. Run `boop trace show 100`. There must be no `room_partial` hold that persists until an unrelated later GMCP event, no ordinary sub-8-second room warning, and at most one walker move per settled room.
+  1. Run `boop on`, `boop trace clear`, and `boop trace on`. With no
+     boop walk active, run `boop walk stop`; it must print exactly
+     `walk stop: no active boop walk`.
+  2. Run `boop targeting manual`, then start a normal route with
+     `boop walk start`. Run `boop status`: it must show
+     `manual_targeting -- manual targeting is active`, give
+     `boop targeting auto` as the next action, and emit no walker movement or
+     movement reservation while manual targeting remains selected.
+  3. Run `boop targeting auto`. Only after automatic targeting is selected and
+     every other blocker is clear should exactly one eligible walker movement
+     occur for the settled room.
+  4. Let the walker cross several rooms. In one room, run `ql` to force a
+     same-room refresh; stop and restart the boop-owned walker once and retain
+     its distinct `walk stopped -- boop-owned demonwalker run ended` feedback.
+     The already-passed attached-run check remains non-destructive and must
+     continue to report
+     `walk detached -- external demonwalker run remains active`.
+  5. During one room transition, run `diag`. No attack, get/put, or walker move
+     may occur until `diag` and every other visible blocker clear; then exactly
+     one next action should resume.
+  6. Run `boop trace show 100`. There must be no `room_partial` hold that
+     persists until an unrelated later GMCP event, no ordinary sub-8-second
+     room warning, and at most one walker move per settled room.
 result: issue
 reported: "boop walk stop doesn't return any sort of message when running in step 1. After doing boop walk start, no movement is done. blocker shown is room_clear -- room clear. This is after seeing the same issue, and completely restarting mudlet."
 severity: major
@@ -195,7 +220,7 @@ blocked: 0
 
 - gap_id: G-03-4
   truth: "Starting a live boop walk from a settled room emits movement, and stopping it gives visible operator feedback."
-  status: diagnosed
+  status: resolved
   reason: "User reported: boop walk stop produced no message; boop walk start produced no movement while the blocker displayed room_clear -- room clear, including after a complete Mudlet restart."
   severity: major
   test: 2
@@ -213,6 +238,9 @@ blocked: 0
     - "Cover inactive, owned, and attached stop feedback plus a settled walk in persisted manual mode."
     - "Make automatic targeting an explicit live-UAT precondition before movement is expected."
   debug_session: ".planning/debug/phase-03-live-walk-no-start-feedback.md"
+  resolved_by:
+    - "03-17-PLAN.md"
+  verification: "Focused walk/UI host execution passes 85/85 at 0.1.433; post-fix live UAT Test 2 remains pending at package 0.1.434."
 
 - gap_id: G-03-5
   truth: "A live gold drop advances from current-room evidence to get and pack without indefinitely blocking retargeted hunting."
