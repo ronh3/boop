@@ -847,6 +847,55 @@ describe("boop ui home", function()
     ) ~= nil)
   end)
 
+  it("routes inactive walk stop through one non-silent info response", function()
+    boop.runtime.state().walk.active = false
+
+    boop.ui.walkCommand("stop")
+
+    assert.are.same({
+      "[INFO] walk stop: no active boop walk",
+    }, echoes)
+  end)
+
+  it("projects the shared manual-targeting walk hold instead of room clear", function()
+    walker_fixture = helper.setWalker({
+      available = true,
+      attached = true,
+    })
+    boop.config.enabled = true
+    boop.config.targetingMode = "manual"
+    helper.setTarget("", "", "100%")
+    helper.setDenizens({})
+    helper.seedRoomObservation("1", {
+      generation = 9,
+      infoSeen = true,
+      itemsSeen = true,
+    })
+    local state = boop.runtime.state()
+    state.walk.active = true
+    state.walk.owned = false
+    state.walk.roomSettled = true
+    state.walk.arrivalRoom = "1"
+    state.walk.generation = 7
+    state.walk.roomGeneration = 9
+    state.walk.moveQueued = false
+    state.walk.moveIssuedForRoomGeneration = false
+    state.walk.reservationId = 0
+
+    boop.ui.status("status")
+
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find(
+      "manual_targeting -- manual targeting is active",
+      1,
+      true
+    ) ~= nil)
+    assert.is_true(joined:find("boop targeting auto", 1, true) ~= nil)
+    assert.is_nil(joined:find("room_clear -- room clear", 1, true))
+    assert.are.equal(0, state.walk.reservationId)
+    assert.is_false(state.walk.moveQueued)
+  end)
+
   it("routes party affcalls subcommands through the party dashboard", function()
     boop.ui.partyCommand("affcalls off")
 

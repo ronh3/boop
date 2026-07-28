@@ -790,6 +790,52 @@ describe("boop walk integration", function()
     end)
   end
 
+  it("acknowledges only non-silent inactive stop requests", function()
+    local state = boop.runtime.state()
+    state.walk.active = false
+
+    local infoCount = #feedback.info
+    assert.is_false(boop.walk.stop(false, false))
+    assert.are.equal(1, #feedback.info - infoCount)
+    assert.are.equal(
+      "walk stop: no active boop walk",
+      feedback.info[#feedback.info]
+    )
+
+    infoCount = #feedback.info
+    assert.is_false(boop.walk.stop(true, false))
+    assert.are.equal(0, #feedback.info - infoCount)
+    assert.are.equal(0, countRaised("demonwalker.stop"))
+  end)
+
+  it("holds manual targeting without a reservation then advances once in auto", function()
+    local state = seedReadyWalk({ targetingMode = "manual" })
+
+    local ok, code, label = boop.walk.maybeAdvance("manual targeting hold")
+
+    assert.is_false(ok)
+    assert.are.equal("manual_targeting", code)
+    assert.are.equal("manual targeting is active", label)
+    assert.are.equal(0, state.walk.reservationId)
+    assert.is_false(state.walk.moveQueued)
+    assert.is_false(state.walk.moveIssuedForRoomGeneration)
+    assert.is_nil(state.walk.emitterTimer)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+
+    boop.config.targetingMode = "auto"
+    assert.is_true(boop.walk.maybeAdvance("automatic targeting selected"))
+    assert.are.equal(1, state.walk.reservationId)
+    assert.is_true(state.walk.moveQueued)
+    assert.is_true(state.walk.moveIssuedForRoomGeneration)
+    assert.is_number(state.walk.emitterTimer)
+
+    timers.run(state.walk.emitterTimer)
+    assert.are.equal(1, countRaised("demonwalker.move"))
+    assert.is_false(boop.walk.maybeAdvance("duplicate settled room"))
+    assert.are.equal(1, state.walk.reservationId)
+    assert.are.equal(1, countRaised("demonwalker.move"))
+  end)
+
   it("invalidates and clears ownership before one owned stop event", function()
     resetCase({
       available = true,
