@@ -42,6 +42,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Trace Live On Off",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+trace\\s+live\\s+(on|off)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Trace On Off",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+trace\\s+(on|off)$",
