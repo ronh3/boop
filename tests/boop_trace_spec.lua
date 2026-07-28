@@ -373,10 +373,10 @@ describe("boop trace live session semantics", function()
   end)
 
   it("G-03-6 package reload reset executes before bootstrap early return", function()
-    local repoRoot = assert(
-      os.getenv("BOOP_REPO_ROOT"),
-      "BOOP_REPO_ROOT env var is required"
-    )
+    local testsDirectory = tostring(os.getenv("TESTS_DIRECTORY") or "")
+    local repoRoot = os.getenv("BOOP_REPO_ROOT")
+      or testsDirectory:match("^(.*)/tests/?$")
+    repoRoot = assert(repoRoot, "boop repository root is required")
     local priorBootstrapped = boop.bootstrapped
     local buffer = {
       "10:11:12 | sentinel one",

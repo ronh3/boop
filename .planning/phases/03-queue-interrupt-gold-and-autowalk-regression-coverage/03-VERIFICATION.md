@@ -22,7 +22,7 @@ deferred:
 human_verification:
   - test: "After all planning mutations are committed, push the immutable final HEAD and run tools/wait_for_exact_ci.sh with its full SHA."
     expected: "main.yml succeeds with an exactly matching headSha and the complete packaged real-Mudlet Busted run reports zero failures and zero errors, including the Psion and Dragon pull-profile cases."
-    why_human: "Current HEAD f60b7af156abc30b4642ca418e725805ad8c9493 is not present on origin, /tmp/Mudlet.AppImage is unavailable, and the host bootstrap loads only the Occultist profile."
+    why_human: "The corrected candidate still needs an immutable exact-SHA GitHub run; the local Mudlet 4.20.1 rerun passed all 686 packaged cases, but local execution cannot satisfy the origin/headSha authority gate."
   - test: "Rerun the settled non-gold List then gold Item.Add flow, once normally and once while moving before the revalidation response."
     expected: "Item.Add causes one room-only revalidation and no get by itself; only the matching current-room fenced List permits one get, its confirmation permits one put, wrong-room/stale/duplicate responses do nothing, unrelated holds suppress all attack/loot/walk output, and the operation releases without a permanent jam."
     why_human: "Host tests exercise the transition, but only live Mudlet/Achaea can establish actual GMCP List/Add ordering, command confirmations, and room movement timing."
@@ -42,13 +42,15 @@ human_verification:
 **Re-verification:** Yes — complete goal re-verification after Plans 03-16 through 03-19
 **Verified HEAD:** `f60b7af156abc30b4642ca418e725805ad8c9493`
 **Branch:** `codex/pre-1.0-hardening-pass`
-**Package version:** `0.1.440`
+**Package version:** `0.1.441`
 
 ## Goal Achievement
 
 The current implementation satisfies all five Phase 3 roadmap truths in code and focused behavioral tests. Plans 03-16 through 03-19 close the implementation defects diagnosed by UAT G-03-4, G-03-5, and G-03-6 without weakening the earlier exact-owner safety model.
 
-The phase is not yet fully authoritative in the shipped environment. Current HEAD is not on origin, so there is no exact-SHA packaged real-Mudlet CI result, and the three corrected live flows have not been rerun against package 0.1.440. The ordered verifier decision tree therefore yields `human_needed`, not `passed` and not `gaps_found`.
+The phase is not yet fully authoritative in the shipped environment. The corrected candidate has not passed the immutable exact-SHA GitHub gate, and the three corrected live flows have not been rerun against package 0.1.441. The ordered verifier decision tree therefore yields `human_needed`, not `passed` and not `gaps_found`.
+
+After verification, the first exact-SHA run exposed a test-environment mismatch in the package-reload trace case: GitHub exports `TESTS_DIRECTORY`, while the host-focused test used `BOOP_REPO_ROOT`. Version 0.1.441 makes the test derive the same repository root from either variable. A local Mudlet 4.20.1 packaged rerun completed 686/686 cases without a Busted failure marker; the corrected final GitHub run remains pending.
 
 ### Observable Truths
 
@@ -111,7 +113,7 @@ The plan helper and manual review resolve 92/92 semantic artifact declarations a
 | `src/triggers/boop_lifecycle/triggers.json` and `Prompt.lua` | Always-available prompt evidence only | ✓ VERIFIED | Top-level lifecycle folder is active with exactly one prompt child calling `boop.onPrompt()`. |
 | `src/triggers/boop/Core/Prompt.lua` | Legacy duplicate prompt removed | ✓ VERIFIED — ABSENT AS REQUIRED | No old Core prompt file or duplicate dispatcher exists. |
 | Phase-focused test files | Executable behavioral regressions for every stateful contract | ✓ VERIFIED | 17 focused files produced 254 successes with zero failures/errors. |
-| `.github/workflows/main.yml` and `tools/wait_for_exact_ci.sh` | Packaged full-suite authority and immutable SHA gate | ✓ WIRED / ? NOT EXECUTED | CI imports the package and runs the complete test directory; the gate checks origin presence, exact `headSha`, success, and worktree immutability. Current HEAD is not on origin. |
+| `.github/workflows/main.yml` and `tools/wait_for_exact_ci.sh` | Packaged full-suite authority and immutable SHA gate | ✓ WIRED / ? CORRECTED RUN PENDING | CI imports the package and runs the complete test directory; the gate checks origin presence, exact `headSha`, success, and worktree immutability. |
 
 ## Key Link Verification
 
@@ -130,7 +132,7 @@ Manual semantic review resolves 58/58 key links across all 19 plans. Earlier hel
 | Trace collection | Buffer/live output | collection gate before append and direct info output | ✓ WIRED | Collection off means no append/output; live does not recurse through trace. |
 | Bootstrap | Trace runtime state | reset before early-return guard | ✓ WIRED | Reload turns live off without replacing or clearing the buffer. |
 | Alias manifest/body | UI trace handler and help registry | exact regex plus `traceCommand("live", ...)` | ✓ WIRED | Source route survives into the generated package XML. |
-| GitHub Actions | Complete packaged test directory | exact-SHA wait gate | ✓ WIRED / ? FINAL RUN PENDING | The authority path exists but has no run for current unpushed HEAD. |
+| GitHub Actions | Complete packaged test directory | exact-SHA wait gate | ✓ WIRED / ? CORRECTED RUN PENDING | The first finalization run exposed the trace test's host-only root variable; 0.1.441 accepts the existing packaged-CI `TESTS_DIRECTORY` contract. |
 
 ## Data-Flow Trace (Level 4)
 
@@ -154,10 +156,11 @@ Manual semantic review resolves 58/58 key links across all 19 plans. Earlier hel
 | Aggregate exact-owner regression | Runtime/prequeue/tick/event/walk suites | Both clear orders and stale-owner callbacks retain unrelated holds; no early attack/get/put/move | ✓ PASS |
 | Full host pull diagnostic | `tests/boop_pull_spec.lua` under Occultist-only helper | 11 successes, exactly 2 Psion/Dragon profile exclusions, 0 errors | ℹ DIAGNOSTIC ONLY |
 | Lua syntax | `find src -name '*.lua' ... luac -p` | Exit 0 | ✓ PASS |
-| Release gates | `python3 tools/check_release_gates.py` | `[OK] versions`, `[OK] manifests`, `[OK] state-drift`; synchronized 0.1.440 | ✓ PASS |
-| Muddler package build | `muddle` | Muddler 1.1.0 built `build/boop Hunter.mpackage` version 0.1.440 successfully | ✓ PASS |
+| Release gates | `python3 tools/check_release_gates.py` | `[OK] versions`, `[OK] manifests`, `[OK] state-drift`; synchronized 0.1.441 | ✓ PASS |
+| Muddler package build | `muddle` | Muddler 1.1.0 built `build/boop Hunter.mpackage` version 0.1.441 successfully | ✓ PASS |
 | Generated package route | `unzip -p ... 'boop Hunter.xml'` inspection | Exact trace-live alias regex/body/help and lifecycle prompt are present | ✓ PASS |
-| Exact-final-SHA `main.yml` | HEAD/origin comparison | HEAD `f60b7af`; upstream `7f30188`; no origin ref contains current HEAD | ? HUMAN REQUIRED |
+| Local packaged Mudlet suite | Mudlet 4.20.1 with `BOOP_REPO_ROOT` absent and CI's `TESTS_DIRECTORY` present | 686 successes, 0 failure markers; Mudlet segfaulted only during local application teardown after closing the completed suite | ✓ TESTS PASS / ℹ LOCAL TEARDOWN |
+| Exact-final-SHA `main.yml` | Corrected candidate | Prior run `30342244363` exposed the root-variable mismatch; the 0.1.441 exact-SHA rerun is pending | ? HUMAN REQUIRED |
 
 ## Probe Execution
 
@@ -224,7 +227,7 @@ tools/wait_for_exact_ci.sh "$FINAL_SHA"
 - Host tests are not treated as packaged Mudlet authority. The local build proves XML/package inclusion, not live alias, GMCP, prompt, timer, or external-walker execution.
 - The full host pull file is not falsely reported green: its two Psion/Dragon cases cannot run under the Occultist-only helper and remain part of exact-SHA packaged CI authority.
 - SUMMARY completion claims were not used as evidence. Production state transitions, source wiring, generated XML, focused tests, version gates, and build output were inspected or executed independently.
-- Current HEAD is unpushed. No previous CI result can satisfy the immutable exact-SHA gate for this report.
+- The corrected candidate is not yet committed and pushed. No previous CI result can satisfy its immutable exact-SHA gate.
 
 ## Gaps Summary
 

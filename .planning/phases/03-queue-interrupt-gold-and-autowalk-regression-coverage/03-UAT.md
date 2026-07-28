@@ -48,7 +48,7 @@ observed: "Clean reconnect, prompt-first, and enable-before-prompt checks passed
 ### 2. Cross-owner attack, loot, and walk release
 
 expected: |
-  With boop 0.1.440 installed, manual targeting remains an intentional
+  With boop 0.1.441 installed, manual targeting remains an intentional
   automatic-walk hold and is reported as `manual_targeting`, not `room_clear`.
   Room settlement accepts the live GMCP ordering, same-room refreshes preserve
   the accepted room, and stop/restart cannot reuse stale evidence. No automatic
@@ -88,7 +88,7 @@ previous_result: "Before Plans 03-11/03-12, List-before-Info followed by same-ro
 ### 3. Wrong-room gold and pack transfer
 
 expected: |
-  With boop 0.1.440 installed, a gold Item.Add in an already settled room
+  With boop 0.1.441 installed, a gold Item.Add in an already settled room
   requests one current-room revalidation but cannot authorize pickup by itself.
   Only the matching fenced room List may queue one get. Confirmed pickup may
   queue one put, while stale, duplicate, wrong-room, and movement-invalidated
@@ -144,7 +144,7 @@ previous_evidence: "GitHub Actions run 30265771025 passed for pre-gap SHA 07d73e
 ### 6. Live trace correlation
 
 expected: |
-  With boop 0.1.440 installed, `boop trace live on|off` controls a
+  With boop 0.1.441 installed, `boop trace live on|off` controls a
   session-only stream independently from persisted trace collection. Live mode
   is off after package load, never enables collection, prints each accepted
   timestamped entry exactly once without tracing itself, and resets off on
@@ -300,7 +300,7 @@ blocked: 0
   debug_session: ".planning/debug/phase-03-gold-deferred-hunting-stall.md"
   resolved_by:
     - "03-16-PLAN.md"
-  verification: "03-VERIFICATION.md verifies the bounded settled-Add revalidation and exact get-confirm-put contracts at 0.1.440; post-fix live UAT Test 3 remains pending."
+  verification: "03-VERIFICATION.md verifies the bounded settled-Add revalidation and exact get-confirm-put contracts at 0.1.441; post-fix live UAT Test 3 remains pending."
 
 - gap_id: G-03-6
   truth: "An operator can stream newly recorded trace events in real time for the current session without changing normal output, persistence, or trace-buffer behavior."
@@ -328,4 +328,4 @@ blocked: 0
   resolved_by:
     - "03-18-PLAN.md"
     - "03-19-PLAN.md"
-  verification: "03-VERIFICATION.md verifies session-only state, package-reload reset, exact-once non-recursive output, and packaged alias/help wiring at 0.1.440; post-fix live UAT Test 6 remains pending."
+  verification: "03-VERIFICATION.md verifies session-only state, package-reload reset, exact-once non-recursive output, and packaged alias/help wiring at 0.1.441; post-fix live UAT Test 6 remains pending."
