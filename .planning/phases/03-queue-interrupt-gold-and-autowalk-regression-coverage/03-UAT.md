@@ -1,10 +1,10 @@
 ---
-status: complete
+status: diagnosed
 phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-28T06:34:29Z
+updated: 2026-07-27T23:49:31-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -96,11 +96,23 @@ result: pass
 source: automated
 evidence: "GitHub Actions run 30265771025 passed for 07d73e8b38823277a8132cbcded2ea9f88e92f08."
 
+### 6. Live trace correlation
+
+expected: |
+  While tracing is enabled, the operator can opt into a session-only live
+  stream that prints each newly buffered trace entry once in the same
+  timestamped format used by `boop trace show`. The stream is off by default,
+  can be disabled without disabling trace collection, does not persist across
+  package reloads, and cannot recursively trace its own output.
+result: issue
+reported: "Could we introduce a debug mode that will essentially show the trace log events/actions in real time? I feel that might be handy here, to help correlate what's on the screen with boop's logs."
+severity: minor
+
 ## Summary
 
-total: 5
+total: 6
 passed: 3
-issues: 2
+issues: 3
 pending: 0
 skipped: 0
 blocked: 0
@@ -183,18 +195,65 @@ blocked: 0
 
 - gap_id: G-03-4
   truth: "Starting a live boop walk from a settled room emits movement, and stopping it gives visible operator feedback."
-  status: failed
+  status: diagnosed
   reason: "User reported: boop walk stop produced no message; boop walk start produced no movement while the blocker displayed room_clear -- room clear, including after a complete Mudlet restart."
   severity: major
   test: 2
-  artifacts: []
-  missing: []
+  root_cause: "Two independent defects combine in the UAT workflow. Movement is held because the persisted live configuration is targetingMode=manual, and boop.walk.evaluateAllClear explicitly rejects that state as manual_targeting; the dashboard omits this evaluator condition and instead reports room_clear, concealing the real hold. Separately, boop.walk.stop returns false immediately when inactive and emits no feedback, while the UI dispatcher ignores the return value."
+  artifacts:
+    - path: "src/scripts/boop/boop_walk.lua"
+      issue: "The manual-targeting safety gate is correct, but inactive stop returns false without operator feedback."
+    - path: "src/scripts/boop/boop_ui.lua"
+      issue: "The shared dashboard does not consume the walk evaluator reason and the walk command dispatcher ignores an inactive-stop false return."
+    - path: "tests/boop_walk_spec.lua"
+      issue: "Coverage asserts the manual-targeting hold and active stop cases but omits dashboard parity and inactive-stop feedback."
+  missing:
+    - "Preserve the manual-targeting safety gate while surfacing manual_targeting as the actual walk/dashboard reason."
+    - "Give boop walk stop explicit feedback when no boop walk is active."
+    - "Cover inactive, owned, and attached stop feedback plus a settled walk in persisted manual mode."
+    - "Make automatic targeting an explicit live-UAT precondition before movement is expected."
+  debug_session: ".planning/debug/phase-03-live-walk-no-start-feedback.md"
 
 - gap_id: G-03-5
   truth: "A live gold drop advances from current-room evidence to get and pack without indefinitely blocking retargeted hunting."
-  status: failed
+  status: diagnosed
   reason: "User reported that gold handling did not appear to work and normal hunting attacked inconsistently before jamming. output.md shows gold:3 entering gold_deferred_room at 23:31:57 after a current-room gold add, retargeting the next denizen, then holding the combat queue for more than 40 seconds until later manual room refresh/movement."
   severity: blocker
   test: 3
-  artifacts: []
-  missing: []
+  root_cause: "A settled current-room Item.Add updates targeting and detects gold but never patches or revalidates roomObservation.acceptedItems. Gold authorization requires that exact item in acceptedItems, while the preceding complete non-gold list leaves itemsSeen and refreshAttempted set so another response fence is refused. The gold generation therefore remains DEFERRED_ROOM and its exact owner holds combat, queue, and walk indefinitely despite successful retargeting."
+  artifacts:
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "onRoomItemsAdd starts gold handling without applying a canonical current-epoch room mutation, while canonicalGoldEvidence requires the item in acceptedItems."
+    - path: "src/scripts/boop/boop_runtime.lua"
+      issue: "A settled observation cannot open the bounded revalidation needed by the deferred operation, and active gold exclusively occupies tick progression."
+    - path: "tests/boop_gold_spec.lua"
+      issue: "Coverage omits the live complete non-gold List followed by an incremental same-room gold Add."
+  missing:
+    - "Define one canonical, exact-current-epoch settled Item.Add/Remove mutation or bounded revalidation path."
+    - "Reevaluate the same gold generation after the accepted mutation or response without weakening wrong-room and stale-fence rejection."
+    - "Cover the live settled-list-to-add order, movement/stale boundaries, retargeting under aggregate owners, and exactly one get-confirm-put sequence."
+  debug_session: ".planning/debug/phase-03-gold-deferred-hunting-stall.md"
+
+- gap_id: G-03-6
+  truth: "An operator can stream newly recorded trace events in real time for the current session without changing normal output, persistence, or trace-buffer behavior."
+  status: diagnosed
+  reason: "Live UAT required repeatedly capturing boop trace show output after the fact, making it difficult to correlate Achaea output with the exact blocker and action transitions that occurred on screen."
+  severity: minor
+  test: 6
+  root_cause: "The trace subsystem only appends timestamped entries to its bounded buffer and exposes retrospective show/clear commands. It has no session runtime flag or non-recursive output path for echoing a newly appended entry at collection time."
+  artifacts:
+    - path: "src/scripts/boop/boop_util.lua"
+      issue: "boop.trace.log buffers entries but has no optional live-output branch."
+    - path: "src/scripts/boop/boop_runtime.lua"
+      issue: "Trace runtime state contains only the buffer and has no session-only live flag."
+    - path: "src/scripts/boop/boop_ui.lua"
+      issue: "boop trace supports on, off, show, and clear but no live stream command or status."
+    - path: "src/scripts/boop/boop_ui_registry.lua"
+      issue: "Diagnostics help and controls do not describe or expose live trace streaming."
+    - path: "tests/boop_trace_spec.lua"
+      issue: "Trace tests cover buffered evidence but not default-off live output, one-print-per-entry behavior, or recursion prevention."
+  missing:
+    - "Add session-only boop trace live on|off control with visible status and no config persistence."
+    - "Echo each newly appended trace entry exactly once in the existing timestamped trace format while live mode is enabled."
+    - "Keep trace collection independently controllable and prevent live output from feeding back into boop.trace.log."
+    - "Update diagnostics help and regression coverage for default-off, enable, disable, reload reset, and buffer parity."
