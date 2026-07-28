@@ -308,6 +308,8 @@ describe("boop event-driven state transitions", function()
       putRetries = operation.putRetries,
       flushTimer = operation.flushTimer,
       timeoutTimer = operation.timeoutTimer,
+      revalidationAttempted = operation.revalidationAttempted,
+      revalidationFenceId = operation.revalidationFenceId,
     }
   end
 
@@ -1823,6 +1825,161 @@ describe("boop event-driven state transitions", function()
 
     assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK command hound at 43", false)
     assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
+  end)
+
+  describe("G-03-5 settled-add-revalidation", function()
+    local function seedSettledNonGoldRoom()
+      _G.demonwalker = {
+        enabled = true,
+        init = function() return true end,
+      }
+      boop.config.enabled = true
+      boop.config.autoGrabGold = true
+      boop.config.useQueueing = false
+      boop.config.goldPack = ""
+      boop.config.targetingMode = "auto"
+      boop.config.prequeueEnabled = true
+      boop.state.targeting.room = "1"
+      gmcp.Room.Info = {
+        num = "1",
+        area = "Test Area",
+        exits = {},
+      }
+      local denizens = {
+        denizenItem("42", "a first denizen"),
+        denizenItem("43", "a second denizen"),
+      }
+      helper.setDenizens(denizens)
+      helper.setTarget("42", "a first denizen", "80%")
+      helper.seedRoomObservation("1", {
+        generation = 5,
+        infoSeen = true,
+        itemsSeen = true,
+        acceptedItems = denizens,
+      })
+      local state = boop.runtime.state()
+      state.walk.active = true
+      state.walk.owned = false
+      state.walk.roomSettled = true
+      state.walk.moveQueued = false
+      state.walk.arrivalRoom = "1"
+      state.walk.generation = 44
+      state.walk.roomGeneration = 5
+      state.walk.moveIssuedForRoomGeneration = false
+      state.walk.reservationId = 0
+      helper.setRuntimeBlocker({
+        owner = "test:retained",
+        code = "interrupt_pending",
+        label = "retained unrelated owner",
+        systems = {
+          combat = true,
+          queue = true,
+          gold = true,
+          walk = true,
+        },
+        waitsFor = { timeout = true },
+      })
+      captureRuntimeBlockerCalls()
+      return denizens
+    end
+
+    local function publishGoldAdd(id)
+      gmcp.Char.Items.Add = {
+        location = "room",
+        item = goldItem(id),
+      }
+      boop.onRoomItemsAdd()
+    end
+
+    it("retargets while exact gold and unrelated owners keep all downstream work held", function()
+      local denizens = seedSettledNonGoldRoom()
+      publishGoldAdd("9001")
+
+      local operation = copyGoldOperation(boop.state.gold.operation)
+      assert.are.equal("deferred_room", operation.phase)
+      assert.are.equal("gold:1", operation.blockerOwner)
+      assert.is_true(operation.revalidationAttempted)
+      assert.are.same({ "Char.Items.Room" }, gmcp_requests)
+      assert.is_table(blockerFor(operation.blockerOwner))
+      assert.is_table(blockerFor("test:retained"))
+
+      gmcp.Char.Items.Remove = {
+        location = "room",
+        item = denizens[1],
+      }
+      boop.onRoomItemsRemove()
+      assert.are.equal("43", boop.state.targeting.currentTargetId)
+      assert.is_table(blockerFor(operation.blockerOwner))
+      assert.is_true(boop.runtime.shouldHold("queue"))
+
+      local retargetCallback = scheduled_callbacks[#scheduled_callbacks].callback
+      assert.is_function(retargetCallback)
+      retargetCallback()
+      assert.are.equal(0, countGoldSends())
+      assert.are.equal(0, countSent("queue clear"))
+      assert.are.equal(0, countSent("command hound at 43"))
+      assert.are.equal(0, countSent("harry 43"))
+      assert.are.equal(0, countSent("setalias BOOP_ATTACK command hound at 43"))
+      assert.are.equal(0, countRaised("demonwalker.move"))
+
+      publishItemsList("room", {
+        denizens[2],
+        goldItem("9001"),
+      })
+
+      local accepted = copyGoldOperation(boop.state.gold.operation)
+      assert.are.equal(operation.generation, accepted.generation)
+      assert.are.equal("pickup_pending", accepted.phase)
+      assert.is_table(blockerFor(accepted.blockerOwner))
+      assert.is_table(blockerFor("test:retained"))
+      assert.are.equal(0, countGoldSends())
+      assert.are.equal(0, countRaised("demonwalker.move"))
+
+      boop.runtime.clearBlocker("test:retained", "real release")
+      assert.is_true(boop.flushPendingGold("unrelated owner released"))
+      assert.are.equal(1, countGoldSends())
+      assert.are.equal(0, countSent("queue clear"))
+      assert.are.equal(0, countRaised("demonwalker.move"))
+    end)
+
+    it("drains a moved-room response without gold, attack, or walk side effects", function()
+      seedSettledNonGoldRoom()
+      publishGoldAdd("9001")
+
+      local operation = copyGoldOperation(boop.state.gold.operation)
+      local oldFence = boop.runtime.roomObservationSnapshot().fenceQueue[1]
+      assert.is_table(oldFence)
+      assert.are.equal("await_room", oldFence.phase)
+      assert.are.equal(operation.revalidationFenceId, oldFence.fenceId)
+
+      publishGoldAdd("9001")
+      assert.are.same({ "Char.Items.Room" }, gmcp_requests)
+
+      gmcp.Room.Info = {
+        num = "2",
+        area = "Moved Room",
+        exits = { south = "1" },
+      }
+      boop.onRoomInfo()
+
+      assert.is_false(boop.state.gold.operation)
+      assert.is_nil(blockerFor(operation.blockerOwner))
+      assert.is_table(blockerFor("test:retained"))
+      local moved = boop.runtime.roomObservationSnapshot()
+      assert.is_false(moved.itemsSeen)
+      assert.are.equal(0, boop.runtime.state().walk.reservationId)
+
+      publishItemsList("room", { goldItem("9001") })
+
+      local drained = boop.runtime.roomObservationSnapshot()
+      assert.is_false(drained.itemsSeen)
+      assert.is_false(boop.state.gold.operation)
+      assert.is_table(blockerFor("test:retained"))
+      assert.are.equal(0, countGoldSends())
+      assert.are.equal(0, countSent("queue clear"))
+      assert.are.equal(0, countRaised("demonwalker.move"))
+      assert.are.equal(0, countRaised("demonwalker.stop"))
+    end)
   end)
 
   it("cleans target intent without attacking or executing prequeue while gold owns the queue", function()

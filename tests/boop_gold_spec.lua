@@ -42,6 +42,8 @@ describe("boop staged gold handling", function()
       putRetries = operation.putRetries,
       flushTimer = operation.flushTimer,
       timeoutTimer = operation.timeoutTimer,
+      revalidationAttempted = operation.revalidationAttempted,
+      revalidationFenceId = operation.revalidationFenceId,
     }
   end
 
@@ -478,6 +480,110 @@ describe("boop staged gold handling", function()
       countSent("queue add freestand get sovereigns"),
       "GOLD_SAME_ROOM_PIPELINE_BROKEN: copied accepted evidence depended on persistent GMCP"
     )
+  end)
+
+  describe("G-03-5 settled-add-revalidation", function()
+    it("revalidates one exact settled Add without treating the Add as canonical evidence", function()
+      boop.config.goldPack = "pack"
+      local denizen = {
+        id = "42",
+        name = "a settled room denizen",
+        attrib = "m",
+      }
+      setCurrentRoomEvidence({ denizen }, 7)
+
+      publishGoldAdd("9001")
+
+      local deferred = currentOperation()
+      local observation = boop.runtime.roomObservationSnapshot()
+      local fence = observation.fenceQueue[1]
+      assert.are.equal(1, deferred.generation)
+      assert.are.equal("deferred_room", deferred.phase)
+      assert.are.equal("gold:1", deferred.blockerOwner)
+      assert.are.equal("1", deferred.roomId)
+      assert.are.equal(7, deferred.roomGeneration)
+      assert.are.equal("9001", deferred.goldItemId)
+      assert.is_true(deferred.revalidationAttempted)
+      assert.are.equal(fence.fenceId, deferred.revalidationFenceId)
+      assert.are.equal("await_room", fence.phase)
+      assert.is_true(fence.roomOnly)
+      assert.are.same({ denizen }, observation.acceptedItems)
+      assert.are.same({ "Char.Items.Room" }, sent_gmcp)
+      assert.are.equal(0, countSent("queue add freestand get sovereigns"))
+      assert.are.equal(3, #scheduled)
+
+      local generation = deferred.generation
+      local fenceId = deferred.revalidationFenceId
+      publishGoldAdd("9001")
+      boop.onGoldDropLine("More sovereigns spill onto the ground.")
+      local callbacks = {}
+      for _, entry in ipairs(scheduled) do
+        callbacks[#callbacks + 1] = entry.callback
+      end
+      for _, callback in ipairs(callbacks) do
+        callback()
+      end
+
+      deferred = currentOperation()
+      assert.are.equal(generation, deferred.generation)
+      assert.are.equal(fenceId, deferred.revalidationFenceId)
+      assert.are.same({ "Char.Items.Room" }, sent_gmcp)
+      assert.are.equal(0, countSent("queue add freestand get sovereigns"))
+
+      gmcp.Char.Items.List = {
+        location = "inv",
+        items = { goldItem("9001") },
+      }
+      boop.onRoomItemsList()
+
+      observation = boop.runtime.roomObservationSnapshot()
+      assert.are.same({ denizen }, observation.acceptedItems)
+      assert.are.equal("deferred_room", currentOperation().phase)
+      assert.are.equal(0, countSent("queue add freestand get sovereigns"))
+
+      gmcp.Char.Items.List = {
+        location = "room",
+        items = { denizen, goldItem("9001") },
+      }
+      boop.onRoomItemsList()
+
+      local pickup = currentOperation()
+      assert.are.equal(generation, pickup.generation)
+      assert.are.equal("pickup_pending", pickup.phase)
+      assert.are.equal("gold:1", pickup.blockerOwner)
+      assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+
+      boop.onRoomItemsList()
+      assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+      assert.is_true(boop.onGoldGetSuccess())
+      assert.is_false(boop.onGoldGetSuccess())
+      assert.are.equal(
+        1,
+        countSent("queue add freestand put sovereigns in pack")
+      )
+      assert.is_true(boop.onGoldPutSuccess())
+      assert.is_false(boop.onGoldPutSuccess())
+      assert.is_false(boop.state.gold.operation)
+
+      local settled = boop.runtime.roomObservationSnapshot()
+      helper.seedRoomObservation("1", {
+        generation = settled.generation,
+        infoSeen = true,
+        itemsSeen = true,
+        acceptedItems = { denizen },
+        nextFenceId = settled.nextFenceId,
+      })
+      publishGoldAdd("9002")
+
+      local later = currentOperation()
+      assert.are.equal(generation + 1, later.generation)
+      assert.is_true(later.revalidationAttempted)
+      assert.are.same({
+        "Char.Items.Room",
+        "Char.Items.Room",
+      }, sent_gmcp)
+      assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+    end)
   end)
 
   it("dispatches only the supplied combat action without gold prefixing or mark-intent", function()
