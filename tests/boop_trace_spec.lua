@@ -326,3 +326,226 @@ describe("boop trace gmcp events", function()
     )
   end)
 end)
+
+describe("boop trace live session semantics", function()
+  local feedback
+  local originalFeedback
+  local originalSaveConfig
+
+  before_each(function()
+    helper.reset()
+    feedback = {}
+    originalFeedback = boop.util.feedback
+    originalSaveConfig = boop.db.saveConfig
+    boop.util.feedback = function(kind, message)
+      feedback[#feedback + 1] = {
+        kind = tostring(kind or ""),
+        message = tostring(message or ""),
+      }
+    end
+  end)
+
+  after_each(function()
+    boop.util.feedback = originalFeedback
+    boop.db.saveConfig = originalSaveConfig
+  end)
+
+  local function feedbackMessages(kind)
+    local messages = {}
+    for _, entry in ipairs(feedback) do
+      if not kind or entry.kind == kind then
+        messages[#messages + 1] = entry.message
+      end
+    end
+    return messages
+  end
+
+  local function feedbackText()
+    local messages = {}
+    for _, entry in ipairs(feedback) do
+      messages[#messages + 1] = entry.kind .. " " .. entry.message
+    end
+    return table.concat(messages, "\n")
+  end
+
+  it("G-03-6 fresh runtime state keeps trace live off", function()
+    assert.is_false(boop.state.trace.live)
+  end)
+
+  it("G-03-6 package reload reset executes before bootstrap early return", function()
+    local repoRoot = assert(
+      os.getenv("BOOP_REPO_ROOT"),
+      "BOOP_REPO_ROOT env var is required"
+    )
+    local priorBootstrapped = boop.bootstrapped
+    local buffer = {
+      "10:11:12 | sentinel one",
+      "10:11:13 | sentinel two",
+    }
+    boop.state.trace.buffer = buffer
+    boop.state.trace.live = true
+    boop.bootstrapped = true
+
+    local ok, err = pcall(
+      dofile,
+      repoRoot .. "/src/scripts/boop/boop_bootstrap.lua"
+    )
+    boop.bootstrapped = priorBootstrapped
+
+    assert.is_true(ok, tostring(err))
+    assert.is_false(boop.state.trace.live)
+    assert.are.equal(buffer, boop.state.trace.buffer)
+    assert.are.same({
+      "10:11:12 | sentinel one",
+      "10:11:13 | sentinel two",
+    }, boop.state.trace.buffer)
+  end)
+
+  it("G-03-6 trace live toggles session state without persistence or collection changes", function()
+    local saved = {}
+    boop.db.saveConfig = function(key, value)
+      saved[#saved + 1] = {
+        key = key,
+        value = value,
+      }
+    end
+    boop.config.traceEnabled = false
+
+    boop.ui.traceCommand("live", "on")
+
+    assert.is_true(boop.state.trace.live)
+    assert.is_false(boop.config.traceEnabled)
+    assert.are.same({}, saved)
+    assert.is_true(
+      feedbackText():find(
+        "trace live: on | collection remains off",
+        1,
+        true
+      ) ~= nil
+    )
+
+    boop.ui.traceCommand("live", "off")
+
+    assert.is_false(boop.state.trace.live)
+    assert.is_false(boop.config.traceEnabled)
+    assert.are.same({}, saved)
+    assert.is_true(
+      feedbackText():find("trace live: off", 1, true) ~= nil
+    )
+  end)
+
+  it("G-03-6 collection off suppresses both append and live output", function()
+    boop.config.traceEnabled = false
+    boop.state.trace.live = true
+
+    boop.trace.log("collection disabled")
+
+    assert.are.equal(0, #boop.state.trace.buffer)
+    assert.are.equal(0, #feedback)
+  end)
+
+  it("G-03-6 live output matches each accepted append exactly once without recursion", function()
+    boop.config.traceEnabled = true
+    boop.state.trace.live = true
+
+    boop.trace.log("first accepted entry")
+    local first = boop.state.trace.buffer[1]
+
+    assert.are.equal(1, #boop.state.trace.buffer)
+    assert.are.same({
+      "trace live: " .. first,
+    }, feedbackMessages("INFO"))
+
+    boop.trace.log("second accepted entry")
+    local second = boop.state.trace.buffer[2]
+
+    assert.are.equal(2, #boop.state.trace.buffer)
+    assert.are.same({
+      "trace live: " .. first,
+      "trace live: " .. second,
+    }, feedbackMessages("INFO"))
+  end)
+
+  it("G-03-6 live off keeps accepted appends silent", function()
+    boop.config.traceEnabled = true
+    boop.state.trace.live = false
+
+    boop.trace.log("buffer only")
+
+    assert.are.equal(1, #boop.state.trace.buffer)
+    assert.is_true(
+      boop.state.trace.buffer[1]:find(
+        " | buffer only",
+        1,
+        true
+      ) ~= nil
+    )
+    assert.are.equal(0, #feedback)
+  end)
+
+  it("G-03-6 show clear and trim preserve their existing buffer contract", function()
+    boop.config.traceEnabled = true
+    boop.state.trace.live = false
+    for index = 1, 101 do
+      boop.trace.log("trim entry " .. tostring(index))
+    end
+
+    assert.are.equal(100, #boop.state.trace.buffer)
+    assert.is_nil(
+      table.concat(boop.state.trace.buffer, "\n"):find(
+        "trim entry 1\n",
+        1,
+        true
+      )
+    )
+    assert.is_true(
+      boop.state.trace.buffer[100]:find(
+        " | trim entry 101",
+        1,
+        true
+      ) ~= nil
+    )
+
+    boop.state.trace.live = true
+    local beforeShow = boop.state.trace.buffer
+    boop.trace.show(1)
+
+    assert.are.equal(beforeShow, boop.state.trace.buffer)
+    assert.are.equal(100, #boop.state.trace.buffer)
+    assert.are.same({
+      "trace: showing 1/100",
+      "  " .. boop.state.trace.buffer[100],
+    }, feedbackMessages("INFO"))
+
+    boop.trace.clear()
+
+    assert.are.equal(0, #boop.state.trace.buffer)
+    assert.is_true(boop.state.trace.live)
+    assert.is_true(
+      feedbackText():find("trace: cleared", 1, true) ~= nil
+    )
+  end)
+
+  it("G-03-6 bare status and invalid live values distinguish both modes", function()
+    boop.config.traceEnabled = true
+    boop.state.trace.live = false
+
+    boop.ui.traceCommand("")
+    boop.ui.traceCommand("live", "maybe")
+
+    local text = feedbackText()
+    assert.is_true(
+      text:find("trace: collection on | live off", 1, true) ~= nil
+    )
+    assert.is_true(
+      text:find("trace live expects on|off", 1, true) ~= nil
+    )
+    assert.is_true(
+      text:find(
+        "boop trace on|off|live on|off|show [n]|clear",
+        1,
+        true
+      ) ~= nil
+    )
+  end)
+end)
