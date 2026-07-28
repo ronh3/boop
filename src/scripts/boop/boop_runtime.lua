@@ -267,9 +267,35 @@ function boop.runtime.observeRoomInfo(roomId, opts)
   return boop.runtime.roomObservationSnapshot()
 end
 
-function boop.runtime.beginRoomResponseFence(reason)
+local function currentRoomId()
+  return normalizeRoomId(
+    gmcp
+      and gmcp.Room
+      and gmcp.Room.Info
+      and gmcp.Room.Info.num
+      or ""
+  )
+end
+
+function boop.runtime.beginRoomResponseFence(reason, opts)
+  opts = type(opts) == "table" and opts or {}
   local observation = roomObservationState()
-  if not observation.infoSeen
+  local roomOnly = opts.roomOnly == true
+  if roomOnly then
+    local expectedRoomId = normalizeRoomId(opts.roomId)
+    local expectedGeneration = tonumber(opts.generation)
+    if not observation.infoSeen
+        or not observation.itemsSeen
+        or observation.roomId == ""
+        or observation.activeFenceId
+        or expectedRoomId == ""
+        or expectedRoomId ~= observation.roomId
+        or expectedGeneration == nil
+        or expectedGeneration ~= tonumber(observation.generation)
+        or currentRoomId() ~= observation.roomId then
+      return false
+    end
+  elseif not observation.infoSeen
       or observation.itemsSeen
       or observation.roomId == ""
       or observation.refreshAttempted then
@@ -281,8 +307,13 @@ function boop.runtime.beginRoomResponseFence(reason)
     fenceId = fenceId,
     generation = observation.generation,
     roomId = observation.roomId,
-    phase = "await_inv",
+    phase = roomOnly and "await_room" or "await_inv",
     valid = true,
+    roomOnly = roomOnly,
+    fenceType = roomOnly and "room_revalidation" or "observation",
+    operationGeneration = roomOnly
+      and tonumber(opts.operationGeneration)
+      or false,
   }
   observation.fenceQueue[#observation.fenceQueue + 1] = fence
   observation.activeFenceId = fenceId
@@ -302,8 +333,16 @@ end
 
 function boop.runtime.timeoutRoomResponseFence(fenceId, timerId)
   local observation = roomObservationState()
+  local activeFence = false
+  for _, fence in ipairs(observation.fenceQueue) do
+    if tonumber(fence and fence.fenceId) == tonumber(fenceId) then
+      activeFence = fence
+      break
+    end
+  end
   if tonumber(observation.activeFenceId) ~= tonumber(fenceId)
-      or observation.itemsSeen
+      or type(activeFence) ~= "table"
+      or (observation.itemsSeen and activeFence.roomOnly ~= true)
       or observation.refreshTimeoutTimer ~= timerId then
     return false
   end
@@ -313,16 +352,6 @@ function boop.runtime.timeoutRoomResponseFence(fenceId, timerId)
   end
   observation.warned = true
   return true
-end
-
-local function currentRoomId()
-  return normalizeRoomId(
-    gmcp
-      and gmcp.Room
-      and gmcp.Room.Info
-      and gmcp.Room.Info.num
-      or ""
-  )
 end
 
 function boop.runtime.observeRoomItemsList(location, items)

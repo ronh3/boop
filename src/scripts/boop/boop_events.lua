@@ -315,11 +315,11 @@ local function warnRoomResponseFence(fence, timerId)
   return true
 end
 
-function boop.requestRoomItemsOnce(reason)
+local function requestRoomItemsForFence(reason, opts)
   if not (runtime() and boop.runtime.beginRoomResponseFence) then
     return false
   end
-  local fence = boop.runtime.beginRoomResponseFence(reason)
+  local fence = boop.runtime.beginRoomResponseFence(reason, opts)
   if not fence then return false end
 
   local timerId = false
@@ -331,14 +331,20 @@ function boop.requestRoomItemsOnce(reason)
   end
 
   if sendGMCP then
-    sendGMCP([[Char.Items.Inv]])
+    if not fence.roomOnly then
+      sendGMCP([[Char.Items.Inv]])
+    end
     sendGMCP([[Char.Items.Room]])
   else
     if timerId and killTimer then killTimer(timerId) end
     boop.runtime.setRoomResponseFenceTimer(fence.fenceId, false)
     warnRoomResponseFence(fence, false)
   end
-  return true
+  return fence
+end
+
+function boop.requestRoomItemsOnce(reason)
+  return requestRoomItemsForFence(reason) and true or false
 end
 
 local function noteTargetGmcpObserved()
@@ -559,6 +565,42 @@ local function canonicalGoldEvidence(
     expectedItem
   )
   return goldItem ~= nil, goldItem
+end
+
+local function requestGoldRoomRevalidation(operation, observation)
+  local active = currentGoldOperation(
+    operation and operation.generation,
+    GOLD_PHASE.DEFERRED_ROOM
+  )
+  if active ~= operation or operation.revalidationAttempted then
+    return false
+  end
+  observation = type(observation) == "table" and observation or {}
+  if observation.infoSeen ~= true
+      or observation.itemsSeen ~= true
+      or observation.activeFenceId
+      or tostring(observation.roomId or "") ~= tostring(operation.roomId or "")
+      or tonumber(observation.generation) ~= tonumber(operation.roomGeneration)
+      or tostring(operation.goldItemId or "") == "" then
+    return false
+  end
+
+  operation.revalidationAttempted = true
+  operation.revalidationFenceId = false
+  local fence = requestRoomItemsForFence(
+    "gold Add awaiting current room revalidation",
+    {
+      roomOnly = true,
+      roomId = operation.roomId,
+      generation = operation.roomGeneration,
+      operationGeneration = operation.generation,
+    }
+  )
+  if not fence then
+    return false
+  end
+  operation.revalidationFenceId = fence.fenceId
+  return true
 end
 
 local function goldDispatchAuthorized(operation)
@@ -813,8 +855,11 @@ startGoldOperation = function(source, observation, packTarget)
     return false
   end
   local requestedItemId = tostring(observation.goldItemId or "")
-  local expectedItemId = operation
+  local operationItemId = operation
     and tostring(operation.goldItemId or "")
+    or ""
+  local expectedItemId = operationItemId ~= ""
+    and operationItemId
     or requestedItemId
   local evidenceComplete, currentGoldItem = canonicalGoldEvidence(
     observation,
@@ -861,6 +906,11 @@ startGoldOperation = function(source, observation, packTarget)
       boop.markGoldQueueIntent(operation.packTarget)
       return operation
     else
+      if operation.phase == GOLD_PHASE.DEFERRED_ROOM
+          and tostring(operation.goldItemId or "") == ""
+          and requestedItemId ~= "" then
+        operation.goldItemId = requestedItemId
+      end
       return operation
     end
   end
@@ -886,6 +936,8 @@ startGoldOperation = function(source, observation, packTarget)
     putRetries = 0,
     flushTimer = false,
     timeoutTimer = false,
+    revalidationAttempted = false,
+    revalidationFenceId = false,
   }
   state.gold.operation = operation
 
@@ -1018,19 +1070,24 @@ local function maybeFlushPendingGold(reason)
   return flushPendingGold(reason or "gold stage ready")
 end
 
-local function onGoldDetected(source, item)
+local function onGoldDetected(source, item, opts)
   if not boop.config.enabled or not boop.config.autoGrabGold then return end
+  opts = type(opts) == "table" and opts or {}
   local observation = runtime()
     and boop.runtime.roomObservationSnapshot
     and boop.runtime.roomObservationSnapshot()
     or {}
   observation.goldItemId = tostring(item and item.id or "")
   boop.trace.log("gold drop detected" .. (source and (": " .. source) or ""))
-  startGoldOperation(
+  local operation = startGoldOperation(
     source,
     observation,
     boop.util.trim(boop.config.goldPack or "")
   )
+  if opts.revalidateSettledAdd then
+    requestGoldRoomRevalidation(operation, observation)
+  end
+  return operation
 end
 
 flushPendingGold = function(reason)
@@ -1054,9 +1111,14 @@ end
 boop.flushPendingGold = flushPendingGold
 boop.maybeFlushPendingGold = maybeFlushPendingGold
 
-local function autoGrabRoomItem(item)
+local function autoGrabRoomItem(item, opts)
   if not isGoldItem(item) then return end
-  onGoldDetected("gmcp room item", item)
+  opts = type(opts) == "table" and opts or {}
+  onGoldDetected(
+    opts.source or "gmcp room item",
+    item,
+    opts
+  )
 end
 
 function boop.onGoldDropLine(rawLine)
@@ -1240,7 +1302,10 @@ function boop.onRoomItemsAdd()
   local item = gmcp.Char.Items.Add.item
   traceRoomItemEvent("add", item)
   boop.targets.addRoomItem(item)
-  autoGrabRoomItem(item)
+  autoGrabRoomItem(item, {
+    source = "gmcp room item Add",
+    revalidateSettledAdd = true,
+  })
 end
 
 function boop.onRoomItemsRemove()
