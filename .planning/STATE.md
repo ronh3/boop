@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Pre-1.0 Hardening
 current_phase: 03
-current_phase_name: Queue, Interrupt, Gold, and Autowalk Regression Coverage
-status: awaiting_verification
-stopped_at: Completed 03-15-PLAN.md
-last_updated: "2026-07-27T12:13:59.710Z"
-last_activity: 2026-07-27
-last_activity_desc: Plan 03-15 implementation complete; exact-SHA CI and live UAT pending
+current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
+status: executing
+stopped_at: Completed 03-16-PLAN.md
+last_updated: "2026-07-28T07:42:49.961Z"
+last_activity: 2026-07-28
+last_activity_desc: Plan 03-16 complete; Plan 03-17 ready
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 29
-  completed_plans: 29
-  percent: 100
+  total_plans: 33
+  completed_plans: 30
+  percent: 91
 ---
 
 # Project State
@@ -24,24 +24,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-09)
 
 **Core value:** boop must make Achaea hunting safer, clearer, and less noisy without taking control away from the operator.
-**Current focus:** Phase 03 — Queue, Interrupt, Gold, and Autowalk Regression Coverage
+**Current focus:** Phase 03 — queue-interrupt-gold-and-autowalk-regression-coverage
 
 ## Current Position
 
-Phase: 03 (Queue, Interrupt, Gold, and Autowalk Regression Coverage) — AWAITING VERIFICATION
-Plan: 15 of 15 complete
-Status: Awaiting parent exact-final-SHA CI before live UAT
-Last activity: 2026-07-27 — Plan 03-15 implementation complete; exact-SHA CI and live UAT pending
+Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
+Plan: 17 of 19
+Status: Ready to execute Plan 03-17
+Last activity: 2026-07-28 — Plan 03-16 complete; Plan 03-17 ready
 
-Progress: [██████████] 100%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 29
+- Total plans completed: 30
 - Average duration: 14 min
-- Total execution time: 6.8 hours
+- Total execution time: 6.9 hours
 
 **By Phase:**
 
@@ -49,12 +49,12 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 15/15 | 180m | 12 min |
+| 03 | 16/19 | 186m | 12 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 03 P11 (17m), Phase 03 P12 (7m), Phase 03 P13 (11m), Phase 03 P14 (11m), Phase 03 P15 (3m)
-- Trend: All Phase 03 plans are implemented; exact-final-SHA CI and live UAT remain pending
+- Last 5 plans: Phase 03 P12 (7m), Phase 03 P13 (11m), Phase 03 P14 (11m), Phase 03 P15 (3m), Phase 03 P16 (6m)
+- Trend: Plan 03-16 closed settled-Add gold revalidation; three sequential gap plans remain before terminal CI and live UAT
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -74,6 +74,7 @@ Progress: [██████████] 100%
 | Phase 03 P13 | 11m | 2 tasks | 7 files |
 | Phase 03 P14 | 11m | 3 tasks | 10 files |
 | Phase 03 P15 | 3m | 3 tasks | 7 files |
+| Phase 03 P16 | 6m | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Reuse the exact gmcp:ire owner and reconcile current IRE at explicit lifecycle and event boundaries without support requests on evidence-only paths.
 - [Phase 03]: Warn on incomplete room-response fences at 8.0 seconds while retaining room:observation fail closed.
 - [Phase 03]: Plan 03-15 kept exact owner and timer identity canonical, preserved host-versus-real-Mudlet authority boundaries, and left exact-SHA CI and live UAT to the parent.
+- [Phase 03]: Plan 03-16 keeps settled Item.Add non-canonical and spends one exact-operation Char.Items.Room revalidation allowance.
+- [Phase 03]: Plan 03-16 starts room-only fences at await_room while preserving ordinary Inv-to-Room observation fences and aggregate owner gates.
 
 ### Pending Todos
 
@@ -140,7 +143,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Plan 03-15 restored the two diagnose-timeout contracts, three operation-owned pull timer contracts, and lifecycle suite isolation.
+- Plan 03-16 closed G-03-5 with one exact-operation room-only revalidation while preserving copied List authority and aggregate blockers.
 - Local real-Mudlet execution remains unavailable; the Occultist-only host helper is not authoritative for unchanged Psion and Dragon pull profiles.
 - Parent exact-final-HEAD CI and live Achaea UAT remain blocking external gates before Phase 03 can be marked complete.
 
@@ -160,6 +163,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-27T12:12:45.581Z
-Stopped at: Completed 03-15-PLAN.md
+Last session: 2026-07-28T07:41:57.290Z
+Stopped at: Completed 03-16-PLAN.md
 Resume file: None
