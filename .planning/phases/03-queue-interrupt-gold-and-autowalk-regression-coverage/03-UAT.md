@@ -1,17 +1,19 @@
 ---
-status: diagnosed
+status: testing
 phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-27T23:49:31-07:00
+updated: 2026-07-28T01:21:54-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
 
 ## Current Test
 
-[testing complete]
+number: 2
+name: Corrected manual-targeting walk and stop flow
+awaiting: user response
 
 ## Tests
 
@@ -46,7 +48,7 @@ observed: "Clean reconnect, prompt-first, and enable-before-prompt checks passed
 ### 2. Cross-owner attack, loot, and walk release
 
 expected: |
-  With boop 0.1.434 installed, manual targeting remains an intentional
+  With boop 0.1.440 installed, manual targeting remains an intentional
   automatic-walk hold and is reported as `manual_targeting`, not `room_clear`.
   Room settlement accepts the live GMCP ordering, same-room refreshes preserve
   the accepted room, and stop/restart cannot reuse stale evidence. No automatic
@@ -78,24 +80,42 @@ expected: |
   6. Run `boop trace show 100`. There must be no `room_partial` hold that
      persists until an unrelated later GMCP event, no ordinary sub-8-second
      room warning, and at most one walker move per settled room.
-result: issue
-reported: "boop walk stop doesn't return any sort of message when running in step 1. After doing boop walk start, no movement is done. blocker shown is room_clear -- room clear. This is after seeing the same issue, and completely restarting mudlet."
-severity: major
+result: pending
+previous_reported: "boop walk stop doesn't return any sort of message when running in step 1. After doing boop walk start, no movement is done. blocker shown is room_clear -- room clear. This is after seeing the same issue, and completely restarting mudlet."
+previous_severity: major
 previous_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room Info created a new partial generation and stalled the walker."
 
 ### 3. Wrong-room gold and pack transfer
 
 expected: |
-  With boop 0.1.429 installed, current-room gold queues one get without requiring exit/re-entry. Same-room Room.Info preserves pickup, actual movement cancels room-owned acquisition, and confirmed pickup permits exactly one inventory-owned put even if movement follows. No loot command is chained with an attack.
+  With boop 0.1.440 installed, a gold Item.Add in an already settled room
+  requests one current-room revalidation but cannot authorize pickup by itself.
+  Only the matching fenced room List may queue one get. Confirmed pickup may
+  queue one put, while stale, duplicate, wrong-room, and movement-invalidated
+  responses do nothing. Completing or cancelling gold must release its owner so
+  hunting and walking cannot remain permanently jammed.
 
   Easy check:
-  1. Stop the walker, then run `boop on`, `boop trace clear`, `boop trace on`, `boop autogold on`, and configure a valid `boop pack <container>`.
-  2. Kill one mob and stay in the room. Immediately after the get is queued, run `ql`. The get must not be cancelled by the same-room refresh, and the gold must be put in the configured pack without leaving and re-entering.
-  3. Repeat and move to the next room before pickup confirms. Wait five seconds; no old-room get or retry may be sent in the new room.
-  4. Repeat once more, but move only after pickup confirms or `gold_pack_pending` appears. Exactly one put may finish after movement. Run `boop trace show 100` and confirm no standard/rage attack command contains get or put.
-result: issue
-reported: "Check output.md. Does not appear to be working whatsoever. Actual hunting is also broken, it seems. It will sometimes attack the first mob in the room, but then gets jammed up."
-severity: blocker
+  1. Stop the walker, then run `boop on`, `boop trace clear`,
+     `boop trace on`, `boop trace live on`, `boop autogold on`, and configure
+     a valid `boop pack <container>`.
+  2. Kill one mob and stay in the room. The live trace should show one
+     room-only revalidation after the gold Add, followed by exactly one get
+     only after the matching room List. Pickup confirmation should permit
+     exactly one put without requiring exit and re-entry.
+  3. Repeat, but move immediately after the gold drop and before pickup.
+     Wait five seconds. No old-room get, retry, put, attack, or walker move may
+     be emitted from the invalidated response.
+  4. Repeat once more while `diag` owns an unrelated hold. Gold may revalidate,
+     but no get, put, attack, or walker move may occur until every owner clears.
+     After the final owner clears, exactly one eligible action may resume and
+     hunting must not remain jammed.
+  5. Run `boop trace show 100`. Confirm no standard/rage attack command
+     contains get or put, no gold generation dispatches twice, and stale room
+     responses have no side effects.
+result: pending
+previous_reported: "Check output.md. Does not appear to be working whatsoever. Actual hunting is also broken, it seems. It will sometimes attack the first mob in the room, but then gets jammed up."
+previous_severity: blocker
 previous_blocker: "Gold was recognized in GMCP, but the reconnect snapshot showed boop enabled=false and gmcp_ire_missing was waiting for prompt evidence."
 previous_result: "Before Plans 03-11/03-13, pickup required exit/re-entry and a same-room Room.Info cancelled the queued get before packing."
 
@@ -117,28 +137,45 @@ expected: |
   The immutable final commit is present on origin and `main.yml` succeeds for
   that exact `headSha`. The complete packaged real-Mudlet Busted suite,
   including Psion and Dragon pull-profile cases, reports no failures or errors.
-result: pass
+result: pending
 source: automated
-evidence: "GitHub Actions run 30265771025 passed for 07d73e8b38823277a8132cbcded2ea9f88e92f08."
+previous_evidence: "GitHub Actions run 30265771025 passed for pre-gap SHA 07d73e8b38823277a8132cbcded2ea9f88e92f08."
 
 ### 6. Live trace correlation
 
 expected: |
-  While tracing is enabled, the operator can opt into a session-only live
-  stream that prints each newly buffered trace entry once in the same
-  timestamped format used by `boop trace show`. The stream is off by default,
-  can be disabled without disabling trace collection, does not persist across
-  package reloads, and cannot recursively trace its own output.
-result: issue
-reported: "Could we introduce a debug mode that will essentially show the trace log events/actions in real time? I feel that might be handy here, to help correlate what's on the screen with boop's logs."
-severity: minor
+  With boop 0.1.440 installed, `boop trace live on|off` controls a
+  session-only stream independently from persisted trace collection. Live mode
+  is off after package load, never enables collection, prints each accepted
+  timestamped entry exactly once without tracing itself, and resets off on
+  package reload while retaining the buffer and persisted collection setting.
+
+  Easy check:
+  1. Run `boop trace off`, `boop trace clear`, then
+     `boop trace live on`. It should report that live is on while collection
+     remains off. Run `ql`; no live trace line and no buffered entry should
+     appear.
+  2. Run `boop trace on`, then `ql`. Each collected event should print once as
+     `trace live: HH:MM:SS | ...`; none of those output lines may create
+     another trace entry.
+  3. Run `boop trace show 100`, then `boop trace clear`. Show must not add
+     entries; clear must empty the buffer without turning live off.
+  4. Reload/reinstall boop in the same Mudlet session. Run `boop trace`.
+     Collection should retain its saved on/off setting, live must be off, and
+     the pre-reload buffer must still be present unless it was cleared in
+     step 3.
+  5. Run `boop help diagnostics` and confirm collection and live streaming are
+     described as separate controls.
+result: pending
+previous_reported: "Could we introduce a debug mode that will essentially show the trace log events/actions in real time? I feel that might be handy here, to help correlate what's on the screen with boop's logs."
+previous_severity: minor
 
 ## Summary
 
 total: 6
-passed: 3
-issues: 3
-pending: 0
+passed: 2
+issues: 0
+pending: 4
 skipped: 0
 blocked: 0
 
@@ -244,7 +281,7 @@ blocked: 0
 
 - gap_id: G-03-5
   truth: "A live gold drop advances from current-room evidence to get and pack without indefinitely blocking retargeted hunting."
-  status: diagnosed
+  status: resolved
   reason: "User reported that gold handling did not appear to work and normal hunting attacked inconsistently before jamming. output.md shows gold:3 entering gold_deferred_room at 23:31:57 after a current-room gold add, retargeting the next denizen, then holding the combat queue for more than 40 seconds until later manual room refresh/movement."
   severity: blocker
   test: 3
@@ -261,10 +298,13 @@ blocked: 0
     - "Reevaluate the same gold generation after the accepted mutation or response without weakening wrong-room and stale-fence rejection."
     - "Cover the live settled-list-to-add order, movement/stale boundaries, retargeting under aggregate owners, and exactly one get-confirm-put sequence."
   debug_session: ".planning/debug/phase-03-gold-deferred-hunting-stall.md"
+  resolved_by:
+    - "03-16-PLAN.md"
+  verification: "03-VERIFICATION.md verifies the bounded settled-Add revalidation and exact get-confirm-put contracts at 0.1.440; post-fix live UAT Test 3 remains pending."
 
 - gap_id: G-03-6
   truth: "An operator can stream newly recorded trace events in real time for the current session without changing normal output, persistence, or trace-buffer behavior."
-  status: diagnosed
+  status: resolved
   reason: "Live UAT required repeatedly capturing boop trace show output after the fact, making it difficult to correlate Achaea output with the exact blocker and action transitions that occurred on screen."
   severity: minor
   test: 6
@@ -285,3 +325,7 @@ blocked: 0
     - "Echo each newly appended trace entry exactly once in the existing timestamped trace format while live mode is enabled."
     - "Keep trace collection independently controllable and prevent live output from feeding back into boop.trace.log."
     - "Update diagnostics help and regression coverage for default-off, enable, disable, reload reset, and buffer parity."
+  resolved_by:
+    - "03-18-PLAN.md"
+    - "03-19-PLAN.md"
+  verification: "03-VERIFICATION.md verifies session-only state, package-reload reset, exact-once non-recursive output, and packaged alias/help wiring at 0.1.440; post-fix live UAT Test 6 remains pending."
