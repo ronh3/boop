@@ -36,7 +36,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop prequeue` / `boop prequeue on` / `boop prequeue off`
 - `boop lead` / `boop lead <seconds>` (prequeue lead timing)
 - `boop get [key]` / `boop set <key> <value>` (advanced raw config inspection/editing; prefer `boop config` for normal setup)
-- `boop trace` / `boop trace on|off|show [n]|clear`
+- `boop trace` / `boop trace on|off|live on|off|show [n]|clear`
 - `boop gag` / `boop gag on|off|own|others|mobs|all|<scope> on|off|colors [own|others|mobs]|color [own|others|mobs] <who|ability|target|meta|separator|bg> [<color|off>]|color [own|others|mobs] reset`
 - `boop targeting <manual|whitelist|blacklist|auto>`
 - `boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>` (default: `simple`)
@@ -115,7 +115,9 @@ Standalone Mudlet package for Achaea auto hunting.
 - In queueing mode, boop caches the last `BOOP_ATTACK` alias payload and skips redundant `setalias` sends when unchanged.
 - `boop weapon` stores class-scoped wield targets that profiles can consume when they need a specific weapon role; prefer raw GMCP item ids because wield tracking matches exact ids most reliably.
 - `boop theme list` exposes boop's built-in themes plus the built-in ADB city/class palette names, so themes like `ashtan`, `depthswalker`, and `targossas` work directly in boop.
-- Trace buffer records recent boop decisions/commands for post-mortem debugging (`boop trace show`).
+- `boop trace on|off` controls persisted collection into the bounded trace buffer; `show` reads retained entries and `clear` empties them.
+- `boop trace live on|off` controls session-only streaming, starts off on package initialization, is not persisted, and does not enable collection.
+- Live trace output requires collection and live streaming to both be on; each newly accepted entry prints once as `trace live: HH:MM:SS | ...`.
 - Blockers display as code -- label | +N more; trace/debug list all active blocker owners.
 - Attack-line gagging can be toggled separately for your own attacks and other players' attacks, replacing matched lines with `Who: What -> Victim`.
 - Self attack gag summaries coalesce repeated same-source/same-type damage such as multihit weapon attacks and gear procs, and append total damage before balance time.
