@@ -121,6 +121,10 @@ function boop.trace.log(msg)
   while #buf > limit do
     table.remove(buf, 1)
   end
+
+  if boop.state.trace.live then
+    boop.util.info("trace live: " .. line)
+  end
 end
 
 function boop.trace.show(count)

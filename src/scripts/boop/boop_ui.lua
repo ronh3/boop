@@ -1282,6 +1282,16 @@ function boop.ui.setTraceEnabled(value)
   boop.util.ok("trace: " .. (boop.config.traceEnabled and "on" or "off"))
 end
 
+function boop.ui.setTraceLiveEnabled(value)
+  local state = boop.runtime.state()
+  state.trace.live = value and true or false
+  local message = "trace live: " .. (state.trace.live and "on" or "off")
+  if state.trace.live and not boop.config.traceEnabled then
+    message = message .. " | collection remains off"
+  end
+  boop.util.ok(message)
+end
+
 function boop.ui.setGoldPack(value)
   local pack = boop.util.trim(value or "")
   local key = boop.util.safeLower(pack)
@@ -1988,9 +1998,16 @@ end
 
 function boop.ui.traceCommand(sub, arg)
   local cmd = boop.util.safeLower(boop.util.trim(sub or ""))
+  local state = boop.runtime.state()
+  local usage = "boop trace on|off|live on|off|show [n]|clear"
   if cmd == "" then
-    boop.util.info("trace: " .. (boop.config.traceEnabled and "on" or "off"))
-    boop.util.info("boop trace on|off|show [n]|clear")
+    boop.util.info(
+      "trace: collection "
+        .. (boop.config.traceEnabled and "on" or "off")
+        .. " | live "
+        .. (state.trace.live and "on" or "off")
+    )
+    boop.util.info(usage)
     return
   end
   if cmd == "on" then
@@ -1999,6 +2016,20 @@ function boop.ui.traceCommand(sub, arg)
   end
   if cmd == "off" then
     boop.ui.setTraceEnabled(false)
+    return
+  end
+  if cmd == "live" then
+    local liveMode = boop.util.safeLower(boop.util.trim(arg or ""))
+    if liveMode == "on" then
+      boop.ui.setTraceLiveEnabled(true)
+      return
+    end
+    if liveMode == "off" then
+      boop.ui.setTraceLiveEnabled(false)
+      return
+    end
+    boop.util.warn("trace live expects on|off")
+    boop.util.info(usage)
     return
   end
   if cmd == "clear" then
