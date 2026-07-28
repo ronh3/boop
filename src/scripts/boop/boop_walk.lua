@@ -17,6 +17,22 @@ local WALK_REASON_LABELS = {
   flee_active = "flee is active",
   walker_lost_before_emit = "demonnicAutoWalker became unavailable",
 }
+local WALK_REASON_ACTIONS = {
+  walker_unavailable = "boop walk install",
+  walk_inactive = "boop walk start",
+  hunting_disabled = "boop on",
+  manual_targeting = "boop targeting auto",
+  room_unsettled = "wait for current room evidence",
+  move_pending = "wait for the queued move",
+  target_active = "finish the current target",
+  room_denizen_active = "let boop select the room target",
+  leader_call_pending = "wait for the leader target call",
+  gold_pending = "wait for loot handling",
+  interrupt_pending = "wait for the interrupt",
+  pull_pending = "wait for the pull",
+  flee_active = "wait for flee to finish",
+  walker_lost_before_emit = "boop walk status",
+}
 boop.walk.packageUrl = boop.walk.packageUrl or WALKER_PACKAGE_URL
 
 local function ensureDomain(state, domain)
@@ -199,64 +215,100 @@ end
 function boop.walk.evaluateAllClear(runGeneration, roomGeneration)
   local snapshot = walkSnapshot()
   if not snapshot.packageAvailable then
-    return false, "walker_unavailable", WALK_REASON_LABELS.walker_unavailable
+    return false,
+      "walker_unavailable",
+      WALK_REASON_LABELS.walker_unavailable,
+      WALK_REASON_ACTIONS.walker_unavailable
   end
   if not snapshot.active
       or (
         runGeneration ~= nil
         and tonumber(runGeneration) ~= snapshot.generation
       ) then
-    return false, "walk_inactive", WALK_REASON_LABELS.walk_inactive
+    return false,
+      "walk_inactive",
+      WALK_REASON_LABELS.walk_inactive,
+      WALK_REASON_ACTIONS.walk_inactive
   end
   if not snapshot.huntingEnabled then
-    return false, "hunting_disabled", WALK_REASON_LABELS.hunting_disabled
+    return false,
+      "hunting_disabled",
+      WALK_REASON_LABELS.hunting_disabled,
+      WALK_REASON_ACTIONS.hunting_disabled
   end
   if snapshot.targetingMode == "manual" then
-    return false, "manual_targeting", WALK_REASON_LABELS.manual_targeting
+    return false,
+      "manual_targeting",
+      WALK_REASON_LABELS.manual_targeting,
+      WALK_REASON_ACTIONS.manual_targeting
   end
   if not snapshot.roomSettled
       or (
         roomGeneration ~= nil
         and tonumber(roomGeneration) ~= snapshot.roomGeneration
       ) then
-    return false, "room_unsettled", WALK_REASON_LABELS.room_unsettled
+    return false,
+      "room_unsettled",
+      WALK_REASON_LABELS.room_unsettled,
+      WALK_REASON_ACTIONS.room_unsettled
   end
   if snapshot.moveQueued then
-    return false, "move_pending", WALK_REASON_LABELS.move_pending
+    return false,
+      "move_pending",
+      WALK_REASON_LABELS.move_pending,
+      WALK_REASON_ACTIONS.move_pending
   end
   if snapshot.targetId ~= "" then
-    return false, "target_active", WALK_REASON_LABELS.target_active
+    return false,
+      "target_active",
+      WALK_REASON_LABELS.target_active,
+      WALK_REASON_ACTIONS.target_active
   end
   if snapshot.denizenId ~= "" then
     return false,
       "room_denizen_active",
-      WALK_REASON_LABELS.room_denizen_active
+      WALK_REASON_LABELS.room_denizen_active,
+      WALK_REASON_ACTIONS.room_denizen_active
   end
   if snapshot.waitingForLeader then
     return false,
       "leader_call_pending",
-      WALK_REASON_LABELS.leader_call_pending
+      WALK_REASON_LABELS.leader_call_pending,
+      WALK_REASON_ACTIONS.leader_call_pending
   end
   if snapshot.goldPending then
-    return false, "gold_pending", WALK_REASON_LABELS.gold_pending
+    return false,
+      "gold_pending",
+      WALK_REASON_LABELS.gold_pending,
+      WALK_REASON_ACTIONS.gold_pending
   end
   if snapshot.interruptPending then
     return false,
       "interrupt_pending",
-      WALK_REASON_LABELS.interrupt_pending
+      WALK_REASON_LABELS.interrupt_pending,
+      WALK_REASON_ACTIONS.interrupt_pending
   end
   if snapshot.pullPending then
-    return false, "pull_pending", WALK_REASON_LABELS.pull_pending
+    return false,
+      "pull_pending",
+      WALK_REASON_LABELS.pull_pending,
+      WALK_REASON_ACTIONS.pull_pending
   end
   if snapshot.fleeActive then
-    return false, "flee_active", WALK_REASON_LABELS.flee_active
+    return false,
+      "flee_active",
+      WALK_REASON_LABELS.flee_active,
+      WALK_REASON_ACTIONS.flee_active
   end
   if snapshot.runtimeBlocker then
     local code = tostring(snapshot.runtimeBlocker.code or "")
     local label = tostring(snapshot.runtimeBlocker.label or "")
-    return false, code, label ~= "" and label or code
+    return false,
+      code,
+      label ~= "" and label or code,
+      "wait for blocker to clear"
   end
-  return true, nil, nil
+  return true, nil, nil, "autowalk should advance"
 end
 
 local function evaluateReservedEmission(
@@ -373,20 +425,33 @@ local function emitReservedMove(runGeneration, roomGeneration, reservationId)
   return true
 end
 
-local function blockedReason()
+local function blockerDetails()
   local walk = walkState()
-  local ok, _, label = boop.walk.evaluateAllClear(
+  local ok, code, label, nextAction = boop.walk.evaluateAllClear(
     walk.generation,
     walk.roomGeneration
   )
   if ok then
     return nil
   end
-  return label
+  return {
+    code = tostring(code or ""),
+    label = tostring(label or code or ""),
+    nextAction = tostring(nextAction or "wait for blocker to clear"),
+  }
+end
+
+local function blockedReason()
+  local details = blockerDetails()
+  return details and details.label or nil
 end
 
 function boop.walk.blockedReason()
   return blockedReason()
+end
+
+function boop.walk.blockerDetails()
+  return blockerDetails()
 end
 
 function boop.walk.isAvailable()
@@ -444,7 +509,7 @@ function boop.walk.status()
   local attachedStatus = attached() and "yes" or "no"
   local ownedStatus = walk.owned and "owned" or "attached"
   local settledStatus = walk.roomSettled and "yes" or "no"
-  local blocked = blockedReason()
+  local blocked = blockerDetails()
 
   boop.util.info(string.format(
     "walk: %s | package: %s | demonwalker active: %s | mode: %s | room settled: %s",
@@ -455,10 +520,13 @@ function boop.walk.status()
     settledStatus
   ))
   if blocked then
-    boop.util.info("walk blocked: " .. blocked)
-    if not available() then
-      boop.util.info("walk install: boop walk install")
-    end
+    boop.util.info(
+      "walk blocked: "
+        .. blocked.code
+        .. " -- "
+        .. blocked.label
+    )
+    boop.util.info("walk next: " .. blocked.nextAction)
   else
     boop.util.ok("walk ready to advance when room is clear")
   end
@@ -573,6 +641,9 @@ function boop.walk.stop(silent, external)
   local walk = walkState()
   local wasActive = walk.active == true
   if not wasActive then
+    if not silent then
+      boop.util.info("walk stop: no active boop walk")
+    end
     return false
   end
   local wasOwned = walk.owned == true

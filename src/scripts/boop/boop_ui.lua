@@ -428,6 +428,22 @@ local function currentBlockerDetails()
   local denizenCount = state.targeting and state.targeting.denizens and #state.targeting.denizens or 0
   if denizenCount <= 0 then
     if boop.walk and boop.walk.isActive and boop.walk.isActive() then
+      local details = boop.walk.blockerDetails
+          and boop.walk.blockerDetails()
+        or nil
+      if type(details) == "table"
+          and tostring(details.code or "") ~= "" then
+        return makeBlockerDetails(
+          details.code,
+          details.label,
+          details.nextAction,
+          { walk = true },
+          details.code == "manual_targeting"
+              and { manual = true }
+            or {},
+          "walk"
+        )
+      end
       return makeBlockerDetails("room_clear", "room clear", "autowalk should advance", { walk = true }, {}, "ui")
     end
     if boop.walk and boop.walk.isAvailable and not boop.walk.isAvailable() then
