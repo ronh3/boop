@@ -132,6 +132,7 @@ local DOMAIN_DEFAULTS = {
   },
   trace = {
     buffer = {},
+    live = false,
   },
   ui = {
     configScreen = "home",
