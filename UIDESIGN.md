@@ -128,6 +128,14 @@ Current visual language expectations
 - Help syntax should match the parser exactly. If a command only accepts either no args or two args, avoid optional-looking placeholders like `[left] [right]`.
 - Internal review helpers such as `boop help audit` should stay discoverable from advanced/troubleshooting help, not the normal help footer.
 
+Trace diagnostics contract
+
+- Bare trace status uses `trace: collection on|off | live on|off` so persisted collection and runtime streaming remain visibly separate.
+- `boop trace live on|off` is session-only, starts/reset off on package initialization, is not persisted, and does not enable collection.
+- Enabling live while collection is off must explicitly report `trace live: on | collection remains off`.
+- Each accepted streamed entry uses the `trace live: {timestamped entry}` prefix and appears exactly once.
+- `boop trace show [n]` and `boop trace clear` retain their existing bounded-buffer behavior; clearing entries does not toggle live streaming.
+
 Button rendering
 - Format: `[ <value> ]`
 - Color rules:
