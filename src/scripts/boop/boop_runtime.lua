@@ -78,6 +78,10 @@ local DOMAIN_DEFAULTS = {
       fenceQueue = {},
       activeFenceId = false,
       nextFenceId = 1,
+      lastCompletedFence = false,
+      nextApplicationId = 1,
+      activeApplication = false,
+      acceptedSourceAuthority = false,
       refreshAttempted = false,
       refreshReason = "",
       refreshTimeoutTimer = false,
@@ -212,6 +216,20 @@ local function roomObservationState()
     or {}
   observation.activeFenceId = observation.activeFenceId or false
   observation.nextFenceId = math.max(1, tonumber(observation.nextFenceId) or 1)
+  observation.lastCompletedFence =
+    type(observation.lastCompletedFence) == "table"
+      and observation.lastCompletedFence
+      or false
+  observation.nextApplicationId =
+    math.max(1, tonumber(observation.nextApplicationId) or 1)
+  observation.activeApplication =
+    type(observation.activeApplication) == "table"
+      and observation.activeApplication
+      or false
+  observation.acceptedSourceAuthority =
+    type(observation.acceptedSourceAuthority) == "table"
+      and observation.acceptedSourceAuthority
+      or false
   observation.refreshAttempted = not not observation.refreshAttempted
   observation.refreshReason = tostring(observation.refreshReason or "")
   observation.refreshTimeoutTimer = observation.refreshTimeoutTimer or false
@@ -233,6 +251,17 @@ function boop.runtime.startRoomObservation(roomId, opts)
   for _, fence in ipairs(fences) do
     fence.valid = false
   end
+  local application = previous.activeApplication
+  if type(application) == "table" then
+    application.valid = false
+    application.invalidReason = tostring(
+      opts.reason or "room observation invalidated"
+    )
+    if application.pendingTimer and killTimer then
+      killTimer(application.pendingTimer)
+    end
+    application.pendingTimer = false
+  end
   if previous.refreshTimeoutTimer and killTimer then
     killTimer(previous.refreshTimeoutTimer)
   end
@@ -245,6 +274,10 @@ function boop.runtime.startRoomObservation(roomId, opts)
     fenceQueue = fences,
     activeFenceId = false,
     nextFenceId = previous.nextFenceId,
+    lastCompletedFence = false,
+    nextApplicationId = previous.nextApplicationId,
+    activeApplication = false,
+    acceptedSourceAuthority = false,
     refreshAttempted = false,
     refreshReason = tostring(opts.reason or ""),
     refreshTimeoutTimer = false,
@@ -312,6 +345,12 @@ function boop.runtime.beginRoomResponseFence(reason, opts)
     valid = true,
     roomOnly = roomOnly,
     fenceType = roomOnly and "room_revalidation" or "observation",
+    invSeen = false,
+    roomSeen = false,
+    invItems = false,
+    roomItems = false,
+    completed = false,
+    consumed = false,
     operationGeneration = roomOnly
       and tonumber(opts.operationGeneration)
       or false,
@@ -355,6 +394,197 @@ function boop.runtime.timeoutRoomResponseFence(fenceId, timerId)
   return true
 end
 
+local function copySourceAuthority(authority)
+  if type(authority) ~= "table" then
+    return false
+  end
+  return {
+    applicationId = tonumber(authority.applicationId),
+    roomId = normalizeRoomId(authority.roomId),
+    observationGeneration = tonumber(authority.observationGeneration),
+  }
+end
+
+local function sourceAuthorityMatches(left, right)
+  local leftCopy = copySourceAuthority(left)
+  local rightCopy = copySourceAuthority(right)
+  return leftCopy
+    and rightCopy
+    and leftCopy.applicationId ~= nil
+    and leftCopy.roomId ~= ""
+    and leftCopy.observationGeneration ~= nil
+    and leftCopy.applicationId == rightCopy.applicationId
+    and leftCopy.roomId == rightCopy.roomId
+    and leftCopy.observationGeneration == rightCopy.observationGeneration
+end
+
+local function deepEqual(left, right, seen)
+  if type(left) ~= type(right) then
+    return false
+  end
+  if type(left) ~= "table" then
+    return left == right
+  end
+  seen = seen or {}
+  if seen[left] == right then
+    return true
+  end
+  seen[left] = right
+  for key, value in pairs(left) do
+    if not deepEqual(value, right[key], seen) then
+      return false
+    end
+  end
+  for key in pairs(right) do
+    if left[key] == nil then
+      return false
+    end
+  end
+  return true
+end
+
+local function createRoomApplication(observation, fence, items)
+  local previous = observation.activeApplication
+  if type(previous) == "table" then
+    previous.valid = false
+    previous.invalidReason = "superseded room application"
+    if previous.pendingTimer and killTimer then
+      killTimer(previous.pendingTimer)
+    end
+    previous.pendingTimer = false
+  end
+  observation.acceptedSourceAuthority = false
+
+  local applicationId = observation.nextApplicationId
+  observation.nextApplicationId = applicationId + 1
+  local authority = {
+    applicationId = applicationId,
+    roomId = observation.roomId,
+    observationGeneration = observation.generation,
+  }
+  observation.activeApplication = {
+    applicationId = applicationId,
+    fenceId = tonumber(fence and fence.fenceId),
+    sourceAuthority = copySourceAuthority(authority),
+    items = deepCopy(items),
+    pendingTimer = false,
+    claimed = false,
+    consumed = false,
+    valid = true,
+    invalidReason = "",
+  }
+  return observation.activeApplication
+end
+
+function boop.runtime.roomApplicationSnapshot(applicationId)
+  local observation = roomObservationState()
+  local application = observation.activeApplication
+  if type(application) ~= "table"
+      or (applicationId ~= nil
+        and tonumber(application.applicationId) ~= tonumber(applicationId)) then
+    return false
+  end
+  return {
+    applicationId = tonumber(application.applicationId),
+    fenceId = tonumber(application.fenceId),
+    sourceAuthority = copySourceAuthority(application.sourceAuthority),
+    items = deepCopy(application.items),
+    pendingTimer = application.pendingTimer or false,
+    claimed = not not application.claimed,
+    consumed = not not application.consumed,
+    valid = not not application.valid,
+    invalidReason = tostring(application.invalidReason or ""),
+  }
+end
+
+function boop.runtime.setRoomApplicationTimer(applicationId, timerId)
+  local observation = roomObservationState()
+  local application = observation.activeApplication
+  if type(application) ~= "table"
+      or tonumber(application.applicationId) ~= tonumber(applicationId)
+      or not application.valid
+      or application.consumed then
+    return false
+  end
+  application.pendingTimer = timerId or false
+  return true
+end
+
+function boop.runtime.invalidateRoomApplication(applicationId, reason)
+  local observation = roomObservationState()
+  local application = observation.activeApplication
+  if type(application) ~= "table"
+      or (applicationId ~= nil
+        and tonumber(application.applicationId) ~= tonumber(applicationId)) then
+    observation.acceptedSourceAuthority = false
+    return false
+  end
+  application.valid = false
+  application.invalidReason = tostring(reason or "invalidated")
+  if application.pendingTimer and killTimer then
+    killTimer(application.pendingTimer)
+  end
+  application.pendingTimer = false
+  if sourceAuthorityMatches(
+      observation.acceptedSourceAuthority,
+      application.sourceAuthority
+    ) then
+    observation.acceptedSourceAuthority = false
+  end
+  return true
+end
+
+function boop.runtime.claimRoomApplication(
+  applicationId,
+  sourceAuthority,
+  timerId
+)
+  local observation = roomObservationState()
+  local application = observation.activeApplication
+  if type(application) ~= "table"
+      or tonumber(application.applicationId) ~= tonumber(applicationId)
+      or not application.valid
+      or application.claimed
+      or application.consumed
+      or not sourceAuthorityMatches(
+        sourceAuthority,
+        application.sourceAuthority
+      )
+      or (timerId ~= nil and application.pendingTimer ~= timerId)
+      or not observation.infoSeen
+      or not observation.itemsSeen
+      or observation.roomId == ""
+      or tonumber(observation.generation)
+        ~= tonumber(sourceAuthority.observationGeneration)
+      or observation.roomId ~= normalizeRoomId(sourceAuthority.roomId)
+      or currentRoomId() ~= observation.roomId then
+    return false
+  end
+  application.claimed = true
+  application.consumed = true
+  application.pendingTimer = false
+  observation.acceptedSourceAuthority =
+    copySourceAuthority(application.sourceAuthority)
+  return boop.runtime.roomApplicationSnapshot(application.applicationId)
+end
+
+function boop.runtime.validateRoomSourceAuthority(sourceAuthority)
+  local observation = roomObservationState()
+  local captured = copySourceAuthority(sourceAuthority)
+  return captured
+    and sourceAuthorityMatches(
+      captured,
+      observation.acceptedSourceAuthority
+    )
+    and observation.infoSeen
+    and observation.itemsSeen
+    and observation.roomId == captured.roomId
+    and tonumber(observation.generation)
+      == tonumber(captured.observationGeneration)
+    and currentRoomId() == captured.roomId
+    or false
+end
+
 function boop.runtime.observeRoomItemsList(location, items)
   local observation = roomObservationState()
   local queue = observation.fenceQueue
@@ -362,36 +592,65 @@ function boop.runtime.observeRoomItemsList(location, items)
   local normalizedLocation = tostring(location or ""):lower()
   local copiedItems = type(items) == "table" and deepCopy(items) or false
 
-  if normalizedLocation == "inv" then
-    if type(fence) ~= "table" then
-      if not copiedItems then
+  if normalizedLocation ~= "inv" and normalizedLocation ~= "room" then
+    return {
+      status = "ignored",
+      fenceId = type(fence) == "table" and fence.fenceId or false,
+      location = normalizedLocation,
+    }
+  end
+
+  if type(fence) ~= "table" then
+    local completed = observation.lastCompletedFence
+    local completedItems = type(completed) == "table"
+      and completed[normalizedLocation .. "Items"]
+      or false
+    if type(completed) == "table"
+        and tonumber(completed.generation) == tonumber(observation.generation)
+        and completedItems
+        and copiedItems then
+      completed.postCompletionDuplicates =
+        type(completed.postCompletionDuplicates) == "table"
+          and completed.postCompletionDuplicates
+          or {}
+      local duplicateKey = normalizedLocation .. "Seen"
+      if not completed.postCompletionDuplicates[duplicateKey]
+          or deepEqual(completedItems, copiedItems) then
+        completed.postCompletionDuplicates[duplicateKey] = true
         return {
-          status = "rejected",
+          status = "duplicate",
+          fenceId = completed.fenceId,
           location = normalizedLocation,
         }
       end
+    end
+    if type(completed) == "table"
+        and tonumber(completed.generation) == tonumber(observation.generation)
+        and completedItems
+        and copiedItems
+        and deepEqual(completedItems, copiedItems) then
+      return {
+        status = "duplicate",
+        fenceId = completed.fenceId,
+        location = normalizedLocation,
+      }
+    end
+    if normalizedLocation == "inv" and copiedItems then
       return {
         status = "inventory",
         location = normalizedLocation,
         items = copiedItems,
+        inventoryItems = deepCopy(copiedItems),
       }
     end
-    if fence.phase ~= "await_inv" then
-      return {
-        status = "duplicate",
-        fenceId = fence.fenceId,
-      }
-    end
-    fence.phase = "await_room"
-    if not fence.valid then
-      return {
-        status = "drained",
-        fenceId = fence.fenceId,
-        location = normalizedLocation,
-      }
-    end
+    return {
+      status = copiedItems and "orphan" or "rejected",
+      location = normalizedLocation,
+    }
+  end
+
+  if normalizedLocation == "inv" and fence.roomOnly then
     if not copiedItems then
-      fence.phase = "await_inv"
       return {
         status = "rejected",
         fenceId = fence.fenceId,
@@ -401,43 +660,13 @@ function boop.runtime.observeRoomItemsList(location, items)
     return {
       status = "inventory",
       fenceId = fence.fenceId,
+      location = normalizedLocation,
       items = copiedItems,
+      inventoryItems = deepCopy(copiedItems),
     }
   end
 
-  if type(fence) ~= "table" then
-    return {
-      status = "orphan",
-      location = normalizedLocation,
-    }
-  end
-
-  if normalizedLocation ~= "room" then
-    return {
-      status = "ignored",
-      fenceId = fence.fenceId,
-      location = normalizedLocation,
-    }
-  end
-  if fence.phase ~= "await_room" then
-    return {
-      status = "awaiting_inv",
-      fenceId = fence.fenceId,
-    }
-  end
-
-  table.remove(queue, 1)
-  if not fence.valid then
-    return {
-      status = "drained",
-      fenceId = fence.fenceId,
-      location = normalizedLocation,
-    }
-  end
-  if not copiedItems
-      or tonumber(fence.generation) ~= tonumber(observation.generation)
-      or normalizeRoomId(fence.roomId) ~= observation.roomId
-      or currentRoomId() ~= observation.roomId then
+  if not copiedItems then
     return {
       status = "rejected",
       fenceId = fence.fenceId,
@@ -445,8 +674,43 @@ function boop.runtime.observeRoomItemsList(location, items)
     }
   end
 
-  observation.itemsSeen = true
-  observation.acceptedItems = copiedItems
+  local seenKey = normalizedLocation .. "Seen"
+  local itemsKey = normalizedLocation .. "Items"
+  if fence[seenKey] then
+    return {
+      status = "duplicate",
+      fenceId = fence.fenceId,
+      location = normalizedLocation,
+    }
+  end
+  fence[seenKey] = true
+  fence[itemsKey] = copiedItems
+  if not fence.invSeen and not fence.roomOnly then
+    fence.phase = "await_inv"
+  elseif not fence.roomSeen then
+    fence.phase = "await_room"
+  else
+    fence.phase = "complete"
+  end
+
+  local inventoryItems = normalizedLocation == "inv" and fence.valid
+    and deepCopy(copiedItems)
+    or false
+  local complete = fence.roomSeen and (fence.roomOnly or fence.invSeen)
+  if not complete then
+    return {
+      status = inventoryItems and "inventory"
+        or (fence.valid and "latched" or "drained"),
+      fenceId = fence.fenceId,
+      location = normalizedLocation,
+      items = inventoryItems or nil,
+      inventoryItems = inventoryItems,
+    }
+  end
+
+  fence.completed = true
+  fence.consumed = true
+  table.remove(queue, 1)
   if tonumber(observation.activeFenceId) == tonumber(fence.fenceId) then
     observation.activeFenceId = false
   end
@@ -454,12 +718,36 @@ function boop.runtime.observeRoomItemsList(location, items)
     killTimer(observation.refreshTimeoutTimer)
   end
   observation.refreshTimeoutTimer = false
+
+  if not fence.valid
+      or tonumber(fence.generation) ~= tonumber(observation.generation)
+      or normalizeRoomId(fence.roomId) ~= observation.roomId
+      or currentRoomId() ~= observation.roomId then
+    return {
+      status = "drained",
+      fenceId = fence.fenceId,
+      location = normalizedLocation,
+    }
+  end
+
+  observation.itemsSeen = true
+  observation.acceptedItems = deepCopy(fence.roomItems)
+  observation.lastCompletedFence = deepCopy(fence)
+  observation.lastCompletedFence.postCompletionDuplicates = {}
+  local application = createRoomApplication(
+    observation,
+    fence,
+    fence.roomItems
+  )
   return {
     status = "accepted",
     fenceId = fence.fenceId,
     generation = observation.generation,
     roomId = observation.roomId,
-    items = deepCopy(copiedItems),
+    items = deepCopy(fence.roomItems),
+    inventoryItems = inventoryItems,
+    applicationId = application.applicationId,
+    sourceAuthority = copySourceAuthority(application.sourceAuthority),
   }
 end
 
@@ -474,6 +762,11 @@ function boop.runtime.roomObservationSnapshot()
     fenceQueue = deepCopy(observation.fenceQueue),
     activeFenceId = observation.activeFenceId or false,
     nextFenceId = tonumber(observation.nextFenceId) or 1,
+    lastCompletedFence = deepCopy(observation.lastCompletedFence),
+    nextApplicationId = tonumber(observation.nextApplicationId) or 1,
+    activeApplication = deepCopy(observation.activeApplication),
+    acceptedSourceAuthority =
+      copySourceAuthority(observation.acceptedSourceAuthority),
     refreshAttempted = not not observation.refreshAttempted,
     refreshReason = tostring(observation.refreshReason or ""),
     refreshTimeoutTimer = observation.refreshTimeoutTimer or false,
@@ -1215,7 +1508,7 @@ local function currentRoom()
   }
 end
 
-function boop.runtime.context()
+function boop.runtime.context(sourceAuthority)
   local state = boop.runtime.ensureState()
   local room = currentRoom()
   local targetInfo = gmcp and gmcp.IRE and gmcp.IRE.Target and gmcp.IRE.Target.Info or {}
@@ -1245,6 +1538,7 @@ function boop.runtime.context()
     state = state,
     config = boop.config or {},
     gmcp = gmcp,
+    sourceAuthority = copySourceAuthority(sourceAuthority),
     class = currentClass(state),
     spec = currentSpec(state),
     room = room,
@@ -1325,6 +1619,7 @@ end
 local function tickStep(context)
   local state = context.state
   local effects = {}
+  local authority = copySourceAuthority(context.sourceAuthority)
 
   if not (context.config and context.config.enabled) then
     return { effects = effects, didAction = false }
@@ -1349,7 +1644,11 @@ local function tickStep(context)
       return { effects = effects, didAction = false }
     end
     if not goldOperation.timeoutTimer then
-      effects[#effects + 1] = { kind = "flush_gold", reason = "tick gold stage" }
+      effects[#effects + 1] = {
+        kind = "flush_gold",
+        reason = "tick gold stage",
+        sourceAuthority = authority,
+      }
     end
     return { effects = effects, didAction = false }
   end
@@ -1378,19 +1677,31 @@ local function tickStep(context)
   local targetId = boop.targets and boop.targets.choose and boop.targets.choose() or ""
   if not targetId or targetId == "" then
     if context.config.useQueueing and state.gold.autoGrabPending then
-      effects[#effects + 1] = { kind = "flush_gold", reason = "tick no target" }
+      effects[#effects + 1] = {
+        kind = "flush_gold",
+        reason = "tick no target",
+        sourceAuthority = authority,
+      }
     end
     if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
       effects[#effects + 1] = { kind = "trace", message = "tick: waiting for leader target call" }
       return { effects = effects, didAction = false }
     end
     effects[#effects + 1] = { kind = "trace", message = "tick: no target" }
-    effects[#effects + 1] = { kind = "walk_advance", reason = "tick no target" }
+    effects[#effects + 1] = {
+      kind = "walk_advance",
+      reason = "tick no target",
+      sourceAuthority = authority,
+    }
     return { effects = effects, didAction = false }
   end
 
   if tostring(state.targeting.currentTargetId or "") ~= tostring(targetId) then
-    effects[#effects + 1] = { kind = "target", id = tostring(targetId) }
+    effects[#effects + 1] = {
+      kind = "target",
+      id = tostring(targetId),
+      sourceAuthority = authority,
+    }
   end
 
   local planContext = context
@@ -1406,6 +1717,7 @@ local function tickStep(context)
       state = context.state,
       config = context.config,
       gmcp = context.gmcp,
+      sourceAuthority = copySourceAuthority(context.sourceAuthority),
       class = context.class,
       spec = context.spec,
       room = context.room,
@@ -1428,7 +1740,12 @@ local function tickStep(context)
 
   local plan = boop.attacks and boop.attacks.choose and boop.attacks.choose(planContext) or { standard = "", rage = "" }
   if (plan.standard and plan.standard ~= "") or (plan.rage and plan.rage ~= "") then
-    effects[#effects + 1] = { kind = "combat_plan", plan = plan, context = planContext }
+    effects[#effects + 1] = {
+      kind = "combat_plan",
+      plan = plan,
+      context = planContext,
+      sourceAuthority = authority,
+    }
   end
 
   return {
@@ -1483,17 +1800,43 @@ function boop.runtime.applyEffects(result, context)
   local didAction = false
 
   for _, effect in ipairs((result and result.effects) or {}) do
-    if effect.kind == "trace" then
+    local sourceAuthority = copySourceAuthority(effect.sourceAuthority)
+    local roomOwned = effect.kind == "flush_gold"
+      or effect.kind == "walk_advance"
+      or effect.kind == "target"
+      or effect.kind == "combat_plan"
+    local authorized = not sourceAuthority
+      or (boop.runtime.validateRoomSourceAuthority
+        and boop.runtime.validateRoomSourceAuthority(sourceAuthority))
+    if roomOwned and not authorized then
+      trace(string.format(
+        "room effect rejected: %s | application=%s | room=%s | generation=%s",
+        tostring(effect.kind or ""),
+        tostring(sourceAuthority and sourceAuthority.applicationId or ""),
+        tostring(sourceAuthority and sourceAuthority.roomId or ""),
+        tostring(
+          sourceAuthority
+            and sourceAuthority.observationGeneration
+            or ""
+        )
+      ))
+    elseif effect.kind == "trace" then
       if boop.trace and boop.trace.log then
         boop.trace.log(effect.message or "")
       end
     elseif effect.kind == "flush_gold" then
       if boop.flushPendingGold then
-        boop.flushPendingGold(effect.reason or "runtime")
+        boop.flushPendingGold(
+          effect.reason or "runtime",
+          sourceAuthority
+        )
       end
     elseif effect.kind == "walk_advance" then
       if boop.walk and boop.walk.maybeAdvance then
-        boop.walk.maybeAdvance(effect.reason or "runtime")
+        boop.walk.maybeAdvance(
+          effect.reason or "runtime",
+          sourceAuthority
+        )
       end
     elseif effect.kind == "flee" then
       if boop.safety and boop.safety.flee then
@@ -1501,11 +1844,15 @@ function boop.runtime.applyEffects(result, context)
       end
     elseif effect.kind == "target" then
       if boop.targets and boop.targets.setTarget then
-        boop.targets.setTarget(effect.id)
+        boop.targets.setTarget(effect.id, sourceAuthority)
       end
     elseif effect.kind == "combat_plan" then
       if boop.attacks and boop.attacks.execute then
-        if boop.attacks.execute(effect.plan, effect.context or context) then
+        if boop.attacks.execute(
+          effect.plan,
+          effect.context or context,
+          sourceAuthority
+        ) then
           didAction = true
         end
       end

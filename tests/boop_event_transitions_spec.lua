@@ -205,6 +205,42 @@ describe("boop event-driven state transitions", function()
     return nil
   end
 
+  local function runPendingRoomApplication()
+    if not boop.runtime.roomApplicationSnapshot then
+      return false
+    end
+    local application = boop.runtime.roomApplicationSnapshot()
+    local callback = application
+      and callbackForTimer(application.pendingTimer)
+      or nil
+    if not callback then
+      return false
+    end
+    callback()
+    return true
+  end
+
+  local function sourceAuthority(applicationId, roomId, generation)
+    return {
+      applicationId = applicationId,
+      roomId = tostring(roomId),
+      observationGeneration = generation,
+    }
+  end
+
+  local function assertSourceAuthority(expected, actual)
+    assert.are.same(expected, {
+      applicationId = actual and actual.applicationId,
+      roomId = actual and actual.roomId,
+      observationGeneration = actual and actual.observationGeneration,
+    })
+    local count = 0
+    for _ in pairs(actual or {}) do
+      count = count + 1
+    end
+    assert.are.equal(3, count)
+  end
+
   local function blockerFor(owner)
     return boop.state
       and boop.state.combat
@@ -271,6 +307,7 @@ describe("boop event-driven state transitions", function()
         publishItemsList("room", acceptedItems)
       end
     end
+    runPendingRoomApplication()
   end
 
   local function copyWalkState()
@@ -310,6 +347,12 @@ describe("boop event-driven state transitions", function()
       timeoutTimer = operation.timeoutTimer,
       revalidationAttempted = operation.revalidationAttempted,
       revalidationFenceId = operation.revalidationFenceId,
+      sourceAuthority = operation.sourceAuthority and {
+        applicationId = operation.sourceAuthority.applicationId,
+        roomId = operation.sourceAuthority.roomId,
+        observationGeneration =
+          operation.sourceAuthority.observationGeneration,
+      } or false,
     }
   end
 
@@ -631,6 +674,7 @@ describe("boop event-driven state transitions", function()
       items = {},
     }
     boop.onRoomItemsList()
+    assert.is_true(runPendingRoomApplication())
     local complete = boop.runtime.roomObservationSnapshot()
     assert.are.equal(2, complete.generation)
     assert.is_true(complete.itemsSeen)
@@ -644,21 +688,163 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(0, countRaised("demonwalker.move"))
   end)
 
-  it("room-response-fence enforces Inv then Room before binding", function()
+  local roomResponseOrders = {
+    {
+      name = "Inv then Room",
+      firstLocation = "inv",
+      secondLocation = "room",
+    },
+    {
+      name = "Room then Inv",
+      firstLocation = "room",
+      secondLocation = "inv",
+    },
+  }
+
+  for _, entry in ipairs(roomResponseOrders) do
+    local case = entry
+    it("room-response-fence settles one copied pair exactly once for "
+        .. case.name, function()
+      boop.config.enabled = true
+      boop.config.autoGrabGold = true
+      boop.config.useQueueing = false
+      boop.config.goldPack = ""
+      boop.state.targeting.room = "1"
+      helper.setDenizens({
+        { id = "10", name = "the prior-room denizen" },
+      })
+
+      local targetUpdates = 0
+      local walkSettlements = 0
+      local tickCalls = 0
+      local originalUpdate = boop.targets.updateRoomItems
+      targets_update_stub = stub(boop.targets, "updateRoomItems", function(items)
+        targetUpdates = targetUpdates + 1
+        return originalUpdate(items)
+      end)
+      walk_settled_stub = stub(boop.walk, "onRoomSettled", function()
+        walkSettlements = walkSettlements + 1
+        return false
+      end)
+      tick_stub = stub(boop, "tick", function()
+        tickCalls = tickCalls + 1
+      end)
+
+      gmcp.Room.Info = {
+        num = "2",
+        area = "Test Area",
+        exits = { south = "1" },
+      }
+      boop.onRoomInfo()
+
+      local invItems = {
+        inventoryItem("7001", "the accepted fenced weapon", "l"),
+      }
+      local roomItems = {
+        denizenItem("21", "the accepted current denizen"),
+        goldItem("9021"),
+      }
+      local firstItems = case.firstLocation == "inv" and invItems or roomItems
+      local secondItems = case.secondLocation == "inv" and invItems or roomItems
+
+      publishItemsList(case.firstLocation, firstItems)
+      publishItemsList(case.firstLocation, {
+        case.firstLocation == "inv"
+          and inventoryItem("7999", "a duplicate replacement weapon", "l")
+          or denizenItem("299", "a duplicate replacement denizen"),
+      })
+      firstItems[1].name = "mutated after first latch"
+      publishItemsList(case.secondLocation, secondItems)
+      secondItems[1].name = "mutated after second latch"
+
+      assert.is_function(
+        boop.runtime.roomApplicationSnapshot,
+        "ROOM_RESPONSE_LATCH_MISSING: completed pairs need one application"
+      )
+      local application = boop.runtime.roomApplicationSnapshot()
+      assert.is_table(application)
+      assert.are.equal(0, targetUpdates)
+      assert.are.equal(0, walkSettlements)
+      assert.are.equal(0, tickCalls)
+      assert.are.equal(0, countGoldSends())
+      assert.are.equal("7001", boop.state.inventory.wieldedLeft.id)
+      assert.are.equal(
+        "the accepted current denizen",
+        application.items[1].name
+      )
+
+      local applicationCallback = callbackForTimer(application.pendingTimer)
+      assert.is_function(applicationCallback)
+      applicationCallback()
+      applicationCallback()
+
+      local accepted = boop.runtime.roomObservationSnapshot()
+      local acceptedApplication = boop.runtime.roomApplicationSnapshot(
+        application.applicationId
+      )
+      local timerCount = #scheduled_callbacks
+      publishItemsList(case.firstLocation, firstItems)
+      publishItemsList(case.secondLocation, secondItems)
+
+      assert.are.same({
+        requests = { "Char.Items.Inv", "Char.Items.Room" },
+        updates = 1,
+        settlements = 1,
+        ticks = 1,
+        goldSends = 1,
+        wielded = "7001",
+        denizen = "the accepted current denizen",
+        acceptedName = "the accepted current denizen",
+        queueDepth = 0,
+        timerCount = timerCount,
+        applicationId = application.applicationId,
+        claimed = true,
+        consumed = true,
+      }, {
+        requests = gmcp_requests,
+        updates = targetUpdates,
+        settlements = walkSettlements,
+        ticks = tickCalls,
+        goldSends = countGoldSends(),
+        wielded = boop.state.inventory.wieldedLeft
+          and boop.state.inventory.wieldedLeft.id,
+        denizen = boop.state.targeting.denizens[1]
+          and boop.state.targeting.denizens[1].name,
+        acceptedName = accepted.acceptedItems[1]
+          and accepted.acceptedItems[1].name,
+        queueDepth = #accepted.fenceQueue,
+        timerCount = #scheduled_callbacks,
+        applicationId = acceptedApplication.applicationId,
+        claimed = acceptedApplication.claimed,
+        consumed = acceptedApplication.consumed,
+      }, "ROOM_RESPONSE_LATCH_BROKEN: unordered pair was not exact-once")
+    end)
+  end
+
+  it("G-03-7 post-Inv pre-Info application invalidation", function()
     boop.config.enabled = true
     boop.config.autoGrabGold = true
     boop.config.useQueueing = false
     boop.config.goldPack = ""
-    boop.state.targeting.room = "1"
-    helper.setDenizens({
-      { id = "10", name = "the prior-room denizen" },
+    boop.config.targetingMode = "auto"
+    boop.state.targeting.room = "4255"
+    gmcp.Room.Info = {
+      num = "4255",
+      area = "Old Room",
+      exits = { south = "4249" },
+    }
+    helper.seedRoomObservation("4255", {
+      generation = 45,
+      infoSeen = true,
+      itemsSeen = false,
+      acceptedItems = {},
     })
+    boop.requestRoomItemsOnce("G-03-7 generation 45")
 
     local targetUpdates = 0
     local walkSettlements = 0
     local tickCalls = 0
     local originalUpdate = boop.targets.updateRoomItems
-    local originalTick = boop.tick
     targets_update_stub = stub(boop.targets, "updateRoomItems", function(items)
       targetUpdates = targetUpdates + 1
       return originalUpdate(items)
@@ -669,131 +855,130 @@ describe("boop event-driven state transitions", function()
     end)
     tick_stub = stub(boop, "tick", function()
       tickCalls = tickCalls + 1
-      return originalTick()
     end)
 
+    publishItemsList("inv", {
+      inventoryItem("7455", "generation 45 weapon", "l"),
+    })
+    local oldRoomItems = {
+      denizenItem("44026", "the generation 45 denizen"),
+      goldItem("9455"),
+    }
+    publishItemsList("room", oldRoomItems)
+    oldRoomItems[1].name = "mutated after generation 45 latch"
+
+    assert.is_function(
+      boop.runtime.roomApplicationSnapshot,
+      "ROOM_APPLICATION_MISSING: accepted evidence escaped synchronously"
+    )
+    assert.is_function(boop.runtime.validateRoomSourceAuthority)
+    local oldApplication = boop.runtime.roomApplicationSnapshot()
+    local oldAuthority = sourceAuthority(
+      oldApplication.applicationId,
+      "4255",
+      45
+    )
+    assertSourceAuthority(oldAuthority, oldApplication.sourceAuthority)
+    assert.are.equal("the generation 45 denizen", oldApplication.items[1].name)
+    assert.are.same({ 0, 0, 0, 0 }, {
+      targetUpdates,
+      walkSettlements,
+      tickCalls,
+      countGoldSends(),
+    })
+
+    local oldContext = boop.runtime.context(oldAuthority)
+    local oldResult = boop.runtime.step({
+      type = "tick",
+      context = oldContext,
+    })
+    assertSourceAuthority(oldAuthority, oldContext.sourceAuthority)
+    for _, effect in ipairs(oldResult.effects or {}) do
+      if effect.kind == "target"
+          or effect.kind == "combat_plan"
+          or effect.kind == "walk_advance"
+          or effect.kind == "flush_gold" then
+        assertSourceAuthority(oldAuthority, effect.sourceAuthority)
+      end
+    end
+    local oldCallback = callbackForTimer(oldApplication.pendingTimer)
+    assert.is_function(oldCallback)
+
     gmcp.Room.Info = {
-      num = "2",
-      area = "Test Area",
-      exits = { south = "1" },
+      num = "4249",
+      area = "Destination Room",
+      exits = { north = "4255" },
     }
     boop.onRoomInfo()
-    local requestsAfterInfo = {
-      gmcp_requests[1],
-      gmcp_requests[2],
-    }
+    assert.is_false(boop.runtime.validateRoomSourceAuthority(oldAuthority))
+    assertSourceAuthority(oldAuthority, oldApplication.sourceAuthority)
+    assertSourceAuthority(oldAuthority, oldContext.sourceAuthority)
+    oldCallback()
+    boop.runtime.applyEffects(oldResult, oldContext)
 
-    publishItemsList("room", {
-      denizenItem("20", "a pre-barrier impostor"),
-      goldItem("9020"),
+    assert.are.same({ 0, 0, 0, 0, 0 }, {
+      targetUpdates,
+      walkSettlements,
+      tickCalls,
+      countGoldSends(),
+      #sent_commands,
     })
-    local early = {
-      updates = targetUpdates,
-      settlements = walkSettlements,
-      ticks = tickCalls,
-      goldSends = countGoldSends(),
-      denizen = boop.state.targeting.denizens[1]
-        and boop.state.targeting.denizens[1].name,
-      roomOwnerPresent = blockerFor("room:observation") ~= nil,
-    }
+    assert.are.equal(0, countSent("queue clear"))
+    assert.is_false(boop.state.queue.prequeuedStandard)
+    assert.are.equal("", boop.state.queue.aliasAction)
 
+    local newRoomItems = {
+      denizenItem("44901", "the generation 46 denizen"),
+      goldItem("9460"),
+    }
+    publishItemsList("room", newRoomItems)
     publishItemsList("inv", {
-      inventoryItem("7001", "a fenced left-hand weapon", "l"),
+      inventoryItem("7460", "generation 46 weapon", "l"),
     })
-    local afterInventory = {
-      updates = targetUpdates,
-      settlements = walkSettlements,
-      ticks = tickCalls,
-      goldSends = countGoldSends(),
-      wielded = boop.state.inventory.wieldedLeft
-        and boop.state.inventory.wieldedLeft.id,
-    }
+    local newApplication = boop.runtime.roomApplicationSnapshot()
+    local newAuthority = sourceAuthority(
+      newApplication.applicationId,
+      "4249",
+      46
+    )
+    assert.is_true(newApplication.applicationId > oldApplication.applicationId)
+    assertSourceAuthority(newAuthority, newApplication.sourceAuthority)
+    local newCallback = callbackForTimer(newApplication.pendingTimer)
+    assert.is_function(newCallback)
+    newCallback()
+    newCallback()
 
-    publishItemsList("room", {
-      denizenItem("21", "the accepted current denizen"),
-      goldItem("9021"),
-    })
-    local accepted = boop.runtime.roomObservationSnapshot()
-    local afterAccepted = {
-      updates = targetUpdates,
-      settlements = walkSettlements,
-      ticks = tickCalls,
-      goldSends = countGoldSends(),
-      denizen = boop.state.targeting.denizens[1]
-        and boop.state.targeting.denizens[1].name,
-      roomOwnerPresent = blockerFor("room:observation") ~= nil,
-      itemsSeen = accepted.itemsSeen,
-    }
-
-    publishItemsList("room", {
-      denizenItem("22", "a duplicate room response"),
-    })
-    publishItemsList("inv", {
-      inventoryItem("7002", "an unsolicited inventory response", "l"),
-    })
-
-    local acceptedName = accepted.acceptedItems
-      and accepted.acceptedItems[1]
-      and accepted.acceptedItems[1].name
-      or false
-    if accepted.acceptedItems and accepted.acceptedItems[1] then
-      accepted.acceptedItems[1].name = "mutated snapshot"
-    end
-    if gmcp.Char.Items.List.items and gmcp.Char.Items.List.items[1] then
-      gmcp.Char.Items.List.items[1].name = "mutated persistent list"
-    end
-    local immutable = boop.runtime.roomObservationSnapshot()
-
+    local settled = boop.runtime.roomObservationSnapshot()
+    local consumed = boop.runtime.roomApplicationSnapshot(
+      newApplication.applicationId
+    )
+    assert.is_true(boop.runtime.validateRoomSourceAuthority(newAuthority))
+    assert.is_false(boop.runtime.validateRoomSourceAuthority(oldAuthority))
+    assertSourceAuthority(newAuthority, settled.acceptedSourceAuthority)
+    assertSourceAuthority(newAuthority, consumed.sourceAuthority)
     assert.are.same({
-      requests = { "Char.Items.Inv", "Char.Items.Room" },
-      early = {
-        updates = 0,
-        settlements = 0,
-        ticks = 0,
-        goldSends = 0,
-        denizen = "the prior-room denizen",
-        roomOwnerPresent = true,
-      },
-      inventory = {
-        updates = 0,
-        settlements = 0,
-        ticks = 0,
-        goldSends = 0,
-        wielded = "7001",
-      },
-      accepted = {
-        updates = 1,
-        settlements = 1,
-        ticks = 1,
-        goldSends = 1,
-        denizen = "the accepted current denizen",
-        roomOwnerPresent = false,
-        itemsSeen = true,
-      },
-      finalUpdates = 1,
-      finalSettlements = 1,
-      finalTicks = 1,
-      finalGoldSends = 1,
-      finalWielded = "7002",
-      copiedAcceptedName = "the accepted current denizen",
-      immutableAcceptedName = "the accepted current denizen",
+      updates = 1,
+      settlements = 1,
+      ticks = 1,
+      goldSends = 1,
+      roomId = "4249",
+      generation = 46,
+      queueDepth = 0,
+      applicationId = newApplication.applicationId,
+      claimed = true,
+      consumed = true,
     }, {
-      requests = requestsAfterInfo,
-      early = early,
-      inventory = afterInventory,
-      accepted = afterAccepted,
-      finalUpdates = targetUpdates,
-      finalSettlements = walkSettlements,
-      finalTicks = tickCalls,
-      finalGoldSends = countGoldSends(),
-      finalWielded = boop.state.inventory.wieldedLeft
-        and boop.state.inventory.wieldedLeft.id,
-      copiedAcceptedName = acceptedName,
-      immutableAcceptedName = immutable.acceptedItems
-        and immutable.acceptedItems[1]
-        and immutable.acceptedItems[1].name
-        or false,
-    }, "ROOM_RESPONSE_FENCE_BROKEN: room evidence bound outside Inv then Room")
+      updates = targetUpdates,
+      settlements = walkSettlements,
+      ticks = tickCalls,
+      goldSends = countGoldSends(),
+      roomId = settled.roomId,
+      generation = settled.generation,
+      queueDepth = #settled.fenceQueue,
+      applicationId = consumed.applicationId,
+      claimed = consumed.claimed,
+      consumed = consumed.consumed,
+    })
   end)
 
   it("room-response-fence drains an invalidated epoch before the next epoch", function()
@@ -855,6 +1040,11 @@ describe("boop event-driven state transitions", function()
     publishItemsList("inv", {
       inventoryItem("7102", "room B current inventory", "l"),
     })
+    local roomBApplication = boop.runtime.roomApplicationSnapshot()
+    local roomBCallback = callbackForTimer(
+      roomBApplication and roomBApplication.pendingTimer
+    )
+    assert.is_function(roomBCallback)
     publishItemsList("inv", {
       inventoryItem("7199", "room B duplicate inventory", "l"),
     })
@@ -868,15 +1058,14 @@ describe("boop event-driven state transitions", function()
       exits = { south = "3" },
     }
     boop.onRoomInfo()
+    roomBCallback()
     publishItemsList("room", {
-      denizenItem("302", "room B delayed denizen"),
+      denizenItem("401", "room C accepted denizen"),
     })
     publishItemsList("inv", {
       inventoryItem("7103", "room C current inventory", "l"),
     })
-    publishItemsList("room", {
-      denizenItem("401", "room C accepted denizen"),
-    })
+    assert.is_true(runPendingRoomApplication())
 
     local observation = boop.runtime.roomObservationSnapshot()
     assert.are.same({
@@ -942,6 +1131,7 @@ describe("boop event-driven state transitions", function()
       denizenItem("41", "the complete same-room denizen"),
       goldItem("9041"),
     })
+    assert.is_true(runPendingRoomApplication())
 
     local state = boop.runtime.state()
     state.walk.active = true
@@ -1106,10 +1296,7 @@ describe("boop event-driven state transitions", function()
       events = #raised_events,
     }
 
-    publishItemsList("room", {
-      denizenItem("902", "pre-barrier arrival denizen"),
-      goldItem("9902"),
-    })
+    publishItemsList("room", {})
     local beforeArrival = {
       observation = boop.runtime.roomObservationSnapshot(),
       walk = copyWalkState(),
@@ -1145,6 +1332,7 @@ describe("boop event-driven state transitions", function()
     }
 
     publishItemsList("room", {})
+    assert.is_true(runPendingRoomApplication())
     local emitter = state.walk.emitterTimer
     local emitterCallback = callbackForTimer(emitter)
     if emitterCallback then
@@ -1164,10 +1352,17 @@ describe("boop event-driven state transitions", function()
         requestPair = { "Char.Items.Inv", "Char.Items.Room" },
         refreshTimer = nil,
       },
-      preBarrierPreserved = afterStart,
+      preBarrier = {
+        itemsSeen = false,
+        roomSeen = true,
+        queueDepth = 1,
+        denizenCount = 0,
+        sends = 0,
+        events = 0,
+      },
       arrivalPreserved = beforeArrival,
       inventory = {
-        itemsSeen = false,
+        itemsSeen = true,
         wielded = "7201",
         reservationId = 0,
         moveCount = 0,
@@ -1181,7 +1376,7 @@ describe("boop event-driven state transitions", function()
         ownerCode = "walk_move_pending",
         moveCount = 1,
         requestCount = 2,
-        timerCount = 2,
+        timerCount = 3,
         denizenCount = 0,
         goldSendCount = 0,
       },
@@ -1195,7 +1390,16 @@ describe("boop event-driven state transitions", function()
         requestPair = gmcp_requests,
         refreshTimer = afterStart.walk.refreshTimer,
       },
-      preBarrierPreserved = beforeArrival,
+      preBarrier = {
+        itemsSeen = beforeArrival.observation.itemsSeen,
+        roomSeen = beforeArrival.observation.fenceQueue[1]
+          and beforeArrival.observation.fenceQueue[1].roomSeen
+          or false,
+        queueDepth = #beforeArrival.observation.fenceQueue,
+        denizenCount = #beforeArrival.denizens,
+        sends = beforeArrival.sends,
+        events = beforeArrival.events,
+      },
       arrivalPreserved = afterArrival,
       inventory = afterInventory,
       settled = {
@@ -1503,6 +1707,7 @@ describe("boop event-driven state transitions", function()
       denizenItem("101", "the retained room A denizen"),
       goldItem("9001"),
     })
+    assert.is_true(runPendingRoomApplication())
 
     local operation = copyGoldOperation(boop.state.gold.operation)
     assert.are.equal("pickup_pending", operation.phase)
@@ -1926,6 +2131,7 @@ describe("boop event-driven state transitions", function()
         denizens[2],
         goldItem("9001"),
       })
+      assert.is_true(runPendingRoomApplication())
 
       local accepted = copyGoldOperation(boop.state.gold.operation)
       assert.are.equal(operation.generation, accepted.generation)

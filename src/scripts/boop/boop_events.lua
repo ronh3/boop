@@ -17,6 +17,17 @@ local function deepCopy(value, seen)
   return out
 end
 
+local function copySourceAuthority(authority)
+  if type(authority) ~= "table" then
+    return false
+  end
+  return {
+    applicationId = tonumber(authority.applicationId),
+    roomId = tostring(authority.roomId or ""),
+    observationGeneration = tonumber(authority.observationGeneration),
+  }
+end
+
 local function classKeyForOpener()
   if gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class then
     return gmcp.Char.Status.class
@@ -938,6 +949,7 @@ startGoldOperation = function(source, observation, packTarget)
     timeoutTimer = false,
     revalidationAttempted = false,
     revalidationFenceId = false,
+    sourceAuthority = copySourceAuthority(observation.sourceAuthority),
   }
   state.gold.operation = operation
 
@@ -1078,6 +1090,7 @@ local function onGoldDetected(source, item, opts)
     and boop.runtime.roomObservationSnapshot()
     or {}
   observation.goldItemId = tostring(item and item.id or "")
+  observation.sourceAuthority = copySourceAuthority(opts.sourceAuthority)
   boop.trace.log("gold drop detected" .. (source and (": " .. source) or ""))
   local operation = startGoldOperation(
     source,
@@ -1252,6 +1265,94 @@ function boop.onConnectionEvent()
   })
 end
 
+local function applyRoomApplication(applicationId, sourceAuthority, timerId)
+  if not (runtime() and boop.runtime.claimRoomApplication) then
+    return false
+  end
+  local application = boop.runtime.claimRoomApplication(
+    applicationId,
+    sourceAuthority,
+    timerId
+  )
+  if not application then
+    return false
+  end
+
+  local authority = copySourceAuthority(application.sourceAuthority)
+  local items = deepCopy(application.items)
+  noteRoomGmcpObserved()
+  boop.targets.updateRoomItems(items, authority)
+
+  local goldItem = findRoomGoldItem(items)
+  traceRoomItemsList(items, goldItem)
+  if goldItem then
+    autoGrabRoomItem(goldItem, {
+      source = "accepted room application",
+      sourceAuthority = authority,
+    })
+  end
+
+  local walk = boop.state and boop.state.walk or {}
+  local walkGeneration = tonumber(walk.generation) or 0
+  local walkRoomGeneration = tonumber(walk.roomGeneration) or 0
+  if boop.walk and boop.walk.onRoomSettled then
+    local advanced = boop.walk.onRoomSettled(
+      "room items list",
+      walkGeneration,
+      walkRoomGeneration,
+      authority
+    )
+    if not advanced and shouldHold("walk") then
+      traceHeld("walk", "room items list")
+    end
+  end
+  if boop.tick then
+    boop.tick(authority)
+  end
+  return true
+end
+
+local function scheduleRoomApplication(transition)
+  local applicationId = tonumber(transition and transition.applicationId)
+  local authority = copySourceAuthority(
+    transition and transition.sourceAuthority
+  )
+  if not applicationId or not authority then
+    return false
+  end
+  if not tempTimer then
+    if boop.trace and boop.trace.log then
+      boop.trace.log(string.format(
+        "room application held: scheduler unavailable | application=%s | room=%s | generation=%s",
+        tostring(applicationId),
+        tostring(authority.roomId),
+        tostring(authority.observationGeneration)
+      ))
+    end
+    if boop.util and boop.util.warn then
+      boop.util.warn(
+        "room_partial -- accepted room evidence awaiting scheduler"
+      )
+    end
+    return false
+  end
+
+  local timerId = false
+  timerId = tempTimer(0, function()
+    applyRoomApplication(applicationId, authority, timerId)
+  end)
+  if not boop.runtime.setRoomApplicationTimer(
+      applicationId,
+      timerId
+    ) then
+    if timerId and killTimer then
+      killTimer(timerId)
+    end
+    return false
+  end
+  return true
+end
+
 function boop.onRoomItemsList()
   if not gmcp or not gmcp.Char or not gmcp.Char.Items or not gmcp.Char.Items.List then return end
   local list = deepCopy(gmcp.Char.Items.List)
@@ -1259,37 +1360,19 @@ function boop.onRoomItemsList()
     and boop.runtime.observeRoomItemsList
     and boop.runtime.observeRoomItemsList(list.location, list.items)
     or { status = "ignored" }
-  if transition.status == "inventory" then
+  if transition.inventoryItems then
+    rebuildWieldedFromInventory(
+      transition.inventoryItems,
+      "inventory list"
+    )
+  elseif transition.status == "inventory" then
     rebuildWieldedFromInventory(transition.items, "inventory list")
+  end
+  if transition.status == "inventory" then
     return
   end
   if transition.status ~= "accepted" then return end
-
-  local items = transition.items
-  local walk = boop.state and boop.state.walk or {}
-  local walkGeneration = tonumber(walk.generation) or 0
-  local walkRoomGeneration = tonumber(walk.roomGeneration) or 0
-  noteRoomGmcpObserved()
-  boop.targets.updateRoomItems(items)
-
-  local goldItem = findRoomGoldItem(items)
-  traceRoomItemsList(items, goldItem)
-  if goldItem then
-    autoGrabRoomItem(goldItem)
-  end
-  if boop.walk and boop.walk.onRoomSettled then
-    local advanced = boop.walk.onRoomSettled(
-      "room items list",
-      walkGeneration,
-      walkRoomGeneration
-    )
-    if not advanced and shouldHold("walk") then
-      traceHeld("walk", "room items list")
-    end
-  end
-  if boop.tick then
-    boop.tick()
-  end
+  scheduleRoomApplication(transition)
 end
 
 function boop.onRoomItemsAdd()
@@ -1453,6 +1536,16 @@ function boop.onRoomInfo()
   end
 
   local movedRooms = previousRoomText ~= currentRoomText
+  if movedRooms then
+    if boop.runtime and boop.runtime.invalidateRoomApplication then
+      boop.runtime.invalidateRoomApplication(nil, "room changed")
+    end
+    if boop.runtime and boop.runtime.clearAttackIntent then
+      boop.runtime.clearAttackIntent("room_changed", {
+        source = "Room.Info",
+      })
+    end
+  end
   local observation = boop.runtime
     and boop.runtime.observeRoomInfo
     and boop.runtime.observeRoomInfo(info.num, {
@@ -1810,9 +1903,9 @@ function boop.canUseRage()
   return true
 end
 
-function boop.tick()
+function boop.tick(sourceAuthority)
   if boop.runtime and boop.runtime.step and boop.runtime.applyEffects then
-    local context = boop.runtime.context()
+    local context = boop.runtime.context(sourceAuthority)
     local result = boop.runtime.step({ type = "tick", context = context })
     boop.state.combat.attacking = boop.runtime.applyEffects(result, context)
     return
