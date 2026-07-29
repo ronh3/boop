@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
-status: ready_for_verification
-stopped_at: Completed 03-19-PLAN.md
-last_updated: "2026-07-28T08:09:52.557Z"
-last_activity: 2026-07-28
-last_activity_desc: Plan 03-19 complete; Phase 03 ready for parent verification
+status: executing
+stopped_at: Completed 03-20-PLAN.md
+last_updated: "2026-07-29T05:32:47.457Z"
+last_activity: 2026-07-29
+last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 33
-  completed_plans: 33
-  percent: 100
+  total_plans: 38
+  completed_plans: 34
+  percent: 33
 ---
 
 # Project State
@@ -28,18 +28,18 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 ## Current Position
 
-Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — READY FOR VERIFICATION
-Plan: 19 of 19
-Status: All Phase 03 plans executed; awaiting parent verification, final metadata, immutable push, and exact-SHA CI
-Last activity: 2026-07-28 — Plan 03-19 complete; Phase 03 ready for parent verification
+Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
+Plan: 21 of 24
+Status: Ready to execute
+Last activity: 2026-07-29 — Phase 03 execution started
 
-Progress: [██████████] 100%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 33
+- Total plans completed: 34
 - Average duration: 14 min
 - Total execution time: 7.1 hours
 
@@ -78,6 +78,7 @@ Progress: [██████████] 100%
 | Phase 03 P17 | 4m | 3 tasks | 9 files |
 | Phase 03 P18 | 7m | 3 tasks | 8 files |
 | Phase 03 P19 | 7m | 3 tasks | 9 files |
+| Phase 03 P20 | 9m35s | 1 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Plan 03-19 packages live tracing through a dedicated anchored alias so persisted collection routing and capture indexes remain unchanged.
 - [Phase 03]: Plan 03-19 documents persisted collection, session-only live streaming, show, and clear as independent controls with live reset off by default.
 - [Phase 03]: The parent retains immutable-final-HEAD push, exact-SHA CI, and live Phase 03 UAT authority after all repository mutations.
+- [Phase 03]: Room Inv and Room responses are independent copied latches that settle exactly once in either order.
+- [Phase 03]: Accepted room evidence applies only through a zero-delay record with captured applicationId, roomId, and observationGeneration.
+- [Phase 03]: Moved Room.Info invalidates stale room applications and local attack intent without queue-wide cleanup.
 
 ### Pending Todos
 
@@ -177,6 +181,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-28T08:09:52.551Z
-Stopped at: Completed 03-19-PLAN.md
+Last session: 2026-07-29T05:32:25.816Z
+Stopped at: Completed 03-20-PLAN.md
 Resume file: None
