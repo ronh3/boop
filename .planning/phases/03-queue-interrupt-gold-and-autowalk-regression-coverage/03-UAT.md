@@ -1,17 +1,24 @@
 ---
-status: diagnosed
+status: testing
 phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-28T23:56:52-07:00
+updated: 2026-07-29T00:28:48-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
 
 ## Current Test
 
-[testing complete]
+number: 2
+name: Cross-owner attack, loot, and walk release
+expected: |
+  With boop 0.1.447 installed, current-room evidence settles in either live
+  response order, manual targeting holds the walker, switching back to
+  automatic targeting permits one safe move, and fresh accepted room evidence
+  or a valid denizen Add releases only a stale target-loss owner.
+awaiting: user response
 
 ## Tests
 
@@ -46,13 +53,14 @@ observed: "Clean reconnect, prompt-first, and enable-before-prompt checks passed
 ### 2. Cross-owner attack, loot, and walk release
 
 expected: |
-  With boop 0.1.441 installed, manual targeting remains an intentional
+  With boop 0.1.447 installed, manual targeting remains an intentional
   automatic-walk hold and is reported as `manual_targeting`, not `room_clear`.
-  Room settlement accepts the live GMCP ordering, same-room refreshes preserve
-  the accepted room, and stop/restart cannot reuse stale evidence. No automatic
-  attack, loot command, or walker move occurs while another safety owner
-  remains; exactly one next action resumes after automatic targeting is
-  selected and all owners release.
+  Room settlement accepts either live GMCP response order, same-room refreshes
+  preserve the accepted room, and stop/restart cannot reuse stale evidence.
+  Fresh accepted room evidence or a valid denizen Add releases only
+  `target:loss`. No automatic attack, loot command, or walker move occurs while
+  another safety owner remains; exactly one next action resumes after automatic
+  targeting is selected and all owners release.
 
   Easy check:
   1. Run `boop on`, `boop trace clear`, and `boop trace on`. With no
@@ -77,27 +85,33 @@ expected: |
      one next action should resume.
   6. Run `boop trace show 100`. There must be no `room_partial` hold that
      persists until an unrelated later GMCP event, no ordinary sub-8-second
-     room warning, and at most one walker move per settled room.
-result: issue
-reported: |
+     room warning, and at most one walker move per settled room. If
+     `target_lost` appears after a target leaves or dies, the next accepted
+     current-room snapshot or valid denizen Add must release it without
+     releasing an unrelated hold.
+result: [pending]
+previous_result: issue
+previous_reported: |
   1. Pass.
   2. Appears not to pass.
      See output.md. The walker does not appear to ever actually start moving rooms/start. Version is 441.
-severity: major
-observed: "Step 1 passed with the exact inactive-stop message. After walk start, output.md shows the active walker held by walk_room_unsettled, followed by room_partial; it never reaches the expected manual_targeting hold or emits movement. Switching to automatic targeting instead exposes engaged_target for stale target 6832 while room denizens remain zero."
-previous_reported: "boop walk stop doesn't return any sort of message when running in step 1. After doing boop walk start, no movement is done. blocker shown is room_clear -- room clear. This is after seeing the same issue, and completely restarting mudlet."
 previous_severity: major
-previous_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room Info created a new partial generation and stalled the walker."
+previous_observed: "Step 1 passed with the exact inactive-stop message. After walk start, output.md shows the active walker held by walk_room_unsettled, followed by room_partial; it never reaches the expected manual_targeting hold or emits movement. Switching to automatic targeting instead exposes engaged_target for stale target 6832 while room denizens remain zero."
+earlier_reported: "boop walk stop doesn't return any sort of message when running in step 1. After doing boop walk start, no movement is done. blocker shown is room_clear -- room clear. This is after seeing the same issue, and completely restarting mudlet."
+earlier_severity: major
+earlier_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room Info created a new partial generation and stalled the walker."
 
 ### 3. Wrong-room gold and pack transfer
 
 expected: |
-  With boop 0.1.441 installed, a gold Item.Add in an already settled room
+  With boop 0.1.447 installed, a gold Item.Add in an already settled room
   requests one current-room revalidation but cannot authorize pickup by itself.
-  Only the matching fenced room List may queue one get. Confirmed pickup may
-  queue one put, while stale, duplicate, wrong-room, and movement-invalidated
-  responses do nothing. Completing or cancelling gold must release its owner so
-  hunting and walking cannot remain permanently jammed.
+  Only the matching fenced room List may queue one
+  `queue add full get sovereigns`. Confirmed pickup may queue one freestand put,
+  while stale, duplicate, wrong-room, and movement-invalidated responses do
+  nothing. A diag collision must issue `clearqueue all` before its diagnose
+  command, preserve the displaced gold operation, and authorize exactly one
+  replay after the exact interrupt owner releases.
 
   Easy check:
   1. Stop the walker, then run `boop on`, `boop trace clear`,
@@ -112,19 +126,24 @@ expected: |
      be emitted from the invalidated response.
   4. Repeat once more while `diag` owns an unrelated hold. Gold may revalidate,
      but no get, put, attack, or walker move may occur until every owner clears.
-     After the final owner clears, exactly one eligible action may resume and
-     hunting must not remain jammed.
+     Native output must show `clearqueue all` before
+     `queue addclearfull freestand diagnose`, with no unknown-queue error. After
+     the exact diag owner clears, exactly one eligible gold command may replay
+     and hunting must not remain jammed.
   5. Run `boop trace show 100`. Confirm no standard/rage attack command
      contains get or put, no gold generation dispatches twice, and stale room
-     responses have no side effects.
-result: issue
-reported: "Check output.md. Behavior does not seem quite right. Boop did not start attacking until another command (boop status, ql, etc.) were checked. Gold pickup seems wonky at best, pickup seeming to not occur after death when doing a diag prior, etc. Think the gold timeout may be too short?"
-severity: major
-observed: "Normal gold generations 1, 2, 4, and 6 complete one get-confirm-put sequence. Room settlement repeatedly remains room_partial until a later ql/ih/status-adjacent event supplies the missing room List, corroborating G-03-7. In the failing diag sequence, gold generation 5 queues get sovereigns, diag then globally clears/replaces the shared native queue set, no pickup confirmation arrives, and the fixed four-second gold timer terminates the operation while the sovereigns remain in room 4249; a later room refresh creates generation 6 and finally picks them up."
-previous_reported: "Check output.md. Does not appear to be working whatsoever. Actual hunting is also broken, it seems. It will sometimes attack the first mob in the room, but then gets jammed up."
-previous_severity: blocker
-previous_blocker: "Gold was recognized in GMCP, but the reconnect snapshot showed boop enabled=false and gmcp_ire_missing was waiting for prompt evidence."
-previous_result: "Before Plans 03-11/03-13, pickup required exit/re-entry and a same-room Room.Info cancelled the queued get before packing."
+     responses have no side effects. A fresh replay timeout may remain held for
+     explicit evidence, but it must not duplicate the command; movement must
+     invalidate pickup and disabling boop must invalidate packing.
+result: [pending]
+previous_result: issue
+previous_reported: "Check output.md. Behavior does not seem quite right. Boop did not start attacking until another command (boop status, ql, etc.) were checked. Gold pickup seems wonky at best, pickup seeming to not occur after death when doing a diag prior, etc. Think the gold timeout may be too short?"
+previous_severity: major
+previous_observed: "Normal gold generations 1, 2, 4, and 6 complete one get-confirm-put sequence. Room settlement repeatedly remains room_partial until a later ql/ih/status-adjacent event supplies the missing room List, corroborating G-03-7. In the failing diag sequence, gold generation 5 queues get sovereigns, diag then globally clears/replaces the shared native queue set, no pickup confirmation arrives, and the fixed four-second gold timer terminates the operation while the sovereigns remain in room 4249; a later room refresh creates generation 6 and finally picks them up."
+earlier_reported: "Check output.md. Does not appear to be working whatsoever. Actual hunting is also broken, it seems. It will sometimes attack the first mob in the room, but then gets jammed up."
+earlier_severity: blocker
+earlier_blocker: "Gold was recognized in GMCP, but the reconnect snapshot showed boop enabled=false and gmcp_ire_missing was waiting for prompt evidence."
+earlier_result: "Before Plans 03-11/03-13, pickup required exit/re-entry and a same-room Room.Info cancelled the queued get before packing."
 
 ### 4. Optional walker and stop ownership
 
@@ -143,11 +162,13 @@ result: pass
 expected: |
   The immutable final commit is present on origin and `main.yml` succeeds for
   that exact `headSha`. The complete packaged real-Mudlet Busted suite,
-  including Psion and Dragon pull-profile cases, reports no failures or errors.
-result: pass
+  including Psion and Dragon pull-profile cases, reports no failures or errors
+  while building synchronized package 0.1.447.
+result: [pending]
 source: automated
-evidence: "GitHub Actions run 30342898415 passed for exact source/package SHA 95cfbb96b4428032570b3e6019ae61f0ed619b29."
-previous_evidence: "GitHub Actions run 30265771025 passed for pre-gap SHA 07d73e8b38823277a8132cbcded2ea9f88e92f08."
+previous_result: pass
+previous_evidence: "GitHub Actions run 30342898415 passed for exact source/package SHA 95cfbb96b4428032570b3e6019ae61f0ed619b29."
+earlier_evidence: "GitHub Actions run 30265771025 passed for pre-gap SHA 07d73e8b38823277a8132cbcded2ea9f88e92f08."
 
 ### 6. Live trace correlation
 
@@ -182,9 +203,9 @@ previous_severity: minor
 ## Summary
 
 total: 6
-passed: 4
-issues: 2
-pending: 0
+passed: 3
+issues: 0
+pending: 3
 skipped: 0
 blocked: 0
 
@@ -341,7 +362,7 @@ blocked: 0
 
 - gap_id: G-03-7
   truth: "Starting a live boop walk from the current room settles its requested room evidence, then reports manual_targeting while manual mode is active and can advance after automatic targeting is selected; moved-room boundaries never permit stale prior-room target or attack dispatch."
-  status: failed
+  status: resolved
   reason: "User reported that inactive stop passed, but the walker never began moving. output.md shows walk_room_unsettled progressing to room_partial instead of the expected manual_targeting hold, then engaged_target after automatic targeting was selected."
   severity: major
   test: 2
@@ -368,10 +389,16 @@ blocked: 0
     - "Invalidate stale pending applicators and local intent on moved Room.Info without globally clearing unrelated shared-queue work."
     - "Add exact regressions for both response orders, manual-to-auto walk advancement, post-Inv List-before-Info isolation, and the 4255-to-4249 stale target/attack chronology."
   debug_session: ".planning/debug/phase-03-live-room-evidence-wakeup-regression.md"
+  resolved_by:
+    - "03-20-PLAN.md"
+    - "03-21-PLAN.md"
+    - "03-22-PLAN.md"
+    - "03-22 post-plan target-loss hotfix, commit 457aafc"
+  verification: "03-VERIFICATION.md verifies both response orders, exact room authority, manual-to-auto wake-up, stale dispatch rejection, and target-loss release at package 0.1.447; live Mudlet confirmation remains pending."
 
 - gap_id: G-03-8
   truth: "A queue-clearing interrupt cannot silently discard an owned pending gold command: gold remains held while the interrupt owns the queue, then exactly one eligible get-confirm-put sequence resumes or terminates from explicit evidence without requiring a room refresh."
-  status: failed
+  status: resolved
   reason: "User reported that combat often waited for another command and gold pickup failed after diag. output.md shows gold generation 5 queue get sovereigns, diag globally clear/replace the shared native queue set, no pickup response, and pending_timeout four seconds later while the gold remained in the room."
   severity: major
   test: 3
@@ -399,6 +426,10 @@ blocked: 0
     - "Terminate only from explicit success, failure, movement, disable, flee, or item evidence; a queue-replaced command cannot be silently abandoned by elapsed time."
     - "Add a native queue model and regressions for real diag after pickup and pack dispatch, both interrupt-release/timeout orderings, exact-once replay, and complete get-confirm-put termination."
   debug_session: ".planning/debug/phase-03-diag-gold-queue-collision.md"
+  resolved_by:
+    - "03-23-PLAN.md"
+    - "03-24-PLAN.md"
+  verification: "03-VERIFICATION.md verifies stage-specific native queues, exact displacement ownership, one replay, nonterminal replay timeout, explicit invalidation, and real diag command ordering at package 0.1.447; live Mudlet/native-queue confirmation remains pending."
 
 - gap_id: G-03-9
   truth: "Target loss cannot deadlock automatic hunting: authoritative current-room evidence or a valid arriving denizen releases only the stale target-loss owner, after which one current target and attack may resume."
