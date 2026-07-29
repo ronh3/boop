@@ -1,10 +1,10 @@
 ---
-status: complete
+status: diagnosed
 phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-28T21:11:40-07:00
+updated: 2026-07-28T21:23:44-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -340,13 +340,34 @@ blocked: 0
   verification: "03-VERIFICATION.md verifies session-only state, package-reload reset, exact-once non-recursive output, and packaged alias/help wiring at 0.1.441; post-fix live UAT Test 6 remains pending."
 
 - gap_id: G-03-7
-  truth: "Starting a live boop walk from the current room settles its requested room evidence, then reports manual_targeting while manual mode is active and can advance after automatic targeting is selected."
+  truth: "Starting a live boop walk from the current room settles its requested room evidence, then reports manual_targeting while manual mode is active and can advance after automatic targeting is selected; moved-room boundaries never permit stale prior-room target or attack dispatch."
   status: failed
   reason: "User reported that inactive stop passed, but the walker never began moving. output.md shows walk_room_unsettled progressing to room_partial instead of the expected manual_targeting hold, then engaged_target after automatic targeting was selected."
   severity: major
   test: 2
-  artifacts: []
-  missing: []
+  root_cause: "The room-response fence assumes requested Inv-then-Room response order. A Room List arriving first is discarded, so the generation waits for a later List; a post-Inv, pre-Info room-ID-less List can instead be authenticated against persistent old Room.Info and applied to the prior generation. Accepted settlement synchronously emits generationless target and attack commands, which the following moved Room.Info cannot revoke."
+  artifacts:
+    - path: "src/scripts/boop/boop_runtime.lua"
+      issue: "The response fence has a one-way await_inv-to-await_room phase, discards early Room payloads, and authenticates room-ID-less Lists against persistent Room.Info."
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "Accepted Lists immediately mutate target/gold/walk state and tick; moved Room.Info starts a new generation but cannot revoke already-emitted prior-generation commands."
+    - path: "src/scripts/boop/boop_targets.lua"
+      issue: "Target selection immediately sends settarget without carrying the accepted room generation."
+    - path: "src/scripts/boop/boop_attacks.lua"
+      issue: "Attack selection reaches external command dispatch without final room-generation validation."
+    - path: "src/scripts/boop/boop_util.lua"
+      issue: "Standard queue emission sends setalias and BOOP_ATTACK immediately with no generation owner."
+    - path: "tests/boop_event_transitions_spec.lua"
+      issue: "Out-of-order tests supply a second Room response after rejecting Room-before-Inv and never cover post-Inv List-before-moved-Info cross-binding."
+    - path: "tests/boop_walk_spec.lua"
+      issue: "Walk tests use ordered response pairs and omit the live manual-to-auto wake-up plus stale prior-room dispatch sequence."
+  missing:
+    - "Latch copied Inv and Room responses independently per fence so exactly one response of each type settles in either order."
+    - "Keep pre-Info room-ID-less evidence untrusted across movement boundaries and reconcile or invalidate it without binding it to persistent old Room.Info."
+    - "Make accepted-room application and target/gold/walk/combat emission generation-owned with a final room/generation check immediately before external effects."
+    - "Invalidate stale pending applicators and local intent on moved Room.Info without globally clearing unrelated shared-queue work."
+    - "Add exact regressions for both response orders, manual-to-auto walk advancement, post-Inv List-before-Info isolation, and the 4255-to-4249 stale target/attack chronology."
+  debug_session: ".planning/debug/phase-03-live-room-evidence-wakeup-regression.md"
 
 - gap_id: G-03-8
   truth: "A queue-clearing interrupt cannot silently discard an owned pending gold command: gold remains held while the interrupt owns the queue, then exactly one eligible get-confirm-put sequence resumes or terminates from explicit evidence without requiring a room refresh."
@@ -354,8 +375,29 @@ blocked: 0
   reason: "User reported that combat often waited for another command and gold pickup failed after diag. output.md shows gold generation 5 queue get sovereigns, diag clear/replace the shared freestand queue, no pickup response, and pending_timeout four seconds later while the gold remained in the room."
   severity: major
   test: 3
-  artifacts: []
-  missing: []
+  root_cause: "Gold and diag share the native freestand queue without shared command-entry ownership. Diag sends invalid bare queue clear, then valid addclearfull, which removes the queued gold get; boop keeps pickup_pending and its live timeout because no displaced-command transition exists. Diag release cannot replay while that timer is active, and the four-second callback later terminates the generation without game evidence."
+  artifacts:
+    - path: "src/scripts/boop/boop_ui.lua"
+      issue: "Real diag emits an invalid bare queue clear and a destructive addclearfull without coordinating an already-dispatched gold command."
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "Gold tracks phase and timeout but not displacement of its native queue entry; elapsed timeout terminates instead of replaying after the interrupt."
+    - path: "src/scripts/boop/boop_runtime.lua"
+      issue: "Interrupt release ticks normally, but the surviving gold timeout token suppresses flush_gold and exact-once redispatch."
+    - path: "src/triggers/boop/Gold/triggers.json"
+      issue: "Explicit get/put failures are covered, but native queue replacement has no evidence or recovery transition."
+    - path: "tests/boop_diag_spec.lua"
+      issue: "Append-only send mocks assert command text but do not model invalid bare clear or destructive addclearfull semantics."
+    - path: "tests/boop_gold_spec.lua"
+      issue: "Aggregate-owner coverage places the interrupt before gold dispatch rather than replacing a get already queued."
+    - path: "tests/boop_gold_retry_spec.lua"
+      issue: "Timeout coverage omits the live release-before-timeout ordering after destructive queue replacement."
+  missing:
+    - "Remove the invalid bare queue clear command."
+    - "Before destructive queue replacement, preserve the gold owner, mark any sent pickup or pack command displaced/unsent, and cancel its stale pending timer."
+    - "On exact interrupt completion, revalidate the current gold stage and dispatch exactly one generation-guarded get or put without requiring new room evidence."
+    - "Terminate only from explicit success, failure, movement, disable, flee, or item evidence; a queue-replaced command cannot be silently abandoned by elapsed time."
+    - "Add a native queue model and regressions for real diag after pickup and pack dispatch, both interrupt-release/timeout orderings, exact-once replay, and complete get-confirm-put termination."
+  debug_session: ".planning/debug/phase-03-diag-gold-queue-collision.md"
 
 ## Deferred Follow-Ups
 
