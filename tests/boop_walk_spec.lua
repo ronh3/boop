@@ -7,12 +7,15 @@ describe("boop walk integration", function()
   local saved_send_gmcp
   local saved_feedback
   local saved_trace_log
+  local saved_save_config
+  local saved_matches
   local timers
   local walker
   local sent_gmcp
   local sent
   local feedback
   local trace_lines
+  local config_saves
 
   local function countRaised(name)
     local count = 0
@@ -67,6 +70,7 @@ describe("boop walk integration", function()
       warn = {},
     }
     trace_lines = {}
+    config_saves = {}
 
     _G.tempTimer = timers.tempTimer
     _G.killTimer = timers.killTimer
@@ -78,6 +82,12 @@ describe("boop walk integration", function()
     end
     _G.sendGMCP = function(command)
       sent_gmcp[#sent_gmcp + 1] = command
+    end
+    boop.db.saveConfig = function(key, value)
+      config_saves[#config_saves + 1] = {
+        key = key,
+        value = value,
+      }
     end
     walker = helper.setWalker(opts or {
       available = true,
@@ -152,6 +162,61 @@ describe("boop walk integration", function()
     return blocker
   end
 
+  local function runTargetingAlias(mode)
+    local previousMatches = _G.matches
+    _G.matches = {
+      "boop targeting " .. tostring(mode),
+      tostring(mode),
+    }
+    local ok, err = pcall(
+      dofile,
+      os.getenv("BOOP_REPO_ROOT")
+        .. "/src/aliases/boop/Targeting/Boop_Targeting.lua"
+    )
+    _G.matches = previousMatches
+    assert.is_true(ok, tostring(err))
+  end
+
+  local function runCurrentRoomApplication()
+    local application = boop.runtime.roomApplicationSnapshot()
+    assert.is_table(application)
+    assert.is_number(application.applicationId)
+    assert.are.equal(
+      boop.runtime.state().walk.roomGeneration,
+      application.sourceAuthority.observationGeneration
+    )
+    assert.are.equal("1", application.sourceAuthority.roomId)
+    assert.are.equal(0, timers.delays[application.pendingTimer])
+    timers.run(application.pendingTimer)
+    return boop.runtime.roomApplicationSnapshot(application.applicationId)
+  end
+
+  local function startManualWalk()
+    boop.config.enabled = true
+    boop.config.targetingMode = "manual"
+    boop.config.targetCall = false
+    helper.setTarget("", "", "100%")
+    helper.setDenizens({})
+    assert.is_true(boop.walk.start())
+    assert.are.same({
+      "Char.Items.Inv",
+      "Char.Items.Room",
+    }, sent_gmcp)
+    return boop.runtime.state()
+  end
+
+  local function publishResponse(location)
+    local items = {}
+    if location == "inv" then
+      items[1] = {
+        id = "7001",
+        name = "a carried test item",
+        attrib = "l",
+      }
+    end
+    return publishItemsList(location, items)
+  end
+
   before_each(function()
     saved_temp_timer = _G.tempTimer
     saved_kill_timer = _G.killTimer
@@ -164,6 +229,8 @@ describe("boop walk integration", function()
       warn = boop.util.warn,
     }
     saved_trace_log = boop.trace.log
+    saved_save_config = boop.db.saveConfig
+    saved_matches = _G.matches
 
     boop.util.err = function(message)
       feedback.err[#feedback.err + 1] = tostring(message)
@@ -203,6 +270,8 @@ describe("boop walk integration", function()
     boop.util.ok = saved_feedback.ok
     boop.util.warn = saved_feedback.warn
     boop.trace.log = saved_trace_log
+    boop.db.saveConfig = saved_save_config
+    _G.matches = saved_matches
   end)
 
   local denialCases = {
@@ -808,6 +877,194 @@ describe("boop walk integration", function()
     assert.are.equal(0, countRaised("demonwalker.stop"))
   end)
 
+  local liveManualToAutoOrders = {
+    {
+      name = "Inv then Room",
+      first = "inv",
+      second = "room",
+    },
+    {
+      name = "Room then Inv",
+      first = "room",
+      second = "inv",
+    },
+  }
+
+  for _, entry in ipairs(liveManualToAutoOrders) do
+    local case = entry
+    it(
+      "G-03-7 live manual-to-auto wake-up settles "
+        .. case.name
+        .. " and moves once",
+      function()
+        local state = startManualWalk()
+
+        publishResponse(case.first)
+        publishResponse(case.second)
+        local application = runCurrentRoomApplication()
+        local blocker = boop.walk.blockerDetails()
+
+        assert.is_true(application.claimed)
+        assert.is_true(application.consumed)
+        assert.is_true(state.walk.roomSettled)
+        assert.are.same({
+          code = "manual_targeting",
+          label = "manual targeting is active",
+          nextAction = "boop targeting auto",
+        }, blocker)
+        assert.are.equal(0, state.walk.reservationId)
+        assert.is_false(state.walk.moveQueued)
+        assert.is_nil(state.walk.emitterTimer)
+        assert.are.equal(0, countRaised("demonwalker.move"))
+
+        local okCountBeforeAuto = #feedback.ok
+        runTargetingAlias("auto")
+
+        assert.are.equal("auto", boop.config.targetingMode)
+        assert.are.same({
+          {
+            key = "targetingMode",
+            value = "auto",
+          },
+        }, config_saves)
+        assert.are.equal(1, #feedback.ok - okCountBeforeAuto)
+        assert.are.equal(
+          "targeting mode: auto",
+          feedback.ok[#feedback.ok]
+        )
+        assert.are.equal(1, state.walk.reservationId)
+        assert.is_true(state.walk.moveQueued)
+        assert.is_true(state.walk.moveIssuedForRoomGeneration)
+        assert.is_number(state.walk.emitterTimer)
+        assert.are.equal(0, timers.delays[state.walk.emitterTimer])
+
+        local emitter = state.walk.emitterTimer
+        timers.run(emitter)
+        assert.are.equal(1, countRaised("demonwalker.move"))
+
+        runTargetingAlias("auto")
+        publishResponse(case.first)
+        publishResponse(case.second)
+        boop.onPrompt()
+        boop.onRoomInfo()
+        timers.run(emitter)
+
+        assert.are.equal(1, state.walk.reservationId)
+        assert.are.equal(1, countRaised("demonwalker.move"))
+        assert.are.equal(2, #config_saves)
+        assert.are.equal(2, #feedback.ok - okCountBeforeAuto)
+        assert.are.equal(4, #sent_gmcp)
+      end
+    )
+  end
+
+  it("G-03-7 early targeting auto waits for the exact room application", function()
+    local state = startManualWalk()
+    local okCountBeforeAuto = #feedback.ok
+
+    runTargetingAlias("auto")
+
+    assert.are.equal(0, state.walk.reservationId)
+    assert.is_false(state.walk.moveQueued)
+    assert.is_nil(state.walk.emitterTimer)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+
+    publishResponse("room")
+    publishResponse("inv")
+    local application = runCurrentRoomApplication()
+
+    assert.is_true(application.claimed)
+    assert.is_true(application.consumed)
+    assert.are.equal(1, state.walk.reservationId)
+    assert.is_true(state.walk.moveQueued)
+    assert.is_number(state.walk.emitterTimer)
+    assert.are.equal(0, timers.delays[state.walk.emitterTimer])
+
+    local emitter = state.walk.emitterTimer
+    timers.run(emitter)
+    boop.onPrompt()
+    boop.onRoomInfo()
+    publishResponse("room")
+    publishResponse("inv")
+    timers.run(emitter)
+
+    assert.are.equal(1, state.walk.reservationId)
+    assert.are.equal(1, countRaised("demonwalker.move"))
+    assert.are.same({
+      {
+        key = "targetingMode",
+        value = "auto",
+      },
+    }, config_saves)
+    assert.are.equal(1, #feedback.ok - okCountBeforeAuto)
+    assert.are.equal(
+      "targeting mode: auto",
+      feedback.ok[#feedback.ok]
+    )
+    assert.are.equal(4, #sent_gmcp)
+  end)
+
+  it("G-03-7 targeting auto retains an unrelated owner until exact release", function()
+    local state = startManualWalk()
+    publishResponse("inv")
+    publishResponse("room")
+    runCurrentRoomApplication()
+    helper.setRuntimeBlocker({
+      owner = "interrupt:manual-auto",
+      code = "interrupt_pending",
+      label = "unrelated walk hold",
+      systems = { walk = true },
+      waitsFor = { prompt = true },
+    })
+
+    local okCountBeforeAuto = #feedback.ok
+    runTargetingAlias("auto")
+
+    assertOwner(
+      "interrupt:manual-auto",
+      "interrupt_pending",
+      "unrelated walk hold"
+    )
+    assert.are.equal(0, state.walk.reservationId)
+    assert.is_false(state.walk.moveQueued)
+    assert.is_nil(state.walk.emitterTimer)
+    assert.are.equal(0, countRaised("demonwalker.move"))
+
+    assert.is_true(boop.runtime.clearBlocker(
+      "interrupt:manual-auto",
+      "exact owner released"
+    ))
+    boop.tick()
+
+    assert.is_nil(
+      state.combat.blockersByOwner["interrupt:manual-auto"]
+    )
+    assert.are.equal(1, state.walk.reservationId)
+    assert.is_true(state.walk.moveQueued)
+    assert.is_number(state.walk.emitterTimer)
+    assert.are.equal(0, timers.delays[state.walk.emitterTimer])
+
+    local emitter = state.walk.emitterTimer
+    timers.run(emitter)
+    boop.onPrompt()
+    timers.run(emitter)
+
+    assert.are.equal(1, state.walk.reservationId)
+    assert.are.equal(1, countRaised("demonwalker.move"))
+    assert.are.same({
+      {
+        key = "targetingMode",
+        value = "auto",
+      },
+    }, config_saves)
+    assert.are.equal(1, #feedback.ok - okCountBeforeAuto)
+    assert.are.equal(
+      "targeting mode: auto",
+      feedback.ok[#feedback.ok]
+    )
+    assert.are.equal(2, #sent_gmcp)
+  end)
+
   it("holds manual targeting without a reservation then advances once in auto", function()
     local state = seedReadyWalk({ targetingMode = "manual" })
 
@@ -1086,6 +1343,13 @@ describe("boop walk integration", function()
       { id = "7102", name = "new inventory response", attrib = "l" },
     })
     publishItemsList("room", {})
+    local currentApplication = boop.runtime.roomApplicationSnapshot()
+    assert.is_table(currentApplication)
+    assert.are.equal(
+      0,
+      timers.delays[currentApplication.pendingTimer]
+    )
+    timers.run(currentApplication.pendingTimer)
     local currentEmitter = state.walk.emitterTimer
     if currentEmitter and timers.callback(currentEmitter) then
       timers.run(currentEmitter)
@@ -1144,7 +1408,7 @@ describe("boop walk integration", function()
         moveIssued = true,
         ownerCode = "walk_move_pending",
         moveCount = 1,
-        timerCount = 3,
+        timerCount = 4,
         warningCount = 0,
       },
     }, {

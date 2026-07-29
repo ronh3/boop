@@ -1172,9 +1172,18 @@ function boop.ui.setTargetingMode(mode, quiet)
     boop.util.info("Usage: boop targeting <manual|whitelist|blacklist|auto>")
     return
   end
+  local previousMode = tostring(boop.config.targetingMode or "")
   boop.config.targetingMode = mode
   if boop.db and boop.db.saveConfig then
     boop.db.saveConfig("targetingMode", boop.config.targetingMode)
+  end
+  if previousMode == "manual"
+      and mode ~= "manual"
+      and boop.walk
+      and boop.walk.isActive
+      and boop.walk.isActive()
+      and boop.walk.maybeAdvance then
+    boop.walk.maybeAdvance("targeting mode changed")
   end
   if not quiet then
     boop.util.ok("targeting mode: " .. tostring(mode))
