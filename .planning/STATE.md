@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
 status: executing
-stopped_at: Completed 03-22-PLAN.md
-last_updated: "2026-07-29T06:01:50.237Z"
+stopped_at: Completed 03-23-PLAN.md
+last_updated: "2026-07-29T07:07:25.203Z"
 last_activity: 2026-07-29
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 38
-  completed_plans: 36
-  percent: 33
+  completed_plans: 37
+  percent: 97
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
-Plan: 23 of 24
+Plan: 24 of 24
 Status: Ready to execute
 Last activity: 2026-07-29 — Phase 03 execution started
 
-Progress: [█████████░] 92%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -81,6 +81,7 @@ Progress: [█████████░] 92%
 | Phase 03 P20 | 9m35s | 1 tasks | 6 files |
 | Phase 03 P21 | 14m32s | 1 tasks | 9 files |
 | Phase 03 P22 | 8m | 1 tasks | 5 files |
+| Phase 03 P23 | 31m | 1 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -158,6 +159,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Stale combat rejection remains local and preserves intentional non-room command families plus unrelated shared queue ownership.
 - [Phase 03]: Wake active walks only on a true manual-to-nonmanual targeting transition.
 - [Phase 03]: Delegate targeting wakeups to boop.walk.maybeAdvance so snapshot, owner, and reservation gates remain authoritative.
+- [Phase 03]: Pickup dispatch uses the full queue while packing remains an independent freestand command.
+- [Phase 03]: Destructive native queue replacement invalidates only the exact sent dispatch timer while preserving gold owner, generation, phase, evidence, and retry authority.
+- [Phase 03]: A fresh displacement-replay timeout waits nonterminally for explicit evidence instead of completing with pending_timeout or replaying automatically.
 
 ### Pending Todos
 
@@ -188,6 +192,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-29T06:01:50.231Z
-Stopped at: Completed 03-22-PLAN.md
+Last session: 2026-07-29T07:07:25.198Z
+Stopped at: Completed 03-23-PLAN.md
 Resume file: None
