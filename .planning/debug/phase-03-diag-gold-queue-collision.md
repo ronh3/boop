@@ -2,7 +2,7 @@
 status: diagnosed
 trigger: "Diagnose G-03-8 in /var/home/ron/mudletCode/boop. Goal: find_root_cause_only. Do not edit source, tests, UAT, versions, or commits."
 created: 2026-07-28T21:12:56-07:00
-updated: 2026-07-28T21:17:05-07:00
+updated: 2026-07-28T22:07:30-07:00
 ---
 
 ## Current Focus
@@ -95,6 +95,11 @@ started: Phase 03 UAT Test 3 on package version 0.1.441; normal gold generations
   found: Gold retries are driven by explicit get/put failure lines such as not seeing/carrying the item. `Unknown queue specified` is not a gold failure trigger, and there is no trigger for a command displaced by `ADDCLEARFULL`.
   implication: The queue error cannot repair or explicitly terminate generation 5; with no get command left, no pickup success/removal/failure evidence can arrive.
 
+- timestamp: 2026-07-28T22:07:30-07:00
+  checked: User correction and Achaea `HELP QUEUEING` (`https://www.achaea.com/game-help?what=queueing`)
+  found: `CLEARQUEUE ALL` is the valid command for clearing every queue; `QUEUE CLEAR <queue>` is only the queue-specific synonym for `CLEARQUEUE <queue>`.
+  implication: Preserve diag's explicit global-clear step by replacing bare `queue clear` with `clearqueue all`; do not simply omit that step.
+
 ## Resolution
 
 root_cause: |
@@ -129,8 +134,10 @@ fix: |
   explicitly displaced/unsent and cancel or consume its pending timer while preserving
   the gold owner. On the interrupt's exact terminal transition, reauthorize current
   evidence and dispatch exactly one current-stage get/put, or terminate only from an
-  explicit invalidation/failure signal. Remove the invalid bare `queue clear`; the valid
-  `ADDCLEARFULL` already performs a global clear.
+  explicit invalidation/failure signal. Replace invalid bare `queue clear` with
+  `clearqueue all`, and preserve the following `queue addclearfull freestand diagnose`
+  command. Initial, retried, and replayed pickup should use the operator-selected
+  `queue add full get sovereigns`; packing remains on `freestand`.
 verification: |
   Root-cause-only diagnosis. Confirmed from package 0.1.441 live trace
   (`output.md:1598-1668,1808-1829,1874-1881`), source control flow, official Achaea
@@ -157,15 +164,17 @@ files_changed:
 - Continue through item removal/get success and assert exactly one put and one explicit terminal transition.
 - Cover the converse timeout-while-interrupt-active ordering so correctness does not depend on which timer/owner releases first.
 - Repeat the collision for inventory-owned `pack_pending`.
-- Make the queue model reject bare `QUEUE CLEAR` and apply global `ADDCLEARFULL` semantics so the current diag unit tests cannot bless the live-invalid command sequence.
+- Make the queue model reject bare `QUEUE CLEAR`, accept `CLEARQUEUE ALL`, and apply global `ADDCLEARFULL` semantics so tests prove the corrected two-command diag sequence.
 
 ## Suggested Fix Direction
 
 Introduce an explicit native-queue displacement transition at the gold/interrupt boundary:
 preserve `gold:<generation>`, convert the current sent stage to replayable unsent state,
-cancel its stale pending timer, perform the interrupt's global replacement, and let the
+cancel its stale pending timer, issue valid `clearqueue all`, perform the interrupt's
+following global replacement, and let the
 exact interrupt terminal path schedule one generation-guarded normal tick. That tick
 must revalidate the unchanged room-owned pickup (or inventory-owned pack), issue one
-command, and re-arm one timer. Explicit movement, item failure/removal, success, disable,
+`full` pickup command or `freestand` pack command, and re-arm one timer. Explicit
+movement, item failure/removal, success, disable,
 or flee evidence may still terminate through existing generation guards; elapsed time
 alone must not silently discard queue-replaced gold.

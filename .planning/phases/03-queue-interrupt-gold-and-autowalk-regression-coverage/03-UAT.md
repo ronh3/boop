@@ -120,7 +120,7 @@ expected: |
 result: issue
 reported: "Check output.md. Behavior does not seem quite right. Boop did not start attacking until another command (boop status, ql, etc.) were checked. Gold pickup seems wonky at best, pickup seeming to not occur after death when doing a diag prior, etc. Think the gold timeout may be too short?"
 severity: major
-observed: "Normal gold generations 1, 2, 4, and 6 complete one get-confirm-put sequence. Room settlement repeatedly remains room_partial until a later ql/ih/status-adjacent event supplies the missing room List, corroborating G-03-7. In the failing diag sequence, gold generation 5 queues get sovereigns, diag then clears/replaces the shared freestand queue, no pickup confirmation arrives, and the fixed four-second gold timer terminates the operation while the sovereigns remain in room 4249; a later room refresh creates generation 6 and finally picks them up."
+observed: "Normal gold generations 1, 2, 4, and 6 complete one get-confirm-put sequence. Room settlement repeatedly remains room_partial until a later ql/ih/status-adjacent event supplies the missing room List, corroborating G-03-7. In the failing diag sequence, gold generation 5 queues get sovereigns, diag then globally clears/replaces the shared native queue set, no pickup confirmation arrives, and the fixed four-second gold timer terminates the operation while the sovereigns remain in room 4249; a later room refresh creates generation 6 and finally picks them up."
 previous_reported: "Check output.md. Does not appear to be working whatsoever. Actual hunting is also broken, it seems. It will sometimes attack the first mob in the room, but then gets jammed up."
 previous_severity: blocker
 previous_blocker: "Gold was recognized in GMCP, but the reconnect snapshot showed boop enabled=false and gmcp_ire_missing was waiting for prompt evidence."
@@ -372,10 +372,10 @@ blocked: 0
 - gap_id: G-03-8
   truth: "A queue-clearing interrupt cannot silently discard an owned pending gold command: gold remains held while the interrupt owns the queue, then exactly one eligible get-confirm-put sequence resumes or terminates from explicit evidence without requiring a room refresh."
   status: failed
-  reason: "User reported that combat often waited for another command and gold pickup failed after diag. output.md shows gold generation 5 queue get sovereigns, diag clear/replace the shared freestand queue, no pickup response, and pending_timeout four seconds later while the gold remained in the room."
+  reason: "User reported that combat often waited for another command and gold pickup failed after diag. output.md shows gold generation 5 queue get sovereigns, diag globally clear/replace the shared native queue set, no pickup response, and pending_timeout four seconds later while the gold remained in the room."
   severity: major
   test: 3
-  root_cause: "Gold and diag share the native freestand queue without shared command-entry ownership. Diag sends invalid bare queue clear, then valid addclearfull, which removes the queued gold get; boop keeps pickup_pending and its live timeout because no displaced-command transition exists. Diag release cannot replay while that timer is active, and the four-second callback later terminates the generation without game evidence."
+  root_cause: "Gold and diag share Achaea's native queue system without shared command-entry ownership. Diag sends invalid bare queue clear, then globally destructive addclearfull, which removes the queued gold get regardless of its queue type; boop keeps pickup_pending and its live timeout because no displaced-command transition exists. Diag release cannot replay while that timer is active, and the four-second callback later terminates the generation without game evidence."
   artifacts:
     - path: "src/scripts/boop/boop_ui.lua"
       issue: "Real diag emits an invalid bare queue clear and a destructive addclearfull without coordinating an already-dispatched gold command."
@@ -392,7 +392,8 @@ blocked: 0
     - path: "tests/boop_gold_retry_spec.lua"
       issue: "Timeout coverage omits the live release-before-timeout ordering after destructive queue replacement."
   missing:
-    - "Remove the invalid bare queue clear command."
+    - "Replace the invalid bare `queue clear` command with the valid global clear `clearqueue all`, preserving the following diagnose queue command."
+    - "Use `queue add full get sovereigns` for initial pickup, retries, and displacement replay; keep packing independent on `freestand`."
     - "Before destructive queue replacement, preserve the gold owner, mark any sent pickup or pack command displaced/unsent, and cancel its stale pending timer."
     - "On exact interrupt completion, revalidate the current gold stage and dispatch exactly one generation-guarded get or put without requiring new room evidence."
     - "Terminate only from explicit success, failure, movement, disable, flee, or item evidence; a queue-replaced command cannot be silently abandoned by elapsed time."

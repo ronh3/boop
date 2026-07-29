@@ -101,7 +101,7 @@ Recent decisions affecting current work:
 - [Phase 03]: Pulls use monotonic generation owners and one completePull boundary; timeout-away retains its hold without mutating enabled configuration.
 - [Phase 03]: Use one monotonic gold generation and gold:<generation> blocker owner as canonical authority; legacy pending fields remain derived compatibility views.
 - [Phase 03]: Keep DEFERRED_ROOM and PICKUP_PENDING tied to current room evidence, then clear room identity before inventory-owned PACK_PENDING.
-- [Phase 03]: Dispatch get and put as independent freestand queue commands; combat execution emits only its supplied action.
+- [Phase 03]: Dispatch gold get on the full queue and put on the freestand queue as independent commands; combat execution emits only its supplied action.
 - [Phase 03]: Give real auto-flee precedence only inside the active-gold branch, preserving established broad blocker ordering for non-gold ticks.
 - [Phase 03]: Advance deferred room evidence without sending, then let one normal tick emit flush_gold and call flushPendingGold once.
 - [Phase 03]: Replace direct gold-terminal walker advancement with a generation-guarded zero-delay tick.

@@ -38,6 +38,7 @@ combat summaries. Those remain assigned to later roadmap phases.
 - **D-10:** After confirmed pickup, packing becomes inventory-owned and may complete or retry across room changes.
 - **D-11:** Duplicate gold signals in the same room coalesce into one pickup lifecycle without sending or queueing another `get sovereigns`.
 - **D-12:** If the room ID is missing or unsettled, defer pickup and require a stable room ID plus current room-item evidence that the gold is still present.
+- **D-12A:** Initial, retried, and replayed gold pickup uses `queue add full get sovereigns`; packing remains an independent `freestand` put command.
 
 ### Autowalk Movement Safety
 - **D-13:** Emit `demonwalker.move` only from a complete all-clear snapshot: the room is settled, no valid target remains, all walk-affecting blockers are clear, no loot, interrupt, pull, or flee work is pending, and no move is already queued.
@@ -110,7 +111,7 @@ combat summaries. Those remain assigned to later roadmap phases.
 ### Established Patterns
 - Safety state lives in owned domains and cross-system holds flow through `boop.runtime.shouldHold()` and `boop.runtime.blockerSnapshot()`.
 - Deferred Mudlet effects use `tempTimer`; tests capture callbacks and invoke them explicitly to verify stale-generation and race behavior.
-- Gold commands use Achaea's `freestand` queue and maintain separate get, put, retry, pack, and stale-timeout state.
+- Gold pickup uses Achaea's `full` queue, packing uses `freestand`, and both maintain separate get, put, retry, pack, and stale-timeout state.
 - Normal output is compact and transition-oriented; complete state belongs in `boop trace` and debug surfaces.
 - `demonnicAutoWalker` owns route choice, while boop owns only room-safety decisions and movement-event emission.
 - CI builds with Muddler and runs Busted inside a real Mudlet profile.
