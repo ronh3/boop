@@ -5,15 +5,15 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
 status: executing
-stopped_at: Completed 03-20-PLAN.md
-last_updated: "2026-07-29T05:32:47.457Z"
+stopped_at: Completed 03-21-PLAN.md
+last_updated: "2026-07-29T05:50:26.937Z"
 last_activity: 2026-07-29
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 38
-  completed_plans: 34
+  completed_plans: 35
   percent: 33
 ---
 
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
-Plan: 21 of 24
+Plan: 22 of 24
 Status: Ready to execute
 Last activity: 2026-07-29 — Phase 03 execution started
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -79,6 +79,7 @@ Progress: [█████████░] 89%
 | Phase 03 P18 | 7m | 3 tasks | 8 files |
 | Phase 03 P19 | 7m | 3 tasks | 9 files |
 | Phase 03 P20 | 9m35s | 1 tasks | 6 files |
+| Phase 03 P21 | 14m32s | 1 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -151,6 +152,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Room Inv and Room responses are independent copied latches that settle exactly once in either order.
 - [Phase 03]: Accepted room evidence applies only through a zero-delay record with captured applicationId, roomId, and observationGeneration.
 - [Phase 03]: Moved Room.Info invalidates stale room applications and local attack intent without queue-wide cleanup.
+- [Phase 03]: Deferred room-owned callbacks retain their copied application, room, and generation authority without destination fallback.
+- [Phase 03]: Every automatic target, alias, queue, standard, and rage boundary revalidates exact room authority before send or success-dependent state.
+- [Phase 03]: Stale combat rejection remains local and preserves intentional non-room command families plus unrelated shared queue ownership.
 
 ### Pending Todos
 
@@ -181,6 +185,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-29T05:32:25.816Z
-Stopped at: Completed 03-20-PLAN.md
+Last session: 2026-07-29T05:49:58.275Z
+Stopped at: Completed 03-21-PLAN.md
 Resume file: None
