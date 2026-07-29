@@ -20,6 +20,8 @@ describe("boop event-driven state transitions", function()
   local targets_update_stub
   local util_warn_stub
   local trace_log_stub
+  local validate_authority_stub
+  local current_authority_stub
   local saved_get_epoch
   local scheduled_callback
   local scheduled_callbacks
@@ -149,6 +151,14 @@ describe("boop event-driven state transitions", function()
     if trace_log_stub then
       trace_log_stub:revert()
       trace_log_stub = nil
+    end
+    if validate_authority_stub then
+      validate_authority_stub:revert()
+      validate_authority_stub = nil
+    end
+    if current_authority_stub then
+      current_authority_stub:revert()
+      current_authority_stub = nil
     end
   end)
 
@@ -979,6 +989,350 @@ describe("boop event-driven state transitions", function()
       claimed = consumed.claimed,
       consumed = consumed.consumed,
     })
+  end)
+
+  describe("G-03-7 4255-to-4249 external dispatch fence", function()
+    local function automaticOptions(authority)
+      return {
+        roomOwned = true,
+        sourceAuthority = authority,
+      }
+    end
+
+    local function settleAcceptedRoom(roomId, generation, items)
+      boop.config.enabled = false
+      boop.config.autoGrabGold = false
+      boop.config.useQueueing = true
+      boop.config.goldPack = ""
+      boop.config.targetingMode = "auto"
+      boop.state.targeting.room = tostring(roomId)
+      gmcp.Room.Info = {
+        num = tostring(roomId),
+        area = "Authority Test Room",
+        exits = {},
+      }
+      helper.seedRoomObservation(roomId, {
+        generation = generation,
+        infoSeen = true,
+        itemsSeen = false,
+        acceptedItems = {},
+      })
+      boop.requestRoomItemsOnce(
+        "G-03-7 accepted authority " .. tostring(generation)
+      )
+      publishItemsList("inv", {})
+      publishItemsList("room", items or {})
+
+      local application = boop.runtime.roomApplicationSnapshot()
+      assert.is_table(application)
+      local callback = callbackForTimer(application.pendingTimer)
+      assert.is_function(callback)
+      callback()
+
+      local authority = sourceAuthority(
+        application.applicationId,
+        roomId,
+        generation
+      )
+      assert.is_true(boop.runtime.validateRoomSourceAuthority(authority))
+      boop.config.enabled = true
+      return authority
+    end
+
+    local function moveToDestination()
+      gmcp.Room.Info = {
+        num = "4249",
+        area = "Destination Room",
+        exits = { north = "4255" },
+      }
+      boop.onRoomInfo()
+    end
+
+    it("rejects stale target, standard, alias, queue, and rage boundaries without local mutation", function()
+      helper.setClass("Occultist")
+      helper.learnSkills({
+        { name = "Lycantha", group = "Domination" },
+        { name = "harry", group = "Attainment" },
+      })
+      helper.setRage(100)
+      local authority = settleAcceptedRoom("4255", 45, {
+        denizenItem("44026", "the generation 45 denizen"),
+      })
+
+      moveToDestination()
+      assert.is_false(boop.runtime.validateRoomSourceAuthority(authority))
+      sent_commands = {}
+
+      local before = {
+        targetId = boop.state.targeting.currentTargetId,
+        targetName = boop.state.targeting.targetName,
+        aliasAction = boop.state.queue.aliasAction,
+        aliasDirty = boop.state.queue.aliasDirty,
+        huntingLimiter = boop.state.combat.limiters.hunting,
+        rageLimiter = boop.state.combat.limiters.rage,
+        opener = boop.state.combat.openerUsedByClass.occultist,
+        shield = boop.state.targeting.targetShield,
+      }
+      local context = boop.runtime.context(authority)
+      context.target = {
+        id = "44026",
+        name = "the generation 45 denizen",
+        shield = { attempted = false },
+        hpperc = "100%",
+      }
+      local plan = {
+        class = "occultist",
+        standard = "command hound at 44026",
+        standardShieldbreak = true,
+        standardIsOpener = true,
+        rage = "harry 44026",
+        rageAbility = { name = "harry", desc = "Shieldbreak" },
+        rageDecision = { mode = "simple" },
+      }
+
+      assert.is_false(
+        boop.targets.setTarget("44026", automaticOptions(authority))
+      )
+      assert.is_false(boop.executeAction(
+        plan.standard,
+        true,
+        automaticOptions(authority)
+      ))
+      assert.is_false(boop.executeRageAction(
+        plan.rage,
+        automaticOptions(authority)
+      ))
+      assert.is_false(boop.attacks.execute(plan, context, authority))
+      assert.is_false(boop.executeAction(
+        plan.standard,
+        true,
+        automaticOptions(false)
+      ))
+      assert.is_false(boop.runtime.applyEffects({
+        effects = {
+          {
+            kind = "target",
+            id = "44026",
+            roomOwned = true,
+          },
+        },
+      }, boop.runtime.context(false, {
+        roomOwned = true,
+      })))
+
+      assert.are.same(before, {
+        targetId = boop.state.targeting.currentTargetId,
+        targetName = boop.state.targeting.targetName,
+        aliasAction = boop.state.queue.aliasAction,
+        aliasDirty = boop.state.queue.aliasDirty,
+        huntingLimiter = boop.state.combat.limiters.hunting,
+        rageLimiter = boop.state.combat.limiters.rage,
+        opener = boop.state.combat.openerUsedByClass.occultist,
+        shield = boop.state.targeting.targetShield,
+      })
+      assert.are.equal(0, #sent_commands)
+      assert.are.equal(0, countSent("queue clear"))
+
+      boop.config.useQueueing = false
+      assert.is_true(boop.executeAction("intentional non-room command"))
+      assert.are.equal(1, countSent("intentional non-room command"))
+    end)
+
+    it("keeps every delayed generation-45 callback on its captured authority after movement", function()
+      helper.setClass("Occultist")
+      helper.learnSkill("Lycantha", "Domination")
+      local authority = settleAcceptedRoom("4255", 45, {
+        denizenItem("44026", "the generation 45 denizen"),
+        denizenItem("44027", "the generation 45 replacement"),
+      })
+      boop.config.targetCall = true
+      boop.config.assistLeader = "Leader"
+      boop.config.prequeueEnabled = true
+      boop.config.attackLeadSeconds = 1
+      gmcp.Char.Vitals.bal = "0"
+      gmcp.Char.Vitals.eq = "0"
+
+      assert.is_true(boop.targets.onPartyTargetCall(
+        "Leader",
+        "44026",
+        [[(Party): Leader says, "Target: 44026."]]
+      ))
+      local leaderCallback = scheduled_callbacks[#scheduled_callbacks].callback
+      assert.is_function(leaderCallback)
+
+      boop.onBalanceUsed("balance", 2)
+      local prequeueCallback = scheduled_callbacks[#scheduled_callbacks].callback
+      assert.is_function(prequeueCallback)
+
+      helper.setTarget("44026", "the generation 45 denizen", "80%")
+      gmcp.Char.Items.Remove = {
+        location = "room",
+        item = denizenItem("44026", "the generation 45 denizen"),
+      }
+      local sendsBeforeRemoval = #sent_commands
+      boop.onRoomItemsRemove()
+      local retargetCallback = scheduled_callbacks[#scheduled_callbacks].callback
+      assert.is_function(retargetCallback)
+      assert.are.equal(
+        sendsBeforeRemoval,
+        #sent_commands,
+        "retarget must remain deferred until its captured callback"
+      )
+
+      boop.state.queue.prequeuedStandard = true
+      boop.state.queue.prequeueSourceAuthority = sourceAuthority(
+        authority.applicationId,
+        authority.roomId,
+        authority.observationGeneration
+      )
+      helper.setRuntimeBlocker({
+        owner = "test:unrelated",
+        code = "interrupt_pending",
+        label = "unrelated queue owner",
+        systems = { queue = true },
+        waitsFor = { timeout = true },
+      })
+
+      local originalValidate = boop.runtime.validateRoomSourceAuthority
+      local validations = {}
+      validate_authority_stub = stub(
+        boop.runtime,
+        "validateRoomSourceAuthority",
+        function(actual)
+          validations[#validations + 1] = sourceAuthority(
+            actual and actual.applicationId,
+            actual and actual.roomId,
+            actual and actual.observationGeneration
+          )
+          return originalValidate(actual)
+        end
+      )
+      local originalCurrentAuthority =
+        boop.runtime.currentRoomSourceAuthority
+      local currentAuthorityCalls = 0
+      current_authority_stub = stub(
+        boop.runtime,
+        "currentRoomSourceAuthority",
+        function()
+          currentAuthorityCalls = currentAuthorityCalls + 1
+          return originalCurrentAuthority()
+        end
+      )
+
+      moveToDestination()
+      sent_commands = {}
+      validations = {}
+      currentAuthorityCalls = 0
+      local afterMove = {
+        targetId = boop.state.targeting.currentTargetId,
+        targetName = boop.state.targeting.targetName,
+        aliasAction = boop.state.queue.aliasAction,
+        prequeued = boop.state.queue.prequeuedStandard,
+        blocker = blockerFor("test:unrelated"),
+      }
+
+      leaderCallback()
+      prequeueCallback()
+      assert.is_false(boop.refreshPrequeuedStandard("stale shield refresh"))
+      retargetCallback()
+
+      assert.are.equal(0, currentAuthorityCalls)
+      assert.is_true(#validations >= 3)
+      for _, actual in ipairs(validations) do
+        assertSourceAuthority(authority, actual)
+      end
+      assert.are.same(afterMove, {
+        targetId = boop.state.targeting.currentTargetId,
+        targetName = boop.state.targeting.targetName,
+        aliasAction = boop.state.queue.aliasAction,
+        prequeued = boop.state.queue.prequeuedStandard,
+        blocker = blockerFor("test:unrelated"),
+      })
+      assert.are.equal(0, #sent_commands)
+      assert.are.equal(0, countSent("queue clear"))
+    end)
+
+    it("keeps current generation-46 target, combat, prequeue, refresh, and retarget paths live", function()
+      helper.setClass("Occultist")
+      helper.learnSkills({
+        { name = "Lycantha", group = "Domination" },
+        { name = "Warp", group = "Occultism" },
+        { name = "Hammer", group = "Tattoos" },
+        { name = "harry", group = "Attainment" },
+      })
+      helper.setRage(100)
+      local authority = settleAcceptedRoom("4249", 46, {
+        denizenItem("44901", "the generation 46 denizen"),
+        denizenItem("44902", "the generation 46 replacement"),
+      })
+      boop.config.prequeueEnabled = true
+      boop.config.attackLeadSeconds = 1
+      gmcp.Char.Vitals.bal = "0"
+      gmcp.Char.Vitals.eq = "0"
+      sent_commands = {}
+
+      assert.is_true(
+        boop.targets.setTarget("44901", automaticOptions(authority))
+      )
+      assert.are.equal(1, countSent("settarget 44901"))
+      assert.is_true(boop.executeAction(
+        "command hound at 44901",
+        true,
+        automaticOptions(authority)
+      ))
+      assert.are.equal(
+        1,
+        countSent("setalias BOOP_ATTACK command hound at 44901")
+      )
+      assert.are.equal(
+        1,
+        countSent("queue addclearfull freestand BOOP_ATTACK")
+      )
+      assert.is_true(boop.executeRageAction(
+        "harry 44901",
+        automaticOptions(authority)
+      ))
+      assert.are.equal(1, countSent("harry 44901"))
+
+      sent_commands = {}
+      boop.onBalanceUsed("balance", 2)
+      local prequeueCallback = scheduled_callbacks[#scheduled_callbacks].callback
+      assert.is_function(prequeueCallback)
+      prequeueCallback()
+      assert.is_true(boop.state.queue.prequeuedStandard)
+      assertSourceAuthority(
+        authority,
+        boop.state.queue.prequeueSourceAuthority
+      )
+      assert.are.equal(
+        1,
+        countSent("queue addclearfull freestand BOOP_ATTACK")
+      )
+
+      boop.state.targeting.targetShield = {
+        gained = os.clock(),
+        attempted = false,
+      }
+      assert.is_true(boop.refreshPrequeuedStandard(
+        "current shield refresh"
+      ))
+      assert.are.equal(
+        2,
+        countSent("queue addclearfull freestand BOOP_ATTACK")
+      )
+
+      sent_commands = {}
+      gmcp.Char.Items.Remove = {
+        location = "room",
+        item = denizenItem("44901", "the generation 46 denizen"),
+      }
+      boop.onRoomItemsRemove()
+      assert.are.equal(0, countSent("settarget 44902"))
+      local retargetCallback = scheduled_callbacks[#scheduled_callbacks].callback
+      assert.is_function(retargetCallback)
+      retargetCallback()
+      assert.are.equal(1, countSent("settarget 44902"))
+    end)
   end)
 
   it("room-response-fence drains an invalidated epoch before the next epoch", function()
@@ -1971,6 +2325,9 @@ describe("boop event-driven state transitions", function()
         item = { id = "42", name = "a removed denizen", attrib = "m" },
       }
       boop.onRoomItemsRemove()
+      local lossCallback = scheduled_callbacks[#scheduled_callbacks].callback
+      assert.is_function(lossCallback)
+      lossCallback()
 
       assert.are.equal("target:loss", set_blocker_calls[1][1])
       local blockers = boop.runtime.blockersSnapshot()
@@ -2017,16 +2374,17 @@ describe("boop event-driven state transitions", function()
 
     boop.onRoomItemsRemove()
 
+    assert.are.equal("", boop.state.targeting.currentTargetId)
+    assert.is_function(scheduled_callback)
+    scheduled_callback()
+
     assert.are.equal("43", boop.state.targeting.currentTargetId)
     assert.are.equal("a second denizen", boop.state.targeting.targetName)
     assert.is_false(boop.state.targeting.targetShield)
     assert.is_false(boop.afflictions.hasTarget("stupidity"))
-    assert.is_function(scheduled_callback)
     assert.stub(kill_timer_stub).was_called_with(77)
     assert.stub(send_stub).was_called_with("settarget 43", false)
     assert.stub(send_stub).was_not_called_with("queue clear", false)
-
-    scheduled_callback()
 
     assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK command hound at 43", false)
     assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
@@ -2113,13 +2471,14 @@ describe("boop event-driven state transitions", function()
         item = denizens[1],
       }
       boop.onRoomItemsRemove()
-      assert.are.equal("43", boop.state.targeting.currentTargetId)
+      assert.are.equal("", boop.state.targeting.currentTargetId)
       assert.is_table(blockerFor(operation.blockerOwner))
       assert.is_true(boop.runtime.shouldHold("queue"))
 
       local retargetCallback = scheduled_callbacks[#scheduled_callbacks].callback
       assert.is_function(retargetCallback)
       retargetCallback()
+      assert.are.equal("43", boop.state.targeting.currentTargetId)
       assert.are.equal(0, countGoldSends())
       assert.are.equal(0, countSent("queue clear"))
       assert.are.equal(0, countSent("command hound at 43"))
@@ -2215,7 +2574,7 @@ describe("boop event-driven state transitions", function()
     }
     boop.onRoomItemsRemove()
 
-    assert.are.equal("43", boop.state.targeting.currentTargetId)
+    assert.are.equal("", boop.state.targeting.currentTargetId)
     assert.is_false(boop.afflictions.hasTarget("stupidity"))
     assert.is_function(scheduled_callback)
     assert.are.equal(0, countSent("queue clear"))
@@ -2225,6 +2584,7 @@ describe("boop event-driven state transitions", function()
 
     scheduled_callback()
 
+    assert.are.equal("43", boop.state.targeting.currentTargetId)
     assert.are.equal(0, countSent("queue clear"))
     assert.are.equal(0, countSent("command hound at 43"))
     assert.are.equal(0, countSent("harry 43"))
@@ -2274,6 +2634,9 @@ describe("boop event-driven state transitions", function()
     }
 
     boop.onRoomItemsRemove()
+    local retargetCallback = scheduled_callbacks[#scheduled_callbacks].callback
+    assert.is_function(retargetCallback)
+    retargetCallback()
 
     assert.are.equal("44", retarget_id)
     assert.stub(send_stub).was_not_called_with("settarget 43", false)
@@ -2762,7 +3125,7 @@ describe("boop event-driven state transitions", function()
 
       local retargetCallback = scheduled_callbacks[#scheduled_callbacks].callback
       assert.is_function(retargetCallback)
-      assert.are.equal("43", boop.state.targeting.currentTargetId)
+      assert.are.equal("", boop.state.targeting.currentTargetId)
       assert.are.same(operation, copyGoldOperation(boop.state.gold.operation))
       assert.is_table(blockerFor("test:retained"))
       assert.are.equal(0, countSent("queue clear"))
@@ -2772,6 +3135,7 @@ describe("boop event-driven state transitions", function()
 
       retargetCallback()
 
+      assert.are.equal("43", boop.state.targeting.currentTargetId)
       assert.are.equal(case.expectedGoldSends, countGoldSends())
       assert.are.equal(0, countSent("queue clear"))
       assert.are.equal(0, countSent("command hound at 43"))

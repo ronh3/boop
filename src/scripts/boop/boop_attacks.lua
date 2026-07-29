@@ -1604,41 +1604,102 @@ function boop.attacks.choose(context)
   return boop.attacks.applyModifiers(plan, activeContext)
 end
 
-function boop.attacks.execute(plan, context)
+local function copySourceAuthority(authority)
+  if type(authority) ~= "table" then
+    return false
+  end
+  return {
+    applicationId = tonumber(authority.applicationId),
+    roomId = tostring(authority.roomId or ""),
+    observationGeneration = tonumber(
+      authority.observationGeneration
+    ),
+  }
+end
+
+local function attackAuthorityCurrent(authority, boundary)
+  if not authority then
+    return true
+  end
+  local valid = boop.runtime
+    and boop.runtime.validateRoomSourceAuthority
+    and boop.runtime.validateRoomSourceAuthority(authority)
+    or false
+  if not valid and boop.trace and boop.trace.log then
+    boop.trace.log(string.format(
+      "room combat rejected: %s | application=%s | room=%s | generation=%s",
+      tostring(boundary or "combat"),
+      tostring(authority.applicationId or ""),
+      tostring(authority.roomId or ""),
+      tostring(authority.observationGeneration or "")
+    ))
+  end
+  return not not valid
+end
+
+function boop.attacks.execute(plan, context, sourceAuthority)
   if type(plan) ~= "table" then
     return false
   end
 
   local activeContext = context or (boop.runtime and boop.runtime.context and boop.runtime.context()) or nil
+  local authority = copySourceAuthority(
+    sourceAuthority
+      or (activeContext and activeContext.sourceAuthority)
+  )
+  local dispatchOptions = {
+    roomOwned = authority and true or false,
+    sourceAuthority = authority,
+  }
   local didAction = false
 
   if plan.standard and plan.standard ~= "" then
     local prequeued = activeContext and activeContext.queue and activeContext.queue.prequeuedStandard or false
-    if not prequeued and boop.canAct and boop.canAct() then
-      boop.executeAction(plan.standard)
-      if plan.standardIsOpener and boop.attacks and boop.attacks.markOpenerUsed then
-        boop.attacks.markOpenerUsed(plan.class or "", activeContext and activeContext.target and activeContext.target.id or "")
+    if not prequeued
+        and attackAuthorityCurrent(authority, "standard")
+        and boop.canAct
+        and boop.canAct() then
+      local emitted = boop.executeAction(
+        plan.standard,
+        nil,
+        dispatchOptions
+      )
+      if emitted then
+        if plan.standardIsOpener and boop.attacks and boop.attacks.markOpenerUsed then
+          boop.attacks.markOpenerUsed(plan.class or "", activeContext and activeContext.target and activeContext.target.id or "")
+        end
+        if plan.standardShieldbreak and boop.targets and boop.targets.onShieldbreakAttempt then
+          boop.targets.onShieldbreakAttempt()
+        end
+        didAction = true
+      else
+        boop.state.combat.limiters.hunting = false
       end
-      if plan.standardShieldbreak and boop.targets and boop.targets.onShieldbreakAttempt then
-        boop.targets.onShieldbreakAttempt()
-      end
-      didAction = true
     end
   end
 
   if plan.rage and plan.rage ~= "" then
-    if boop.canUseRage and boop.canUseRage() then
-      boop.executeRageAction(plan.rage)
-      if boop.stats and boop.stats.onRageExecuted then
-        boop.stats.onRageExecuted(plan.rageAbility, plan.rageDecision)
+    if attackAuthorityCurrent(authority, "rage")
+        and boop.canUseRage
+        and boop.canUseRage() then
+      local emitted = boop.executeRageAction(
+        plan.rage,
+        dispatchOptions
+      )
+      if emitted then
+        if boop.stats and boop.stats.onRageExecuted then
+          boop.stats.onRageExecuted(plan.rageAbility, plan.rageDecision)
+        end
+        if plan.rageAbility and plan.rageAbility.desc == "Shieldbreak" and boop.targets and boop.targets.onShieldbreakAttempt then
+          boop.targets.onShieldbreakAttempt()
+        end
+        if boop.rage and boop.rage.onRageUsed then
+          boop.rage.onRageUsed(plan.rageAbility)
+        end
+        didAction = true
+      else
+        boop.state.combat.limiters.rage = false
       end
-      if plan.rageAbility and plan.rageAbility.desc == "Shieldbreak" and boop.targets and boop.targets.onShieldbreakAttempt then
-        boop.targets.onShieldbreakAttempt()
-      end
-      if boop.rage and boop.rage.onRageUsed then
-        boop.rage.onRageUsed(plan.rageAbility)
-      end
-      didAction = true
     end
   end
 

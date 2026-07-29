@@ -108,6 +108,7 @@ local DOMAIN_DEFAULTS = {
     equilibriumReadyAt = nil,
     prequeueTimer = nil,
     prequeuedStandard = false,
+    prequeueSourceAuthority = false,
     aliasAction = "",
     aliasDirty = true,
   },
@@ -583,6 +584,18 @@ function boop.runtime.validateRoomSourceAuthority(sourceAuthority)
       == tonumber(captured.observationGeneration)
     and currentRoomId() == captured.roomId
     or false
+end
+
+function boop.runtime.currentRoomSourceAuthority()
+  local observation = roomObservationState()
+  local authority = copySourceAuthority(
+    observation.acceptedSourceAuthority
+  )
+  if authority
+      and boop.runtime.validateRoomSourceAuthority(authority) then
+    return authority
+  end
+  return false
 end
 
 function boop.runtime.observeRoomItemsList(location, items)
@@ -1392,6 +1405,7 @@ function boop.runtime.clearAttackIntent(reason, opts)
   killOwnedTimer(state.queue.prequeueTimer)
   state.queue.prequeueTimer = nil
   state.queue.prequeuedStandard = false
+  state.queue.prequeueSourceAuthority = false
   state.queue.aliasAction = ""
   state.queue.aliasDirty = true
 
@@ -1508,9 +1522,12 @@ local function currentRoom()
   }
 end
 
-function boop.runtime.context(sourceAuthority)
+function boop.runtime.context(sourceAuthority, options)
   local state = boop.runtime.ensureState()
   local room = currentRoom()
+  local authority = copySourceAuthority(sourceAuthority)
+  options = type(options) == "table" and options or {}
+  local roomOwned = options.roomOwned == true or authority and true or false
   local targetInfo = gmcp and gmcp.IRE and gmcp.IRE.Target and gmcp.IRE.Target.Info or {}
   local currentTargetId = tostring(state.targeting.currentTargetId or "")
   local targetInfoId = tostring(targetInfo.id or "")
@@ -1538,7 +1555,8 @@ function boop.runtime.context(sourceAuthority)
     state = state,
     config = boop.config or {},
     gmcp = gmcp,
-    sourceAuthority = copySourceAuthority(sourceAuthority),
+    roomOwned = roomOwned,
+    sourceAuthority = authority,
     class = currentClass(state),
     spec = currentSpec(state),
     room = room,
@@ -1620,6 +1638,7 @@ local function tickStep(context)
   local state = context.state
   local effects = {}
   local authority = copySourceAuthority(context.sourceAuthority)
+  local roomOwned = context.roomOwned == true
 
   if not (context.config and context.config.enabled) then
     return { effects = effects, didAction = false }
@@ -1647,6 +1666,7 @@ local function tickStep(context)
       effects[#effects + 1] = {
         kind = "flush_gold",
         reason = "tick gold stage",
+        roomOwned = roomOwned,
         sourceAuthority = authority,
       }
     end
@@ -1680,6 +1700,7 @@ local function tickStep(context)
       effects[#effects + 1] = {
         kind = "flush_gold",
         reason = "tick no target",
+        roomOwned = roomOwned,
         sourceAuthority = authority,
       }
     end
@@ -1691,6 +1712,7 @@ local function tickStep(context)
     effects[#effects + 1] = {
       kind = "walk_advance",
       reason = "tick no target",
+      roomOwned = roomOwned,
       sourceAuthority = authority,
     }
     return { effects = effects, didAction = false }
@@ -1700,6 +1722,7 @@ local function tickStep(context)
     effects[#effects + 1] = {
       kind = "target",
       id = tostring(targetId),
+      roomOwned = roomOwned,
       sourceAuthority = authority,
     }
   end
@@ -1717,6 +1740,7 @@ local function tickStep(context)
       state = context.state,
       config = context.config,
       gmcp = context.gmcp,
+      roomOwned = context.roomOwned == true,
       sourceAuthority = copySourceAuthority(context.sourceAuthority),
       class = context.class,
       spec = context.spec,
@@ -1744,6 +1768,7 @@ local function tickStep(context)
       kind = "combat_plan",
       plan = plan,
       context = planContext,
+      roomOwned = roomOwned,
       sourceAuthority = authority,
     }
   end
@@ -1801,12 +1826,10 @@ function boop.runtime.applyEffects(result, context)
 
   for _, effect in ipairs((result and result.effects) or {}) do
     local sourceAuthority = copySourceAuthority(effect.sourceAuthority)
-    local roomOwned = effect.kind == "flush_gold"
-      or effect.kind == "walk_advance"
-      or effect.kind == "target"
-      or effect.kind == "combat_plan"
-    local authorized = not sourceAuthority
-      or (boop.runtime.validateRoomSourceAuthority
+    local roomOwned = effect.roomOwned == true
+    local authorized = not roomOwned
+      or (sourceAuthority
+        and boop.runtime.validateRoomSourceAuthority
         and boop.runtime.validateRoomSourceAuthority(sourceAuthority))
     if roomOwned and not authorized then
       trace(string.format(
@@ -1844,7 +1867,10 @@ function boop.runtime.applyEffects(result, context)
       end
     elseif effect.kind == "target" then
       if boop.targets and boop.targets.setTarget then
-        boop.targets.setTarget(effect.id, sourceAuthority)
+        boop.targets.setTarget(effect.id, {
+          roomOwned = roomOwned,
+          sourceAuthority = sourceAuthority,
+        })
       end
     elseif effect.kind == "combat_plan" then
       if boop.attacks and boop.attacks.execute then

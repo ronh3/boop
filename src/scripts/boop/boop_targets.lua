@@ -15,6 +15,74 @@ local function currentRoomId()
   return ""
 end
 
+local function copySourceAuthority(authority)
+  if type(authority) ~= "table" then
+    return false
+  end
+  return {
+    applicationId = tonumber(authority.applicationId),
+    roomId = tostring(authority.roomId or ""),
+    observationGeneration = tonumber(
+      authority.observationGeneration
+    ),
+  }
+end
+
+local function normalizeTargetOptions(opts)
+  if type(opts) == "table"
+      and opts.applicationId ~= nil
+      and opts.sourceAuthority == nil then
+    return {
+      roomOwned = true,
+      sourceAuthority = copySourceAuthority(opts),
+    }
+  end
+  opts = type(opts) == "table" and opts or {}
+  return {
+    roomOwned = opts.roomOwned == true,
+    sourceAuthority = copySourceAuthority(opts.sourceAuthority),
+    name = opts.name,
+    reason = opts.reason,
+    stats = opts.stats,
+  }
+end
+
+local function targetAuthorityCurrent(opts, boundary)
+  if not opts.roomOwned then
+    return true
+  end
+  local authority = copySourceAuthority(opts.sourceAuthority)
+  local valid = authority
+    and boop.runtime
+    and boop.runtime.validateRoomSourceAuthority
+    and boop.runtime.validateRoomSourceAuthority(authority)
+    or false
+  if not valid and boop.trace and boop.trace.log then
+    boop.trace.log(string.format(
+      "room target rejected: %s | application=%s | room=%s | generation=%s",
+      tostring(boundary or "target"),
+      tostring(authority and authority.applicationId or ""),
+      tostring(authority and authority.roomId or ""),
+      tostring(
+        authority
+          and authority.observationGeneration
+          or ""
+      )
+    ))
+  end
+  return not not valid
+end
+
+local function currentRoomSourceAuthority()
+  if boop.runtime
+      and boop.runtime.currentRoomSourceAuthority then
+    return copySourceAuthority(
+      boop.runtime.currentRoomSourceAuthority()
+    )
+  end
+  return false
+end
+
 local function selfName()
   if gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.name then
     return boop.util.trim(gmcp.Char.Status.name)
@@ -184,7 +252,10 @@ function boop.targets.removeRoomItem(item)
 end
 
 function boop.targets.applyTarget(id, opts)
-  opts = opts or {}
+  opts = normalizeTargetOptions(opts)
+  if not targetAuthorityCurrent(opts, "apply target") then
+    return false
+  end
   boop.state = boop.state or {}
   boop.state.targeting = boop.state.targeting or {}
 
@@ -215,24 +286,35 @@ function boop.targets.applyTarget(id, opts)
   return changed
 end
 
-function boop.targets.setTarget(id)
-  if not id or id == "" then return end
-  local changed = boop.targets.applyTarget(id)
+function boop.targets.setTarget(id, opts)
+  if not id or id == "" then return false end
+  opts = normalizeTargetOptions(opts)
+  if not targetAuthorityCurrent(opts, "set target") then
+    return false
+  end
+  local changed = boop.targets.applyTarget(id, opts)
 
   if changed and send then
+    if not targetAuthorityCurrent(opts, "settarget send") then
+      return false
+    end
     send("settarget " .. boop.state.targeting.currentTargetId, false)
   end
   if changed and autoTargetCallEnabled() and send then
+    if not targetAuthorityCurrent(opts, "target call send") then
+      return false
+    end
     local caller = selfName()
     if caller == "" then
       caller = "self"
     end
-    storeCalledTarget(caller, boop.state.targeting.currentTargetId)
     send("pt Target: " .. boop.state.targeting.currentTargetId .. ".", false)
+    storeCalledTarget(caller, boop.state.targeting.currentTargetId)
     if boop.trace and boop.trace.log then
       boop.trace.log(string.format("auto target call: %s -> %s", caller, boop.state.targeting.currentTargetId))
     end
   end
+  return changed
 end
 
 function boop.targets.clearTargetCall(reason)
@@ -291,9 +373,12 @@ function boop.targets.onPartyTargetCall(speaker, targetId, _rawLine)
   end
 
   if boop.config and boop.config.enabled and not (boop.state and boop.state.diag.hold) and tempTimer then
+    local sourceAuthority = currentRoomSourceAuthority()
     tempTimer(0, function()
       if boop and boop.tick then
-        boop.tick()
+        boop.tick(sourceAuthority or nil, {
+          roomOwned = sourceAuthority and true or false,
+        })
       end
     end)
   end
@@ -1470,6 +1555,17 @@ function boop.targets.onShielded(name)
   end
 
   if current ~= "" and sameName(current, captured) then
+    local prequeueAuthority = copySourceAuthority(
+      boop.state.queue.prequeueSourceAuthority
+    )
+    if boop.state.queue.prequeuedStandard
+        and prequeueAuthority
+        and not targetAuthorityCurrent({
+          roomOwned = true,
+          sourceAuthority = prequeueAuthority,
+        }, "shield refresh") then
+      return false
+    end
     if boop.state.targeting.targetShield and boop.state.targeting.targetShield.timer then
       killTimer(boop.state.targeting.targetShield.timer)
     end
@@ -1479,9 +1575,14 @@ function boop.targets.onShielded(name)
       boop.trace.log("shield seen: " .. captured)
     end
     if boop.refreshPrequeuedStandard then
-      boop.refreshPrequeuedStandard("shield seen")
+      boop.refreshPrequeuedStandard(
+        "shield seen",
+        prequeueAuthority or nil
+      )
     end
+    return true
   end
+  return false
 end
 
 local function resolveShieldCapture(expr, matchTable)

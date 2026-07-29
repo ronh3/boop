@@ -199,12 +199,70 @@ local function prependAssist(action)
   return "assist " .. leader .. "/" .. action
 end
 
-function boop.executeAction(action, forceQueue)
-  if not action or action == "" then return end
-  action = prependAssist(action)
-  if boop.gag and boop.gag.noteStandardIntent then
-    boop.gag.noteStandardIntent(action)
+local function copySourceAuthority(authority)
+  if type(authority) ~= "table" then
+    return false
   end
+  return {
+    applicationId = tonumber(authority.applicationId),
+    roomId = tostring(authority.roomId or ""),
+    observationGeneration = tonumber(
+      authority.observationGeneration
+    ),
+  }
+end
+
+local function normalizeDispatchOptions(options)
+  if type(options) == "table"
+      and options.applicationId ~= nil
+      and options.sourceAuthority == nil then
+    return {
+      roomOwned = true,
+      sourceAuthority = copySourceAuthority(options),
+    }
+  end
+  options = type(options) == "table" and options or {}
+  return {
+    roomOwned = options.roomOwned == true,
+    sourceAuthority = copySourceAuthority(
+      options.sourceAuthority
+    ),
+  }
+end
+
+local function dispatchAuthorityCurrent(options, boundary)
+  if not options.roomOwned then
+    return true
+  end
+  local authority = copySourceAuthority(options.sourceAuthority)
+  local valid = authority
+    and boop.runtime
+    and boop.runtime.validateRoomSourceAuthority
+    and boop.runtime.validateRoomSourceAuthority(authority)
+    or false
+  if not valid and boop.trace and boop.trace.log then
+    boop.trace.log(string.format(
+      "room dispatch rejected: %s | application=%s | room=%s | generation=%s",
+      tostring(boundary or "command"),
+      tostring(authority and authority.applicationId or ""),
+      tostring(authority and authority.roomId or ""),
+      tostring(
+        authority
+          and authority.observationGeneration
+          or ""
+      )
+    ))
+  end
+  return not not valid
+end
+
+function boop.executeAction(action, forceQueue, options)
+  if not action or action == "" then return false end
+  options = normalizeDispatchOptions(options)
+  if not dispatchAuthorityCurrent(options, "standard start") then
+    return false
+  end
+  action = prependAssist(action)
 
   if boop.config.useQueueing or forceQueue then
     boop.state = boop.state or {}
@@ -216,34 +274,68 @@ function boop.executeAction(action, forceQueue)
 
     local lastAction = boop.state.queue.aliasAction or ""
     if boop.state.queue.aliasDirty or lastAction ~= queuedAction then
+      if not dispatchAuthorityCurrent(options, "standard alias") then
+        return false
+      end
       send("setalias BOOP_ATTACK " .. queuedAction, false)
       boop.state.queue.aliasAction = queuedAction
       boop.state.queue.aliasDirty = false
     end
+    if not dispatchAuthorityCurrent(options, "standard queue") then
+      return false
+    end
     send("queue addclearfull freestand BOOP_ATTACK", false)
+    if boop.gag and boop.gag.noteStandardIntent then
+      boop.gag.noteStandardIntent(action)
+    end
     boop.trace.log("std queue: " .. queuedAction)
+    return true
   else
     local parts = boop.util.split(action, boop.lists.separator or "/")
+    local sentAny = false
     for _, part in ipairs(parts) do
       local trimmed = boop.util.trim(part)
       if trimmed ~= "" then
+        if not dispatchAuthorityCurrent(
+            options,
+            "standard direct"
+          ) then
+          return false
+        end
         send(trimmed, false)
+        sentAny = true
         boop.trace.log("std direct: " .. trimmed)
       end
     end
-    markUnnamableMaulUsed(action)
+    if sentAny then
+      if boop.gag and boop.gag.noteStandardIntent then
+        boop.gag.noteStandardIntent(action)
+      end
+      markUnnamableMaulUsed(action)
+    end
+    return sentAny
   end
 end
 
-function boop.executeRageAction(action)
-  if not action or action == "" then return end
+function boop.executeRageAction(action, options)
+  if not action or action == "" then return false end
+  options = normalizeDispatchOptions(options)
+  if not dispatchAuthorityCurrent(options, "rage start") then
+    return false
+  end
   action = prependAssist(action)
   local parts = boop.util.split(action, boop.lists.separator or "/")
+  local sentAny = false
   for _, part in ipairs(parts) do
     local trimmed = boop.util.trim(part)
     if trimmed ~= "" then
+      if not dispatchAuthorityCurrent(options, "rage direct") then
+        return false
+      end
       send(trimmed, false)
+      sentAny = true
       boop.trace.log("rage direct: " .. trimmed)
     end
   end
+  return sentAny
 end

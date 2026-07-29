@@ -28,6 +28,45 @@ local function copySourceAuthority(authority)
   }
 end
 
+local function currentRoomSourceAuthority()
+  if boop.runtime
+      and boop.runtime.currentRoomSourceAuthority then
+    return copySourceAuthority(
+      boop.runtime.currentRoomSourceAuthority()
+    )
+  end
+  return false
+end
+
+local function roomAuthorityCurrent(authority, boundary)
+  local captured = copySourceAuthority(authority)
+  if not captured then
+    return true
+  end
+  local valid = boop.runtime
+    and boop.runtime.validateRoomSourceAuthority
+    and boop.runtime.validateRoomSourceAuthority(captured)
+    or false
+  if not valid and boop.trace and boop.trace.log then
+    boop.trace.log(string.format(
+      "room callback rejected: %s | application=%s | room=%s | generation=%s",
+      tostring(boundary or "callback"),
+      tostring(captured.applicationId or ""),
+      tostring(captured.roomId or ""),
+      tostring(captured.observationGeneration or "")
+    ))
+  end
+  return not not valid
+end
+
+local function automaticDispatchOptions(authority, roomOwned)
+  local captured = copySourceAuthority(authority)
+  return {
+    roomOwned = roomOwned == true or captured and true or false,
+    sourceAuthority = captured,
+  }
+end
+
 local function classKeyForOpener()
   if gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class then
     return gmcp.Char.Status.class
@@ -1398,6 +1437,7 @@ function boop.onRoomItemsRemove()
     return
   end
   if gmcp.Char.Items.Remove.location ~= "room" then return end
+  local sourceAuthority = currentRoomSourceAuthority()
   local removed = gmcp.Char.Items.Remove.item
   local removedId = tostring((removed and removed.id) or "")
   local removedName = removed and removed.name or ""
@@ -1442,43 +1482,66 @@ function boop.onRoomItemsRemove()
     return
   end
 
-  if shouldHold("target") then
-    traceHeld("target", "target lost retarget")
-    return
-  end
-
-  local nextTarget = boop.targets and boop.targets.choose and boop.targets.choose() or ""
-  if nextTarget ~= "" then
-    if boop.trace and boop.trace.log then
-      boop.trace.log(string.format(
-        "retarget selected: %s -- %s | reason=target_lost",
-        tostring(nextTarget),
-        denizenNameById(nextTarget)
-      ))
-    end
-    boop.targets.setTarget(nextTarget)
-  else
-    setBlocker("target:loss", "target_lost", "target left room", {
-      target = true,
-      combat = true,
-      queue = true,
-    }, {
-      gmcp = true,
-      prompt = true,
-    }, {
-      source = "targeting",
-      observed = {
-        target = removedId,
-        room = tostring(boop.state.targeting.room or ""),
-      },
-    })
+  if not tempTimer then
+    return false
   end
 
   tempTimer(0, function()
-    if boop and boop.tick then
-      boop.tick()
+    if not roomAuthorityCurrent(
+        sourceAuthority,
+        "target loss retarget"
+      ) then
+      return false
     end
+    if shouldHold("target") then
+      traceHeld("target", "target lost retarget")
+      return false
+    end
+
+    local nextTarget = boop.targets
+      and boop.targets.choose
+      and boop.targets.choose()
+      or ""
+    if nextTarget ~= "" then
+      if boop.trace and boop.trace.log then
+        boop.trace.log(string.format(
+          "retarget selected: %s -- %s | reason=target_lost",
+          tostring(nextTarget),
+          denizenNameById(nextTarget)
+        ))
+      end
+      local changed = boop.targets.setTarget(
+        nextTarget,
+        automaticDispatchOptions(sourceAuthority)
+      )
+      if not changed then
+        return false
+      end
+    else
+      setBlocker("target:loss", "target_lost", "target left room", {
+        target = true,
+        combat = true,
+        queue = true,
+      }, {
+        gmcp = true,
+        prompt = true,
+      }, {
+        source = "targeting",
+        observed = {
+          target = removedId,
+          room = tostring(boop.state.targeting.room or ""),
+        },
+      })
+    end
+
+    if boop and boop.tick then
+      boop.tick(sourceAuthority or nil, {
+        roomOwned = sourceAuthority and true or false,
+      })
+    end
+    return true
   end)
+  return true
 end
 
 function boop.onItemsUpdate()
@@ -1741,9 +1804,11 @@ function boop.onVitals()
   boop.tick()
 end
 
-function boop.onBalanceUsed(kind, seconds)
+function boop.onBalanceUsed(kind, seconds, sourceAuthority)
   local duration = tonumber(seconds)
   if not duration then return end
+  local authority = copySourceAuthority(sourceAuthority)
+    or currentRoomSourceAuthority()
   local key = boop.util.safeLower(kind or "")
   local readyAt = nowSeconds() + duration
   if key == "balance" then
@@ -1754,24 +1819,38 @@ function boop.onBalanceUsed(kind, seconds)
     return
   end
   boop.state.queue.prequeuedStandard = false
-  boop.schedulePrequeue()
+  boop.state.queue.prequeueSourceAuthority = false
+  boop.schedulePrequeue(authority, {
+    roomOwned = authority and true or false,
+  })
 end
 
-function boop.schedulePrequeue()
+function boop.schedulePrequeue(sourceAuthority, options)
+  local authority = copySourceAuthority(sourceAuthority)
+    or currentRoomSourceAuthority()
+  options = type(options) == "table" and options or {}
+  local roomOwned = options.roomOwned == true
+    or authority and true or false
+  if roomOwned and not authority then
+    boop.state.queue.prequeueSourceAuthority = false
+    return false
+  end
   if shouldHold("queue") or shouldHold("target") or shouldHold("combat") then
     if boop.state.queue.prequeueTimer then
       killTimer(boop.state.queue.prequeueTimer)
       boop.state.queue.prequeueTimer = nil
     end
+    boop.state.queue.prequeueSourceAuthority = false
     traceHeld("queue", "schedule prequeue")
-    return
+    return false
   end
   if not boop.config.prequeueEnabled then
     if boop.state.queue.prequeueTimer then
       killTimer(boop.state.queue.prequeueTimer)
       boop.state.queue.prequeueTimer = nil
     end
-    return
+    boop.state.queue.prequeueSourceAuthority = false
+    return false
   end
 
   local lead = tonumber(boop.config.attackLeadSeconds) or 0
@@ -1780,7 +1859,8 @@ function boop.schedulePrequeue()
       killTimer(boop.state.queue.prequeueTimer)
       boop.state.queue.prequeueTimer = nil
     end
-    return
+    boop.state.queue.prequeueSourceAuthority = false
+    return false
   end
 
   local bal = boop.state.queue.balanceReadyAt or 0
@@ -1795,30 +1875,56 @@ function boop.schedulePrequeue()
   if boop.state.queue.prequeueTimer then
     killTimer(boop.state.queue.prequeueTimer)
   end
-  boop.state.queue.prequeueTimer = tempTimer(delay, function()
+  boop.state.queue.prequeueSourceAuthority =
+    copySourceAuthority(authority)
+  local timerId = false
+  timerId = tempTimer(delay, function()
+    if not roomAuthorityCurrent(
+        authority,
+        "delayed prequeue"
+      ) then
+      return false
+    end
+    if boop.state.queue.prequeueTimer ~= timerId then
+      return false
+    end
     boop.state.queue.prequeueTimer = nil
-    boop.prequeueStandard()
+    return boop.prequeueStandard(authority, {
+      roomOwned = roomOwned,
+    })
   end)
+  boop.state.queue.prequeueTimer = timerId
+  return true
 end
 
-function boop.prequeueStandard()
-  if not boop.config.enabled then return end
-  if not boop.config.prequeueEnabled then return end
+function boop.prequeueStandard(sourceAuthority, options)
+  local authority = copySourceAuthority(sourceAuthority)
+  options = type(options) == "table" and options or {}
+  local roomOwned = options.roomOwned == true
+    or authority and true or false
+  if roomOwned and not authority then
+    return false
+  end
+  if not roomAuthorityCurrent(authority, "prequeue standard") then
+    return false
+  end
+  if not boop.config.enabled then return false end
+  if not boop.config.prequeueEnabled then return false end
   if shouldHold("queue") or shouldHold("target") or shouldHold("combat") or shouldHold("gold") then
     traceHeld("queue", "prequeue standard")
-    return
+    return false
   end
-  if boop.state.diag.hold then return end
-  if boop.state.gold.getPending or boop.state.gold.putPending then return end
-  if boop.state.queue.prequeuedStandard then return end
+  if boop.state.diag.hold then return false end
+  if boop.state.gold.getPending or boop.state.gold.putPending then return false end
+  if boop.state.queue.prequeuedStandard then return false end
   if gmcp and gmcp.Char and gmcp.Char.Vitals then
     if gmcp.Char.Vitals.bal == "1" and gmcp.Char.Vitals.eq == "1" then
-      return
+      return false
     end
   end
 
   if boop.safety and boop.safety.shouldFlee and boop.safety.shouldFlee() then
-    return
+    return false
   end
 
   local targetId = boop.targets.choose()
@@ -1827,18 +1933,34 @@ function boop.prequeueStandard()
       flushPendingGold("prequeue no target")
     end
     if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
-      return
+      return false
     end
-    return
+    return false
   end
 
   if boop.state.targeting.currentTargetId ~= targetId then
-    boop.targets.setTarget(targetId)
+    if not boop.targets.setTarget(
+        targetId,
+        automaticDispatchOptions(authority, roomOwned)
+      ) then
+      return false
+    end
   end
 
-  local actions = boop.attacks.choose()
+  local context = boop.runtime
+    and boop.runtime.context
+    and boop.runtime.context(authority)
+    or nil
+  local actions = boop.attacks.choose(context)
   if actions.standard and actions.standard ~= "" then
-    boop.executeAction(actions.standard, true)
+    local emitted = boop.executeAction(
+      actions.standard,
+      true,
+      automaticDispatchOptions(authority, roomOwned)
+    )
+    if not emitted then
+      return false
+    end
     if actions.standardIsOpener and boop.attacks and boop.attacks.markOpenerUsed then
       boop.attacks.markOpenerUsed(classKeyForOpener(), targetId)
     end
@@ -1846,11 +1968,28 @@ function boop.prequeueStandard()
       boop.targets.onShieldbreakAttempt()
     end
     boop.state.queue.prequeuedStandard = true
+    boop.state.queue.prequeueSourceAuthority =
+      copySourceAuthority(authority)
     boop.trace.log("prequeue sent standard")
+    return true
   end
+  return false
 end
 
-function boop.refreshPrequeuedStandard(reason)
+function boop.refreshPrequeuedStandard(reason, sourceAuthority, options)
+  local authority = copySourceAuthority(sourceAuthority)
+    or copySourceAuthority(
+      boop.state.queue.prequeueSourceAuthority
+    )
+  options = type(options) == "table" and options or {}
+  local roomOwned = options.roomOwned == true
+    or authority and true or false
+  if roomOwned and not authority then
+    return false
+  end
+  if not roomAuthorityCurrent(authority, "refresh prequeue") then
+    return false
+  end
   if not boop.config.enabled then return false end
   if not boop.config.prequeueEnabled then return false end
   if shouldHold("queue") or shouldHold("target") or shouldHold("combat") or shouldHold("gold") then
@@ -1872,11 +2011,21 @@ function boop.refreshPrequeuedStandard(reason)
     return false
   end
 
-  local actions = boop.attacks.choose()
+  local context = boop.runtime
+    and boop.runtime.context
+    and boop.runtime.context(authority)
+    or nil
+  local actions = boop.attacks.choose(context)
   if not actions.standard or actions.standard == "" then return false end
   if not actions.standardShieldbreak then return false end
 
-  boop.executeAction(actions.standard, true)
+  if not boop.executeAction(
+      actions.standard,
+      true,
+      automaticDispatchOptions(authority, roomOwned)
+    ) then
+    return false
+  end
   if boop.targets and boop.targets.onShieldbreakAttempt then
     boop.targets.onShieldbreakAttempt()
   end
@@ -1903,13 +2052,32 @@ function boop.canUseRage()
   return true
 end
 
-function boop.tick(sourceAuthority)
+function boop.tick(sourceAuthority, options)
   if boop.runtime and boop.runtime.step and boop.runtime.applyEffects then
-    local context = boop.runtime.context(sourceAuthority)
+    local suppliedAuthority = copySourceAuthority(sourceAuthority)
+    options = type(options) == "table" and options or {}
+    local roomOwned = options.roomOwned == true
+      or suppliedAuthority and true or false
+    if suppliedAuthority
+        and not roomAuthorityCurrent(
+          suppliedAuthority,
+          "tick"
+        ) then
+      return false
+    end
+    local authority = suppliedAuthority or currentRoomSourceAuthority()
+    roomOwned = roomOwned or authority and true or false
+    if roomOwned and not authority then
+      return false
+    end
+    local context = boop.runtime.context(authority, {
+      roomOwned = roomOwned,
+    })
     local result = boop.runtime.step({ type = "tick", context = context })
     boop.state.combat.attacking = boop.runtime.applyEffects(result, context)
-    return
+    return boop.state.combat.attacking
   end
+  return false
 end
 
 function boop.onPrompt()
@@ -1923,11 +2091,14 @@ function boop.onPrompt()
     return false
   end
   if boop.runtime and boop.runtime.step and boop.runtime.applyEffects then
-    local context = boop.runtime.context()
+    local sourceAuthority = currentRoomSourceAuthority()
+    local context = boop.runtime.context(sourceAuthority, {
+      roomOwned = sourceAuthority and true or false,
+    })
     local result = boop.runtime.step({ type = "prompt", context = context })
     boop.runtime.applyEffects(result, context)
     if result.runTick then
-      boop.tick()
+      boop.tick(sourceAuthority or nil)
     end
     return
   end
