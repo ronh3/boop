@@ -5,15 +5,15 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
 status: executing
-stopped_at: Completed 03-21-PLAN.md
-last_updated: "2026-07-29T05:50:26.937Z"
+stopped_at: Completed 03-22-PLAN.md
+last_updated: "2026-07-29T06:01:50.237Z"
 last_activity: 2026-07-29
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 38
-  completed_plans: 35
+  completed_plans: 36
   percent: 33
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
-Plan: 22 of 24
+Plan: 23 of 24
 Status: Ready to execute
 Last activity: 2026-07-29 — Phase 03 execution started
 
@@ -80,6 +80,7 @@ Progress: [█████████░] 92%
 | Phase 03 P19 | 7m | 3 tasks | 9 files |
 | Phase 03 P20 | 9m35s | 1 tasks | 6 files |
 | Phase 03 P21 | 14m32s | 1 tasks | 9 files |
+| Phase 03 P22 | 8m | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -155,6 +156,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Deferred room-owned callbacks retain their copied application, room, and generation authority without destination fallback.
 - [Phase 03]: Every automatic target, alias, queue, standard, and rage boundary revalidates exact room authority before send or success-dependent state.
 - [Phase 03]: Stale combat rejection remains local and preserves intentional non-room command families plus unrelated shared queue ownership.
+- [Phase 03]: Wake active walks only on a true manual-to-nonmanual targeting transition.
+- [Phase 03]: Delegate targeting wakeups to boop.walk.maybeAdvance so snapshot, owner, and reservation gates remain authoritative.
 
 ### Pending Todos
 
@@ -185,6 +188,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-29T05:49:58.275Z
-Stopped at: Completed 03-21-PLAN.md
+Last session: 2026-07-29T06:01:50.231Z
+Stopped at: Completed 03-22-PLAN.md
 Resume file: None
