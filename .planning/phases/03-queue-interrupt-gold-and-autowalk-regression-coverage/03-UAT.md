@@ -1,19 +1,17 @@
 ---
-status: testing
+status: complete
 phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-28T01:21:54-07:00
+updated: 2026-07-28T21:11:40-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
 
 ## Current Test
 
-number: 2
-name: Corrected manual-targeting walk and stop flow
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -80,7 +78,13 @@ expected: |
   6. Run `boop trace show 100`. There must be no `room_partial` hold that
      persists until an unrelated later GMCP event, no ordinary sub-8-second
      room warning, and at most one walker move per settled room.
-result: pending
+result: issue
+reported: |
+  1. Pass.
+  2. Appears not to pass.
+     See output.md. The walker does not appear to ever actually start moving rooms/start. Version is 441.
+severity: major
+observed: "Step 1 passed with the exact inactive-stop message. After walk start, output.md shows the active walker held by walk_room_unsettled, followed by room_partial; it never reaches the expected manual_targeting hold or emits movement. Switching to automatic targeting instead exposes engaged_target for stale target 6832 while room denizens remain zero."
 previous_reported: "boop walk stop doesn't return any sort of message when running in step 1. After doing boop walk start, no movement is done. blocker shown is room_clear -- room clear. This is after seeing the same issue, and completely restarting mudlet."
 previous_severity: major
 previous_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room Info created a new partial generation and stalled the walker."
@@ -113,7 +117,10 @@ expected: |
   5. Run `boop trace show 100`. Confirm no standard/rage attack command
      contains get or put, no gold generation dispatches twice, and stale room
      responses have no side effects.
-result: pending
+result: issue
+reported: "Check output.md. Behavior does not seem quite right. Boop did not start attacking until another command (boop status, ql, etc.) were checked. Gold pickup seems wonky at best, pickup seeming to not occur after death when doing a diag prior, etc. Think the gold timeout may be too short?"
+severity: major
+observed: "Normal gold generations 1, 2, 4, and 6 complete one get-confirm-put sequence. Room settlement repeatedly remains room_partial until a later ql/ih/status-adjacent event supplies the missing room List, corroborating G-03-7. In the failing diag sequence, gold generation 5 queues get sovereigns, diag then clears/replaces the shared freestand queue, no pickup confirmation arrives, and the fixed four-second gold timer terminates the operation while the sovereigns remain in room 4249; a later room refresh creates generation 6 and finally picks them up."
 previous_reported: "Check output.md. Does not appear to be working whatsoever. Actual hunting is also broken, it seems. It will sometimes attack the first mob in the room, but then gets jammed up."
 previous_severity: blocker
 previous_blocker: "Gold was recognized in GMCP, but the reconnect snapshot showed boop enabled=false and gmcp_ire_missing was waiting for prompt evidence."
@@ -137,8 +144,9 @@ expected: |
   The immutable final commit is present on origin and `main.yml` succeeds for
   that exact `headSha`. The complete packaged real-Mudlet Busted suite,
   including Psion and Dragon pull-profile cases, reports no failures or errors.
-result: pending
+result: pass
 source: automated
+evidence: "GitHub Actions run 30342898415 passed for exact source/package SHA 95cfbb96b4428032570b3e6019ae61f0ed619b29."
 previous_evidence: "GitHub Actions run 30265771025 passed for pre-gap SHA 07d73e8b38823277a8132cbcded2ea9f88e92f08."
 
 ### 6. Live trace correlation
@@ -166,16 +174,17 @@ expected: |
      step 3.
   5. Run `boop help diagnostics` and confirm collection and live streaming are
      described as separate controls.
-result: pending
+result: pass
+observed: "Collection-off isolation, exact-once live streaming, show/clear buffer behavior, package-reload reset, persisted collection state, and diagnostics help all appeared to pass."
 previous_reported: "Could we introduce a debug mode that will essentially show the trace log events/actions in real time? I feel that might be handy here, to help correlate what's on the screen with boop's logs."
 previous_severity: minor
 
 ## Summary
 
 total: 6
-passed: 2
-issues: 0
-pending: 4
+passed: 4
+issues: 2
+pending: 0
 skipped: 0
 blocked: 0
 
@@ -329,3 +338,27 @@ blocked: 0
     - "03-18-PLAN.md"
     - "03-19-PLAN.md"
   verification: "03-VERIFICATION.md verifies session-only state, package-reload reset, exact-once non-recursive output, and packaged alias/help wiring at 0.1.441; post-fix live UAT Test 6 remains pending."
+
+- gap_id: G-03-7
+  truth: "Starting a live boop walk from the current room settles its requested room evidence, then reports manual_targeting while manual mode is active and can advance after automatic targeting is selected."
+  status: failed
+  reason: "User reported that inactive stop passed, but the walker never began moving. output.md shows walk_room_unsettled progressing to room_partial instead of the expected manual_targeting hold, then engaged_target after automatic targeting was selected."
+  severity: major
+  test: 2
+  artifacts: []
+  missing: []
+
+- gap_id: G-03-8
+  truth: "A queue-clearing interrupt cannot silently discard an owned pending gold command: gold remains held while the interrupt owns the queue, then exactly one eligible get-confirm-put sequence resumes or terminates from explicit evidence without requiring a room refresh."
+  status: failed
+  reason: "User reported that combat often waited for another command and gold pickup failed after diag. output.md shows gold generation 5 queue get sovereigns, diag clear/replace the shared freestand queue, no pickup response, and pending_timeout four seconds later while the gold remained in the room."
+  severity: major
+  test: 3
+  artifacts: []
+  missing: []
+
+## Deferred Follow-Ups
+
+- test: 2
+  idea: "Add the installed boop version to boop status."
+  deferred_at: 2026-07-28
