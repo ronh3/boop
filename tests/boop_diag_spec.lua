@@ -14,6 +14,7 @@ describe("boop diagnose pause and resume", function()
   local ok_messages
   local warn_messages
   local tick_count
+  local native_queue
 
   local function triggerPath(name)
     return os.getenv("TESTS_DIRECTORY") .. "/../src/triggers/boop/Diag/" .. name
@@ -44,6 +45,7 @@ describe("boop diagnose pause and resume", function()
     ok_messages = {}
     warn_messages = {}
     tick_count = 0
+    native_queue = helper.newNativeQueue()
   end
 
   local function blockerFor(owner)
@@ -72,6 +74,7 @@ describe("boop diagnose pause and resume", function()
         command = command,
         echoBack = echo_back,
       }
+      native_queue.send(command, echo_back)
     end)
     info_stub = stub(boop.util, "info", function(message)
       info_messages[#info_messages + 1] = message
@@ -134,6 +137,8 @@ describe("boop diagnose pause and resume", function()
       waitsFor = { room = true },
     })
 
+    native_queue.apply("queue add full get sovereigns")
+    native_queue.apply("queue add eqbal jab 42")
     boop.ui.diag()
 
     local operation = boop.state.diag.operation
@@ -155,10 +160,20 @@ describe("boop diagnose pause and resume", function()
         tombstone = false,
       },
     }, boop.state.diag.evidenceQueue)
-    assert.are.equal("queue clear", sent[1].command)
+    assert.are.equal("clearqueue all", sent[1].command)
     assert.are.equal(false, sent[1].echoBack)
     assert.are.equal("queue addclearfull freestand diagnose", sent[2].command)
     assert.are.equal(false, sent[2].echoBack)
+    assert.are.same({
+      "queue add full get sovereigns",
+      "queue add eqbal jab 42",
+      "clearqueue all",
+      "queue addclearfull freestand diagnose",
+    }, native_queue.commands)
+    assert.are.same({
+      freestand = { "diagnose" },
+    }, native_queue.snapshot())
+    assert.are.same({}, native_queue.errorsSnapshot())
 
     boop.onPrompt()
 
@@ -206,7 +221,7 @@ describe("boop diagnose pause and resume", function()
     assert.are.equal(2, #boop.state.diag.evidenceQueue)
     assert.are.equal(2, boop.state.diag.operation.generation)
     assert.is_false(boop.state.diag.operation.resultSeen)
-    assert.are.equal(0, tick_count)
+    assert.are.equal(1, tick_count)
 
     runTrigger("Diag_Result_Detail.lua")
     runTrigger("Diag_Result_Perfect.lua")
@@ -222,13 +237,13 @@ describe("boop diagnose pause and resume", function()
     assert.is_false(boop.state.diag.evidenceQueue[1].resultSeen)
     assert.are.equal(2, boop.state.diag.operation.generation)
     assert.is_false(boop.state.diag.operation.resultSeen)
-    assert.are.equal(0, tick_count)
+    assert.are.equal(1, tick_count)
 
     runTrigger("Diag_Result_Perfect.lua")
     boop.onPrompt()
 
     assert.is_false(boop.state.diag.operation)
     assert.are.same({}, boop.state.diag.evidenceQueue)
-    assert.are.equal(1, tick_count)
+    assert.are.equal(2, tick_count)
   end)
 end)

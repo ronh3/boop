@@ -14,6 +14,7 @@ describe("boop diagnose timeout", function()
   local ok_messages
   local warn_messages
   local tick_count
+  local native_queue
 
   local function runDetailTrigger()
     dofile(os.getenv("TESTS_DIRECTORY") .. "/../src/triggers/boop/Diag/Diag_Result_Detail.lua")
@@ -38,12 +39,14 @@ describe("boop diagnose timeout", function()
     ok_messages = {}
     warn_messages = {}
     tick_count = 0
+    native_queue = helper.newNativeQueue()
 
     send_stub = stub(_G, "send", function(command, echo_back)
       sent[#sent + 1] = {
         command = command,
         echoBack = echo_back,
       }
+      native_queue.send(command, echo_back)
     end)
     timer_stub = stub(_G, "tempTimer", function(delay, callback)
       local timer_id = #scheduled + 1
@@ -87,6 +90,8 @@ describe("boop diagnose timeout", function()
       waitsFor = { room = true },
     })
 
+    native_queue.apply("queue add full get sovereigns")
+    native_queue.apply("queue add eqbal jab 42")
     boop.ui.diag()
     local generation = boop.state.diag.operation.generation
     scheduled[1].callback()
@@ -107,10 +112,14 @@ describe("boop diagnose timeout", function()
     }, boop.state.diag.evidenceQueue)
     assert.are.same({ "diag timeout; attacks resumed" }, warn_messages)
     assert.are.equal(0, #ok_messages)
-    assert.are.equal(0, tick_count)
+    assert.are.equal(1, tick_count)
     assert.are.equal(2, #sent)
-    assert.are.equal("queue clear", sent[1].command)
+    assert.are.equal("clearqueue all", sent[1].command)
     assert.are.equal("queue addclearfull freestand diagnose", sent[2].command)
+    assert.are.same({
+      freestand = { "diagnose" },
+    }, native_queue.snapshot())
+    assert.are.same({}, native_queue.errorsSnapshot())
   end)
 
   it("absorbs N's late zero-argument result and prompt without mutating diagnose N+1", function()
@@ -199,7 +208,7 @@ describe("boop diagnose timeout", function()
 
     assert.are.same({}, boop.state.diag.evidenceQueue)
     assert.is_false(boop.state.diag.operation)
-    assert.are.equal(0, tick_count)
+    assert.are.equal(1, tick_count)
     assert.are.equal(warning_count, #warn_messages)
     assert.are.equal(0, #ok_messages)
     assert.are.equal(trace_count, #boop.state.trace.buffer)
@@ -211,6 +220,6 @@ describe("boop diagnose timeout", function()
     assert.are.equal(warning_count, #warn_messages)
     assert.are.equal(trace_count, #boop.state.trace.buffer)
     assert.are.equal(send_count, #sent)
-    assert.are.equal(0, tick_count)
+    assert.are.equal(1, tick_count)
   end)
 end)

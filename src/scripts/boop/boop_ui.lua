@@ -1403,14 +1403,26 @@ local function queueInterrupt(label, command, opts)
   local timeout = tonumber(boop.config.diagTimeoutSeconds) or 8
   if timeout > 0 then
     local timerId = tempTimer(timeout, function()
-      boop.runtime.completeInterrupt(generation, "timeout")
+      local completed = boop.runtime.completeInterrupt(generation, "timeout")
+      if completed
+          and completionMode == "result_then_prompt"
+          and boop
+          and boop.tick then
+        boop.tick()
+      end
     end)
     operation.timeoutTimer = timerId
     state.diag.timeoutTimer = timerId
   end
 
   if opts.clearQueue then
-    send("queue clear", false)
+    if boop.displaceGoldQueueIntent then
+      boop.displaceGoldQueueIntent(
+        blockerOwner,
+        "diag native queue replacement"
+      )
+    end
+    send("clearqueue all", false)
   end
   send("queue addclearfull freestand " .. command, false)
   boop.util.info(opts.infoMessage or (tostring(label) .. " queued; attacks paused"))

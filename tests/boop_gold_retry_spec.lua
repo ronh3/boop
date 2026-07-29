@@ -10,10 +10,13 @@ describe("boop generation-owned gold retry handling", function()
   local kill_timer_stub
   local raise_event_stub
   local clear_blocker_stub
+  local tick_stub
   local sent
   local scheduled
   local raised_events
   local traces
+  local warnings
+  local tick_count
   local native_queue
   local timer_queue
 
@@ -90,6 +93,23 @@ describe("boop generation-owned gold retry handling", function()
     return count
   end
 
+  local function countWarning(fragment)
+    local count = 0
+    for _, message in ipairs(warnings) do
+      if tostring(message):find(fragment, 1, true) then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
+  local function runDiagResultTrigger()
+    dofile(
+      os.getenv("TESTS_DIRECTORY")
+        .. "/../src/triggers/boop/Diag/Diag_Result_Perfect.lua"
+    )
+  end
+
   local function startPickup(pack, roomId, roomGeneration)
     local room = tostring(roomId or "1")
     local items = { goldItem("9001") }
@@ -128,6 +148,8 @@ describe("boop generation-owned gold retry handling", function()
     scheduled = {}
     raised_events = {}
     traces = {}
+    warnings = {}
+    tick_count = 0
     native_queue = helper.newNativeQueue()
     timer_queue = helper.newTimerQueue()
     boop.config.enabled = true
@@ -143,7 +165,9 @@ describe("boop generation-owned gold retry handling", function()
     end)
     send_gmcp_stub = stub(_G, "sendGMCP", function(_) end)
     err_stub = stub(boop.util, "err", function(_) end)
-    warn_stub = stub(boop.util, "warn", function(_) end)
+    warn_stub = stub(boop.util, "warn", function(message)
+      warnings[#warnings + 1] = message
+    end)
     trace_stub = stub(boop.trace, "log", function(message)
       traces[#traces + 1] = message
     end)
@@ -165,6 +189,11 @@ describe("boop generation-owned gold retry handling", function()
         args = { ... },
       }
     end)
+    local originalTick = boop.tick
+    tick_stub = stub(boop, "tick", function(...)
+      tick_count = tick_count + 1
+      return originalTick(...)
+    end)
   end)
 
   after_each(function()
@@ -177,6 +206,7 @@ describe("boop generation-owned gold retry handling", function()
     if kill_timer_stub then kill_timer_stub:revert() kill_timer_stub = nil end
     if raise_event_stub then raise_event_stub:revert() raise_event_stub = nil end
     if clear_blocker_stub then clear_blocker_stub:revert() clear_blocker_stub = nil end
+    if tick_stub then tick_stub:revert() tick_stub = nil end
   end)
 
   it("models native global queue replacement and rejects a nameless clear", function()
@@ -617,6 +647,231 @@ describe("boop generation-owned gold retry handling", function()
       end)
     end
   end
+
+  local diagTerminalCases = {
+    {
+      name = "prompt/result",
+      complete = function(_)
+        runDiagResultTrigger()
+        boop.onPrompt()
+      end,
+      late = function(diagTimeout)
+        diagTimeout()
+      end,
+    },
+    {
+      name = "timeout",
+      complete = function(diagTimeout)
+        diagTimeout()
+      end,
+      late = function()
+        runDiagResultTrigger()
+        boop.onPrompt()
+      end,
+    },
+  }
+
+  local oldGoldTimeoutOrderings = {
+    {
+      name = "old gold timeout before release",
+      beforeRelease = true,
+    },
+    {
+      name = "old gold timeout after release",
+      beforeRelease = false,
+    },
+  }
+
+  for _, stageEntry in ipairs(displacementCases) do
+    local stage = stageEntry
+    for _, terminalEntry in ipairs(diagTerminalCases) do
+      local terminal = terminalEntry
+      for _, orderingEntry in ipairs(oldGoldTimeoutOrderings) do
+        local ordering = orderingEntry
+        it(
+          "real diag preserves "
+            .. stage.name
+            .. " through "
+            .. terminal.name
+            .. " with "
+            .. ordering.name,
+          function()
+            local operation = stage.start()
+            local generation = operation.generation
+            local phase = operation.phase
+            local goldOwner = operation.blockerOwner
+            local originalTimer = operation.timeoutTimer
+            local oldGoldTimeout = timer_queue.callback(originalTimer)
+            local initialCommandCount = countSent(stage.command)
+            assert.is_function(oldGoldTimeout)
+            assert.are.equal(1, initialCommandCount)
+
+            boop.ui.diag()
+            local diagOperation = boop.state.diag.operation
+            local interruptOwner = diagOperation.blockerOwner
+            local diagTimeout = timer_queue.callback(
+              diagOperation.timeoutTimer
+            )
+            assert.is_function(diagTimeout)
+            assert.are.equal(interruptOwner, operation.displacedByOwner)
+            assert.are.equal(phase, operation.displacedPhase)
+            assert.is_true(operation.replayPending)
+            assert.is_false(operation.timeoutTimer)
+            assert.is_true(timer_queue.cancelled[originalTimer])
+            stage.assertEvidence(operation)
+            assert.are.same({
+              freestand = { "diagnose" },
+            }, native_queue.snapshot())
+            assert.are.same({}, native_queue.errorsSnapshot())
+            assert.are.equal(
+              "clearqueue all",
+              native_queue.commands[#native_queue.commands - 1]
+            )
+            assert.are.equal(
+              "queue addclearfull freestand diagnose",
+              native_queue.commands[#native_queue.commands]
+            )
+
+            if ordering.beforeRelease then
+              oldGoldTimeout()
+            end
+
+            local ticksBeforeRelease = tick_count
+            terminal.complete(diagTimeout)
+            assert.are.equal(ticksBeforeRelease + 1, tick_count)
+
+            operation = currentOperation()
+            assert.are.equal(
+              initialCommandCount + 1,
+              countSent(stage.command)
+            )
+            assert.are.equal(generation, operation.generation)
+            assert.are.equal(phase, operation.phase)
+            assert.are.equal(goldOwner, operation.blockerOwner)
+            assert.are.equal(
+              "displacement_replay",
+              operation.dispatchProvenance
+            )
+            assert.is_false(operation.replayPending)
+            assert.is_nil(operation.displacedByOwner)
+            assert.is_nil(operation.displacedPhase)
+            stage.assertEvidence(operation)
+
+            if not ordering.beforeRelease then
+              oldGoldTimeout()
+            end
+            terminal.late(diagTimeout)
+
+            assert.are.equal(ticksBeforeRelease + 1, tick_count)
+            assert.are.equal(
+              initialCommandCount + 1,
+              countSent(stage.command)
+            )
+            assert.is_nil(boop.state.combat.blockersByOwner[interruptOwner])
+
+            local freshTimer = operation.timeoutTimer
+            local freshTimeout = timer_queue.callback(freshTimer)
+            local timersBeforeFreshTimeout = #scheduled
+            local sendsBeforeFreshTimeout = #sent
+            assert.is_function(freshTimeout)
+            assert.is_true(freshTimer ~= originalTimer)
+
+            freshTimeout()
+
+            operation = currentOperation()
+            assert.is_false(operation.timeoutTimer)
+            assert.is_true(operation.awaitingExplicitEvidence)
+            assert.are.equal(generation, operation.generation)
+            assert.are.equal(phase, operation.phase)
+            assert.are.equal(goldOwner, operation.blockerOwner)
+            stage.assertEvidence(operation)
+            local blocker = boop.state.combat.blockersByOwner[goldOwner]
+            assert.is_table(blocker)
+            assert.is_truthy(
+              blocker.label:find(
+                "awaiting explicit evidence",
+                1,
+                true
+              )
+            )
+
+            boop.tick()
+            freshTimeout()
+            oldGoldTimeout()
+            terminal.late(diagTimeout)
+            boop.tick()
+
+            assert.are.equal(sendsBeforeFreshTimeout, #sent)
+            assert.are.equal(timersBeforeFreshTimeout, #scheduled)
+            assert.are.equal(
+              initialCommandCount + 1,
+              countSent(stage.command)
+            )
+            assert.is_true(currentOperation().awaitingExplicitEvidence)
+            assert.are.equal(1, countWarning(stage.warning))
+            assert.are.equal(
+              1,
+              countTrace("gold replay timeout: " .. stage.name)
+            )
+            assert.are.equal(0, countTrace("reason=pending_timeout"))
+
+            local clearCount = 0
+            local originalClearBlocker = boop.runtime.clearBlocker
+            clear_blocker_stub = stub(
+              boop.runtime,
+              "clearBlocker",
+              function(owner, reason)
+                local cleared = originalClearBlocker(owner, reason)
+                if owner == goldOwner and cleared then
+                  clearCount = clearCount + 1
+                end
+                return cleared
+              end
+            )
+
+            stage.invalidate()
+            stage.invalidate()
+            freshTimeout()
+            oldGoldTimeout()
+            terminal.late(diagTimeout)
+
+            assert.is_false(boop.state.gold.operation)
+            assert.is_nil(boop.state.combat.blockersByOwner[goldOwner])
+            assert.are.equal(1, clearCount)
+            assert.are.equal(
+              1,
+              countTrace("gold terminal: " .. goldOwner)
+            )
+          end
+        )
+      end
+    end
+  end
+
+  it("real diag replay advances pickup through explicit get and put evidence", function()
+    local operation = startPickup("pack")
+    local oldGoldTimeout = timer_queue.callback(operation.timeoutTimer)
+    boop.ui.diag()
+    local diagOperation = boop.state.diag.operation
+    local diagTimeout = timer_queue.callback(diagOperation.timeoutTimer)
+
+    oldGoldTimeout()
+    runDiagResultTrigger()
+    boop.onPrompt()
+    diagTimeout()
+
+    assert.are.equal(2, countSent("queue add full get sovereigns"))
+    assert.is_true(boop.onGoldGetSuccess())
+    assert.are.equal("pack_pending", currentOperation().phase)
+    assert.are.equal(
+      1,
+      countSent("queue add freestand put sovereigns in pack")
+    )
+    assert.is_true(boop.onGoldPutSuccess())
+    assert.is_false(boop.state.gold.operation)
+    assert.is_false(boop.state.diag.operation)
+    assert.are.same({}, boop.state.diag.evidenceQueue)
+  end)
 
   for _, stageEntry in ipairs(displacementCases) do
     local stage = stageEntry
