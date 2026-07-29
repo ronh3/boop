@@ -12,6 +12,7 @@ provides:
   - packaged manual-to-auto targeting transitions wake an active settled walker
   - real-alias regressions prove one reservation and one move across both GMCP response orders
   - early transitions, duplicate callbacks, and unrelated owner holds remain race-safe
+  - accepted current-room evidence and valid denizen adds release stale target-loss ownership
 affects: [03-23, 03-24, live-uat]
 tech-stack:
   added: []
@@ -22,7 +23,9 @@ key-files:
   created: []
   modified:
     - tests/boop_walk_spec.lua
+    - tests/boop_event_transitions_spec.lua
     - src/scripts/boop/boop_ui.lua
+    - src/scripts/boop/boop_events.lua
     - src/scripts/boop/boop_init.lua
     - mfile
     - CODEX.md
@@ -105,6 +108,14 @@ Each task was committed atomically:
 - Direct `muddle` - built `boop Hunter 0.1.444` successfully.
 - Acceptance scan confirmed the new command-surface cases do not call `boop.walk.maybeAdvance` directly or depend on diagnostic commands or nonzero timers.
 
+## Post-Plan Live UAT Hotfix
+
+- Live trace from package `0.1.444` exposed a stale `target:loss` owner that retained prompt evidence but could never obtain target GMCP because it blocked the automatic `settarget` needed to generate that evidence.
+- Accepted fenced room snapshots and validated denizen `Items.Add` events now satisfy the existing target-loss GMCP evidence contract. The owner remains fail closed during `room_partial`, and unrelated blocker owners are retained.
+- Test-first evidence was `53 successes / 2 failures / 0 errors` before the fix and `55 successes / 0 failures / 0 errors` afterward. The adjacent runtime, tick, walk, and target suites passed `97/97`.
+- Release gates and direct `muddle` passed at synchronized package `0.1.445`.
+- **Commit:** `457aafc` (`fix(03-22): release target loss from fresh room evidence`)
+
 ## Deviations from Plan
 
 ### Auto-fixed Issues
@@ -118,7 +129,16 @@ Each task was committed atomically:
 - **Verification:** The complete focused walk suite passes `45/45`.
 - **Commit:** `7cd0c14`
 
-**Total deviations:** 1 auto-fixed blocking fixture issue.
+**2. [Rule 1 - Bug] Released target-loss ownership from authoritative room evidence**
+
+- **Found during:** Post-plan live UAT on package `0.1.444`
+- **Issue:** `target:loss` required target GMCP plus a prompt while simultaneously blocking automatic retargeting, so accepted room snapshots, room changes, and new denizen adds could leave all automation permanently held.
+- **Fix:** Count accepted fenced room snapshots and validated denizen adds as target-loss GMCP recovery evidence without clearing unrelated owners or weakening the room-partial fence.
+- **Files modified:** `src/scripts/boop/boop_events.lua`, `tests/boop_event_transitions_spec.lua`, synchronized version files
+- **Verification:** Event transitions pass `55/55`; adjacent suites pass `97/97`; release gates and `muddle` pass at `0.1.445`.
+- **Commit:** `457aafc`
+
+**Total deviations:** 2 auto-fixed issues: one blocking fixture update and one live-UAT blocker-lifecycle bug.
 
 ## Known Stubs
 
@@ -134,11 +154,13 @@ None.
 
 ## Next Phase Readiness
 
-- Host-side G03-7 coverage is closed; Plans 03-23 and 03-24 can build on the proven command-to-walker handoff.
+- Host-side G03-7 coverage and the discovered target-loss deadlock are closed; Plans 03-23 and 03-24 can build on the proven command-to-walker handoff.
+- Package `0.1.445` still requires live Mudlet confirmation that a settled room or arriving denizen releases `target_lost` and resumes one target/attack.
 - Final push, exact-SHA CI, and any live Mudlet UAT remain owned by the parent orchestrator.
 
 ## Self-Check: PASSED
 
-- All five task files exist at the committed `0.1.444` package state.
+- All original task files and post-plan hotfix files exist at the committed `0.1.445` package state.
 - Task commit `7cd0c14` exists and contains no tracked-file deletions.
+- Live-UAT hotfix commit `457aafc` exists and contains no tracked-file deletions.
 - Focused Busted, syntax, diff, release-gate, and direct muddle verification all passed.

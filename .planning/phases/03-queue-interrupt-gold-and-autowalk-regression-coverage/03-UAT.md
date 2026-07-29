@@ -4,7 +4,7 @@ phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-28T21:23:44-07:00
+updated: 2026-07-28T23:56:52-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -399,6 +399,27 @@ blocked: 0
     - "Terminate only from explicit success, failure, movement, disable, flee, or item evidence; a queue-replaced command cannot be silently abandoned by elapsed time."
     - "Add a native queue model and regressions for real diag after pickup and pack dispatch, both interrupt-release/timeout orderings, exact-once replay, and complete get-confirm-put termination."
   debug_session: ".planning/debug/phase-03-diag-gold-queue-collision.md"
+
+- gap_id: G-03-9
+  truth: "Target loss cannot deadlock automatic hunting: authoritative current-room evidence or a valid arriving denizen releases only the stale target-loss owner, after which one current target and attack may resume."
+  status: resolved
+  reason: "Live package 0.1.444 remained permanently held by target_lost -- target left room. output.md showed prompts, accepted room lists, multiple room changes, and a valid Dyissan archer Items.Add while every tick, queue, walk, and gold action remained blocked."
+  severity: blocker
+  test: 2
+  root_cause: "The target:loss owner required target GMCP plus prompt evidence, but the owner itself blocked automatic retargeting and therefore prevented the settarget command that would produce target GMCP. Accepted fenced room snapshots and valid denizen additions were not counted as recovery GMCP, leaving a circular wait."
+  artifacts:
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "Accepted room application and valid room-item additions updated denizens without satisfying target:loss recovery evidence."
+    - path: "tests/boop_event_transitions_spec.lua"
+      issue: "Target-loss coverage handled direct Target.Set/Target.Info and same-room replacement, but omitted no-replacement loss followed by moved-room settlement or a later valid denizen Add."
+  resolution:
+    - "Keep target:loss held while the destination room remains room_partial."
+    - "Treat an accepted fenced current-room snapshot as target-loss GMCP evidence, allowing the existing prompt-plus-GMCP contract to release exactly that owner."
+    - "Treat a room Items.Add as recovery evidence only after the item passes denizen validation and is present in the tracked denizen set."
+    - "Retain unrelated owners and prove exactly one fresh settarget and attack with no stale prior-target dispatch."
+  resolved_by:
+    - "03-22 post-plan live-UAT hotfix, commit 457aafc"
+  verification: "Host event transitions pass 55/55 and adjacent runtime/tick/walk/target suites pass 97/97 at package 0.1.445; live Mudlet confirmation remains pending."
 
 ## Deferred Follow-Ups
 
