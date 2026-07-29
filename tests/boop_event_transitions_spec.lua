@@ -2390,6 +2390,125 @@ describe("boop event-driven state transitions", function()
     assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
   end)
 
+  it("releases prior-room target loss only after fresh room evidence can retarget", function()
+    helper.setArea("Test Area")
+    helper.setClass("Occultist")
+    helper.learnSkill("Lycantha", "Domination")
+    helper.setDenizens({
+      { id = "42", name = "a departing denizen" },
+    })
+    helper.setTarget("42", "a departing denizen", "80%")
+    helper.seedRoomObservation("1", {
+      generation = 5,
+      infoSeen = true,
+      itemsSeen = true,
+      acceptedItems = {
+        denizenItem("42", "a departing denizen"),
+      },
+    })
+    boop.state.targeting.room = "1"
+    boop.config.enabled = true
+    boop.config.useQueueing = true
+    boop.config.targetingMode = "auto"
+    captureRuntimeBlockerCalls()
+
+    gmcp.Char.Items.Remove = {
+      location = "room",
+      item = denizenItem("42", "a departing denizen"),
+    }
+    boop.onRoomItemsRemove()
+    local lossCallback = scheduled_callbacks[#scheduled_callbacks].callback
+    assert.is_function(lossCallback)
+    lossCallback()
+    assert.is_table(blockerFor("target:loss"))
+
+    helper.setRuntimeBlocker({
+      owner = "test:retained",
+      code = "interrupt_pending",
+      systems = {},
+      waitsFor = { timeout = true },
+    })
+    boop.onPrompt()
+    assert.is_table(blockerFor("target:loss"))
+
+    gmcp.Room.Info = {
+      num = "2",
+      area = "Test Area",
+      exits = { west = "1" },
+    }
+    boop.onRoomInfo()
+    assert.is_table(blockerFor("target:loss"))
+    assert.is_table(blockerFor("room:observation"))
+
+    publishAcceptedRoomList({
+      denizenItem("43", "a fresh denizen"),
+    })
+
+    assert.is_nil(blockerFor("target:loss"))
+    assert.is_nil(blockerFor("room:observation"))
+    assert.is_table(blockerFor("test:retained"))
+    assert.are.equal("43", boop.state.targeting.currentTargetId)
+    assert.are.equal("a fresh denizen", boop.state.targeting.targetName)
+    assert.are.equal(1, countSent("settarget 43"))
+    assert.are.equal(
+      1,
+      countSent("setalias BOOP_ATTACK command hound at 43")
+    )
+    assert.are.equal(
+      1,
+      countSent("queue addclearfull freestand BOOP_ATTACK")
+    )
+    assert.are.equal(0, countSent("settarget 42"))
+  end)
+
+  it("treats a valid denizen add as target-loss recovery evidence", function()
+    helper.setArea("Test Area")
+    helper.setClass("Occultist")
+    helper.learnSkill("Lycantha", "Domination")
+    helper.setDenizens({})
+    helper.setTarget("", "", "100%")
+    boop.state.targeting.room = "1"
+    boop.config.enabled = true
+    boop.config.useQueueing = true
+    boop.config.targetingMode = "auto"
+    helper.setRuntimeBlocker({
+      owner = "target:loss",
+      code = "target_lost",
+      label = "target left room",
+      systems = {
+        target = true,
+        combat = true,
+        queue = true,
+      },
+      waitsFor = {
+        gmcp = true,
+        prompt = true,
+      },
+    })
+    boop.onPrompt()
+    assert.is_table(blockerFor("target:loss"))
+
+    gmcp.Char.Items.Add = {
+      location = "room",
+      item = denizenItem("44", "an arriving denizen"),
+    }
+    boop.onRoomItemsAdd()
+
+    assert.is_nil(blockerFor("target:loss"))
+    assert.are.equal("44", boop.state.targeting.denizens[1].id)
+    assert.is_true(boop.tick())
+    assert.are.equal("44", boop.state.targeting.currentTargetId)
+    assert.are.equal(1, countSent("settarget 44"))
+    assert.are.equal(
+      1,
+      countSent("setalias BOOP_ATTACK command hound at 44")
+    )
+    assert.are.equal(
+      1,
+      countSent("queue addclearfull freestand BOOP_ATTACK")
+    )
+  end)
+
   describe("G-03-5 settled-add-revalidation", function()
     local function seedSettledNonGoldRoom()
       _G.demonwalker = {

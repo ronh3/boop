@@ -339,10 +339,17 @@ local function roomInfoIsPartial(info)
   return not info or not info.num or type(info.exits) ~= "table"
 end
 
+local function noteTargetRoomGmcpObserved()
+  if runtime() and boop.runtime.noteGmcpObserved then
+    boop.runtime.noteGmcpObserved("target:loss", "room")
+  end
+end
+
 local function noteRoomGmcpObserved()
   if runtime() and boop.runtime.noteGmcpObserved then
     boop.runtime.noteGmcpObserved("room:observation", "room")
   end
+  noteTargetRoomGmcpObserved()
   return true
 end
 
@@ -1424,6 +1431,9 @@ function boop.onRoomItemsAdd()
   local item = gmcp.Char.Items.Add.item
   traceRoomItemEvent("add", item)
   boop.targets.addRoomItem(item)
+  if denizenNameById(item and item.id) ~= "" then
+    noteTargetRoomGmcpObserved()
+  end
   autoGrabRoomItem(item, {
     source = "gmcp room item Add",
     revalidateSettledAdd = true,
