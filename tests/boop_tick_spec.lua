@@ -465,7 +465,7 @@ describe("boop tick", function()
         local putRetries = operation.putRetries
         local command = phase == "pack_pending"
           and "queue add freestand put sovereigns in pack"
-          or "queue add freestand get sovereigns"
+          or "queue add full get sovereigns"
         local sendsBeforeHold = countSent(command)
         local goldSendsBeforeHold = countGoldSends()
         local scheduledBeforeRelease = #scheduled

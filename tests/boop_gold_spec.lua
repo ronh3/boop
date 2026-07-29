@@ -60,6 +60,17 @@ describe("boop staged gold handling", function()
     }
   end
 
+  local function runNewestZeroTimer(afterIndex)
+    for index = #scheduled, (afterIndex or 0) + 1, -1 do
+      local entry = scheduled[index]
+      if entry and entry.delay == 0 then
+        entry.callback()
+        return true
+      end
+    end
+    return false
+  end
+
   local function publishRoomList(items)
     local observation = boop.runtime.roomObservationSnapshot()
     local fence = observation.fenceQueue[1]
@@ -74,7 +85,9 @@ describe("boop staged gold handling", function()
       location = "room",
       items = items,
     }
+    local scheduledBeforeRoom = #scheduled
     boop.onRoomItemsList()
+    runNewestZeroTimer(scheduledBeforeRoom)
   end
 
   local function publishGoldAdd(id)
@@ -190,7 +203,7 @@ describe("boop staged gold handling", function()
     assert.are.equal("pickup_pending", pickup.phase)
     assert.are.equal("9001", pickup.goldItemId)
     assert.are.equal(1, #sent)
-    assert.are.equal("queue add freestand get sovereigns", sent[1].command)
+    assert.are.equal("queue add full get sovereigns", sent[1].command)
     assert.is_false(sent[1].echoBack)
     local pickupFlushTimer = pickup.flushTimer
     local pickupTimeoutTimer = pickup.timeoutTimer
@@ -212,7 +225,7 @@ describe("boop staged gold handling", function()
 
     assert.are.equal("pickup_pending", pickup.phase)
     assert.are.equal(1, #sent)
-    assert.are.equal("queue add freestand get sovereigns", sent[1].command)
+    assert.are.equal("queue add full get sovereigns", sent[1].command)
     assert.are.equal("pickup_pending", sent[1].phase)
 
     boop.onGoldGetSuccess()
@@ -252,7 +265,7 @@ describe("boop staged gold handling", function()
     assert.is_false(boop.state.gold.operation)
     assert.is_nil(boop.state.combat.blockersByOwner["gold:1"])
     assert.are.equal(1, #sent)
-    assert.are.equal("queue add freestand get sovereigns", sent[1].command)
+    assert.are.equal("queue add full get sovereigns", sent[1].command)
   end)
 
   it("invalidates room-owned pickup before success and ignores the late success", function()
@@ -304,7 +317,7 @@ describe("boop staged gold handling", function()
       boop.runtime.clearBlocker(owner, "test release")
       assert.is_true(boop.flushPendingGold("test release"))
       assert.are.equal(1, #sent)
-      assert.are.equal("queue add freestand get sovereigns", sent[1].command)
+      assert.are.equal("queue add full get sovereigns", sent[1].command)
     end
   end)
 
@@ -368,25 +381,19 @@ describe("boop staged gold handling", function()
 
       gmcp.Char.Items.List = {
         location = "room",
-        items = { goldItem("8001") },
+        items = { goldItem("9001") },
       }
       boop.onRoomItemsList()
       assert.is_false(boop.state.gold.operation)
-      assert.are.equal(0, countSent("queue add freestand get sovereigns"))
+      assert.are.equal(0, countSent("queue add full get sovereigns"))
 
       gmcp.Char.Items.List = {
         location = "inv",
         items = {},
       }
+      local scheduledBeforeInv = #scheduled
       boop.onRoomItemsList()
-      assert.is_false(boop.state.gold.operation)
-      assert.are.equal(0, countSent("queue add freestand get sovereigns"))
-
-      gmcp.Char.Items.List = {
-        location = "room",
-        items = { goldItem("9001") },
-      }
-      boop.onRoomItemsList()
+      runNewestZeroTimer(scheduledBeforeInv)
       return boop.state.gold.operation
     end
 
@@ -405,7 +412,7 @@ describe("boop staged gold handling", function()
       assert.are.equal("pickup_pending", pickup.phase)
       assert.are.equal("1", pickup.roomId)
       assert.are.equal("9001", pickup.goldItemId)
-      assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+      assert.are.equal(1, countSent("queue add full get sovereigns"))
 
       boop.onGoldDropLine("More sovereigns spill onto the ground.")
       publishGoldAdd("9001")
@@ -414,7 +421,7 @@ describe("boop staged gold handling", function()
         items = { goldItem("9001") },
       }
       boop.onRoomItemsList()
-      assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+      assert.are.equal(1, countSent("queue add full get sovereigns"))
 
       local beforeSameRoom = copyOperation(currentOperation())
       boop.onRoomInfo()
@@ -477,7 +484,7 @@ describe("boop staged gold handling", function()
 
     assert.are.equal(
       1,
-      countSent("queue add freestand get sovereigns"),
+      countSent("queue add full get sovereigns"),
       "GOLD_SAME_ROOM_PIPELINE_BROKEN: copied accepted evidence depended on persistent GMCP"
     )
   end)
@@ -509,7 +516,7 @@ describe("boop staged gold handling", function()
       assert.is_true(fence.roomOnly)
       assert.are.same({ denizen }, observation.acceptedItems)
       assert.are.same({ "Char.Items.Room" }, sent_gmcp)
-      assert.are.equal(0, countSent("queue add freestand get sovereigns"))
+      assert.are.equal(0, countSent("queue add full get sovereigns"))
       assert.are.equal(3, #scheduled)
 
       local generation = deferred.generation
@@ -528,7 +535,7 @@ describe("boop staged gold handling", function()
       assert.are.equal(generation, deferred.generation)
       assert.are.equal(fenceId, deferred.revalidationFenceId)
       assert.are.same({ "Char.Items.Room" }, sent_gmcp)
-      assert.are.equal(0, countSent("queue add freestand get sovereigns"))
+      assert.are.equal(0, countSent("queue add full get sovereigns"))
 
       gmcp.Char.Items.List = {
         location = "inv",
@@ -539,22 +546,24 @@ describe("boop staged gold handling", function()
       observation = boop.runtime.roomObservationSnapshot()
       assert.are.same({ denizen }, observation.acceptedItems)
       assert.are.equal("deferred_room", currentOperation().phase)
-      assert.are.equal(0, countSent("queue add freestand get sovereigns"))
+      assert.are.equal(0, countSent("queue add full get sovereigns"))
 
       gmcp.Char.Items.List = {
         location = "room",
         items = { denizen, goldItem("9001") },
       }
+      local scheduledBeforeRoom = #scheduled
       boop.onRoomItemsList()
+      runNewestZeroTimer(scheduledBeforeRoom)
 
       local pickup = currentOperation()
       assert.are.equal(generation, pickup.generation)
       assert.are.equal("pickup_pending", pickup.phase)
       assert.are.equal("gold:1", pickup.blockerOwner)
-      assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+      assert.are.equal(1, countSent("queue add full get sovereigns"))
 
       boop.onRoomItemsList()
-      assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+      assert.are.equal(1, countSent("queue add full get sovereigns"))
       assert.is_true(boop.onGoldGetSuccess())
       assert.is_false(boop.onGoldGetSuccess())
       assert.are.equal(
@@ -582,7 +591,7 @@ describe("boop staged gold handling", function()
         "Char.Items.Room",
         "Char.Items.Room",
       }, sent_gmcp)
-      assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+      assert.are.equal(1, countSent("queue add full get sovereigns"))
     end)
   end)
 

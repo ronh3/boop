@@ -355,6 +355,88 @@ function M.newTimerQueue()
   return queue
 end
 
+function M.newNativeQueue()
+  local native = {
+    queues = {},
+    commands = {},
+    validationErrors = {},
+  }
+
+  local function queueEntries(name)
+    name = norm(name)
+    native.queues[name] = native.queues[name] or {}
+    return native.queues[name]
+  end
+
+  local function clearAll()
+    native.queues = {}
+  end
+
+  local function validationError(command, message)
+    native.validationErrors[#native.validationErrors + 1] = {
+      command = command,
+      message = message,
+    }
+    return false
+  end
+
+  function native.apply(command)
+    command = tostring(command or "")
+    native.commands[#native.commands + 1] = command
+
+    local queueName, queuedCommand = command:match(
+      "^queue%s+add%s+(%S+)%s+(.+)$"
+    )
+    if queueName and queuedCommand then
+      local entries = queueEntries(queueName)
+      entries[#entries + 1] = queuedCommand
+      return true
+    end
+
+    queueName, queuedCommand = command:match(
+      "^queue%s+addclearfull%s+(%S+)%s+(.+)$"
+    )
+    if queueName and queuedCommand then
+      clearAll()
+      local entries = queueEntries(queueName)
+      entries[#entries + 1] = queuedCommand
+      return true
+    end
+
+    local clearQueue = command:match("^clearqueue%s+(%S+)%s*$")
+      or command:match("^queue%s+clear%s+(%S+)%s*$")
+    if clearQueue then
+      if norm(clearQueue) == "all" then
+        clearAll()
+      else
+        native.queues[norm(clearQueue)] = nil
+      end
+      return true
+    end
+
+    if command:match("^clearqueue%s*$")
+        or command:match("^queue%s+clear%s*$") then
+      return validationError(command, "queue name is required")
+    end
+
+    return true
+  end
+
+  function native.send(command, _)
+    return native.apply(command)
+  end
+
+  function native.snapshot()
+    return deepCopy(native.queues)
+  end
+
+  function native.errorsSnapshot()
+    return deepCopy(native.validationErrors)
+  end
+
+  return native
+end
+
 function M.setWalker(opts)
   opts = opts or {}
   local previous = {

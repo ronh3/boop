@@ -5,12 +5,17 @@ describe("boop generation-owned gold retry handling", function()
   local send_gmcp_stub
   local err_stub
   local warn_stub
+  local trace_stub
   local timer_stub
   local kill_timer_stub
   local raise_event_stub
+  local clear_blocker_stub
   local sent
   local scheduled
   local raised_events
+  local traces
+  local native_queue
+  local timer_queue
 
   local function goldItem(id)
     return {
@@ -75,6 +80,16 @@ describe("boop generation-owned gold retry handling", function()
     return count
   end
 
+  local function countTrace(fragment)
+    local count = 0
+    for _, message in ipairs(traces) do
+      if tostring(message):find(fragment, 1, true) then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
   local function startPickup(pack, roomId, roomGeneration)
     local room = tostring(roomId or "1")
     local items = { goldItem("9001") }
@@ -112,6 +127,9 @@ describe("boop generation-owned gold retry handling", function()
     sent = {}
     scheduled = {}
     raised_events = {}
+    traces = {}
+    native_queue = helper.newNativeQueue()
+    timer_queue = helper.newTimerQueue()
     boop.config.enabled = true
     boop.config.autoGrabGold = true
     boop.config.useQueueing = false
@@ -121,12 +139,16 @@ describe("boop generation-owned gold retry handling", function()
         command = command,
         echoBack = echoBack,
       }
+      native_queue.send(command, echoBack)
     end)
     send_gmcp_stub = stub(_G, "sendGMCP", function(_) end)
     err_stub = stub(boop.util, "err", function(_) end)
     warn_stub = stub(boop.util, "warn", function(_) end)
+    trace_stub = stub(boop.trace, "log", function(message)
+      traces[#traces + 1] = message
+    end)
     timer_stub = stub(_G, "tempTimer", function(delay, callback)
-      local id = 200 + #scheduled + 1
+      local id = timer_queue.tempTimer(delay, callback)
       scheduled[#scheduled + 1] = {
         id = id,
         delay = delay,
@@ -134,7 +156,9 @@ describe("boop generation-owned gold retry handling", function()
       }
       return id
     end)
-    kill_timer_stub = stub(_G, "killTimer", function(_) end)
+    kill_timer_stub = stub(_G, "killTimer", function(id)
+      return timer_queue.killTimer(id)
+    end)
     raise_event_stub = stub(_G, "raiseEvent", function(name, ...)
       raised_events[#raised_events + 1] = {
         name = name,
@@ -148,9 +172,36 @@ describe("boop generation-owned gold retry handling", function()
     if send_gmcp_stub then send_gmcp_stub:revert() send_gmcp_stub = nil end
     if err_stub then err_stub:revert() err_stub = nil end
     if warn_stub then warn_stub:revert() warn_stub = nil end
+    if trace_stub then trace_stub:revert() trace_stub = nil end
     if timer_stub then timer_stub:revert() timer_stub = nil end
     if kill_timer_stub then kill_timer_stub:revert() kill_timer_stub = nil end
     if raise_event_stub then raise_event_stub:revert() raise_event_stub = nil end
+    if clear_blocker_stub then clear_blocker_stub:revert() clear_blocker_stub = nil end
+  end)
+
+  it("models native global queue replacement and rejects a nameless clear", function()
+    assert.is_true(native_queue.apply("queue add full get sovereigns"))
+    assert.are.same({
+      full = { "get sovereigns" },
+    }, native_queue.snapshot())
+
+    assert.is_true(native_queue.apply("clearqueue all"))
+    assert.are.same({}, native_queue.snapshot())
+
+    assert.is_true(native_queue.apply(
+      "queue addclearfull freestand diagnose"
+    ))
+    assert.are.same({
+      freestand = { "diagnose" },
+    }, native_queue.snapshot())
+
+    assert.is_false(native_queue.apply("queue clear"))
+    assert.are.same({
+      {
+        command = "queue clear",
+        message = "queue name is required",
+      },
+    }, native_queue.errorsSnapshot())
   end)
 
   it("retries get under its exact owner and exhausts at the existing limit", function()
@@ -159,7 +210,7 @@ describe("boop generation-owned gold retry handling", function()
     boop.onGoldCommandFailure("missing sovereigns")
 
     assert.are.equal(2, #sent)
-    assert.are.equal("queue add freestand get sovereigns", sent[2].command)
+    assert.are.equal("queue add full get sovereigns", sent[2].command)
     assert.are.equal(1, currentOperation().getRetries)
 
     boop.onGoldCommandFailure("still missing sovereigns")
@@ -199,6 +250,10 @@ describe("boop generation-owned gold retry handling", function()
       items = {},
     }
     boop.onRoomItemsList()
+    local roomApplication = scheduled[#scheduled]
+    assert.is_table(roomApplication)
+    assert.are.equal(0, roomApplication.delay)
+    roomApplication.callback()
 
     assert.are.equal(sendsBeforeRetry, #sent)
     assert.are.equal("pack_pending", currentOperation().phase)
@@ -273,7 +328,9 @@ describe("boop generation-owned gold retry handling", function()
   local timeoutUnderOwnerCases = {
     {
       name = "pickup",
-      command = "queue add freestand get sovereigns",
+      command = "queue add full get sovereigns",
+      queueName = "full",
+      queueCommand = "get sovereigns",
       start = function()
         return startPickup("")
       end,
@@ -286,6 +343,8 @@ describe("boop generation-owned gold retry handling", function()
     {
       name = "packing",
       command = "queue add freestand put sovereigns in pack",
+      queueName = "freestand",
+      queueCommand = "put sovereigns in pack",
       start = function()
         startPickup("pack")
         assert.is_true(boop.onGoldGetSuccess())
@@ -370,6 +429,264 @@ describe("boop generation-owned gold retry handling", function()
       assert.are.equal(0, countRaised("demonwalker.move"))
     end)
   end
+
+  local displacementCases = {
+    {
+      name = "pickup",
+      command = "queue add full get sovereigns",
+      queueName = "full",
+      queueCommand = "get sovereigns",
+      warning = "auto gold: replayed pickup timed out; move or disable/flee to cancel",
+      start = function()
+        local operation = startPickup("pack")
+        operation.getRetries = 1
+        boop.markGoldQueueIntent(operation.packTarget)
+        return operation
+      end,
+      assertEvidence = function(operation)
+        assert.are.equal("1", operation.roomId)
+        assert.are.equal(1, operation.roomGeneration)
+        assert.are.equal("9001", operation.goldItemId)
+        assert.are.equal(1, operation.getRetries)
+      end,
+      invalidate = function()
+        gmcp.Room.Info = {
+          area = "TEST",
+          num = 2,
+          exits = {},
+        }
+        boop.onRoomInfo()
+      end,
+    },
+    {
+      name = "pack",
+      command = "queue add freestand put sovereigns in pack",
+      queueName = "freestand",
+      queueCommand = "put sovereigns in pack",
+      warning = "auto gold: replayed pack timed out; provide result/failure evidence or disable/flee to cancel",
+      start = function()
+        startPickup("pack")
+        assert.is_true(boop.onGoldGetSuccess())
+        return currentOperation()
+      end,
+      assertEvidence = function(operation)
+        assert.are.equal("", operation.roomId)
+        assert.are.equal(0, operation.roomGeneration)
+        assert.are.equal("", operation.goldItemId)
+        assert.are.equal("pack", operation.packTarget)
+        assert.are.equal(0, operation.putRetries)
+      end,
+      invalidate = function()
+        boop.ui.setEnabled(false)
+      end,
+    },
+  }
+
+  local displacementOrderings = {
+    {
+      name = "old timeout before interrupt release",
+      run = function(oldTimeout, interruptOwner)
+        oldTimeout()
+        assert.is_true(boop.runtime.clearBlocker(
+          interruptOwner,
+          "synthetic interrupt released"
+        ))
+        boop.tick()
+      end,
+    },
+    {
+      name = "interrupt release and replay before old timeout",
+      run = function(oldTimeout, interruptOwner)
+        assert.is_true(boop.runtime.clearBlocker(
+          interruptOwner,
+          "synthetic interrupt released"
+        ))
+        boop.tick()
+        oldTimeout()
+      end,
+    },
+  }
+
+  for _, stageEntry in ipairs(displacementCases) do
+    local stage = stageEntry
+    for _, orderingEntry in ipairs(displacementOrderings) do
+      local ordering = orderingEntry
+      it("holds displaced " .. stage.name .. " after " .. ordering.name, function()
+        local operation = stage.start()
+        local generation = operation.generation
+        local phase = operation.phase
+        local goldOwner = operation.blockerOwner
+        local originalTimer = operation.timeoutTimer
+        local oldTimeout = timer_queue.callback(originalTimer)
+        local initialCommandCount = countSent(stage.command)
+        local interruptOwner = "interrupt:gold-displacement"
+        assert.is_function(oldTimeout)
+        assert.are.equal(1, initialCommandCount)
+
+        addGoldBlocker(interruptOwner)
+        assert.is_true(boop.displaceGoldQueueIntent(
+          interruptOwner,
+          "synthetic native queue replacement"
+        ))
+        assert.is_true(timer_queue.cancelled[originalTimer])
+        assert.is_false(operation.timeoutTimer)
+        assert.are.equal(interruptOwner, operation.displacedByOwner)
+        assert.are.equal(phase, operation.displacedPhase)
+        assert.is_true(operation.replayPending)
+        assert.are.equal(goldOwner, operation.blockerOwner)
+        assert.are.equal(generation, operation.generation)
+        stage.assertEvidence(operation)
+
+        native_queue.apply("clearqueue all")
+        assert.are.same({}, native_queue.snapshot())
+        boop.tick()
+        assert.are.equal(initialCommandCount, countSent(stage.command))
+
+        ordering.run(oldTimeout, interruptOwner)
+
+        operation = currentOperation()
+        assert.are.equal(initialCommandCount + 1, countSent(stage.command))
+        assert.are.equal(generation, operation.generation)
+        assert.are.equal(phase, operation.phase)
+        assert.are.equal(goldOwner, operation.blockerOwner)
+        assert.are.equal("displacement_replay", operation.dispatchProvenance)
+        assert.is_false(operation.replayPending)
+        assert.is_nil(operation.displacedByOwner)
+        assert.is_nil(operation.displacedPhase)
+        stage.assertEvidence(operation)
+        assert.are.same({
+          [stage.queueName] = { stage.queueCommand },
+        }, native_queue.snapshot())
+
+        local freshTimer = operation.timeoutTimer
+        local freshTimeout = timer_queue.callback(freshTimer)
+        local timersBeforeFreshTimeout = #scheduled
+        local sendsBeforeFreshTimeout = #sent
+        assert.is_function(freshTimeout)
+        assert.is_true(freshTimer ~= originalTimer)
+
+        freshTimeout()
+
+        operation = currentOperation()
+        assert.is_false(operation.timeoutTimer)
+        assert.is_true(operation.awaitingExplicitEvidence)
+        assert.are.equal(generation, operation.generation)
+        assert.are.equal(phase, operation.phase)
+        assert.are.equal(goldOwner, operation.blockerOwner)
+        assert.are.equal("displacement_replay", operation.dispatchProvenance)
+        stage.assertEvidence(operation)
+        local blocker = boop.state.combat.blockersByOwner[goldOwner]
+        assert.is_table(blocker)
+        assert.is_truthy(blocker.label:find("awaiting explicit evidence", 1, true))
+        assert.stub(warn_stub).was_called_with(stage.warning)
+
+        boop.tick()
+        freshTimeout()
+        oldTimeout()
+        boop.tick()
+
+        assert.are.equal(sendsBeforeFreshTimeout, #sent)
+        assert.are.equal(timersBeforeFreshTimeout, #scheduled)
+        assert.are.equal(initialCommandCount + 1, countSent(stage.command))
+        assert.is_true(currentOperation().awaitingExplicitEvidence)
+        assert.stub(warn_stub).was_called(1)
+        assert.are.equal(
+          1,
+          countTrace("gold replay timeout: " .. stage.name)
+        )
+        assert.are.equal(0, countTrace("reason=pending_timeout"))
+
+        local clearCount = 0
+        local originalClearBlocker = boop.runtime.clearBlocker
+        clear_blocker_stub = stub(boop.runtime, "clearBlocker", function(owner, reason)
+          local cleared = originalClearBlocker(owner, reason)
+          if owner == goldOwner and cleared then
+            clearCount = clearCount + 1
+          end
+          return cleared
+        end)
+
+        stage.invalidate()
+        stage.invalidate()
+        freshTimeout()
+        oldTimeout()
+
+        assert.is_false(boop.state.gold.operation)
+        assert.is_nil(boop.state.combat.blockersByOwner[goldOwner])
+        assert.are.equal(1, clearCount)
+      end)
+    end
+  end
+
+  for _, stageEntry in ipairs(displacementCases) do
+    local stage = stageEntry
+    it("allows explicit failure to retry timed-out replayed " .. stage.name, function()
+      local operation = stage.start()
+      local interruptOwner = "interrupt:gold-failure"
+      addGoldBlocker(interruptOwner)
+      assert.is_true(boop.displaceGoldQueueIntent(
+        interruptOwner,
+        "synthetic native queue replacement"
+      ))
+      native_queue.apply("clearqueue all")
+      assert.is_true(boop.runtime.clearBlocker(
+        interruptOwner,
+        "synthetic interrupt released"
+      ))
+      boop.tick()
+
+      operation = currentOperation()
+      local freshTimeout = timer_queue.callback(operation.timeoutTimer)
+      local commandCountBeforeFailure = countSent(stage.command)
+      assert.is_function(freshTimeout)
+      freshTimeout()
+      assert.is_true(currentOperation().awaitingExplicitEvidence)
+
+      assert.is_true(boop.onGoldCommandFailure("explicit command failure"))
+
+      operation = currentOperation()
+      assert.is_false(operation.awaitingExplicitEvidence)
+      assert.are.equal("retry", operation.dispatchProvenance)
+      assert.is_number(operation.timeoutTimer)
+      assert.are.equal(
+        commandCountBeforeFailure + 1,
+        countSent(stage.command)
+      )
+      if stage.name == "pickup" then
+        assert.are.equal(2, operation.getRetries)
+      else
+        assert.are.equal(1, operation.putRetries)
+      end
+    end)
+  end
+
+  it("advances replayed pickup through explicit get and put evidence", function()
+    local operation = startPickup("pack")
+    local oldTimeout = timer_queue.callback(operation.timeoutTimer)
+    local interruptOwner = "interrupt:gold-explicit-result"
+    addGoldBlocker(interruptOwner)
+    assert.is_true(boop.displaceGoldQueueIntent(
+      interruptOwner,
+      "synthetic native queue replacement"
+    ))
+    native_queue.apply("clearqueue all")
+    assert.is_true(boop.runtime.clearBlocker(
+      interruptOwner,
+      "synthetic interrupt released"
+    ))
+    boop.tick()
+    oldTimeout()
+
+    assert.are.equal(2, countSent("queue add full get sovereigns"))
+    assert.is_true(boop.onGoldGetSuccess())
+    assert.are.equal("pack_pending", currentOperation().phase)
+    assert.are.equal(
+      1,
+      countSent("queue add freestand put sovereigns in pack")
+    )
+    assert.is_true(boop.onGoldPutSuccess())
+    assert.is_false(boop.state.gold.operation)
+  end)
 
   it("makes an old timeout a zero-effect callback after a new generation starts", function()
     local first = startPickup("")

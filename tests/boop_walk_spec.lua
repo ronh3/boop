@@ -616,7 +616,7 @@ describe("boop walk integration", function()
     local goldOwner = operation.blockerOwner
     local expiredTimer = operation.timeoutTimer
     local getCountBeforeTimeout = countSent(
-      "queue add freestand get sovereigns"
+      "queue add full get sovereigns"
     )
     assert.is_function(timers.callback(expiredTimer))
 
@@ -643,7 +643,7 @@ describe("boop walk integration", function()
     )
     assert.is_nil(boop.state.gold.pendingTimer)
     assert.are.equal(getCountBeforeTimeout, countSent(
-      "queue add freestand get sovereigns"
+      "queue add full get sovereigns"
     ))
     assert.are.equal(0, state.walk.reservationId)
     assert.is_false(state.walk.moveQueued)
@@ -652,7 +652,7 @@ describe("boop walk integration", function()
     timers.run(expiredTimer)
     assert.is_false(operation.timeoutTimer)
     assert.are.equal(getCountBeforeTimeout, countSent(
-      "queue add freestand get sovereigns"
+      "queue add full get sovereigns"
     ))
     assert.are.equal(0, state.walk.reservationId)
     assert.are.equal(0, countRaised("demonwalker.move"))
@@ -667,7 +667,7 @@ describe("boop walk integration", function()
     assert.is_table(operation)
     assert.are.equal("pickup_pending", operation.phase)
     assert.are.equal(getCountBeforeTimeout + 1, countSent(
-      "queue add freestand get sovereigns"
+      "queue add full get sovereigns"
     ))
     assert.is_number(operation.timeoutTimer)
     assert.is_true(operation.timeoutTimer ~= expiredTimer)

@@ -96,15 +96,17 @@ end
 
 local AUTO_GOLD_FLUSH_SECONDS = 0.35
 local ROOM_RESPONSE_FENCE_WARNING_SECONDS = 8.0
-local GOLD_READY_QUEUE = "freestand"
+local GOLD_PICKUP_QUEUE = "full"
+local GOLD_PACK_QUEUE = "freestand"
 local GOLD_PHASE = {
   DEFERRED_ROOM = "deferred_room",
   PICKUP_PENDING = "pickup_pending",
   PACK_PENDING = "pack_pending",
 }
 
-local function queueGoldCommand(command)
-  send("queue add " .. GOLD_READY_QUEUE .. " " .. command, false)
+local function queueGoldCommand(queueName, command)
+  send("queue add " .. queueName .. " " .. command, false)
+  return true
 end
 
 local function traceRoomInfo(info, moved, previousRoom)
@@ -671,6 +673,22 @@ local function goldDispatchAuthorized(operation)
   if not boop.config or not boop.config.enabled or not boop.config.autoGrabGold then
     return false
   end
+  if operation.awaitingExplicitEvidence then
+    return false
+  end
+
+  local displacedByOwner = tostring(operation.displacedByOwner or "")
+  if operation.replayPending and displacedByOwner ~= "" then
+    local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
+    local blocker = state
+      and state.combat
+      and state.combat.blockersByOwner
+      and state.combat.blockersByOwner[displacedByOwner]
+      or nil
+    if type(blocker) == "table" and tostring(blocker.code or "") ~= "" then
+      return false
+    end
+  end
 
   local owner = tostring(operation.blockerOwner or "")
   if operation.phase == GOLD_PHASE.PACK_PENDING then
@@ -746,11 +764,132 @@ local function stopGoldPendingTimeout()
   return timerId and true or false
 end
 
-local function armGoldPendingTimeout(generation, expectedPhase)
+local function setGoldEvidenceWaitBlocker(operation)
+  if operation.phase == GOLD_PHASE.PICKUP_PENDING then
+    return setBlocker(
+      operation.blockerOwner,
+      "gold_pickup_pending",
+      "gold pickup awaiting explicit evidence; move or disable/flee to cancel",
+      {
+        combat = true,
+        queue = true,
+        gold = true,
+        walk = true,
+      },
+      {
+        gold_get = true,
+        movement = true,
+        disabled = true,
+        flee = true,
+      },
+      {
+        source = operation.source,
+        observed = {
+          generation = operation.generation,
+          room = operation.roomId,
+          roomGeneration = operation.roomGeneration,
+          goldItem = operation.goldItemId,
+          dispatch = operation.dispatchId,
+        },
+      }
+    )
+  end
+
+  return setBlocker(
+    operation.blockerOwner,
+    "gold_pack_pending",
+    "gold packing awaiting explicit evidence; provide result/failure or disable/flee to cancel",
+    {
+      combat = true,
+      queue = true,
+      gold = true,
+      walk = true,
+    },
+    {
+      gold_put = true,
+      gold_failure = true,
+      disabled = true,
+      flee = true,
+    },
+    {
+      source = operation.source,
+      observed = {
+        generation = operation.generation,
+        inventory = true,
+        pack = operation.packTarget,
+        dispatch = operation.dispatchId,
+      },
+    }
+  )
+end
+
+local function setGoldDispatchBlocker(operation)
+  if operation.phase == GOLD_PHASE.PICKUP_PENDING then
+    return setBlocker(
+      operation.blockerOwner,
+      "gold_pickup_pending",
+      "gold pickup pending",
+      {
+        combat = true,
+        queue = true,
+        gold = true,
+        walk = true,
+      },
+      {
+        gold_get = true,
+      },
+      {
+        source = operation.source,
+        observed = {
+          generation = operation.generation,
+          room = operation.roomId,
+          roomGeneration = operation.roomGeneration,
+          goldItem = operation.goldItemId,
+        },
+      }
+    )
+  end
+
+  return setBlocker(
+    operation.blockerOwner,
+    "gold_pack_pending",
+    "gold packing pending",
+    {
+      combat = true,
+      queue = true,
+      gold = true,
+      walk = true,
+    },
+    {
+      gold_put = true,
+    },
+    {
+      source = operation.source,
+      observed = {
+        generation = operation.generation,
+        inventory = true,
+        pack = operation.packTarget,
+      },
+    }
+  )
+end
+
+local function armGoldPendingTimeout(
+  generation,
+  expectedPhase,
+  expectedDispatchId,
+  dispatchProvenance
+)
   local operation = currentGoldOperation(generation, expectedPhase)
   if not operation or not tempTimer then
     return false
   end
+  expectedDispatchId = tonumber(expectedDispatchId)
+    or tonumber(operation.dispatchId)
+    or 0
+  dispatchProvenance = tostring(
+    dispatchProvenance or operation.dispatchProvenance or "initial"
+  )
   stopGoldPendingTimeout()
   operation = currentGoldOperation(generation, expectedPhase)
   if not operation then return false end
@@ -758,11 +897,41 @@ local function armGoldPendingTimeout(generation, expectedPhase)
   local timerId = false
   timerId = tempTimer(4, function()
     local active = currentGoldOperation(generation, expectedPhase)
-    if not active or active.timeoutTimer ~= timerId then
+    if not active
+        or active.timeoutTimer ~= timerId
+        or tonumber(active.dispatchId) ~= tonumber(expectedDispatchId) then
       return
     end
     active.timeoutTimer = false
     boop.markGoldQueueIntent(active.packTarget)
+    if dispatchProvenance == "displacement_replay" then
+      active.awaitingExplicitEvidence = true
+      setGoldEvidenceWaitBlocker(active)
+      if tonumber(active.replayWarningDispatchId) ~= tonumber(expectedDispatchId) then
+        active.replayWarningDispatchId = expectedDispatchId
+        if active.phase == GOLD_PHASE.PICKUP_PENDING then
+          boop.trace.log(string.format(
+            "gold replay timeout: pickup awaiting explicit evidence | generation=%s | dispatch=%s",
+            tostring(generation),
+            tostring(expectedDispatchId)
+          ))
+          boop.util.warn(
+            "auto gold: replayed pickup timed out; move or disable/flee to cancel"
+          )
+        else
+          boop.trace.log(string.format(
+            "gold replay timeout: pack awaiting explicit evidence | generation=%s | dispatch=%s",
+            tostring(generation),
+            tostring(expectedDispatchId)
+          ))
+          boop.util.warn(
+            "auto gold: replayed pack timed out; provide result/failure evidence or disable/flee to cancel"
+          )
+        end
+      end
+      boop.markGoldQueueIntent(active.packTarget)
+      return
+    end
     if not goldDispatchAuthorized(active) then
       return
     end
@@ -810,11 +979,21 @@ end
 
 local function queueGoldCommands()
   local operation = currentGoldOperation()
-  if not operation or operation.timeoutTimer or not goldDispatchAuthorized(operation) then
+  if not operation
+      or operation.timeoutTimer
+      or operation.awaitingExplicitEvidence
+      or not goldDispatchAuthorized(operation) then
     return false
   end
+  local displacementReplay = operation.replayPending == true
+  local provenance = displacementReplay
+    and "displacement_replay"
+    or "initial"
+  operation.dispatchId = (tonumber(operation.dispatchId) or 0) + 1
+  operation.dispatchProvenance = provenance
+  operation.awaitingExplicitEvidence = false
   if operation.phase == GOLD_PHASE.PICKUP_PENDING then
-    queueGoldCommand("get sovereigns")
+    queueGoldCommand(GOLD_PICKUP_QUEUE, "get sovereigns")
     boop.trace.log(string.format(
       "gold queue: get sovereigns | generation=%s | room=%s",
       tostring(operation.generation),
@@ -823,7 +1002,7 @@ local function queueGoldCommands()
   elseif operation.phase == GOLD_PHASE.PACK_PENDING then
     local pack = boop.util.trim(operation.packTarget or "")
     if pack == "" then return false end
-    queueGoldCommand("put sovereigns in " .. pack)
+    queueGoldCommand(GOLD_PACK_QUEUE, "put sovereigns in " .. pack)
     boop.trace.log(string.format(
       "gold queue: put sovereigns in %s | generation=%s",
       pack,
@@ -832,7 +1011,64 @@ local function queueGoldCommands()
   else
     return false
   end
-  armGoldPendingTimeout(operation.generation, operation.phase)
+  if displacementReplay then
+    operation.replayPending = false
+    operation.displacedByOwner = nil
+    operation.displacedPhase = nil
+    operation.displacedDispatchId = nil
+  end
+  armGoldPendingTimeout(
+    operation.generation,
+    operation.phase,
+    operation.dispatchId,
+    provenance
+  )
+  return true
+end
+
+function boop.displaceGoldQueueIntent(interruptOwner, reason)
+  local operation = currentGoldOperation()
+  local owner = tostring(interruptOwner or "")
+  if not operation
+      or owner == ""
+      or operation.awaitingExplicitEvidence
+      or operation.replayPending
+      or not operation.timeoutTimer
+      or (operation.phase ~= GOLD_PHASE.PICKUP_PENDING
+        and operation.phase ~= GOLD_PHASE.PACK_PENDING) then
+    return false
+  end
+
+  local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
+  local blocker = state
+    and state.combat
+    and state.combat.blockersByOwner
+    and state.combat.blockersByOwner[owner]
+    or nil
+  if type(blocker) ~= "table" or tostring(blocker.code or "") == "" then
+    return false
+  end
+
+  local displacedTimer = operation.timeoutTimer
+  operation.timeoutTimer = false
+  if displacedTimer and killTimer then
+    killTimer(displacedTimer)
+  end
+  operation.displacedByOwner = owner
+  operation.displacedPhase = operation.phase
+  operation.displacedDispatchId = operation.dispatchId
+  operation.replayPending = true
+  operation.awaitingExplicitEvidence = false
+  boop.markGoldQueueIntent(operation.packTarget)
+  boop.trace.log(string.format(
+    "gold dispatch displaced: %s | generation=%s | phase=%s | dispatch=%s | interrupt=%s | reason=%s",
+    tostring(operation.blockerOwner),
+    tostring(operation.generation),
+    tostring(operation.phase),
+    tostring(operation.dispatchId),
+    owner,
+    tostring(reason or "native queue replacement")
+  ))
   return true
 end
 
@@ -993,6 +1229,14 @@ startGoldOperation = function(source, observation, packTarget)
     putRetries = 0,
     flushTimer = false,
     timeoutTimer = false,
+    dispatchId = 0,
+    dispatchProvenance = false,
+    displacedByOwner = nil,
+    displacedPhase = nil,
+    displacedDispatchId = nil,
+    replayPending = false,
+    awaitingExplicitEvidence = false,
+    replayWarningDispatchId = false,
     revalidationAttempted = false,
     revalidationFenceId = false,
     sourceAuthority = copySourceAuthority(observation.sourceAuthority),
@@ -1074,6 +1318,13 @@ transferGoldToPacking = function(generation)
   operation.putRetries = 0
   operation.flushTimer = false
   operation.timeoutTimer = false
+  operation.dispatchProvenance = false
+  operation.displacedByOwner = nil
+  operation.displacedPhase = nil
+  operation.displacedDispatchId = nil
+  operation.replayPending = false
+  operation.awaitingExplicitEvidence = false
+  operation.replayWarningDispatchId = false
   if boop.util.trim(operation.packTarget or "") == "" then
     return completeGoldOperation(generation, "get_success_no_pack")
   end
@@ -1122,7 +1373,7 @@ local function maybeFlushPendingGold(reason)
     end
     return false
   end
-  if operation.timeoutTimer then
+  if operation.timeoutTimer or operation.awaitingExplicitEvidence then
     return false
   end
   return flushPendingGold(reason or "gold stage ready")
@@ -1155,7 +1406,7 @@ flushPendingGold = function(reason)
   if operation.phase == GOLD_PHASE.DEFERRED_ROOM then
     return maybeFlushPendingGold(reason)
   end
-  if operation.timeoutTimer then
+  if operation.timeoutTimer or operation.awaitingExplicitEvidence then
     return false
   end
   if not goldDispatchAuthorized(operation) then
@@ -1188,7 +1439,13 @@ end
 
 local function retryGoldGet(reason)
   local operation = currentGoldOperation(nil, GOLD_PHASE.PICKUP_PENDING)
-  if not operation or not goldDispatchAuthorized(operation) then return false end
+  if not operation then return false end
+  local wasAwaitingEvidence = operation.awaitingExplicitEvidence == true
+  operation.awaitingExplicitEvidence = false
+  if not goldDispatchAuthorized(operation) then
+    operation.awaitingExplicitEvidence = wasAwaitingEvidence
+    return false
+  end
   local retries = tonumber(operation.getRetries) or 0
   if retries >= 2 then
     boop.trace.log("gold get failed; giving up: " .. tostring(reason))
@@ -1198,17 +1455,33 @@ local function retryGoldGet(reason)
   stopGoldPendingTimeout()
   operation = currentGoldOperation(operation.generation, GOLD_PHASE.PICKUP_PENDING)
   if not operation or not goldDispatchAuthorized(operation) then return false end
-  queueGoldCommand("get sovereigns")
+  operation.awaitingExplicitEvidence = false
+  operation.replayWarningDispatchId = false
+  operation.dispatchId = (tonumber(operation.dispatchId) or 0) + 1
+  operation.dispatchProvenance = "retry"
+  setGoldDispatchBlocker(operation)
+  queueGoldCommand(GOLD_PICKUP_QUEUE, "get sovereigns")
   operation.getRetries = retries + 1
   boop.markGoldQueueIntent(operation.packTarget)
-  armGoldPendingTimeout(operation.generation, operation.phase)
+  armGoldPendingTimeout(
+    operation.generation,
+    operation.phase,
+    operation.dispatchId,
+    operation.dispatchProvenance
+  )
   boop.trace.log("gold get retry " .. tostring(operation.getRetries) .. ": " .. tostring(reason))
   return true
 end
 
 local function retryGoldPut(reason)
   local operation = currentGoldOperation(nil, GOLD_PHASE.PACK_PENDING)
-  if not operation or not goldDispatchAuthorized(operation) then return false end
+  if not operation then return false end
+  local wasAwaitingEvidence = operation.awaitingExplicitEvidence == true
+  operation.awaitingExplicitEvidence = false
+  if not goldDispatchAuthorized(operation) then
+    operation.awaitingExplicitEvidence = wasAwaitingEvidence
+    return false
+  end
   local pack = boop.util.trim(operation.packTarget or "")
   if pack == "" then
     return completeGoldOperation(operation.generation, "put_retry_exhausted")
@@ -1222,10 +1495,20 @@ local function retryGoldPut(reason)
   stopGoldPendingTimeout()
   operation = currentGoldOperation(operation.generation, GOLD_PHASE.PACK_PENDING)
   if not operation or not goldDispatchAuthorized(operation) then return false end
-  queueGoldCommand("put sovereigns in " .. pack)
+  operation.awaitingExplicitEvidence = false
+  operation.replayWarningDispatchId = false
+  operation.dispatchId = (tonumber(operation.dispatchId) or 0) + 1
+  operation.dispatchProvenance = "retry"
+  setGoldDispatchBlocker(operation)
+  queueGoldCommand(GOLD_PACK_QUEUE, "put sovereigns in " .. pack)
   operation.putRetries = retries + 1
   boop.markGoldQueueIntent(operation.packTarget)
-  armGoldPendingTimeout(operation.generation, operation.phase)
+  armGoldPendingTimeout(
+    operation.generation,
+    operation.phase,
+    operation.dispatchId,
+    operation.dispatchProvenance
+  )
   boop.trace.log("gold put retry " .. tostring(operation.putRetries) .. " for " .. pack .. ": " .. tostring(reason))
   return true
 end

@@ -1788,13 +1788,13 @@ describe("boop event-driven state transitions", function()
 
     boop.onRoomInfo()
 
-    assert.are.equal(0, countSent("queue add freestand get sovereigns"))
+    assert.are.equal(0, countSent("queue add full get sovereigns"))
     publishAcceptedRoomList({
       { id = "99", name = "some gold sovereigns" },
     })
 
     assert.is_true(boop.runtime.roomObservationSnapshot().itemsSeen)
-    assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+    assert.are.equal(1, countSent("queue add full get sovereigns"))
     assert.are.equal(0, countRaised("demonwalker.move"))
   end)
 
@@ -1842,14 +1842,14 @@ describe("boop event-driven state transitions", function()
     assert.is_nil(boop.state.combat.blockersByOwner["room:observation"])
     assert.are.equal(1, tickCalls)
     assert.are.equal(0, flushCalls)
-    assert.are.equal(0, countSent("queue add freestand get sovereigns"))
+    assert.are.equal(0, countSent("queue add full get sovereigns"))
 
     boop.runtime.clearBlocker("interrupt:remaining", "final owner released")
     boop.tick()
 
     assert.are.equal(2, tickCalls)
     assert.are.equal(1, flushCalls)
-    assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+    assert.are.equal(1, countSent("queue add full get sovereigns"))
     assert.are.equal(operation.generation, boop.state.gold.operation.generation)
     assert.are.equal(0, boop.state.gold.operation.getRetries)
   end)
@@ -2065,7 +2065,7 @@ describe("boop event-driven state transitions", function()
 
     local operation = copyGoldOperation(boop.state.gold.operation)
     assert.are.equal("pickup_pending", operation.phase)
-    assert.are.equal(1, countSent("queue add freestand get sovereigns"))
+    assert.are.equal(1, countSent("queue add full get sovereigns"))
     local oldTimeout = callbackForTimer(operation.timeoutTimer)
     assert.is_function(oldTimeout)
 
