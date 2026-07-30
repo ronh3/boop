@@ -335,6 +335,9 @@ describe("boop walk integration", function()
       code = "target_active",
       label = "current target still set",
       seed = function()
+        helper.setDenizens({
+          { id = "42", name = "a test denizen" },
+        })
         helper.setTarget("42", "a test denizen", "80%")
       end,
     },
@@ -398,16 +401,26 @@ describe("boop walk integration", function()
       end,
     },
     {
-      name = "a canonical runtime owner blocks movement",
+      name = "current lifecycle evidence is incomplete",
       code = "gmcp_ire_missing",
-      label = "GMCP IRE missing",
+      label = "GMCP IRE awaiting current prompt evidence",
+      seed = function(state)
+        state.lifecycle.ireSeen = false
+        state.lifecycle.promptSeen = true
+        state.lifecycle.ready = false
+      end,
+    },
+    {
+      name = "an in-flight operation blocks movement",
+      code = "interrupt_pending",
+      label = "external interrupt pending",
       seed = function()
         helper.setRuntimeBlocker({
-          owner = "gmcp:ire",
-          code = "gmcp_ire_missing",
-          label = "GMCP IRE missing",
+          owner = "interrupt:runtime-denial",
+          code = "interrupt_pending",
+          label = "external interrupt pending",
           systems = { walk = true },
-          waitsFor = { gmcp = true },
+          waitsFor = { prompt = true },
         })
       end,
     },
@@ -450,12 +463,11 @@ describe("boop walk integration", function()
     end)
   end
 
-  it("sets and updates one exact owner across start and current Room.Info", function()
+  it("tracks unsettled rooms directly without creating a walk operation", function()
     assert.is_true(boop.walk.start())
 
     local state = boop.runtime.state()
     local firstRun = state.walk.generation
-    local owner = "walk:" .. tostring(firstRun)
     assert.is_true(state.walk.active)
     assert.is_false(state.walk.owned)
     assert.are.equal(1, firstRun)
@@ -470,15 +482,10 @@ describe("boop walk integration", function()
     assert.are.equal(2, #sent_gmcp)
     assert.are.equal("Char.Items.Inv", sent_gmcp[1])
     assert.are.equal("Char.Items.Room", sent_gmcp[2])
-
-    local blocker = assertOwner(
-      owner,
-      "walk_room_unsettled",
-      "current room evidence is incomplete"
-    )
-    assert.are.same({ items = true, room = true }, blocker.waitsFor)
-    assert.are.equal("1", blocker.observed.room)
-    assert.is_false(blocker.observed.items)
+    local readiness = boop.runtime.readinessSnapshot()
+    assert.is_false(readiness.room.ready)
+    assert.are.equal("room_partial", readiness.room.code)
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
 
     gmcp.Room.Info.num = 2
     local observation = boop.runtime.startRoomObservation(2)
@@ -490,13 +497,30 @@ describe("boop walk integration", function()
     assert.are.equal("2", state.walk.arrivalRoom)
     assert.is_false(state.walk.roomSettled)
     assert.is_false(state.walk.moveQueued)
-    blocker = assertOwner(
-      owner,
-      "walk_room_unsettled",
-      "current room evidence is incomplete"
-    )
-    assert.are.equal("2", blocker.observed.room)
-    assert.are.equal(observation.generation, blocker.observed.roomGeneration)
+    readiness = boop.runtime.readinessSnapshot()
+    assert.is_false(readiness.room.ready)
+    assert.are.equal("2", readiness.room.roomId)
+    assert.are.equal(observation.generation, readiness.room.generation)
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+  end)
+
+  it("uses walk state and reservations without creating operation owners", function()
+    assert.is_true(boop.walk.start())
+    local state = boop.runtime.state()
+
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+
+    helper.seedRoomObservation(state.walk.arrivalRoom, {
+      generation = state.walk.roomGeneration,
+      infoSeen = true,
+      itemsSeen = true,
+    })
+    assert.is_true(boop.walk.onRoomSettled("complete room list"))
+
+    assert.is_true(state.walk.moveQueued)
+    assert.is_true(state.walk.moveIssuedForRoomGeneration)
+    assert.are.equal(1, state.walk.reservationId)
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
   end)
 
   it("clears exact unsettled ownership when complete evidence cannot reserve", function()
@@ -525,7 +549,6 @@ describe("boop walk integration", function()
   it("captures one reservation, emits once, and rearms only for a new room", function()
     assert.is_true(boop.walk.start())
     local state = boop.runtime.state()
-    local owner = currentWalkOwner()
     helper.seedRoomObservation(state.walk.arrivalRoom, {
       generation = state.walk.roomGeneration,
       infoSeen = true,
@@ -540,7 +563,7 @@ describe("boop walk integration", function()
     assert.are.equal(1, state.walk.reservationId)
     assert.is_number(state.walk.emitterTimer)
     assert.is_nil(state.walk.refreshTimer)
-    assertOwner(owner, "walk_move_pending", "move already queued")
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
 
     local context = boop.runtime.context()
     assert.are.equal(1, context.walk.reservationId)
@@ -558,7 +581,7 @@ describe("boop walk integration", function()
     assert.are.equal(1, countRaised("demonwalker.move"))
     assert.is_nil(state.walk.emitterTimer)
     assert.is_true(state.walk.moveQueued)
-    assertOwner(owner, "walk_move_pending", "move already queued")
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
 
     timers.run(firstEmitter)
     assert.are.equal(1, countRaised("demonwalker.move"))
@@ -569,7 +592,8 @@ describe("boop walk integration", function()
     assert.is_false(state.walk.moveQueued)
     assert.is_false(state.walk.moveIssuedForRoomGeneration)
     assert.are.equal(nextObservation.generation, state.walk.roomGeneration)
-    assertOwner(owner, "walk_room_unsettled", "current room evidence is incomplete")
+    assert.is_false(boop.runtime.readinessSnapshot().room.ready)
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
 
     helper.seedRoomObservation(2, {
       generation = state.walk.roomGeneration,
@@ -739,12 +763,11 @@ describe("boop walk integration", function()
     end)
   end
 
-  it("reserved evaluation bypasses only its own matching walker owner", function()
+  it("reserved evaluation remains blocked by an unrelated operation", function()
     local state = seedReadyWalk()
     assert.is_true(boop.walk.maybeAdvance("reserve with unrelated owner"))
-    local owner = currentWalkOwner()
     local emitter = state.walk.emitterTimer
-    assertOwner(owner, "walk_move_pending", "move already queued")
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
 
     helper.setRuntimeBlocker({
       owner = "interrupt:99",
@@ -759,7 +782,6 @@ describe("boop walk integration", function()
 
     assert.are.equal(0, countRaised("demonwalker.move"))
     assert.are.same(before, walkStateSnapshot())
-    assertOwner(owner, "walk_move_pending", "move already queued")
     assertOwner("interrupt:99", "interrupt_pending", "unrelated walk hold")
   end)
 
@@ -767,10 +789,8 @@ describe("boop walk integration", function()
     local state = seedReadyWalk()
     assert.is_true(boop.walk.maybeAdvance("package loss"))
     local oldRun = state.walk.generation
-    local owner = currentWalkOwner()
     local emitter = state.walk.emitterTimer
     local warningCount = #feedback.warn
-    local transitionCount = countContaining(trace_lines, "walker_unavailable")
     local invalidationCount = countContaining(trace_lines, "external_lost")
 
     walker.setAvailable(false)
@@ -791,27 +811,15 @@ describe("boop walk integration", function()
     )
     assert.are.equal(
       1,
-      countContaining(trace_lines, "walker_unavailable") - transitionCount
-    )
-    assert.are.equal(
-      1,
       countContaining(trace_lines, "external_lost") - invalidationCount
     )
-    assertOwner(
-      owner,
-      "walker_unavailable",
-      "demonnicAutoWalker unavailable"
-    )
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
     assert.are.equal(0, #walker.installCalls)
     assert.are.equal(0, #walker.updateCalls)
 
     timers.run(emitter)
     assert.are.equal(0, countRaised("demonwalker.move"))
     assert.are.equal(1, #feedback.warn - warningCount)
-    assert.are.equal(
-      1,
-      countContaining(trace_lines, "walker_unavailable") - transitionCount
-    )
   end)
 
   local invalidationCases = {
@@ -1201,7 +1209,6 @@ describe("boop walk integration", function()
     assert.is_true(boop.walk.start())
 
     local newRun = state.walk.generation
-    local newOwner = currentWalkOwner()
     local observation = boop.runtime.roomObservationSnapshot()
     assert.is_true(newRun > oldRun)
     assert.is_true(observation.generation > oldRoomGeneration)
@@ -1212,11 +1219,7 @@ describe("boop walk integration", function()
     assert.is_false(state.walk.moveQueued)
     assert.is_false(state.walk.moveIssuedForRoomGeneration)
     assert.are.equal(oldReservation, state.walk.reservationId)
-    assertOwner(
-      newOwner,
-      "walk_room_unsettled",
-      "current room evidence is incomplete"
-    )
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
 
     local before = walkStateSnapshot()
     timers.run(oldEmitter)
@@ -1232,14 +1235,6 @@ describe("boop walk integration", function()
       emitterTimer = 700,
     })
     boop.state.targeting.room = "101"
-    helper.setRuntimeBlocker({
-      owner = currentWalkOwner(),
-      code = "walk_move_pending",
-      label = "move already queued",
-      systems = { walk = true },
-      waitsFor = { room = true },
-    })
-
     local before = {
       observation = boop.runtime.roomObservationSnapshot(),
       walk = walkStateSnapshot(),
@@ -1406,7 +1401,7 @@ describe("boop walk integration", function()
         reservationId = 1,
         moveQueued = true,
         moveIssued = true,
-        ownerCode = "walk_move_pending",
+        ownerCode = false,
         moveCount = 1,
         timerCount = 4,
         warningCount = 0,
@@ -1441,13 +1436,6 @@ describe("boop walk integration", function()
       roomGeneration = 30,
       owned = true,
     })
-    helper.setRuntimeBlocker({
-      owner = currentWalkOwner(),
-      code = "walk_room_unsettled",
-      label = "current room evidence is incomplete",
-      systems = { walk = true },
-      waitsFor = { room = true, items = true },
-    })
     local before = walkStateSnapshot()
 
     assert.is_false(boop.walk.onRoomSettled("stale list", 19, 30))
@@ -1460,25 +1448,28 @@ describe("boop walk integration", function()
     assert.are.equal(0, countRaised("demonwalker.stop"))
   end)
 
-  it("reports the primary manual blocker and confirms no move was queued", function()
+  it("reports lifecycle readiness and confirms no move was queued", function()
     local state = seedReadyWalk()
-    helper.setRuntimeBlocker({
-      owner = "gmcp:ire",
-      code = "gmcp_ire_missing",
-      label = "GMCP IRE missing",
-      systems = { walk = true },
-      waitsFor = { gmcp = true },
-    })
+    state.lifecycle.ireSeen = false
+    state.lifecycle.promptSeen = true
+    state.lifecycle.ready = false
     local before = walkStateSnapshot()
 
     local ok, code, label = boop.walk.move()
 
     assert.is_false(ok)
     assert.are.equal("gmcp_ire_missing", code)
-    assert.are.equal("GMCP IRE missing", label)
+    assert.are.equal(
+      "GMCP IRE awaiting current prompt evidence",
+      label
+    )
     assert.are.same(before, walkStateSnapshot())
     assert.is_true(
-      feedback.warn[#feedback.warn]:find("GMCP IRE missing", 1, true) ~= nil
+      feedback.warn[#feedback.warn]:find(
+        "GMCP IRE awaiting current prompt evidence",
+        1,
+        true
+      ) ~= nil
     )
     assert.is_true(
       feedback.warn[#feedback.warn]:find("no move queued", 1, true) ~= nil
@@ -1519,7 +1510,8 @@ describe("boop walk integration", function()
       1,
       countContaining(trace_lines, "room response fence timeout") - traceCount
     )
-    assertOwner(owner, "walk_room_unsettled", "current room evidence is incomplete")
+    assert.is_false(boop.runtime.readinessSnapshot().room.ready)
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
 
     timers.run(refreshTimer)
     assert.are.equal(1, #feedback.warn - warningCount)

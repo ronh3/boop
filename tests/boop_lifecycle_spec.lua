@@ -49,36 +49,11 @@ describe("boop lifecycle recovery", function()
     return boop.runtime.state().combat.blockersByOwner[owner]
   end
 
-  local function seedIreOwner(source)
-    return boop.runtime.setBlocker(
-      "gmcp:ire",
-      "gmcp_ire_missing",
-      "GMCP IRE missing",
-      {
-        target = true,
-        combat = true,
-        queue = true,
-        gold = true,
-        walk = true,
-      },
-      {
-        gmcp = true,
-        prompt = true,
-      },
-      {
-        source = source or "test",
-        observed = {
-          ire = false,
-        },
-      }
-    )
-  end
-
-  local function seedUnrelatedOwner()
-    return boop.runtime.setBlocker(
-      "test:unrelated",
+  local function seedUnrelatedOperation()
+    return boop.runtime.setOperationLock(
+      "interrupt:test-unrelated",
       "interrupt_pending",
-      "unrelated test owner",
+      "unrelated test operation",
       {
         combat = true,
       },
@@ -213,7 +188,7 @@ describe("boop lifecycle recovery", function()
       },
     }, triggerCalls, marker)
 
-    seedIreOwner("enable ordering")
+    boop.runtime.beginConnectionLifecycle("enable ordering")
     gmcp.IRE = {
       Display = {
         FixedFont = "stop",
@@ -239,8 +214,11 @@ describe("boop lifecycle recovery", function()
         name = "boop",
       },
     }, triggerCalls)
-    assert.is_true(blocker("gmcp:ire").gmcpSeen)
-    assert.is_false(blocker("gmcp:ire").promptSeen)
+    local lifecycle = boop.runtime.lifecycleSnapshot()
+    assert.is_true(lifecycle.ireSeen)
+    assert.is_false(lifecycle.promptSeen)
+    assert.is_false(lifecycle.ready)
+    assert.is_nil(blocker("gmcp:ire"))
 
     boop.events.register()
     local expected = {
@@ -262,7 +240,44 @@ describe("boop lifecycle recovery", function()
     end
   end)
 
-  it("gap-03-3 releases gmcp ire in either evidence order", function()
+  it("tracks IRE readiness without installing a runtime operation owner", function()
+    replaceFunction(boop, "requestCoreSupports", function(_)
+      return true
+    end)
+
+    boop.config.enabled = false
+    gmcp.IRE = nil
+    boop.onConnectionEvent()
+
+    local lifecycle = boop.runtime.lifecycleSnapshot()
+    assert.is_false(lifecycle.ireSeen)
+    assert.is_false(lifecycle.promptSeen)
+    assert.is_false(lifecycle.ready)
+    assert.is_nil(blocker("gmcp:ire"))
+
+    boop.onPrompt()
+    lifecycle = boop.runtime.lifecycleSnapshot()
+    assert.is_false(lifecycle.ireSeen)
+    assert.is_true(lifecycle.promptSeen)
+    assert.is_false(lifecycle.ready)
+    assert.is_nil(blocker("gmcp:ire"))
+
+    gmcp.IRE = {
+      Display = {
+        FixedFont = "stop",
+      },
+    }
+    boop.onIreSupportObserved("gmcp.IRE.Display.FixedFont")
+
+    lifecycle = boop.runtime.lifecycleSnapshot()
+    assert.is_true(lifecycle.ireSeen)
+    assert.is_true(lifecycle.promptSeen)
+    assert.is_true(lifecycle.ready)
+    assert.is_nil(blocker("gmcp:ire"))
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+  end)
+
+  it("gap-03-3 accepts lifecycle evidence in either order", function()
     local marker = "GAP_03_3_LIFECYCLE_BOUNDARY_BROKEN"
     assert.is_function(boop.onIreSupportObserved, marker)
     replaceFunction(boop, "requestCoreSupports", function(_)
@@ -274,31 +289,37 @@ describe("boop lifecycle recovery", function()
     boop.config.enabled = false
     gmcp.IRE = nil
     boop.onConnectionEvent()
-    seedUnrelatedOwner()
+    seedUnrelatedOperation()
     gmcp.IRE = {
       Display = {
         FixedFont = "stop",
       },
     }
     boop.onIreSupportObserved("gmcp.IRE.Display.FixedFont")
-    assert.is_true(blocker("gmcp:ire").gmcpSeen)
-    assert.is_false(blocker("gmcp:ire").promptSeen)
+    local lifecycle = boop.runtime.lifecycleSnapshot()
+    assert.is_true(lifecycle.ireSeen)
+    assert.is_false(lifecycle.promptSeen)
+    assert.is_false(lifecycle.ready)
     boop.onPrompt()
+    lifecycle = boop.runtime.lifecycleSnapshot()
+    assert.is_true(lifecycle.ready)
     assert.is_nil(blocker("gmcp:ire"))
-    assert.is_table(blocker("test:unrelated"))
+    assert.is_table(blocker("interrupt:test-unrelated"))
     boop.onIreSupportObserved("gmcp.IRE.Display.FixedFont")
     boop.onPrompt()
-    assert.is_nil(blocker("gmcp:ire"))
-    assert.is_table(blocker("test:unrelated"))
+    assert.is_true(boop.runtime.lifecycleSnapshot().ready)
+    assert.is_table(blocker("interrupt:test-unrelated"))
 
     boop.state = {}
     boop.runtime.ensureState()
-    seedUnrelatedOwner()
+    seedUnrelatedOperation()
     gmcp.IRE = nil
     boop.onConnectionEvent()
     boop.onPrompt()
-    assert.is_false(blocker("gmcp:ire").gmcpSeen)
-    assert.is_true(blocker("gmcp:ire").promptSeen)
+    lifecycle = boop.runtime.lifecycleSnapshot()
+    assert.is_false(lifecycle.ireSeen)
+    assert.is_true(lifecycle.promptSeen)
+    assert.is_false(lifecycle.ready)
     gmcp.IRE = {
       Target = {
         Set = "42",
@@ -308,16 +329,16 @@ describe("boop lifecycle recovery", function()
       },
     }
     boop.onIreSupportObserved("gmcp.IRE.Target.Set")
-    assert.is_nil(blocker("gmcp:ire"))
-    assert.is_table(blocker("test:unrelated"))
+    assert.is_true(boop.runtime.lifecycleSnapshot().ready)
+    assert.is_table(blocker("interrupt:test-unrelated"))
     boop.onPrompt()
     boop.onIreSupportObserved("gmcp.IRE.Target.Set")
-    assert.is_nil(blocker("gmcp:ire"))
-    assert.is_table(blocker("test:unrelated"))
+    assert.is_true(boop.runtime.lifecycleSnapshot().ready)
+    assert.is_table(blocker("interrupt:test-unrelated"))
 
     boop.state = {}
     boop.runtime.ensureState()
-    seedUnrelatedOwner()
+    seedUnrelatedOperation()
     gmcp.IRE = nil
     boop.onConnectionEvent()
     gmcp.IRE = {
@@ -327,11 +348,13 @@ describe("boop lifecycle recovery", function()
     }
     boop.config.enabled = true
     boop.triggers.syncEnabled()
-    assert.is_true(blocker("gmcp:ire").gmcpSeen)
-    assert.is_false(blocker("gmcp:ire").promptSeen)
+    lifecycle = boop.runtime.lifecycleSnapshot()
+    assert.is_true(lifecycle.ireSeen)
+    assert.is_false(lifecycle.promptSeen)
+    assert.is_false(lifecycle.ready)
     boop.onPrompt()
-    assert.is_nil(blocker("gmcp:ire"))
-    assert.is_table(blocker("test:unrelated"))
+    assert.is_true(boop.runtime.lifecycleSnapshot().ready)
+    assert.is_table(blocker("interrupt:test-unrelated"))
   end)
 
   it("gap-03-3 prompt evidence has zero disabled automation", function()
@@ -410,7 +433,7 @@ describe("boop lifecycle recovery", function()
 
     boop.config.enabled = false
     gmcp.IRE = nil
-    seedIreOwner("disabled effects")
+    boop.runtime.beginConnectionLifecycle("disabled effects")
     local beforeTargeting = copy(boop.state.targeting)
     local beforeGold = copy(boop.state.gold)
     local beforeWalk = copy(boop.state.walk)
@@ -517,25 +540,9 @@ describe("boop lifecycle recovery", function()
       boundary = "fresh_start",
       reason = "accepted response test",
     })
-    boop.runtime.setBlocker(
-      "room:observation",
-      "room_partial",
-      "partial room state",
-      {
-        target = true,
-        combat = true,
-        gold = true,
-        walk = true,
-      },
-      {
-        gmcp = true,
-      },
-      {
-        source = "room",
-      }
-    )
     assert.is_true(boop.requestRoomItemsOnce("accepted response test"))
-    assert.are.equal(8.0, timers[1].delay, marker)
+    local acceptedTimeout = timers[#timers]
+    assert.are.equal(8.0, acceptedTimeout.delay, marker)
 
     fakeEpoch = 4500
     gmcp.Char.Items.List = {
@@ -548,7 +555,7 @@ describe("boop lifecycle recovery", function()
       items = {},
     }
     boop.onRoomItemsList()
-    timers[1].callback()
+    acceptedTimeout.callback()
     assert.are.equal(0, #warnings)
     assert.are.equal(1, #killed)
 
@@ -568,28 +575,12 @@ describe("boop lifecycle recovery", function()
       boundary = "room_change",
       reason = "missing response test",
     })
-    boop.runtime.setBlocker(
-      "room:observation",
-      "room_partial",
-      "partial room state",
-      {
-        target = true,
-        combat = true,
-        gold = true,
-        walk = true,
-      },
-      {
-        gmcp = true,
-      },
-      {
-        source = "room",
-      }
-    )
     assert.is_true(boop.requestRoomItemsOnce("missing response test"))
-    assert.are.equal(8.0, timers[2].delay)
+    local missingTimeout = timers[#timers]
+    assert.are.equal(8.0, missingTimeout.delay)
     fakeEpoch = 8000
-    timers[2].callback()
-    timers[2].callback()
+    missingTimeout.callback()
+    missingTimeout.callback()
 
     local timeoutTraceCount = 0
     for _, line in ipairs(traces) do
@@ -603,8 +594,10 @@ describe("boop lifecycle recovery", function()
       warnings[1]
     )
     assert.are.equal(1, timeoutTraceCount)
-    assert.is_table(blocker("room:observation"))
-    assert.are.equal("room_partial", blocker("room:observation").code)
+    local readiness = boop.runtime.readinessSnapshot()
+    assert.is_false(readiness.room.ready)
+    assert.are.equal("room_partial", readiness.room.code)
+    assert.is_nil(blocker("room:observation"))
     assert.are.equal(0, #sent)
   end)
 end)

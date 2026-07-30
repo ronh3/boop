@@ -32,6 +32,7 @@ local DOMAIN_DEFAULTS = {
     openerUsedByClass = {},
     pullGeneration = 0,
     pullState = false,
+    operationModelVersion = 1,
     blockersByOwner = {},
     blocker = {
       owner = "",
@@ -53,6 +54,17 @@ local DOMAIN_DEFAULTS = {
     lastComboTraceKey = nil,
     lastOpenerTraceKey = nil,
     lastRageDecision = nil,
+  },
+  lifecycle = {
+    connectionGeneration = 0,
+    promptSeen = false,
+    ireSeen = false,
+    ready = false,
+    source = "",
+    lastRetryAt = nil,
+    lastWarningAt = nil,
+    lastWarningCode = "",
+    warningThrottleSeconds = 2,
   },
   targeting = {
     currentTargetId = "",
@@ -171,9 +183,22 @@ local DOMAIN_DEFAULTS = {
   },
 }
 
+local OPERATION_MODEL_VERSION = 1
+
+local function isOperationOwner(owner)
+  local value = tostring(owner or "")
+  return value:match("^interrupt:.+") ~= nil
+    or value:match("^pull:.+") ~= nil
+    or value:match("^gold:.+") ~= nil
+end
+
 function boop.runtime.ensureState()
   boop.state = boop.state or {}
   local state = boop.state
+  local previousCombat = rawget(state, "combat")
+  local migrateOperationModel = type(previousCombat) == "table"
+    and tonumber(rawget(previousCombat, "operationModelVersion"))
+      ~= OPERATION_MODEL_VERSION
 
   for domain, defaults in pairs(DOMAIN_DEFAULTS) do
     local current = rawget(state, domain)
@@ -187,11 +212,88 @@ function boop.runtime.ensureState()
       end
     end
   end
+
+  state.combat.blockersByOwner =
+    type(state.combat.blockersByOwner) == "table"
+      and state.combat.blockersByOwner
+      or {}
+  if migrateOperationModel then
+    for owner in pairs(state.combat.blockersByOwner) do
+      if not isOperationOwner(owner) then
+        state.combat.blockersByOwner[owner] = nil
+      end
+    end
+  end
+  state.combat.operationModelVersion = OPERATION_MODEL_VERSION
+  state.combat.operationLocksByOwner = state.combat.blockersByOwner
+  state.combat.operationLock =
+    type(state.combat.operationLock) == "table"
+      and state.combat.operationLock
+      or deepCopy(DOMAIN_DEFAULTS.combat.blocker)
   return state
 end
 
 function boop.runtime.state()
   return boop.runtime.ensureState()
+end
+
+local function lifecycleState()
+  local lifecycle = boop.runtime.ensureState().lifecycle
+  lifecycle.connectionGeneration =
+    tonumber(lifecycle.connectionGeneration) or 0
+  lifecycle.promptSeen = not not lifecycle.promptSeen
+  lifecycle.ireSeen = not not lifecycle.ireSeen
+  lifecycle.ready = lifecycle.promptSeen and lifecycle.ireSeen
+  lifecycle.source = tostring(lifecycle.source or "")
+  lifecycle.warningThrottleSeconds =
+    tonumber(lifecycle.warningThrottleSeconds) or 2
+  lifecycle.lastWarningCode =
+    tostring(lifecycle.lastWarningCode or "")
+  return lifecycle
+end
+
+function boop.runtime.beginConnectionLifecycle(source)
+  local lifecycle = lifecycleState()
+  lifecycle.connectionGeneration = lifecycle.connectionGeneration + 1
+  lifecycle.promptSeen = false
+  lifecycle.ireSeen = false
+  lifecycle.ready = false
+  lifecycle.source = tostring(source or "connection")
+  lifecycle.lastRetryAt = nil
+  lifecycle.lastWarningAt = nil
+  lifecycle.lastWarningCode = ""
+  return boop.runtime.lifecycleSnapshot()
+end
+
+function boop.runtime.observeLifecycleIre(available, source)
+  local lifecycle = lifecycleState()
+  lifecycle.ireSeen = available == true
+  lifecycle.ready = lifecycle.promptSeen and lifecycle.ireSeen
+  lifecycle.source = tostring(source or "ire")
+  return boop.runtime.lifecycleSnapshot()
+end
+
+function boop.runtime.observeLifecyclePrompt(source)
+  local lifecycle = lifecycleState()
+  lifecycle.promptSeen = true
+  lifecycle.ready = lifecycle.promptSeen and lifecycle.ireSeen
+  lifecycle.source = tostring(source or "prompt")
+  return boop.runtime.lifecycleSnapshot()
+end
+
+function boop.runtime.lifecycleSnapshot()
+  local lifecycle = lifecycleState()
+  return {
+    connectionGeneration = lifecycle.connectionGeneration,
+    promptSeen = lifecycle.promptSeen,
+    ireSeen = lifecycle.ireSeen,
+    ready = lifecycle.ready,
+    source = lifecycle.source,
+    lastRetryAt = lifecycle.lastRetryAt,
+    lastWarningAt = lifecycle.lastWarningAt,
+    lastWarningCode = lifecycle.lastWarningCode,
+    warningThrottleSeconds = lifecycle.warningThrottleSeconds,
+  }
 end
 
 local function normalizeRoomId(roomId)
@@ -269,7 +371,7 @@ function boop.runtime.startRoomObservation(roomId, opts)
   state.targeting.roomObservation = {
     generation = generation + 1,
     roomId = normalizedRoomId,
-    infoSeen = normalizedRoomId ~= "",
+    infoSeen = normalizedRoomId ~= "" and opts.infoSeen ~= false,
     itemsSeen = false,
     acceptedItems = {},
     fenceQueue = fences,
@@ -787,6 +889,37 @@ function boop.runtime.roomObservationSnapshot()
   }
 end
 
+function boop.runtime.readinessSnapshot()
+  local lifecycle = boop.runtime.lifecycleSnapshot()
+  local observation = boop.runtime.roomObservationSnapshot()
+  local authority = boop.runtime.currentRoomSourceAuthority()
+  local roomReady = authority and true or false
+  local roomCode = "ready"
+  local roomLabel = "room ready"
+
+  if observation.roomId == "" or observation.infoSeen ~= true then
+    roomCode = "missing_room"
+    roomLabel = "missing room state"
+  elseif observation.itemsSeen ~= true or not roomReady then
+    roomCode = "room_partial"
+    roomLabel = "current room evidence is incomplete"
+  end
+
+  return {
+    lifecycle = lifecycle,
+    room = {
+      ready = roomReady,
+      code = roomCode,
+      label = roomLabel,
+      roomId = observation.roomId,
+      generation = observation.generation,
+      infoSeen = observation.infoSeen,
+      itemsSeen = observation.itemsSeen,
+      sourceAuthority = authority,
+    },
+  }
+end
+
 local SYSTEM_ALIASES = {
   attack = "combat",
   attacks = "combat",
@@ -966,15 +1099,38 @@ local function sortedBlockerRecords()
   return records
 end
 
+local function sortedOperationRecords()
+  local records = {}
+  for _, blocker in ipairs(sortedBlockerRecords()) do
+    if isOperationOwner(blocker.owner) then
+      records[#records + 1] = blocker
+    end
+  end
+  return records
+end
+
+local function currentOperationLock()
+  local state = boop.runtime.ensureState()
+  local records = sortedOperationRecords()
+  local operation = records[1]
+    and deepCopy(records[1])
+    or deepCopy(DOMAIN_DEFAULTS.combat.blocker)
+  operation.additionalCount = math.max(0, #records - 1)
+  state.combat.operationLock = operation
+  return operation
+end
+
 local function currentBlocker()
   local state = boop.runtime.ensureState()
   local records = sortedBlockerRecords()
   if #records == 0 then
     state.combat.blocker = deepCopy(DOMAIN_DEFAULTS.combat.blocker)
+    currentOperationLock()
     return state.combat.blocker
   end
   state.combat.blocker = deepCopy(records[1])
   state.combat.blocker.additionalCount = #records - 1
+  currentOperationLock()
   return state.combat.blocker
 end
 
@@ -1009,8 +1165,7 @@ function boop.runtime.blockersSnapshot()
   return deepCopy(sortedBlockerRecords())
 end
 
-function boop.runtime.blockerSnapshot()
-  local blocker = currentBlocker()
+local function publicBlockerSnapshot(blocker)
   return {
     owner = tostring(blocker.owner or ""),
     code = tostring(blocker.code or ""),
@@ -1028,6 +1183,10 @@ function boop.runtime.blockerSnapshot()
     warningThrottleSeconds = tonumber(blocker.warningThrottleSeconds) or 2,
     additionalCount = tonumber(blocker.additionalCount) or 0,
   }
+end
+
+function boop.runtime.blockerSnapshot()
+  return publicBlockerSnapshot(currentBlocker())
 end
 
 function boop.runtime.setBlocker(owner, code, label, systems, waitsFor, opts)
@@ -1076,8 +1235,12 @@ function boop.runtime.setBlocker(owner, code, label, systems, waitsFor, opts)
   setBlockerFields(blocker, nextBlocker, not changed)
   state.combat.blockersByOwner[owner] = blocker
   if changed and nextBlocker.code ~= "" then
+    local transition = isOperationOwner(owner)
+        and "operation"
+      or "compat blocker"
     trace(string.format(
-      "blocker enter: %s | %s -- %s | systems: %s | waits: %s | observed: %s",
+      "%s enter: %s | %s -- %s | systems: %s | waits: %s | observed: %s",
+      transition,
       nextBlocker.owner,
       nextBlocker.code,
       nextBlocker.label,
@@ -1109,7 +1272,17 @@ function boop.runtime.clearBlocker(owner, observed)
   end
   local reason = type(observed) == "string" and observed or "cleared"
   local label = tostring(blocker.label or "")
-  trace(string.format("blocker exit: %s | %s -- %s | reason=%s", owner, code, label, reason))
+  local transition = isOperationOwner(owner)
+      and "operation"
+    or "compat blocker"
+  trace(string.format(
+    "%s exit: %s | %s -- %s | reason=%s",
+    transition,
+    owner,
+    code,
+    label,
+    reason
+  ))
   state.combat.blockersByOwner[owner] = nil
   currentBlocker()
   return true
@@ -1120,6 +1293,53 @@ function boop.runtime.shouldHold(system, exceptOwner)
   local excluded = tostring(exceptOwner or "")
   for _, blocker in ipairs(sortedBlockerRecords()) do
     if blocker.owner ~= excluded and blocker.systems[key] == true then
+      return true
+    end
+  end
+  return false
+end
+
+function boop.runtime.operationLocksSnapshot()
+  return deepCopy(sortedOperationRecords())
+end
+
+function boop.runtime.operationLockSnapshot()
+  return publicBlockerSnapshot(currentOperationLock())
+end
+
+function boop.runtime.setOperationLock(
+  owner,
+  code,
+  label,
+  systems,
+  waitsFor,
+  opts
+)
+  if not isOperationOwner(owner) then
+    return false
+  end
+  return boop.runtime.setBlocker(
+    owner,
+    code,
+    label,
+    systems,
+    waitsFor,
+    opts
+  )
+end
+
+function boop.runtime.clearOperationLock(owner, observed)
+  if not isOperationOwner(owner) then
+    return false
+  end
+  return boop.runtime.clearBlocker(owner, observed)
+end
+
+function boop.runtime.operationHolds(system, exceptOwner)
+  local key = normalizeKey(system)
+  local excluded = tostring(exceptOwner or "")
+  for _, operation in ipairs(sortedOperationRecords()) do
+    if operation.owner ~= excluded and operation.systems[key] == true then
       return true
     end
   end
@@ -1167,7 +1387,7 @@ function boop.runtime.completeInterrupt(generation, terminalReason)
     killTimer(timerId)
   end
 
-  boop.runtime.clearBlocker(operation.blockerOwner, reason)
+  boop.runtime.clearOperationLock(operation.blockerOwner, reason)
 
   local name = tostring(operation.name or "interrupt")
   local owner = tostring(operation.blockerOwner or "")
@@ -1414,11 +1634,12 @@ function boop.runtime.clearAttackIntent(reason, opts)
   state.targeting.calledTargetBy = ""
   state.targeting.calledTargetAt = nil
 
-  if tostring(reason or "") == "target_lost" then
+  if opts.clearTarget == true
+      or tostring(reason or "") == "target_lost" then
     state.targeting.currentTargetId = ""
     state.targeting.targetName = ""
     if boop.targets and boop.targets.clearTargetShield then
-      boop.targets.clearTargetShield("target_lost")
+      boop.targets.clearTargetShield(reason or "target cleared")
     else
       state.targeting.targetShield = false
     end
@@ -1439,11 +1660,13 @@ function boop.runtime.clearAutomationIntent(reason, opts)
   local message = automationTraceMessage(reason, opts)
 
   if includeAttack then
-    boop.runtime.clearAttackIntent(reason, { suppressTrace = true })
+    boop.runtime.clearAttackIntent(reason, {
+      suppressTrace = true,
+      clearTarget = opts.clearTarget == true,
+    })
   end
 
   if includeWalk then
-    local walkOwner = "walk:" .. tostring(tonumber(state.walk.generation) or 0)
     killOwnedTimer(state.walk.refreshTimer)
     killOwnedTimer(state.walk.emitterTimer)
     state.walk.generation = (tonumber(state.walk.generation) or 0) + 1
@@ -1458,7 +1681,6 @@ function boop.runtime.clearAutomationIntent(reason, opts)
     state.walk.refreshTimer = nil
     state.walk.emitterTimer = nil
     state.walk.refreshWarned = false
-    boop.runtime.clearBlocker(walkOwner, tostring(reason or "automation clear"))
   end
 
   if includeGold then
@@ -1467,7 +1689,7 @@ function boop.runtime.clearAutomationIntent(reason, opts)
       operation.terminal = true
       killOwnedTimer(operation.flushTimer)
       killOwnedTimer(operation.timeoutTimer)
-      boop.runtime.clearBlocker(
+      boop.runtime.clearOperationLock(
         operation.blockerOwner,
         tostring(reason or "automation clear")
       )
@@ -1551,6 +1773,7 @@ function boop.runtime.context(sourceAuthority, options)
   end
   local assistLeader = boop.util and boop.util.trim and boop.util.trim((boop.config and boop.config.assistLeader) or "") or tostring((boop.config and boop.config.assistLeader) or "")
 
+  local operation = boop.runtime.operationLockSnapshot()
   return {
     state = state,
     config = boop.config or {},
@@ -1617,19 +1840,36 @@ function boop.runtime.context(sourceAuthority, options)
       timers = state.rage.timers or {},
       samples = state.rage.samples or {},
     },
-    blocker = boop.runtime.blockerSnapshot(),
+    readiness = boop.runtime.readinessSnapshot(),
+    operation = operation,
+    blocker = operation,
   }
 end
 
 local function heldEffect(context, system, detail)
-  local blocker = context.blocker or boop.runtime.blockerSnapshot()
+  local operation = context.operation
+    or context.blocker
+    or boop.runtime.operationLockSnapshot()
   return {
     kind = "trace",
     message = string.format(
       "%s held: %s -- %s",
       tostring(detail or system or "automation"),
-      tostring(blocker.code or ""),
-      tostring(blocker.label or "")
+      tostring(operation.code or ""),
+      tostring(operation.label or "")
+    ),
+  }
+end
+
+local function readinessHeldEffect(detail, readiness)
+  local status = readiness or {}
+  return {
+    kind = "trace",
+    message = string.format(
+      "%s held: %s -- %s",
+      tostring(detail or "automation"),
+      tostring(status.code or ""),
+      tostring(status.label or "")
     ),
   }
 end
@@ -1643,6 +1883,15 @@ local function tickStep(context)
   if not (context.config and context.config.enabled) then
     return { effects = effects, didAction = false }
   end
+  local readiness = context.readiness or {}
+  local lifecycle = readiness.lifecycle or {}
+  if lifecycle.ready ~= true then
+    effects[#effects + 1] = readinessHeldEffect("tick", {
+      code = "gmcp_ire_missing",
+      label = "GMCP IRE awaiting current prompt evidence",
+    })
+    return { effects = effects, didAction = false }
+  end
   if state.diag.hold then
     return { effects = effects, didAction = false }
   end
@@ -1654,10 +1903,10 @@ local function tickStep(context)
       return { effects = effects, didAction = false }
     end
     local owner = tostring(goldOperation.blockerOwner or "")
-    if boop.runtime.shouldHold("combat", owner)
-      or boop.runtime.shouldHold("queue", owner)
-      or boop.runtime.shouldHold("gold", owner)
-      or boop.runtime.shouldHold("walk", owner)
+    if boop.runtime.operationHolds("combat", owner)
+      or boop.runtime.operationHolds("queue", owner)
+      or boop.runtime.operationHolds("gold", owner)
+      or boop.runtime.operationHolds("walk", owner)
     then
       effects[#effects + 1] = heldEffect(context, "gold", "gold")
       return { effects = effects, didAction = false }
@@ -1673,11 +1922,11 @@ local function tickStep(context)
     return { effects = effects, didAction = false }
   end
 
-  if boop.runtime.shouldHold("target")
-    or boop.runtime.shouldHold("combat")
-    or boop.runtime.shouldHold("queue")
-    or boop.runtime.shouldHold("gold")
-    or boop.runtime.shouldHold("walk")
+  if boop.runtime.operationHolds("target")
+    or boop.runtime.operationHolds("combat")
+    or boop.runtime.operationHolds("queue")
+    or boop.runtime.operationHolds("gold")
+    or boop.runtime.operationHolds("walk")
   then
     effects[#effects + 1] = heldEffect(context, "automation", "tick")
     return { effects = effects, didAction = false }
@@ -1686,6 +1935,12 @@ local function tickStep(context)
     return { effects = effects, didAction = false }
   end
   if state.gold.getPending or state.gold.putPending then
+    return { effects = effects, didAction = false }
+  end
+  local roomReadiness = readiness.room or {}
+  if roomReadiness.ready ~= true then
+    effects[#effects + 1] =
+      readinessHeldEffect("tick", roomReadiness)
     return { effects = effects, didAction = false }
   end
 

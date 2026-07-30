@@ -74,7 +74,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `stats` for lifetime totals.
 
 ## Targeting Modes
-- `manual` (no auto retarget)
+- `manual` (no auto retarget; the global blacklist still overrides it)
 - `whitelist` (only allow targets in per-area whitelist)
 - `blacklist` (allow all except per-area blacklist and global blacklist)
 - `auto` (any valid denizen)
@@ -108,11 +108,13 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `boop prequeue` and `boop lead` make prequeue behavior explicit and independent from `useQueueing`.
 - If a standard attack is already prequeued and the current target gains shield before it fires, boop rebuilds `BOOP_ATTACK` immediately to the current shieldbreak standard when appropriate.
 - `breakShields` defaults on; when disabled, tracked target shield state is retained but does not change standard or rage attack selection.
-- Runtime safety uses owner-keyed blockers so each interrupt, pull, loot, or movement owner releases only its own hold.
+- Runtime safety uses owner-keyed operation locks only for asynchronous interrupt, pull, and gold work, so each operation releases only itself.
+- Lifecycle, room readiness, target eligibility, and walker state are computed from canonical state. They never depend on a later callback releasing a pseudo-owner.
+- Movement, accepted room contents, and blacklist edits reconcile stale target intent without stopping an active walker. An active pull preserves its target and queued intent until return or termination.
 - `diag` clears queue, queues `diagnose`, and temporarily blocks attacks until a diagnose result line plus prompt.
 - `diag` includes a timeout fallback to release attack hold if diagnose result lines are missed.
-- `pull <mobname> <direction>` uses a runtime hold without changing saved enabled configuration, sends the configured separator-delimited move/ready-damage-rage/leap-back chain, and releases its own hold after origin-room confirmation or the current operation timeout.
-- Interrupt, pull, gold, and walk lifecycles are generation-owned operations; callbacks from superseded generations cannot mutate current state.
+- `pull <mobname> <direction>` uses an operation lock without changing saved enabled configuration, sends the configured separator-delimited move/ready-damage-rage/leap-back chain, and releases its own lock after origin-room confirmation or the current operation timeout.
+- Interrupt, pull, and gold operations plus room and walk transitions are generation-owned; callbacks from superseded generations cannot mutate current state.
 - `boop get/set` provides scriptable config access, and `boop trace` exposes a rolling decision/command buffer.
 - `boop trace` now includes compact GMCP room/info/item/gold-related room events for debugging movement and loot timing.
 - Trace collection and live streaming are independent: persisted `traceEnabled` remains the sole gate before entries are appended, while runtime-only `boop.state.trace.live` resets to `false` on package/session initialization and is never saved.

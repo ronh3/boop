@@ -25,7 +25,7 @@ describe("boop prequeue", function()
     return boop.runtime.state().combat.blockersByOwner[owner]
   end
 
-  local function seedLifecycleOwner(owner, code, label, systems, waitsFor)
+  local function seedOperation(owner, code, label, systems, waitsFor)
     helper.setRuntimeBlocker({
       owner = owner,
       code = code,
@@ -185,7 +185,7 @@ describe("boop prequeue", function()
       },
     },
     {
-      name = "pull plus room",
+      name = "pull plus interrupt",
       owners = {
         {
           owner = "pull:13",
@@ -195,22 +195,16 @@ describe("boop prequeue", function()
           waitsFor = { room = true },
         },
         {
-          owner = "room:observation",
-          code = "room_partial",
-          label = "partial room state",
-          systems = {
-            combat = true,
-            gold = true,
-            queue = true,
-            target = true,
-            walk = true,
-          },
-          waitsFor = { gmcp = true, room = true },
+          owner = "interrupt:14",
+          code = "interrupt_pending",
+          label = "interrupt pending",
+          systems = { combat = true, queue = true },
+          waitsFor = { prompt = true },
         },
       },
     },
     {
-      name = "gold plus walk",
+      name = "gold plus pull",
       owners = {
         {
           owner = "gold:14",
@@ -220,10 +214,15 @@ describe("boop prequeue", function()
           waitsFor = { inventory = true },
         },
         {
-          owner = "walk:15",
-          code = "walk_move_pending",
-          label = "move already queued",
-          systems = { walk = true, combat = true, queue = true },
+          owner = "pull:15",
+          code = "pull_active",
+          label = "pull active",
+          systems = {
+            walk = true,
+            combat = true,
+            queue = true,
+            target = true,
+          },
           waitsFor = { room = true },
         },
       },
@@ -238,14 +237,14 @@ describe("boop prequeue", function()
       it("keeps prequeue at zero for " .. pair.name .. " when owner " .. clearFirst .. " clears first", function()
         local first = pair.owners[clearFirst]
         local second = pair.owners[clearSecond]
-        seedLifecycleOwner(
+        seedOperation(
           pair.owners[1].owner,
           pair.owners[1].code,
           pair.owners[1].label,
           pair.owners[1].systems,
           pair.owners[1].waitsFor
         )
-        seedLifecycleOwner(
+        seedOperation(
           pair.owners[2].owner,
           pair.owners[2].code,
           pair.owners[2].label,
@@ -259,7 +258,7 @@ describe("boop prequeue", function()
         assert.are.equal(0, #scheduled)
         assert.are.equal(0, #sent)
 
-        assert.is_true(boop.runtime.clearBlocker(
+        assert.is_true(boop.runtime.clearOperationLock(
           first.owner,
           "first lifecycle complete"
         ))
@@ -271,7 +270,7 @@ describe("boop prequeue", function()
         assert.is_table(blockerFor(second.owner))
         assert.is_false(boop.state.queue.prequeuedStandard)
 
-        assert.is_true(boop.runtime.clearBlocker(
+        assert.is_true(boop.runtime.clearOperationLock(
           second.owner,
           "final lifecycle complete"
         ))
@@ -302,7 +301,7 @@ describe("boop prequeue", function()
     assert.are.equal(1, #scheduled)
     local captured = scheduled[1].callback
 
-    seedLifecycleOwner(
+    seedOperation(
       "interrupt:21",
       "interrupt_pending",
       "interrupt pending",
@@ -324,7 +323,7 @@ describe("boop prequeue", function()
   }) do
     local order = clearOrder
     it("keeps timeout prequeue held until final release and starts one fresh interrupt for " .. order, function()
-      seedLifecycleOwner(
+      seedOperation(
         "pull:99",
         "pull_away",
         "unrelated pull hold",
@@ -356,12 +355,12 @@ describe("boop prequeue", function()
         assert.is_nil(blockerFor("interrupt:1"))
         boop.onBalanceUsed("balance", 3)
         assert.are.equal(1, #scheduled)
-        assert.is_true(boop.runtime.clearBlocker(
+        assert.is_true(boop.runtime.clearOperationLock(
           "pull:99",
           "unrelated owner released"
         ))
       else
-        assert.is_true(boop.runtime.clearBlocker(
+        assert.is_true(boop.runtime.clearOperationLock(
           "pull:99",
           "unrelated owner released"
         ))

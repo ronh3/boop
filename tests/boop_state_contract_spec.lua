@@ -11,6 +11,7 @@ describe("boop owned state contracts", function()
     assert.are.equal(boop.state, state)
     for _, domain in ipairs({
       "combat",
+      "lifecycle",
       "targeting",
       "gold",
       "queue",
@@ -31,6 +32,7 @@ describe("boop owned state contracts", function()
     local state = boop.runtime.state()
 
     assert.is_false(state.combat.pullState)
+    assert.is_true(state.lifecycle.ready)
     assert.are.equal("", state.targeting.currentTargetId)
     assert.are.equal("", state.targeting.lastRoomDir)
     assert.is_false(state.gold.getPending)

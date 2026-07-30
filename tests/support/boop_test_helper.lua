@@ -162,10 +162,26 @@ function M.reset()
 
   resetTableData(boop.state)
   boop.state.init()
+  boop.state.lifecycle.promptSeen = true
+  boop.state.lifecycle.ireSeen = true
+  boop.state.lifecycle.ready = true
+  boop.state.lifecycle.source = "test fixture"
   if boop.runtime and boop.runtime.startRoomObservation then
-    boop.runtime.startRoomObservation(gmcp.Room.Info.num, {
+    local observation = boop.runtime.startRoomObservation(
+      gmcp.Room.Info.num,
+      {
       boundary = "fresh_start",
-    })
+      }
+    )
+    local roomId = tostring(observation.roomId or gmcp.Room.Info.num)
+    boop.state.targeting.roomObservation.itemsSeen = true
+    boop.state.targeting.roomObservation.acceptedItems = {}
+    boop.state.targeting.roomObservation.acceptedSourceAuthority = {
+      applicationId = 1,
+      roomId = roomId,
+      observationGeneration = observation.generation,
+    }
+    boop.state.targeting.roomObservation.nextApplicationId = 2
   end
 
   resetTableData(boop.afflictions)
@@ -234,11 +250,51 @@ end
 
 function M.setDenizens(denizens)
   boop.state.targeting.denizens = {}
+  local acceptedItems = {}
   for _, denizen in ipairs(denizens or {}) do
-    boop.state.targeting.denizens[#boop.state.targeting.denizens + 1] = {
+    local item = {
       id = tostring(denizen.id),
       name = denizen.name,
       attrib = denizen.attrib or "m",
+    }
+    boop.state.targeting.denizens[#boop.state.targeting.denizens + 1] = item
+    acceptedItems[#acceptedItems + 1] = deepCopy(item)
+  end
+  if boop.runtime and boop.runtime.roomObservationSnapshot then
+    local observation = boop.runtime.roomObservationSnapshot()
+    local roomId = tostring(
+      gmcp
+        and gmcp.Room
+        and gmcp.Room.Info
+        and gmcp.Room.Info.num
+        or observation.roomId
+        or ""
+    )
+    local generation = math.max(
+      1,
+      tonumber(observation.generation) or 0
+    )
+    boop.state.targeting.roomObservation = {
+      generation = generation,
+      roomId = roomId,
+      infoSeen = roomId ~= "",
+      itemsSeen = roomId ~= "",
+      acceptedItems = acceptedItems,
+      fenceQueue = {},
+      activeFenceId = false,
+      nextFenceId = 1,
+      lastCompletedFence = false,
+      nextApplicationId = 2,
+      activeApplication = false,
+      acceptedSourceAuthority = roomId ~= "" and {
+        applicationId = 1,
+        roomId = roomId,
+        observationGeneration = generation,
+      } or false,
+      refreshAttempted = false,
+      refreshReason = "",
+      refreshTimeoutTimer = false,
+      warned = false,
     }
   end
 end
@@ -314,6 +370,17 @@ function M.seedRoomObservation(roomId, opts)
     refreshReason = tostring(opts.refreshReason or ""),
     refreshTimeoutTimer = opts.refreshTimeoutTimer or false,
     warned = opts.warned == true,
+    nextApplicationId = tonumber(opts.nextApplicationId) or 2,
+    activeApplication = false,
+    acceptedSourceAuthority = opts.itemsSeen == true
+      and opts.authoritative ~= false
+      and normalizedRoomId ~= ""
+      and {
+        applicationId = tonumber(opts.applicationId) or 1,
+        roomId = normalizedRoomId,
+        observationGeneration = generation,
+      }
+      or false,
   }
   state.targeting.roomObservation = observation
   gmcp.Room.Info.num = roomId

@@ -83,7 +83,7 @@ describe("boop diagnose timeout", function()
 
   it("retains a terminal tombstone and releases only the timed-out owner", function()
     helper.setRuntimeBlocker({
-      owner = "test:unrelated",
+      owner = "pull:unrelated",
       code = "pull_active",
       label = "unrelated hold",
       systems = { combat = true, queue = true },
@@ -101,7 +101,7 @@ describe("boop diagnose timeout", function()
     assert.is_false(boop.state.diag.awaitPrompt)
     assert.is_nil(boop.state.diag.timeoutTimer)
     assert.is_nil(blockerFor("interrupt:" .. generation))
-    assert.is_table(blockerFor("test:unrelated"))
+    assert.is_table(blockerFor("pull:unrelated"))
     assert.are.same({
       {
         generation = generation,
@@ -124,7 +124,7 @@ describe("boop diagnose timeout", function()
 
   it("absorbs N's late zero-argument result and prompt without mutating diagnose N+1", function()
     helper.setRuntimeBlocker({
-      owner = "test:unrelated",
+      owner = "pull:unrelated",
       code = "pull_active",
       label = "unrelated hold",
       systems = { combat = true, queue = true },
@@ -190,7 +190,7 @@ describe("boop diagnose timeout", function()
     assert.are.equal(snapshot.infos, #info_messages)
     assert.are.equal(snapshot.traces, #boop.state.trace.buffer)
     assert.is_table(blockerFor("interrupt:" .. second_generation))
-    assert.is_table(blockerFor("test:unrelated"))
+    assert.is_table(blockerFor("pull:unrelated"))
   end)
 
   it("drains a timed-out head once and makes every later terminal call a no-op", function()

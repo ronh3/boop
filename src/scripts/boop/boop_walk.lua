@@ -5,6 +5,7 @@ local WALK_REASON_LABELS = {
   walker_unavailable = "demonnicAutoWalker unavailable",
   walk_inactive = "walk mode is inactive",
   hunting_disabled = "hunting is disabled",
+  gmcp_ire_missing = "GMCP IRE awaiting current prompt evidence",
   manual_targeting = "manual targeting is active",
   room_unsettled = "current room evidence is incomplete",
   move_pending = "move already queued",
@@ -21,6 +22,7 @@ local WALK_REASON_ACTIONS = {
   walker_unavailable = "boop walk install",
   walk_inactive = "boop walk start",
   hunting_disabled = "boop on",
+  gmcp_ire_missing = "wait for GMCP IRE and the next prompt",
   manual_targeting = "boop targeting auto",
   room_unsettled = "wait for current room evidence",
   move_pending = "wait for the queued move",
@@ -64,27 +66,27 @@ local function walkState()
   return walk
 end
 
-local function runtimeWalkBlocker(exceptOwner)
-  if not (boop.runtime and boop.runtime.shouldHold) then
+local function runtimeWalkOperation(exceptOwner)
+  if not (boop.runtime and boop.runtime.operationHolds) then
     return nil
   end
-  if not boop.runtime.shouldHold("walk", exceptOwner) then
+  if not boop.runtime.operationHolds("walk", exceptOwner) then
     return nil
   end
-  local blockers = boop.runtime.blockersSnapshot
-      and boop.runtime.blockersSnapshot()
+  local operations = boop.runtime.operationLocksSnapshot
+      and boop.runtime.operationLocksSnapshot()
     or {}
   local excluded = tostring(exceptOwner or "")
-  for _, blocker in ipairs(blockers) do
-    if tostring(blocker.owner or "") ~= excluded
-        and type(blocker.systems) == "table"
-        and blocker.systems.walk == true then
-      return blocker
+  for _, operation in ipairs(operations) do
+    if tostring(operation.owner or "") ~= excluded
+        and type(operation.systems) == "table"
+        and operation.systems.walk == true then
+      return operation
     end
   end
   return {
     code = "",
-    label = "runtime blocker is active",
+    label = "operation is active",
   }
 end
 
@@ -99,7 +101,14 @@ local function goldPending(gold)
 end
 
 local function currentTargetId(targeting)
-  return tostring(targeting.currentTargetId or "")
+  local targetId = tostring(targeting.currentTargetId or "")
+  if targetId ~= ""
+      and boop.targets
+      and boop.targets.isCurrentTargetEligible
+      and not boop.targets.isCurrentTargetEligible() then
+    return ""
+  end
+  return targetId
 end
 
 local function currentRoomId()
@@ -167,7 +176,12 @@ local function walkSnapshot()
       and boop.runtime.roomObservationSnapshot()
     or {}
   local roomId = tostring(observation.roomId or "")
-  local roomSettled = observation.infoSeen == true
+  local authority = boop.runtime
+      and boop.runtime.currentRoomSourceAuthority
+      and boop.runtime.currentRoomSourceAuthority()
+    or false
+  local roomSettled = authority
+    and observation.infoSeen == true
     and observation.itemsSeen == true
     and roomId ~= ""
     and roomId == tostring(walk.arrivalRoom or "")
@@ -181,13 +195,19 @@ local function walkSnapshot()
       and boop.targets.waitingForTargetCall
       and boop.targets.waitingForTargetCall()
     or false
-  local runtimeBlocker = runtimeWalkBlocker()
+  local runtimeOperation = runtimeWalkOperation()
+  local readiness = boop.runtime
+      and boop.runtime.readinessSnapshot
+      and boop.runtime.readinessSnapshot()
+    or {}
 
   return {
     packageAvailable = available(),
     active = walk.active == true,
     owned = walk.owned == true,
     huntingEnabled = boop.config and boop.config.enabled == true,
+    lifecycleReady = readiness.lifecycle
+      and readiness.lifecycle.ready == true,
     targetingMode = tostring(
       boop.config and boop.config.targetingMode or ""
     ),
@@ -208,7 +228,7 @@ local function walkSnapshot()
     interruptPending = diag.hold == true,
     pullPending = pullBlocker(combat),
     fleeActive = combat.fleeing == true,
-    runtimeBlocker = runtimeBlocker,
+    runtimeOperation = runtimeOperation,
   }
 end
 
@@ -235,6 +255,12 @@ function boop.walk.evaluateAllClear(runGeneration, roomGeneration)
       "hunting_disabled",
       WALK_REASON_LABELS.hunting_disabled,
       WALK_REASON_ACTIONS.hunting_disabled
+  end
+  if not snapshot.lifecycleReady then
+    return false,
+      "gmcp_ire_missing",
+      WALK_REASON_LABELS.gmcp_ire_missing,
+      WALK_REASON_ACTIONS.gmcp_ire_missing
   end
   if snapshot.targetingMode == "manual" then
     return false,
@@ -300,13 +326,13 @@ function boop.walk.evaluateAllClear(runGeneration, roomGeneration)
       WALK_REASON_LABELS.flee_active,
       WALK_REASON_ACTIONS.flee_active
   end
-  if snapshot.runtimeBlocker then
-    local code = tostring(snapshot.runtimeBlocker.code or "")
-    local label = tostring(snapshot.runtimeBlocker.label or "")
+  if snapshot.runtimeOperation then
+    local code = tostring(snapshot.runtimeOperation.code or "")
+    local label = tostring(snapshot.runtimeOperation.label or "")
     return false,
       code,
       label ~= "" and label or code,
-      "wait for blocker to clear"
+      "wait for operation to finish"
   end
   return true, nil, nil, "autowalk should advance"
 end
@@ -331,6 +357,11 @@ local function evaluateReservedEmission(
   end
   if not snapshot.huntingEnabled then
     return false, "hunting_disabled", WALK_REASON_LABELS.hunting_disabled
+  end
+  if not snapshot.lifecycleReady then
+    return false,
+      "gmcp_ire_missing",
+      WALK_REASON_LABELS.gmcp_ire_missing
   end
   if snapshot.targetingMode == "manual" then
     return false, "manual_targeting", WALK_REASON_LABELS.manual_targeting
@@ -366,11 +397,10 @@ local function evaluateReservedEmission(
     return false, "flee_active", WALK_REASON_LABELS.flee_active
   end
 
-  local owner = "walk:" .. tostring(runGeneration)
-  local runtimeBlocker = runtimeWalkBlocker(owner)
-  if runtimeBlocker then
-    local code = tostring(runtimeBlocker.code or "")
-    local label = tostring(runtimeBlocker.label or "")
+  local runtimeOperation = runtimeWalkOperation()
+  if runtimeOperation then
+    local code = tostring(runtimeOperation.code or "")
+    local label = tostring(runtimeOperation.label or "")
     return false, code, label ~= "" and label or code
   end
   return true, nil, nil
@@ -392,25 +422,8 @@ local function emitReservedMove(runGeneration, roomGeneration, reservationId)
   )
   if not ok then
     if code == "walker_unavailable" then
-      local owner = "walk:" .. tostring(runGeneration)
       boop.walk.invalidateCurrentGeneration("external_lost")
       resetRuntimeFlags()
-      if boop.runtime and boop.runtime.setBlocker then
-        boop.runtime.setBlocker(
-          owner,
-          "walker_unavailable",
-          WALK_REASON_LABELS.walker_unavailable,
-          { walk = true },
-          { package = true },
-          {
-            source = "walk",
-            observed = {
-              room = tostring(walk.arrivalRoom or ""),
-              roomGeneration = roomGeneration,
-            },
-          }
-        )
-      end
       if boop.util and boop.util.warn then
         boop.util.warn(WALK_REASON_LABELS.walker_lost_before_emit)
       end
@@ -437,7 +450,7 @@ local function blockerDetails()
   return {
     code = tostring(code or ""),
     label = tostring(label or code or ""),
-    nextAction = tostring(nextAction or "wait for blocker to clear"),
+    nextAction = tostring(nextAction or "wait for the current state to clear"),
   }
 end
 
@@ -573,16 +586,7 @@ function boop.walk.start(options)
     return true
   end
 
-  local oldGeneration = tonumber(walk.generation) or 0
-  local oldOwner = "walk:" .. tostring(oldGeneration)
-  local priorOwner = "walk:" .. tostring(oldGeneration - 1)
   boop.walk.invalidateCurrentGeneration("restart")
-  if boop.runtime and boop.runtime.clearBlocker then
-    boop.runtime.clearBlocker(oldOwner, "walk restart")
-    if oldGeneration > 0 then
-      boop.runtime.clearBlocker(priorOwner, "walk restart")
-    end
-  end
   local observation = boop.runtime
     and boop.runtime.startRoomObservation
     and boop.runtime.startRoomObservation(currentRoomId(), {
@@ -592,23 +596,6 @@ function boop.walk.start(options)
     or {}
   walk.roomGeneration = tonumber(observation.generation) or 0
   walk.arrivalRoom = tostring(observation.roomId or "")
-  if boop.runtime and boop.runtime.setBlocker then
-    boop.runtime.setBlocker(
-      "walk:" .. tostring(walk.generation),
-      "walk_room_unsettled",
-      WALK_REASON_LABELS.room_unsettled,
-      { walk = true },
-      { room = true, items = true },
-      {
-        source = "walk",
-        observed = {
-          room = walk.arrivalRoom,
-          roomGeneration = walk.roomGeneration,
-          items = false,
-        },
-      }
-    )
-  end
   walk.active = true
   walk.owned = not attached()
 
@@ -617,12 +604,8 @@ function boop.walk.start(options)
       demonwalker:init(options or {})
     end)
     if not ok then
-      local owner = "walk:" .. tostring(walk.generation)
       boop.walk.invalidateCurrentGeneration("start failed")
       resetRuntimeFlags()
-      if boop.runtime and boop.runtime.clearBlocker then
-        boop.runtime.clearBlocker(owner, "walk start failed")
-      end
       boop.util.err("walk start failed: " .. tostring(err))
       return false
     end
@@ -647,15 +630,11 @@ function boop.walk.stop(silent, external)
     return false
   end
   local wasOwned = walk.owned == true
-  local owner = "walk:" .. tostring(tonumber(walk.generation) or 0)
   local transitionReason = wasOwned
     and "operator_stop_owned"
     or "operator_detach_attached"
 
   boop.walk.invalidateCurrentGeneration(transitionReason)
-  if boop.runtime and boop.runtime.clearBlocker then
-    boop.runtime.clearBlocker(owner, transitionReason)
-  end
   resetRuntimeFlags()
 
   if wasOwned and not external and raiseEvent then
@@ -681,11 +660,7 @@ function boop.walk.onFinished(runGeneration)
       ) then
     return false
   end
-  local owner = "walk:" .. tostring(tonumber(walk.generation) or 0)
   boop.walk.invalidateCurrentGeneration("external_finished")
-  if boop.runtime and boop.runtime.clearBlocker then
-    boop.runtime.clearBlocker(owner, "external_finished")
-  end
   resetRuntimeFlags()
   boop.util.info("walk finished")
   return true
@@ -724,14 +699,6 @@ function boop.walk.onRoomSettled(reason, runGeneration, roomGeneration)
     return false, "walk_inactive", WALK_REASON_LABELS.walk_inactive
   end
   if not walk.active then
-    if not walk.moveQueued
-        and boop.runtime
-        and boop.runtime.clearBlocker then
-      boop.runtime.clearBlocker(
-        "walk:" .. tostring(walk.generation),
-        tostring(reason or "inactive room settled")
-      )
-    end
     return false, "walk_inactive", WALK_REASON_LABELS.walk_inactive
   end
 
@@ -739,7 +706,12 @@ function boop.walk.onRoomSettled(reason, runGeneration, roomGeneration)
       and boop.runtime.roomObservationSnapshot
       and boop.runtime.roomObservationSnapshot()
     or {}
-  local settled = observation.infoSeen == true
+  local authority = boop.runtime
+      and boop.runtime.currentRoomSourceAuthority
+      and boop.runtime.currentRoomSourceAuthority()
+    or false
+  local settled = authority
+    and observation.infoSeen == true
     and observation.itemsSeen == true
     and tostring(observation.roomId or "") ~= ""
     and tostring(observation.roomId or "")
@@ -748,38 +720,12 @@ function boop.walk.onRoomSettled(reason, runGeneration, roomGeneration)
       == (tonumber(walk.roomGeneration) or 0)
   if not settled then
     walk.roomSettled = false
-    local owner = "walk:" .. tostring(walk.generation)
-    if boop.runtime and boop.runtime.setBlocker then
-      boop.runtime.setBlocker(
-        owner,
-        "walk_room_unsettled",
-        WALK_REASON_LABELS.room_unsettled,
-        { walk = true },
-        { room = true, items = true },
-        {
-          source = "walk",
-          observed = {
-            room = tostring(observation.roomId or ""),
-            roomGeneration = walk.roomGeneration,
-            items = observation.itemsSeen == true,
-          },
-        }
-      )
-    end
     return false, "room_unsettled", WALK_REASON_LABELS.room_unsettled
   end
 
   cancelArrivalTimer()
   walk.roomSettled = true
   walk.refreshWarned = false
-  if not walk.moveQueued
-      and boop.runtime
-      and boop.runtime.clearBlocker then
-    boop.runtime.clearBlocker(
-      "walk:" .. tostring(walk.generation),
-      tostring(reason or "room settled")
-    )
-  end
   return boop.walk.maybeAdvance(reason or "room settled")
 end
 
@@ -815,23 +761,6 @@ function boop.walk.onRoomChange(runGeneration, roomGeneration)
   walk.roomGeneration = tonumber(observation.generation) or 0
   walk.refreshWarned = false
 
-  if boop.runtime and boop.runtime.setBlocker then
-    boop.runtime.setBlocker(
-      "walk:" .. tostring(tonumber(walk.generation) or 0),
-      "walk_room_unsettled",
-      WALK_REASON_LABELS.room_unsettled,
-      { walk = true },
-      { room = true, items = true },
-      {
-        source = "walk",
-        observed = {
-          room = walk.arrivalRoom,
-          roomGeneration = walk.roomGeneration,
-          items = observation.itemsSeen == true,
-        },
-      }
-    )
-  end
   return true
 end
 
@@ -852,25 +781,6 @@ function boop.walk.maybeAdvance(reason)
   local runGeneration = tonumber(walk.generation) or 0
   local roomGeneration = tonumber(walk.roomGeneration) or 0
   local reservationId = tonumber(walk.reservationId) or 0
-  local owner = "walk:" .. tostring(runGeneration)
-
-  if boop.runtime and boop.runtime.setBlocker then
-    boop.runtime.setBlocker(
-      owner,
-      "walk_move_pending",
-      WALK_REASON_LABELS.move_pending,
-      { walk = true },
-      { room = true },
-      {
-        source = "walk",
-        observed = {
-          room = tostring(walk.arrivalRoom or ""),
-          roomGeneration = roomGeneration,
-          reservationId = reservationId,
-        },
-      }
-    )
-  end
   if boop.trace and boop.trace.log then
     boop.trace.log(
       "walk advance: "

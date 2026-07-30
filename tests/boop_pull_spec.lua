@@ -83,7 +83,7 @@ describe("boop pull command", function()
 
   local function seedUnrelatedOwner()
     helper.setRuntimeBlocker({
-      owner = "test:unrelated",
+      owner = "interrupt:unrelated",
       code = "interrupt_pending",
       label = "unrelated hold",
       systems = { combat = true, queue = true, target = true, gold = true, walk = true },
@@ -221,7 +221,7 @@ describe("boop pull command", function()
     local command = "north|harry mage|leap south"
     assertActivePull(1, "outbound", 1, command)
     assertPullBlocker(1, "pull_active")
-    assert.is_table(blockerFor("test:unrelated"))
+    assert.is_table(blockerFor("interrupt:unrelated"))
     assert.are.same({
       { command = command, echoBack = false },
     }, sent)
@@ -284,7 +284,7 @@ describe("boop pull command", function()
     assert.is_true(boop.config.enabled)
     assert.is_false(boop.state.combat.pullState)
     assert.is_nil(blockerFor("pull:" .. tostring(generation)))
-    assert.is_table(blockerFor("test:unrelated"))
+    assert.is_table(blockerFor("interrupt:unrelated"))
     assert.are.equal(1, killedCount(timeout_id))
     assert.are.same({ "pull queued: north|harry mage|leap south", "pull complete" }, ok_messages)
     assert.are.equal(0, #warn_messages)
@@ -321,7 +321,7 @@ describe("boop pull command", function()
     assert.are.equal(snapshot.warnings, #warn_messages)
     assert.are.equal(snapshot.traces, #traces)
     assert.are.equal(snapshot.ticks, tick_count)
-    assert.is_table(blockerFor("test:unrelated"))
+    assert.is_table(blockerFor("interrupt:unrelated"))
   end)
 
   it("preserves the active-pull target-loss exception while away and cleans up after return", function()
@@ -375,7 +375,7 @@ describe("boop pull command", function()
     assert.is_true(boop.config.enabled)
     assert.is_false(boop.state.combat.pullState)
     assert.is_nil(blockerFor("pull:1"))
-    assert.is_table(blockerFor("test:unrelated"))
+    assert.is_table(blockerFor("interrupt:unrelated"))
     assert.are.same({ "pull timeout at origin; pull hold released" }, warn_messages)
     assert.are.equal(1, #sent)
     assert.are.equal(1, #scheduled)
@@ -399,7 +399,7 @@ describe("boop pull command", function()
     assertActivePull(1, "timed_out_away", nil, "north|harry mage|leap south")
     local blocker = assertPullBlocker(1, "pull_timeout_away")
     assert.are.equal("2", blocker.observed.currentRoom)
-    assert.is_table(blockerFor("test:unrelated"))
+    assert.is_table(blockerFor("interrupt:unrelated"))
     assert.are.same({ "pull timeout; hold remains until return" }, warn_messages)
     assert.are.equal(0, killedCount(timeout_id))
     assert.are.equal(1, #sent)
@@ -414,7 +414,7 @@ describe("boop pull command", function()
 
     assert.is_false(boop.state.combat.pullState)
     assert.is_nil(blockerFor("pull:1"))
-    assert.is_table(blockerFor("test:unrelated"))
+    assert.is_table(blockerFor("interrupt:unrelated"))
     assert.are.same({
       "pull queued: north|harry mage|leap south",
       "pull complete after timeout",
@@ -480,7 +480,7 @@ describe("boop pull command", function()
     assert.are.equal(snapshot.traces, #traces)
     assert.are.equal(snapshot.ticks, tick_count)
     assertPullBlocker(2, "pull_active")
-    assert.is_table(blockerFor("test:unrelated"))
+    assert.is_table(blockerFor("interrupt:unrelated"))
   end)
 
   it("rejects wrong-generation and already-terminal completion without effects", function()
@@ -510,7 +510,7 @@ describe("boop pull command", function()
 
     assert.is_true(pull == boop.state.combat.pullState)
     assert.is_table(blockerFor("pull:" .. tostring(pull.generation)))
-    assert.is_table(blockerFor("test:unrelated"))
+    assert.is_table(blockerFor("interrupt:unrelated"))
     assert.are.equal(snapshot.sends, #sent)
     assert.are.equal(snapshot.timers, #scheduled)
     assert.are.equal(snapshot.killed, #killed)
@@ -543,7 +543,7 @@ describe("boop pull command", function()
       "pull already in progress",
     }, warn_messages)
     assertPullBlocker(1, "pull_active")
-    assert.is_table(blockerFor("test:unrelated"))
+    assert.is_table(blockerFor("interrupt:unrelated"))
     assert.are.equal(0, #enabled_calls)
     assert.are.equal(0, #saved_enabled)
   end)

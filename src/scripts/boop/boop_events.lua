@@ -155,55 +155,62 @@ local function traceRoomItemEvent(kind, item)
   boop.trace.log(string.format("gmcp room item %s: %s (%s) | gold=%s", tostring(kind or "?"), tostring(name), tostring(id), gold))
 end
 
-local BLOCKER_SYSTEMS_GMCP = {
-  target = true,
-  combat = true,
-  queue = true,
-  gold = true,
-  walk = true,
-}
-
-local BLOCKER_SYSTEMS_ROOM = {
-  target = true,
-  combat = true,
-  gold = true,
-  walk = true,
-}
-
 local GMCP_RETRY_SECONDS = 2
 
 local function runtime()
   return boop.runtime
 end
 
-local function blockerSnapshot()
-  if runtime() and boop.runtime.blockerSnapshot then
-    return boop.runtime.blockerSnapshot()
+local function operationSnapshot()
+  if runtime() and boop.runtime.operationLockSnapshot then
+    return boop.runtime.operationLockSnapshot()
   end
   return { owner = "", code = "", systems = {}, waitsFor = {}, observed = {}, additionalCount = 0 }
 end
 
-local function setBlocker(owner, code, label, systems, waitsFor, opts)
-  if runtime() and boop.runtime.setBlocker then
-    return boop.runtime.setBlocker(owner, code, label, systems, waitsFor, opts or {})
+local function setOperationLock(owner, code, label, systems, waitsFor, opts)
+  if runtime() and boop.runtime.setOperationLock then
+    return boop.runtime.setOperationLock(
+      owner,
+      code,
+      label,
+      systems,
+      waitsFor,
+      opts or {}
+    )
   end
   return false
 end
 
-local function shouldHold(system, exceptOwner)
+local function operationHolds(system, exceptOwner)
   return runtime()
-    and boop.runtime.shouldHold
-    and boop.runtime.shouldHold(system, exceptOwner)
+    and boop.runtime.operationHolds
+    and boop.runtime.operationHolds(system, exceptOwner)
+end
+
+local function readinessAllows(requireRoom)
+  local readiness = runtime()
+      and boop.runtime.readinessSnapshot
+      and boop.runtime.readinessSnapshot()
+    or {}
+  if not (readiness.lifecycle and readiness.lifecycle.ready) then
+    return false
+  end
+  if requireRoom
+      and not (readiness.room and readiness.room.ready) then
+    return false
+  end
+  return true
 end
 
 local function traceHeld(system, reason)
   if boop.trace and boop.trace.log then
-    local blocker = blockerSnapshot()
+    local operation = operationSnapshot()
     boop.trace.log(string.format(
       "%s held: %s -- %s%s",
       tostring(system or "automation"),
-      tostring(blocker.code or ""),
-      tostring(blocker.label or ""),
+      tostring(operation.code or ""),
+      tostring(operation.label or ""),
       reason and (" | " .. tostring(reason)) or ""
     ))
   end
@@ -215,36 +222,33 @@ local function ireReady()
     and (type(ire.Target) == "table" or type(ire.Display) == "table")
 end
 
-local function warnBlocker(blocker)
+local function warnIreReadiness(lifecycle)
   if not (boop.util and boop.util.warn) then return end
-  if type(blocker) ~= "table" or tostring(blocker.code or "") == "" then return end
-  local stateBlocker = boop.state
-    and boop.state.combat
-    and boop.state.combat.blockersByOwner
-    and boop.state.combat.blockersByOwner["gmcp:ire"]
-    or nil
-  if type(stateBlocker) ~= "table" then return end
+  if type(lifecycle) ~= "table" or lifecycle.ireSeen then return end
+  local stateLifecycle = boop.state and boop.state.lifecycle or nil
+  if type(stateLifecycle) ~= "table" then return end
   local now = nowSeconds()
-  local lastAt = tonumber(stateBlocker.lastWarningAt) or 0
-  local lastCode = tostring(stateBlocker.lastWarningCode or "")
-  local throttle = tonumber(stateBlocker.warningThrottleSeconds) or GMCP_RETRY_SECONDS
-  if lastCode == blocker.code and lastAt > 0 and (now - lastAt) < throttle then
+  local lastAt = tonumber(stateLifecycle.lastWarningAt) or 0
+  local lastCode = tostring(stateLifecycle.lastWarningCode or "")
+  local throttle = tonumber(stateLifecycle.warningThrottleSeconds)
+    or GMCP_RETRY_SECONDS
+  if lastCode == "gmcp_ire_missing"
+      and lastAt > 0
+      and (now - lastAt) < throttle then
     return
   end
-  stateBlocker.lastWarningAt = now
-  stateBlocker.lastWarningCode = blocker.code
-  boop.util.warn(string.format("%s -- %s", tostring(blocker.code or ""), tostring(blocker.label or "")))
+  stateLifecycle.lastWarningAt = now
+  stateLifecycle.lastWarningCode = "gmcp_ire_missing"
+  boop.util.warn("gmcp_ire_missing -- GMCP IRE missing")
 end
 
 local function requestCoreSupportsThrottled(forceNow)
   if not boop.requestCoreSupports then return false end
-  local blocker = boop.state
-    and boop.state.combat
-    and boop.state.combat.blockersByOwner
-    and boop.state.combat.blockersByOwner["gmcp:ire"]
-    or nil
+  local lifecycle = boop.state and boop.state.lifecycle or nil
   local now = nowSeconds()
-  local lastAt = type(blocker) == "table" and tonumber(blocker.lastRetryAt) or nil
+  local lastAt = type(lifecycle) == "table"
+      and tonumber(lifecycle.lastRetryAt)
+    or nil
   if not forceNow and lastAt and lastAt > 0 and (now - lastAt) < GMCP_RETRY_SECONDS then
     return false
   end
@@ -253,106 +257,72 @@ local function requestCoreSupportsThrottled(forceNow)
     minInterval = 0,
     force = true,
   })
-  if type(blocker) == "table" then
-    blocker.lastRetryAt = now
+  if type(lifecycle) == "table" then
+    lifecycle.lastRetryAt = now
   end
   return true
 end
 
-local function enterGmcpIreBlocker(
-  source,
-  supportAlreadyRequested,
-  requestIfMissing
-)
-  local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
-  local previous = state
-    and state.combat
-    and state.combat.blockersByOwner
-    and state.combat.blockersByOwner["gmcp:ire"]
-    or nil
-  local firstEntry = type(previous) ~= "table"
-  local blocker = previous
-  if firstEntry then
-    blocker = setBlocker("gmcp:ire", "gmcp_ire_missing", "GMCP IRE missing", BLOCKER_SYSTEMS_GMCP, {
-      gmcp = true,
-      prompt = true,
-    }, {
-      source = source,
-      observed = {
-        ire = false,
-      },
-    })
-  end
-  if supportAlreadyRequested then
-    local stateBlocker = boop.state
-      and boop.state.combat
-      and boop.state.combat.blockersByOwner
-      and boop.state.combat.blockersByOwner["gmcp:ire"]
-      or nil
-    if type(stateBlocker) == "table" then
-      stateBlocker.lastRetryAt = nowSeconds()
-    end
-  elseif requestIfMissing then
-    requestCoreSupportsThrottled(firstEntry)
-  end
-  warnBlocker(blocker)
-  return blocker
-end
-
 function boop.reconcileIreSupport(source, options)
   options = type(options) == "table" and options or {}
+  source = tostring(source or "ire")
   local requestIfMissing = options.requestIfMissing
   if requestIfMissing == nil then
     requestIfMissing = true
   end
-  if ireReady() then
-    if runtime() and boop.runtime.noteGmcpObserved then
-      boop.runtime.noteGmcpObserved("gmcp:ire", "ire")
-    end
-    return true
+  if source == "connection" or options.reset == true then
+    boop.runtime.beginConnectionLifecycle(source)
   end
-  enterGmcpIreBlocker(
-    source,
-    options.supportAlreadyRequested == true,
-    requestIfMissing
+  local before = boop.runtime.lifecycleSnapshot()
+  if source == "prompt" then
+    boop.runtime.observeLifecyclePrompt(source)
+  end
+  local lifecycle = boop.runtime.observeLifecycleIre(
+    ireReady(),
+    source
   )
-  return false
+  if options.supportAlreadyRequested == true then
+    boop.state.lifecycle.lastRetryAt = nowSeconds()
+  elseif not lifecycle.ireSeen and requestIfMissing then
+    requestCoreSupportsThrottled(before.ireSeen ~= false)
+  end
+  if not lifecycle.ireSeen then
+    warnIreReadiness(lifecycle)
+  end
+  if lifecycle.ready and not before.ready
+      and boop.trace and boop.trace.log then
+    boop.trace.log(
+      "readiness ready: gmcp IRE and prompt observed"
+    )
+  end
+  return lifecycle.ready, lifecycle.ready and not before.ready
 end
 
 function boop.onIreSupportObserved(source)
-  return boop.reconcileIreSupport(
+  local ready, becameReady = boop.reconcileIreSupport(
     source or "ire event",
     {
       requestIfMissing = false,
     }
   )
-end
-
-local function enterRoomBlocker(code, label, observed)
-  return setBlocker("room:observation", code, label, BLOCKER_SYSTEMS_ROOM, {
-    gmcp = true,
-  }, {
-    source = "room",
-    observed = observed or {},
-  })
+  if becameReady
+      and boop.config
+      and boop.config.enabled
+      and tempTimer then
+    local authority = currentRoomSourceAuthority()
+    tempTimer(0, function()
+      if boop and boop.tick then
+        boop.tick(authority or nil, {
+          roomOwned = authority and true or false,
+        })
+      end
+    end)
+  end
+  return ready
 end
 
 local function roomInfoIsPartial(info)
   return not info or not info.num or type(info.exits) ~= "table"
-end
-
-local function noteTargetRoomGmcpObserved()
-  if runtime() and boop.runtime.noteGmcpObserved then
-    boop.runtime.noteGmcpObserved("target:loss", "room")
-  end
-end
-
-local function noteRoomGmcpObserved()
-  if runtime() and boop.runtime.noteGmcpObserved then
-    boop.runtime.noteGmcpObserved("room:observation", "room")
-  end
-  noteTargetRoomGmcpObserved()
-  return true
 end
 
 local function warnRoomResponseFence(fence, timerId)
@@ -406,12 +376,6 @@ function boop.requestRoomItemsOnce(reason)
   return requestRoomItemsForFence(reason) and true or false
 end
 
-local function noteTargetGmcpObserved()
-  if runtime() and boop.runtime.noteGmcpObserved then
-    boop.runtime.noteGmcpObserved("target:loss", "target")
-  end
-end
-
 local function denizenNameById(id)
   local wanted = tostring(id or "")
   if wanted == "" or not boop.state or not boop.state.targeting then
@@ -437,8 +401,8 @@ local function warnTargetLost()
 end
 
 local function clearLostTargetIntent()
-  boop.runtime.clearAutomationIntent("target_lost", {
-    includeGold = false,
+  boop.runtime.clearAttackIntent("target_lost", {
+    clearTarget = true,
   })
   if boop.afflictions and boop.afflictions.clearTarget then
     boop.afflictions.clearTarget()
@@ -673,6 +637,11 @@ local function goldDispatchAuthorized(operation)
   if not boop.config or not boop.config.enabled or not boop.config.autoGrabGold then
     return false
   end
+  if not readinessAllows(
+      operation.phase ~= GOLD_PHASE.PACK_PENDING
+    ) then
+    return false
+  end
   if operation.awaitingExplicitEvidence then
     return false
   end
@@ -692,16 +661,17 @@ local function goldDispatchAuthorized(operation)
 
   local owner = tostring(operation.blockerOwner or "")
   if operation.phase == GOLD_PHASE.PACK_PENDING then
-    if shouldHold("queue", owner) or shouldHold("gold", owner) then
+    if operationHolds("queue", owner)
+        or operationHolds("gold", owner) then
       return false
     end
     return boop.util.trim(operation.packTarget or "") ~= ""
   end
 
-  if shouldHold("combat", owner)
-      or shouldHold("queue", owner)
-      or shouldHold("gold", owner)
-      or shouldHold("walk", owner) then
+  if operationHolds("combat", owner)
+      or operationHolds("queue", owner)
+      or operationHolds("gold", owner)
+      or operationHolds("walk", owner) then
     return false
   end
 
@@ -766,7 +736,7 @@ end
 
 local function setGoldEvidenceWaitBlocker(operation)
   if operation.phase == GOLD_PHASE.PICKUP_PENDING then
-    return setBlocker(
+    return setOperationLock(
       operation.blockerOwner,
       "gold_pickup_pending",
       "gold pickup awaiting explicit evidence; move or disable/flee to cancel",
@@ -795,7 +765,7 @@ local function setGoldEvidenceWaitBlocker(operation)
     )
   end
 
-  return setBlocker(
+  return setOperationLock(
     operation.blockerOwner,
     "gold_pack_pending",
     "gold packing awaiting explicit evidence; provide result/failure or disable/flee to cancel",
@@ -825,7 +795,7 @@ end
 
 local function setGoldDispatchBlocker(operation)
   if operation.phase == GOLD_PHASE.PICKUP_PENDING then
-    return setBlocker(
+    return setOperationLock(
       operation.blockerOwner,
       "gold_pickup_pending",
       "gold pickup pending",
@@ -850,7 +820,7 @@ local function setGoldDispatchBlocker(operation)
     )
   end
 
-  return setBlocker(
+  return setOperationLock(
     operation.blockerOwner,
     "gold_pack_pending",
     "gold packing pending",
@@ -1100,8 +1070,8 @@ completeGoldOperation = function(generation, terminalReason)
   operation.timeoutTimer = false
   if flushTimer and killTimer then killTimer(flushTimer) end
   if timeoutTimer and killTimer then killTimer(timeoutTimer) end
-  if runtime() and boop.runtime.clearBlocker then
-    boop.runtime.clearBlocker(owner, reason)
+  if runtime() and boop.runtime.clearOperationLock then
+    boop.runtime.clearOperationLock(owner, reason)
   end
 
   local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
@@ -1180,7 +1150,7 @@ startGoldOperation = function(source, observation, packTarget)
       operation.goldItemId = tostring(currentGoldItem.id or observation.goldItemId or "")
       operation.flushTimer = false
       operation.timeoutTimer = false
-      setBlocker(operation.blockerOwner, "gold_pickup_pending", "gold pickup pending", {
+      setOperationLock(operation.blockerOwner, "gold_pickup_pending", "gold pickup pending", {
         combat = true,
         queue = true,
         gold = true,
@@ -1244,7 +1214,7 @@ startGoldOperation = function(source, observation, packTarget)
   state.gold.operation = operation
 
   if phase == GOLD_PHASE.DEFERRED_ROOM then
-    setBlocker(operation.blockerOwner, "gold_deferred_room", "gold awaiting room evidence", {
+    setOperationLock(operation.blockerOwner, "gold_deferred_room", "gold awaiting room evidence", {
       combat = true,
       queue = true,
       gold = true,
@@ -1281,7 +1251,7 @@ startGoldOperation = function(source, observation, packTarget)
     end
     armGoldPendingTimeout(generation, GOLD_PHASE.DEFERRED_ROOM)
   else
-    setBlocker(operation.blockerOwner, "gold_pickup_pending", "gold pickup pending", {
+    setOperationLock(operation.blockerOwner, "gold_pickup_pending", "gold pickup pending", {
       combat = true,
       queue = true,
       gold = true,
@@ -1329,7 +1299,7 @@ transferGoldToPacking = function(generation)
     return completeGoldOperation(generation, "get_success_no_pack")
   end
 
-  setBlocker(operation.blockerOwner, "gold_pack_pending", "gold packing pending", {
+  setOperationLock(operation.blockerOwner, "gold_pack_pending", "gold packing pending", {
     combat = true,
     queue = true,
     gold = true,
@@ -1609,7 +1579,6 @@ local function applyRoomApplication(applicationId, sourceAuthority, timerId)
 
   local authority = copySourceAuthority(application.sourceAuthority)
   local items = deepCopy(application.items)
-  noteRoomGmcpObserved()
   boop.targets.updateRoomItems(items, authority)
 
   local goldItem = findRoomGoldItem(items)
@@ -1631,7 +1600,7 @@ local function applyRoomApplication(applicationId, sourceAuthority, timerId)
       walkRoomGeneration,
       authority
     )
-    if not advanced and shouldHold("walk") then
+    if not advanced and operationHolds("walk") then
       traceHeld("walk", "room items list")
     end
   end
@@ -1713,14 +1682,25 @@ function boop.onRoomItemsAdd()
   if gmcp.Char.Items.Add.location ~= "room" then return end
   local item = gmcp.Char.Items.Add.item
   traceRoomItemEvent("add", item)
-  boop.targets.addRoomItem(item)
-  if denizenNameById(item and item.id) ~= "" then
-    noteTargetRoomGmcpObserved()
-  end
+  local denizenAdded = boop.targets.addRoomItem(item)
   autoGrabRoomItem(item, {
     source = "gmcp room item Add",
     revalidateSettledAdd = true,
   })
+  if denizenAdded
+      and boop.config
+      and boop.config.enabled
+      and not (boop.state and boop.state.diag.hold)
+      and tempTimer then
+    local authority = currentRoomSourceAuthority()
+    if authority then
+      tempTimer(0, function()
+        if roomAuthorityCurrent(authority, "room denizen add") then
+          boop.tick(authority, { roomOwned = true })
+        end
+      end)
+    end
+  end
 end
 
 function boop.onRoomItemsRemove()
@@ -1786,7 +1766,7 @@ function boop.onRoomItemsRemove()
       ) then
       return false
     end
-    if shouldHold("target") then
+    if operationHolds("target") then
       traceHeld("target", "target lost retarget")
       return false
     end
@@ -1810,21 +1790,6 @@ function boop.onRoomItemsRemove()
       if not changed then
         return false
       end
-    else
-      setBlocker("target:loss", "target_lost", "target left room", {
-        target = true,
-        combat = true,
-        queue = true,
-      }, {
-        gmcp = true,
-        prompt = true,
-      }, {
-        source = "targeting",
-        observed = {
-          target = removedId,
-          room = tostring(boop.state.targeting.room or ""),
-        },
-      })
     end
 
     if boop and boop.tick then
@@ -1845,9 +1810,19 @@ end
 
 function boop.onRoomInfo()
   if not gmcp or not gmcp.Room or not gmcp.Room.Info then
-    enterRoomBlocker("missing_room", "missing room state", {
-      room = false,
-    })
+    if boop.runtime and boop.runtime.clearAttackIntent then
+      boop.runtime.clearAttackIntent("missing_room", {
+        source = "Room.Info",
+        clearTarget = true,
+      })
+    end
+    if boop.runtime and boop.runtime.startRoomObservation then
+      boop.runtime.startRoomObservation("", {
+        boundary = "fresh_start",
+        infoSeen = false,
+        reason = "missing room state",
+      })
+    end
     return
   end
   if boop.runtime and boop.runtime.ensureState then
@@ -1859,10 +1834,22 @@ function boop.onRoomInfo()
 
   local info = deepCopy(gmcp.Room.Info)
   if roomInfoIsPartial(info) then
-    enterRoomBlocker("room_partial", "partial room state", {
-      room = tostring(info and info.num or ""),
-      exits = type(info and info.exits) == "table",
-    })
+    if boop.runtime and boop.runtime.clearAttackIntent then
+      boop.runtime.clearAttackIntent("room_partial", {
+        source = "Room.Info",
+        clearTarget = true,
+      })
+    end
+    if boop.runtime and boop.runtime.startRoomObservation then
+      boop.runtime.startRoomObservation(
+        tostring(info and info.num or ""),
+        {
+          boundary = "fresh_start",
+          infoSeen = tostring(info and info.num or "") ~= "",
+          reason = "partial room state",
+        }
+      )
+    end
     return
   end
 
@@ -1882,11 +1869,6 @@ function boop.onRoomInfo()
     return
   end
   if sameTrackedRoom then
-    enterRoomBlocker("room_partial", "partial room state", {
-      room = tostring(info.num or ""),
-      items = false,
-      generation = tonumber(priorObservation.generation) or 0,
-    })
     boop.requestRoomItemsOnce("same-room info awaiting complete item list")
     return
   end
@@ -1896,9 +1878,16 @@ function boop.onRoomInfo()
     if boop.runtime and boop.runtime.invalidateRoomApplication then
       boop.runtime.invalidateRoomApplication(nil, "room changed")
     end
-    if boop.runtime and boop.runtime.clearAttackIntent then
+    local pull = combat.pullState
+    local preservePullIntent = type(pull) == "table"
+      and pull.active
+      and not pull.terminal
+    if not preservePullIntent
+        and boop.runtime
+        and boop.runtime.clearAttackIntent then
       boop.runtime.clearAttackIntent("room_changed", {
         source = "Room.Info",
+        clearTarget = true,
       })
     end
   end
@@ -1918,12 +1907,6 @@ function boop.onRoomInfo()
         or goldOperation.phase == GOLD_PHASE.PICKUP_PENDING) then
     completeGoldOperation(goldOperation.generation, "room_changed")
   end
-  enterRoomBlocker("room_partial", "partial room state", {
-    room = tostring(info.num or ""),
-    items = false,
-    generation = observation and observation.generation or 0,
-  })
-
   local walk = boop.state.walk or {}
   local walkGeneration = tonumber(walk.generation) or 0
   local roomGeneration = observation and tonumber(observation.generation) or 0
@@ -2021,7 +2004,6 @@ function boop.onTargetSet()
   if not boop.config or not boop.config.enabled then
     return true
   end
-  noteTargetGmcpObserved()
   local newId = tostring(gmcp.IRE.Target.Set or "")
   if boop.targets and boop.targets.applyTarget then
     boop.targets.applyTarget(newId, { reason = "target gmcp set changed" })
@@ -2047,7 +2029,6 @@ function boop.onTargetInfo()
   if not boop.config or not boop.config.enabled then
     return true
   end
-  noteTargetGmcpObserved()
   if info.id then
     local newId = tostring(info.id or "")
     if boop.targets and boop.targets.applyTarget then
@@ -2063,7 +2044,7 @@ end
 
 function boop.onCharStatus()
   if not gmcp or not gmcp.Char or not gmcp.Char.Status then return end
-  boop.reconcileIreSupport("char status")
+  local _, becameReady = boop.reconcileIreSupport("char status")
   if gmcp.Char.Status.class then
     local newClass = gmcp.Char.Status.class
     if boop.state.combat.class ~= newClass then
@@ -2075,6 +2056,17 @@ function boop.onCharStatus()
   end
   if boop.stats and boop.stats.onCharStatus then
     boop.stats.onCharStatus()
+  end
+  if becameReady
+      and boop.config
+      and boop.config.enabled
+      and tempTimer then
+    local authority = currentRoomSourceAuthority()
+    tempTimer(0, function()
+      boop.tick(authority or nil, {
+        roomOwned = authority and true or false,
+      })
+    end)
   end
 end
 
@@ -2124,11 +2116,14 @@ function boop.schedulePrequeue(sourceAuthority, options)
   options = type(options) == "table" and options or {}
   local roomOwned = options.roomOwned == true
     or authority and true or false
-  if roomOwned and not authority then
+  if not authority or not readinessAllows(true) then
     boop.state.queue.prequeueSourceAuthority = false
     return false
   end
-  if shouldHold("queue") or shouldHold("target") or shouldHold("combat") then
+  roomOwned = true
+  if operationHolds("queue")
+      or operationHolds("target")
+      or operationHolds("combat") then
     if boop.state.queue.prequeueTimer then
       killTimer(boop.state.queue.prequeueTimer)
       boop.state.queue.prequeueTimer = nil
@@ -2192,18 +2187,23 @@ end
 
 function boop.prequeueStandard(sourceAuthority, options)
   local authority = copySourceAuthority(sourceAuthority)
+    or currentRoomSourceAuthority()
   options = type(options) == "table" and options or {}
   local roomOwned = options.roomOwned == true
     or authority and true or false
-  if roomOwned and not authority then
+  if not authority or not readinessAllows(true) then
     return false
   end
+  roomOwned = true
   if not roomAuthorityCurrent(authority, "prequeue standard") then
     return false
   end
   if not boop.config.enabled then return false end
   if not boop.config.prequeueEnabled then return false end
-  if shouldHold("queue") or shouldHold("target") or shouldHold("combat") or shouldHold("gold") then
+  if operationHolds("queue")
+      or operationHolds("target")
+      or operationHolds("combat")
+      or operationHolds("gold") then
     traceHeld("queue", "prequeue standard")
     return false
   end
@@ -2277,15 +2277,19 @@ function boop.refreshPrequeuedStandard(reason, sourceAuthority, options)
   options = type(options) == "table" and options or {}
   local roomOwned = options.roomOwned == true
     or authority and true or false
-  if roomOwned and not authority then
+  if not authority or not readinessAllows(true) then
     return false
   end
+  roomOwned = true
   if not roomAuthorityCurrent(authority, "refresh prequeue") then
     return false
   end
   if not boop.config.enabled then return false end
   if not boop.config.prequeueEnabled then return false end
-  if shouldHold("queue") or shouldHold("target") or shouldHold("combat") or shouldHold("gold") then
+  if operationHolds("queue")
+      or operationHolds("target")
+      or operationHolds("combat")
+      or operationHolds("gold") then
     traceHeld("queue", "refresh prequeue")
     return false
   end
@@ -2377,9 +2381,6 @@ function boop.onPrompt()
   boop.reconcileIreSupport("prompt", {
     requestIfMissing = false,
   })
-  if runtime() and boop.runtime.notePromptObserved then
-    boop.runtime.notePromptObserved()
-  end
   if not boop.config or not boop.config.enabled then
     return false
   end

@@ -28,6 +28,7 @@ MANIFEST_NAMES = {
 }
 OWNED_STATE_DOMAINS = {
     "combat",
+    "lifecycle",
     "targeting",
     "gold",
     "queue",
@@ -101,7 +102,7 @@ def check_versions() -> list[str]:
 
     init_text = init_path.read_text()
     init_match = re.search(
-        r'boop\.version\s*=\s*boop\.version\s+or\s+"([^"]+)"', init_text
+        r'boop\.version\s*=\s*"([^"]+)"', init_text
     )
     if not init_match:
         errors.append(f"{rel(init_path)}: could not find boop.version assignment")

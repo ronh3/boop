@@ -30,7 +30,7 @@ describe("boop tick", function()
     return count
   end
 
-  local function seedLifecycleOwner(owner, code, label, systems, waitsFor)
+  local function seedOperation(owner, code, label, systems, waitsFor)
     helper.setRuntimeBlocker({
       owner = owner,
       code = code,
@@ -232,7 +232,7 @@ describe("boop tick", function()
       },
     },
     {
-      name = "pull plus room",
+      name = "pull plus interrupt",
       owners = {
         {
           owner = "pull:33",
@@ -242,22 +242,16 @@ describe("boop tick", function()
           waitsFor = { room = true },
         },
         {
-          owner = "room:observation",
-          code = "room_partial",
-          label = "partial room state",
-          systems = {
-            combat = true,
-            gold = true,
-            queue = true,
-            target = true,
-            walk = true,
-          },
-          waitsFor = { gmcp = true, room = true },
+          owner = "interrupt:34",
+          code = "interrupt_pending",
+          label = "interrupt pending",
+          systems = { combat = true, queue = true },
+          waitsFor = { prompt = true },
         },
       },
     },
     {
-      name = "gold plus walk",
+      name = "gold plus pull",
       owners = {
         {
           owner = "gold:34",
@@ -267,10 +261,15 @@ describe("boop tick", function()
           waitsFor = { inventory = true },
         },
         {
-          owner = "walk:35",
-          code = "walk_move_pending",
-          label = "move already queued",
-          systems = { combat = true, queue = true, walk = true },
+          owner = "pull:35",
+          code = "pull_active",
+          label = "pull active",
+          systems = {
+            combat = true,
+            queue = true,
+            target = true,
+            walk = true,
+          },
           waitsFor = { room = true },
         },
       },
@@ -286,14 +285,14 @@ describe("boop tick", function()
         local first = pair.owners[clearFirst]
         local second = pair.owners[clearSecond]
         boop.config.useQueueing = true
-        seedLifecycleOwner(
+        seedOperation(
           pair.owners[1].owner,
           pair.owners[1].code,
           pair.owners[1].label,
           pair.owners[1].systems,
           pair.owners[1].waitsFor
         )
-        seedLifecycleOwner(
+        seedOperation(
           pair.owners[2].owner,
           pair.owners[2].code,
           pair.owners[2].label,
@@ -305,7 +304,7 @@ describe("boop tick", function()
         assert.are.equal(0, #sent)
         assert.are.equal(0, #scheduled)
 
-        assert.is_true(boop.runtime.clearBlocker(
+        assert.is_true(boop.runtime.clearOperationLock(
           first.owner,
           "first lifecycle complete"
         ))
@@ -317,7 +316,7 @@ describe("boop tick", function()
           boop.runtime.state().combat.blockersByOwner[second.owner]
         )
 
-        assert.is_true(boop.runtime.clearBlocker(
+        assert.is_true(boop.runtime.clearOperationLock(
           second.owner,
           "final lifecycle complete"
         ))
@@ -447,8 +446,6 @@ describe("boop tick", function()
   end
 
   local ownerCases = {
-    { name = "GMCP", owner = "gmcp:ire" },
-    { name = "room", owner = "room:observation" },
     { name = "pull", owner = "pull:8" },
     { name = "interrupt", owner = "interrupt:9" },
   }
@@ -478,13 +475,16 @@ describe("boop tick", function()
         end)
 
         helper.setRuntimeBlocker({
-          owner = "test:remaining",
+          owner = "interrupt:remaining",
           code = "test_remaining_hold",
           systems = { combat = true, queue = true, gold = true, walk = true },
         })
 
         boop.tick()
-        boop.runtime.clearBlocker(case.owner, "real owner released")
+        boop.runtime.clearOperationLock(
+          case.owner,
+          "real owner released"
+        )
         boop.tick()
 
         assert.are.equal(sendsBeforeHold, countSent(command))
@@ -500,7 +500,10 @@ describe("boop tick", function()
         assert.are.equal(0, countSent("command hound at 42"))
         assert.are.equal(0, countSent("harry 42"))
 
-        boop.runtime.clearBlocker("test:remaining", "final owner released")
+        boop.runtime.clearOperationLock(
+          "interrupt:remaining",
+          "final owner released"
+        )
         boop.tick()
 
         assert.stub(flush_gold_stub).was_called(1)

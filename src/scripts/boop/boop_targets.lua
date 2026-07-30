@@ -214,31 +214,43 @@ function boop.targets.isDenizen(id, name)
   return boop.targets.isDenizenName(name)
 end
 
-function boop.targets.updateRoomItems(items)
+function boop.targets.updateRoomItems(items, opts)
   boop.state.targeting.denizens = {}
-  if not items then return end
-  for _, item in ipairs(items) do
-    if boop.targets.isValidDenizen(item) then
-      boop.state.targeting.denizens[#boop.state.targeting.denizens + 1] = {
-        id = tostring(item.id),
-        name = item.name,
-        attrib = item.attrib,
-      }
+  if items then
+    for _, item in ipairs(items) do
+      if boop.targets.isValidDenizen(item) then
+        boop.state.targeting.denizens[#boop.state.targeting.denizens + 1] = {
+          id = tostring(item.id),
+          name = item.name,
+          attrib = item.attrib,
+        }
+      end
     end
+  end
+  if boop.targets.reconcileCurrentTarget then
+    boop.targets.reconcileCurrentTarget(
+      "accepted room contents",
+      {
+        wake = false,
+        preserveActivePull = true,
+        sourceAuthority = opts,
+      }
+    )
   end
 end
 
 function boop.targets.addRoomItem(item)
-  if not boop.targets.isValidDenizen(item) then return end
+  if not boop.targets.isValidDenizen(item) then return false end
   local id = tostring(item.id)
   for _, v in ipairs(boop.state.targeting.denizens) do
-    if v.id == id then return end
+    if v.id == id then return false end
   end
   boop.state.targeting.denizens[#boop.state.targeting.denizens + 1] = {
     id = id,
     name = item.name,
     attrib = item.attrib,
   }
+  return true
 end
 
 function boop.targets.removeRoomItem(item)
@@ -949,6 +961,13 @@ local function currentTargetEligible(mode, area, denizens)
 
   local current = findDenizenById(denizens, currentId)
   if not current then return "" end
+  if boop.targets.isGloballyBlacklisted(current.name) then
+    return ""
+  end
+
+  if mode == "manual" then
+    return current.id
+  end
 
   if mode == "whitelist" then
     local whitelist = boop.lists.whitelist[area]
@@ -961,7 +980,7 @@ local function currentTargetEligible(mode, area, denizens)
 
   if mode == "blacklist" then
     local blacklist = boop.lists.blacklist[area] or {}
-    if listContains(blacklist, current.name) or listContains(boop.lists.globalBlacklist, current.name) then
+    if listContains(blacklist, current.name) then
       return ""
     end
     return current.id
@@ -997,6 +1016,9 @@ local function calledTargetEligible(mode, area, denizens)
   if not denizen then
     return ""
   end
+  if boop.targets.isGloballyBlacklisted(denizen.name) then
+    return ""
+  end
 
   if mode == "whitelist" then
     local whitelist = boop.lists.whitelist[area]
@@ -1008,7 +1030,7 @@ local function calledTargetEligible(mode, area, denizens)
 
   if mode == "blacklist" then
     local blacklist = boop.lists.blacklist[area] or {}
-    if not listContains(blacklist, denizen.name) and not listContains(boop.lists.globalBlacklist, denizen.name) then
+    if not listContains(blacklist, denizen.name) then
       return denizen.id
     end
     return ""
@@ -1030,7 +1052,7 @@ function boop.targets.choose()
   local denizens = sortedDenizens(boop.config.targetOrder)
 
   if mode == "manual" then
-    return boop.state.targeting.currentTargetId
+    return currentTargetEligible(mode, area, denizens)
   end
 
   if targetCallEnabled() then
@@ -1051,14 +1073,20 @@ function boop.targets.choose()
     if boop.config.whitelistPriorityOrder then
       for _, mob in ipairs(whitelist) do
         for _, denizen in ipairs(denizens) do
-          if sameName(denizen.name, mob) then
+          if sameName(denizen.name, mob)
+              and not boop.targets.isGloballyBlacklisted(
+                denizen.name
+              ) then
             return denizen.id
           end
         end
       end
     else
       for _, denizen in ipairs(denizens) do
-        if listContains(whitelist, denizen.name) then
+        if listContains(whitelist, denizen.name)
+            and not boop.targets.isGloballyBlacklisted(
+              denizen.name
+            ) then
           return denizen.id
         end
       end
@@ -1087,6 +1115,90 @@ function boop.targets.choose()
   end
 
   return ""
+end
+
+function boop.targets.isCurrentTargetEligible()
+  local state = boop.state and boop.state.targeting or {}
+  local currentId = tostring(state.currentTargetId or "")
+  if currentId == "" then
+    return false
+  end
+  local denizens = state.denizens or {}
+  local current = findDenizenById(denizens, currentId)
+  if not current then
+    return false
+  end
+  local mode = tostring(
+    boop.config and boop.config.targetingMode or "whitelist"
+  )
+  return currentTargetEligible(
+    mode,
+    boop.targets.getArea(),
+    denizens
+  ) ~= ""
+end
+
+local function scheduleTargetWake(reason, sourceAuthority)
+  if not (boop.config and boop.config.enabled)
+      or not boop.tick then
+    return false
+  end
+  local function wake()
+    boop.tick(sourceAuthority or nil, {
+      roomOwned = sourceAuthority and true or false,
+    })
+  end
+  wake()
+  if boop.trace and boop.trace.log then
+    boop.trace.log("target wake scheduled: " .. tostring(reason or "state changed"))
+  end
+  return true
+end
+
+function boop.targets.reconcileCurrentTarget(reason, opts)
+  opts = type(opts) == "table" and opts or {}
+  local state = boop.state and boop.state.targeting or {}
+  local currentId = tostring(state.currentTargetId or "")
+  if currentId == "" or boop.targets.isCurrentTargetEligible() then
+    return false
+  end
+  local pull = boop.state
+    and boop.state.combat
+    and boop.state.combat.pullState
+    or false
+  if opts.preserveActivePull
+      and type(pull) == "table"
+      and pull.active
+      and not pull.terminal then
+    return false
+  end
+
+  if boop.runtime and boop.runtime.clearAttackIntent then
+    boop.runtime.clearAttackIntent(
+      tostring(reason or "target no longer eligible"),
+      {
+        clearTarget = true,
+      }
+    )
+  else
+    state.currentTargetId = ""
+    state.targetName = ""
+    state.targetShield = false
+  end
+  if boop.afflictions and boop.afflictions.clearTarget then
+    boop.afflictions.clearTarget()
+  end
+  if boop.trace and boop.trace.log then
+    boop.trace.log(string.format(
+      "target reconciled: %s | id=%s",
+      tostring(reason or "target no longer eligible"),
+      currentId
+    ))
+  end
+  if opts.wake ~= false then
+    scheduleTargetWake(reason, opts.sourceAuthority)
+  end
+  return true
 end
 
 function boop.targets.addWhitelist(area, name)
@@ -1170,6 +1282,14 @@ function boop.targets.addBlacklist(area, name)
   if boop.db and boop.db.saveList then
     boop.db.saveList("blacklist", area, list)
   end
+  boop.targets.reconcileCurrentTarget(
+    "blacklist updated",
+    { wake = false }
+  )
+  scheduleTargetWake(
+    "blacklist updated",
+    currentRoomSourceAuthority()
+  )
   boop.util.ok("Blacklisted in " .. area .. ": " .. name)
   return true
 end

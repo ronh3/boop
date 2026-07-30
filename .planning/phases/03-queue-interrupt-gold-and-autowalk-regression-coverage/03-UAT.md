@@ -4,7 +4,7 @@ phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-29T00:28:48-07:00
+updated: 2026-07-30T15:31:39-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -12,13 +12,13 @@ updated: 2026-07-29T00:28:48-07:00
 ## Current Test
 
 number: 2
-name: Cross-owner attack, loot, and walk release
+name: Simplified runtime and stale-target recovery
 expected: |
-  With boop 0.1.447 installed, current-room evidence settles in either live
-  response order, manual targeting holds the walker, switching back to
-  automatic targeting permits one safe move, and fresh accepted room evidence
-  or a valid denizen Add releases only a stale target-loss owner.
-awaiting: user response
+  With boop 0.1.448 installed, lifecycle, room, target, and walker status are
+  computed directly. Only interrupt, pull, and gold operations may hold
+  automation. Movement, accepted room evidence, or a global-blacklist edit
+  clears an ineligible target without stopping the walker.
+awaiting: package build, exact-SHA CI, then user response
 
 ## Tests
 
@@ -53,43 +53,32 @@ observed: "Clean reconnect, prompt-first, and enable-before-prompt checks passed
 ### 2. Cross-owner attack, loot, and walk release
 
 expected: |
-  With boop 0.1.447 installed, manual targeting remains an intentional
-  automatic-walk hold and is reported as `manual_targeting`, not `room_clear`.
-  Room settlement accepts either live GMCP response order, same-room refreshes
-  preserve the accepted room, and stop/restart cannot reuse stale evidence.
-  Fresh accepted room evidence or a valid denizen Add releases only
-  `target:loss`. No automatic attack, loot command, or walker move occurs while
-  another safety owner remains; exactly one next action resumes after automatic
-  targeting is selected and all owners release.
+  With boop 0.1.448 installed, manual targeting remains an intentional
+  automatic-walk status and is reported as `manual_targeting`, not
+  `room_clear`. Lifecycle, room readiness, target eligibility, and walker state
+  are computed directly; only interrupt, pull, and gold appear as active
+  operations. Movement, accepted room evidence, and blacklist edits clear stale
+  target intent without stopping the walker.
 
   Easy check:
-  1. Run `boop on`, `boop trace clear`, and `boop trace on`. With no
-     boop walk active, run `boop walk stop`; it must print exactly
-     `walk stop: no active boop walk`.
-  2. Run `boop targeting manual`, then start a normal route with
-     `boop walk start`. Run `boop status`: it must show
-     `manual_targeting -- manual targeting is active`, give
-     `boop targeting auto` as the next action, and emit no walker movement or
-     movement reservation while manual targeting remains selected.
-  3. Run `boop targeting auto`. Only after automatic targeting is selected and
-     every other blocker is clear should exactly one eligible walker movement
-     occur for the settled room.
-  4. Let the walker cross several rooms. In one room, run `ql` to force a
-     same-room refresh; stop and restart the boop-owned walker once and retain
-     its distinct `walk stopped -- boop-owned demonwalker run ended` feedback.
-     The already-passed attached-run check remains non-destructive and must
-     continue to report
-     `walk detached -- external demonwalker run remains active`.
-  5. During one room transition, run `diag`. No attack, get/put, or walker move
-     may occur until `diag` and every other visible blocker clear; then exactly
-     one next action should resume.
-  6. Run `boop trace show 100`. There must be no `room_partial` hold that
-     persists until an unrelated later GMCP event, no ordinary sub-8-second
-     room warning, and at most one walker move per settled room. If
-     `target_lost` appears after a target leaves or dies, the next accepted
-     current-room snapshot or valid denizen Add must release it without
-     releasing an unrelated hold.
+  1. Install 0.1.448, reconnect or reload, then run `boop status`. Confirm it
+     prints `version: 0.1.448`. In `boop debug`, `ACTIVE OPERATIONS` should be
+     empty unless an interrupt, pull, or gold action is actually in progress.
+  2. Run `boop on`, `boop targeting auto`, and `boop walk start`. Engage a
+     wanted denizen, stop combat if necessary, then leave the room. `boop
+     status` must not retain that old target as `engaged_target`; the walker
+     must remain active and proceed when the destination room is clear.
+  3. In a safe room, target a denizen and add that exact name to the global
+     blacklist. The target id/name and queued attack intent must clear
+     immediately, even in manual mode, while the walker state remains intact.
+  4. Run `boop trace show 100`. Normal room and target transitions may report
+     computed `room_partial`, `room_clear`, or `ready` status, but must not
+     produce room, target, GMCP, or walker operation enter/exit records.
 result: [pending]
+reported: |
+  Check output.md. Thierry, the ferryman is not a target I wanted killed. I stopped combat, moved out, and added him to the global blacklist. However, boop is now stuck, thinking it's on engaged_target for the blocker.
+severity: major
+observed: "output.md shows targeting mode whitelist, walk active, zero room denizens, current target 152345 / Thierry, the ferryman, and engaged_target still owning combat and target after movement and the global-blacklist edit."
 previous_result: issue
 previous_reported: |
   1. Pass.
@@ -104,7 +93,7 @@ earlier_result: "Before Plans 03-11/03-12, List-before-Info followed by same-roo
 ### 3. Wrong-room gold and pack transfer
 
 expected: |
-  With boop 0.1.447 installed, a gold Item.Add in an already settled room
+  With boop 0.1.448 installed, a gold Item.Add in an already settled room
   requests one current-room revalidation but cannot authorize pickup by itself.
   Only the matching fenced room List may queue one
   `queue add full get sovereigns`. Confirmed pickup may queue one freestand put,
@@ -163,7 +152,7 @@ expected: |
   The immutable final commit is present on origin and `main.yml` succeeds for
   that exact `headSha`. The complete packaged real-Mudlet Busted suite,
   including Psion and Dragon pull-profile cases, reports no failures or errors
-  while building synchronized package 0.1.447.
+  while building synchronized package 0.1.448.
 result: [pending]
 source: automated
 previous_result: pass
@@ -204,8 +193,8 @@ previous_severity: minor
 
 total: 6
 passed: 3
-issues: 0
-pending: 3
+issues: 1
+pending: 2
 skipped: 0
 blocked: 0
 
@@ -452,8 +441,33 @@ blocked: 0
     - "03-22 post-plan live-UAT hotfix, commit 457aafc"
   verification: "Host event transitions pass 55/55 and adjacent runtime/tick/walk/target suites pass 97/97 at package 0.1.445; live Mudlet confirmation remains pending."
 
-## Deferred Follow-Ups
-
-- test: 2
-  idea: "Add the installed boop version to boop status."
-  deferred_at: 2026-07-28
+- gap_id: G-03-10
+  truth: "Movement, accepted current-room evidence, and a new global-blacklist rule reconcile active target ownership so an absent or newly forbidden denizen cannot keep combat, targeting, or walking held by engaged_target."
+  status: resolved
+  reason: "User reported: Check output.md. Thierry, the ferryman is not a target I wanted killed. I stopped combat, moved out, and added him to the global blacklist. However, boop is now stuck, thinking it's on engaged_target for the blocker."
+  severity: major
+  test: 2
+  root_cause: "The owner-keyed blocker model represented synchronous lifecycle, room, target, and walker conditions as records that required later release evidence. Movement cleared attack commands but retained currentTargetId, accepted empty room contents did not reconcile it, global-blacklist edits did not invalidate it, and status treated any non-empty target id as engaged. The stale identity therefore survived the room and list state that already proved it invalid."
+  artifacts:
+    - path: "src/scripts/boop/boop_runtime.lua"
+      issue: "Production holds now read only interrupt, pull, and gold operation locks; lifecycle and room readiness are computed snapshots, and reload migration purges old pseudo-owner records."
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "Movement clears stale target and queue intent while preserving walker ownership; accepted room applications and valid denizen additions wake current-state evaluation."
+    - path: "src/scripts/boop/boop_targets.lua"
+      issue: "Accepted room contents and blacklist edits reconcile target eligibility, with the global blacklist overriding every targeting mode and target call."
+    - path: "src/scripts/boop/boop_walk.lua"
+      issue: "Walker gates are computed from lifecycle, room authority, target eligibility, and real active operations instead of walker-owned blockers."
+    - path: "src/scripts/boop/boop_ui.lua"
+      issue: "Status reports computed state and active operations, validates engaged-target eligibility, and includes the installed package version."
+    - path: "tests/"
+      issue: "Runtime, event, target, lifecycle, walk, UI, queue, gold, trace, interrupt, and pull regressions cover operation-only holds and stale-target recovery."
+  resolution:
+    - "Restrict production operation locks to interrupt, pull, and gold owner namespaces; retain legacy blocker APIs only as non-authoritative compatibility surfaces."
+    - "Compute lifecycle and room readiness directly from canonical state, and evaluate target and walker eligibility directly at each decision."
+    - "Clear stale target and queued attack intent on movement, accepted room contents, and blacklist edits without stopping an active walker."
+    - "Preserve target and queue intent only during a live pull, then reconcile them when the pull returns or terminates."
+    - "Expose computed Status plus Active Operations in operator surfaces and use operation enter/exit terminology in trace."
+    - "Show the installed version in compact and full `boop status` output."
+  resolved_by:
+    - "0.1.448 runtime simplification hardening"
+  verification: "Focused host suites pass for runtime, lifecycle, event transitions, targeting, walking, UI, trace, pull preservation, queueing, and gold behavior; packaged Mudlet CI and live UAT remain pending."

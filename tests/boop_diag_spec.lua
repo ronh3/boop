@@ -130,7 +130,7 @@ describe("boop diagnose pause and resume", function()
 
   it("requires a real zero-argument result trigger before diagnose can complete on prompt", function()
     helper.setRuntimeBlocker({
-      owner = "test:unrelated",
+      owner = "pull:unrelated",
       code = "pull_active",
       label = "unrelated hold",
       systems = { combat = true, queue = true },
@@ -194,7 +194,7 @@ describe("boop diagnose pause and resume", function()
     assert.is_false(boop.state.diag.operation)
     assert.are.same({}, boop.state.diag.evidenceQueue)
     assert.is_nil(blockerFor("interrupt:1"))
-    assert.is_table(blockerFor("test:unrelated"))
+    assert.is_table(blockerFor("pull:unrelated"))
     assert.are.equal(1, tick_count)
     assert.are.same({ "diag complete; attacks resumed" }, ok_messages)
     assert.are.equal(0, #warn_messages)

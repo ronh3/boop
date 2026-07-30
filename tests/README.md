@@ -4,17 +4,17 @@ These specs run inside a real Mudlet instance in GitHub Actions.
 
 Current coverage:
 
-Owner-keyed blocker tests cover both clear orders and exact-owner exclusion.
+Owner-keyed operation tests cover interrupt, pull, and gold clear order plus exact-owner exclusion; compatibility blockers cannot hold production work.
 Interrupt and pull tests cover idempotent repeats, first-terminal callbacks, and stale generations.
 Gold tests cover room-owned pickup, inventory-owned packing, get-confirm-put order, and wrong-room retries.
-Room observation tests require current Room.Info plus a complete current room item list; prompts and timers never settle the room.
-Walker tests cover shared automatic/manual gating, one move per room generation, owned stop, attached detach, explicit install, and package loss.
+Room observation tests require current Room.Info plus a complete current room item list, compute readiness without release owners, and reject stale authority.
+Walker tests cover computed automatic/manual gating, one move per room generation, stale-target reconciliation, owned stop, attached detach, explicit install, and package loss.
 SAFE-02 tests cover disabled and manual-targeting holds plus existing release actions.
 Standard GSD SUMMARY/STATE/ROADMAP/REQUIREMENTS/phase-completion commits are planning-only and version-exempt when every staged path is under .planning; plan task commits touching tests, docs, or source are package-affecting and synchronize all four version checkpoints.
 Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: after upstream GSD execution and every repository mutation finish, the parent pushes immutable FINAL_SHA and runs tools/wait_for_exact_ci.sh "$FINAL_SHA"; CI evidence remains uncommitted, and any later mutation requires a rerun.
 
 - `boop_targets_spec.lua`
-  Confirms target choice behavior for whitelist priority and `retargetOnPriority`.
+  Confirms target choice behavior, global-blacklist precedence, stale-target reconciliation, and the active-pull preservation exception.
 - `boop_whitelist_share_spec.lua`
   Confirms whitelist party-share packet output plus `merge`, `merge-reorder`, and `overwrite` apply behavior for incoming shares.
 - `boop_target_call_spec.lua`
@@ -28,7 +28,7 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
 - `boop_tick_spec.lua`
   Confirms `boop.tick()` sets target and sends the expected actions.
 - `boop_runtime_spec.lua`
-  Confirms the runtime coordinator exposes owned state domains, emits tick effects, and resolves prompt/diag hold effects.
+  Confirms computed lifecycle/room readiness, operation-only holds, compatibility migration, tick effects, and prompt/diag operation effects.
 - `boop_state_contract_spec.lua`
   Confirms owned runtime domain defaults and runtime context mapping for high-risk state-contract drift.
 - `boop_planner_spec.lua`
@@ -80,7 +80,7 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
 - `boop_db_spec.lua`
   Confirms DB guard paths degrade to warnings instead of throwing when optional Mudlet sheets are missing in an older local profile DB.
 - `boop_ui_spec.lua`
-  Confirms the bare `boop` command shows the home dashboard with mode/blocker guidance, plus the control, party, roster, and related UI flows.
+  Confirms the bare `boop` command shows the home dashboard, `boop status` shows the installed version and computed status, and control, party, roster, and related UI flows remain coherent.
 - `boop_ui_registry_spec.lua`
   Confirms the shared config, screen, mode, preset, and help registries exist and drive the corresponding UI commands.
 - `boop_menu_wiring_spec.lua`

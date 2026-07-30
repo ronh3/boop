@@ -79,7 +79,7 @@ describe("boop queued interrupts", function()
 
   local function seedUnrelatedOwner()
     helper.setRuntimeBlocker({
-      owner = "test:unrelated",
+      owner = "pull:unrelated",
       code = "pull_active",
       label = "unrelated hold",
       systems = { combat = true, queue = true },
@@ -183,7 +183,7 @@ describe("boop queued interrupts", function()
       assert.are.equal(1, #scheduled)
       assert.are.equal(original_info_count + 2, #info_messages)
       assert.is_true(info_messages[#info_messages]:find(row.name, 1, true) ~= nil)
-      assert.is_table(blockerFor("test:unrelated"))
+      assert.is_table(blockerFor("pull:unrelated"))
       assertActiveOperation(row, 1)
     end
   end)
@@ -204,7 +204,7 @@ describe("boop queued interrupts", function()
       assert.are.equal("", boop.state.diag.label)
       assert.is_nil(boop.state.diag.timeoutTimer)
       assert.is_nil(blockerFor("interrupt:" .. generation))
-      assert.is_table(blockerFor("test:unrelated"))
+      assert.is_table(blockerFor("pull:unrelated"))
       assert.are.equal(1, #ok_messages)
       assert.are.equal(0, #warn_messages)
       assert.are.equal(1, tick_count)
@@ -220,7 +220,7 @@ describe("boop queued interrupts", function()
       assert.are.equal(trace_count, #boop.state.trace.buffer)
       assert.are.equal(killed_count, #killed)
       assert.are.equal(1, #sent)
-      assert.is_table(blockerFor("test:unrelated"))
+      assert.is_table(blockerFor("pull:unrelated"))
     end
   end)
 
@@ -240,7 +240,7 @@ describe("boop queued interrupts", function()
       assert.are.equal("", boop.state.diag.label)
       assert.is_nil(boop.state.diag.timeoutTimer)
       assert.is_nil(blockerFor("interrupt:" .. generation))
-      assert.is_table(blockerFor("test:unrelated"))
+      assert.is_table(blockerFor("pull:unrelated"))
       assert.are.equal(0, #ok_messages)
       assert.are.same({ row.name .. " timeout; attacks resumed" }, warn_messages)
       assert.are.equal(0, tick_count)
@@ -256,7 +256,7 @@ describe("boop queued interrupts", function()
       assert.are.equal(1, tick_count)
       assert.are.equal(trace_count, #boop.state.trace.buffer)
       assert.are.equal(1, #sent)
-      assert.is_table(blockerFor("test:unrelated"))
+      assert.is_table(blockerFor("pull:unrelated"))
     end
   end)
 end)

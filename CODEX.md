@@ -106,7 +106,7 @@ Guidance for Codex when working in this repository.
 ## Session Checkpoint
 - Branch to continue from: `codex/pre-1.0-hardening-pass`
 - The branch tip moves with normal hardening commits; rely on git history rather than this file for the exact latest hash.
-- Current synchronized package version: `0.1.447`
+- Current synchronized package version: `0.1.448`
 - The purposeful pre-1.0 hardening work that is currently in this branch:
   - runtime/state ownership and coordinator path
   - combat planner split from execution
@@ -118,7 +118,7 @@ Guidance for Codex when working in this repository.
 - Intentionally not in this branch:
   - the local Muddler/dev auto-update helper (`boop dev`) was rolled back on purpose and should stay out unless explicitly requested again
 - Important compatibility note for any future session:
-  - internal code now uses owned state domains directly: `boop.state.combat`, `targeting`, `gold`, `queue`, `diag`, `trace`, `rage`, `inventory`, `ih`, `gag`
+  - internal code now uses owned state domains directly: `boop.state.combat`, `lifecycle`, `targeting`, `gold`, `queue`, `walk`, `diag`, `trace`, `ui`, `rage`, `inventory`, `ih`, `gag`
   - any personal/debug Mudlet scripts that still read old flat keys like `boop.state.currentTargetId`, `boop.state.goldGetPending`, or `boop.state.diagHold` will now break and must be updated
 - Current project status:
   - the major refactor is considered landed

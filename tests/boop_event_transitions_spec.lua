@@ -294,6 +294,16 @@ describe("boop event-driven state transitions", function()
 
   local function publishAcceptedRoomList(items)
     local observation = boop.runtime.roomObservationSnapshot()
+    if observation.itemsSeen
+        and #observation.fenceQueue == 0 then
+      observation = boop.runtime.startRoomObservation(
+        observation.roomId,
+        {
+          boundary = "fresh_start",
+          reason = "test accepted room response",
+        }
+      )
+    end
     if not observation.itemsSeen and not observation.refreshAttempted then
       boop.requestRoomItemsOnce("test accepted room response")
     end
@@ -426,7 +436,7 @@ describe("boop event-driven state transitions", function()
 
   for _, entry in ipairs(missingIreCases) do
     local case = entry
-    it("creates one owned GMCP recovery blocker when " .. case.name, function()
+    it("tracks lifecycle readiness when " .. case.name, function()
       local support_calls = stubCoreSupports()
       boop.config.enabled = true
       case.seed()
@@ -436,25 +446,12 @@ describe("boop event-driven state transitions", function()
 
       assert.are.equal(1, #support_calls)
       assert.is_true(support_calls[1].requestSkills)
-
-      local blocker = blockerSnapshot()
-      assert.are.equal("gmcp:ire", blocker.owner)
-      assert.are.equal("gmcp:ire", set_blocker_calls[1][1])
-      assert.are.equal("gmcp_ire_missing", blocker.code)
-      assert.are.equal("GMCP IRE missing", blocker.label)
-      assert.is_true(blocker.systems.target)
-      assert.is_true(blocker.systems.combat)
-      assert.is_true(blocker.systems.queue)
-      assert.is_true(blocker.systems.gold)
-      assert.is_true(blocker.systems.walk)
-      assert.is_true(blocker.waitsFor.gmcp)
-      assert.is_true(blocker.waitsFor.prompt)
-      assert.is_false(blocker.observed.ire)
-      assert.is_true(boop.runtime.shouldHold("target"))
-      assert.is_true(boop.runtime.shouldHold("combat"))
-      assert.is_true(boop.runtime.shouldHold("queue"))
-      assert.is_true(boop.runtime.shouldHold("gold"))
-      assert.is_true(boop.runtime.shouldHold("walk"))
+      local lifecycle = boop.runtime.lifecycleSnapshot()
+      assert.is_false(lifecycle.ireSeen)
+      assert.is_true(lifecycle.promptSeen)
+      assert.is_false(lifecycle.ready)
+      assert.are.equal(0, #set_blocker_calls)
+      assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
     end)
   end
 
@@ -477,6 +474,7 @@ describe("boop event-driven state transitions", function()
 
     assert.are.equal(0, #support_calls)
     assert.are.equal("", blockerSnapshot().code)
+    assert.is_true(boop.runtime.lifecycleSnapshot().ready)
   end)
 
   it("accepts IRE.Target as readiness evidence when IRE.Display has not emitted data", function()
@@ -488,6 +486,7 @@ describe("boop event-driven state transitions", function()
 
     assert.are.equal(0, #support_calls)
     assert.are.equal("", blockerSnapshot().code)
+    assert.is_true(boop.runtime.lifecycleSnapshot().ready)
   end)
 
   it("retries missing IRE support immediately once, then throttles repeats until backoff expires", function()
@@ -507,14 +506,18 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(2, #support_calls)
   end)
 
-  it("clears the GMCP recovery blocker after one requested IRE module and a prompt have arrived", function()
+  it("becomes lifecycle-ready after one requested IRE module and a prompt have arrived", function()
     stubCoreSupports()
     boop.config.enabled = true
+    boop.runtime.beginConnectionLifecycle("test reconnect")
     gmcp.IRE = nil
     captureRuntimeBlockerCalls()
 
     boop.onCharStatus()
-    assert.are.equal("gmcp_ire_missing", blockerSnapshot().code)
+    local lifecycle = boop.runtime.lifecycleSnapshot()
+    assert.is_false(lifecycle.ireSeen)
+    assert.is_false(lifecycle.promptSeen)
+    assert.is_false(lifecycle.ready)
 
     gmcp.IRE = {
       Display = {
@@ -523,29 +526,31 @@ describe("boop event-driven state transitions", function()
     }
     boop.onCharStatus()
 
-    assert.are.equal("gmcp_ire_missing", blockerSnapshot().code)
-    assert.are.equal("gmcp:ire", note_gmcp_calls[#note_gmcp_calls][1])
-    assert.are.equal("ire", note_gmcp_calls[#note_gmcp_calls][2])
+    lifecycle = boop.runtime.lifecycleSnapshot()
+    assert.is_true(lifecycle.ireSeen)
+    assert.is_false(lifecycle.promptSeen)
+    assert.is_false(lifecycle.ready)
 
     boop.onPrompt()
 
-    assert.are.equal("", blockerSnapshot().code)
-    assert.are.equal("gmcp:ire", clear_blocker_calls[#clear_blocker_calls][1])
-    assert.is_false(boop.runtime.shouldHold("target"))
-    assert.is_false(boop.runtime.shouldHold("combat"))
+    assert.is_true(boop.runtime.lifecycleSnapshot().ready)
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #set_blocker_calls)
+    assert.are.equal(0, #clear_blocker_calls)
   end)
 
   it("preserves an observed prompt across repeated missing IRE checks", function()
     stubCoreSupports()
     boop.config.enabled = true
+    boop.runtime.beginConnectionLifecycle("test reconnect")
     gmcp.IRE = nil
 
     boop.onCharStatus()
     boop.onPrompt()
-    assert.is_true(blockerSnapshot().promptSeen)
+    assert.is_true(boop.runtime.lifecycleSnapshot().promptSeen)
 
     boop.onCharStatus()
-    assert.is_true(blockerSnapshot().promptSeen)
+    assert.is_true(boop.runtime.lifecycleSnapshot().promptSeen)
 
     gmcp.IRE = {
       Display = {
@@ -554,25 +559,21 @@ describe("boop event-driven state transitions", function()
     }
     boop.onCharStatus()
 
-    assert.are.equal("", blockerSnapshot().code)
+    assert.is_true(boop.runtime.lifecycleSnapshot().ready)
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
   end)
 
-  it("creates owned room blockers for missing or partial room state", function()
+  it("computes missing and partial room readiness directly", function()
     boop.config.enabled = true
     gmcp.Room.Info = nil
     captureRuntimeBlockerCalls()
 
     boop.onRoomInfo()
 
-    local missing = blockerSnapshot()
-    assert.are.equal("room:observation", missing.owner)
-    assert.are.equal("room:observation", set_blocker_calls[1][1])
+    local missing = boop.runtime.readinessSnapshot().room
+    assert.is_false(missing.ready)
     assert.are.equal("missing_room", missing.code)
     assert.are.equal("missing room state", missing.label)
-    assert.is_true(missing.systems.target)
-    assert.is_true(missing.systems.combat)
-    assert.is_true(missing.systems.walk)
-    assert.is_true(missing.waitsFor.gmcp)
 
     gmcp.Room.Info = {
       num = 101,
@@ -580,13 +581,12 @@ describe("boop event-driven state transitions", function()
     }
     boop.onRoomInfo()
 
-    local partial = blockerSnapshot()
-    assert.are.equal("room:observation", partial.owner)
-    assert.are.equal("room:observation", set_blocker_calls[2][1])
+    local partial = boop.runtime.readinessSnapshot().room
+    assert.is_false(partial.ready)
     assert.are.equal("room_partial", partial.code)
-    assert.are.equal("partial room state", partial.label)
-    assert.is_true(partial.systems.walk)
-    assert.is_true(partial.waitsFor.gmcp)
+    assert.are.equal("current room evidence is incomplete", partial.label)
+    assert.are.equal(0, #set_blocker_calls)
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
   end)
 
   it("starts a fresh room observation and caps refresh requests per generation", function()
@@ -616,8 +616,10 @@ describe("boop event-driven state transitions", function()
     assert.is_true(observation.refreshAttempted)
     assert.are.equal("room info awaiting complete item list", observation.refreshReason)
     assert.is_false(observation.warned)
-    assert.are.equal("room:observation", blockerSnapshot().owner)
-    assert.is_true(boop.runtime.shouldHold("gold"))
+    local readiness = boop.runtime.readinessSnapshot().room
+    assert.is_false(readiness.ready)
+    assert.are.equal("room_partial", readiness.code)
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
     assert.are.same({ [[Char.Items.Inv]], [[Char.Items.Room]] }, gmcp_requests)
     assert.is_false(boop.requestRoomItemsOnce("duplicate refresh"))
     assert.are.same({ [[Char.Items.Inv]], [[Char.Items.Room]] }, gmcp_requests)
@@ -635,7 +637,7 @@ describe("boop event-driven state transitions", function()
   it("accepts only a complete room list after the current room info generation", function()
     publishAcceptedRoomList({})
     local settled = boop.runtime.roomObservationSnapshot()
-    assert.are.equal(1, settled.generation)
+    local settledGeneration = settled.generation
     assert.is_true(settled.itemsSeen)
     gmcp_requests = {}
 
@@ -651,7 +653,7 @@ describe("boop event-driven state transitions", function()
     boop.onRoomInfo()
     local arrival_callback = scheduled_callback
     local current = boop.runtime.roomObservationSnapshot()
-    assert.are.equal(2, current.generation)
+    assert.are.equal(settledGeneration + 1, current.generation)
     assert.are.equal("2", current.roomId)
     assert.is_false(current.itemsSeen)
     assert.are.same({ [[Char.Items.Inv]], [[Char.Items.Room]] }, gmcp_requests)
@@ -686,12 +688,15 @@ describe("boop event-driven state transitions", function()
     boop.onRoomItemsList()
     assert.is_true(runPendingRoomApplication())
     local complete = boop.runtime.roomObservationSnapshot()
-    assert.are.equal(2, complete.generation)
+    assert.are.equal(settledGeneration + 1, complete.generation)
     assert.is_true(complete.itemsSeen)
     assert.are.equal("", blockerSnapshot().code)
 
     boop.onRoomItemsList()
-    assert.are.equal(2, boop.runtime.roomObservationSnapshot().generation)
+    assert.are.equal(
+      settledGeneration + 1,
+      boop.runtime.roomObservationSnapshot().generation
+    )
     assert.is_true(boop.runtime.roomObservationSnapshot().itemsSeen)
     assert.are.same({ [[Char.Items.Inv]], [[Char.Items.Room]] }, gmcp_requests)
     assert.are.equal(0, #sent_commands)
@@ -1186,7 +1191,7 @@ describe("boop event-driven state transitions", function()
         authority.observationGeneration
       )
       helper.setRuntimeBlocker({
-        owner = "test:unrelated",
+        owner = "interrupt:unrelated",
         code = "interrupt_pending",
         label = "unrelated queue owner",
         systems = { queue = true },
@@ -1228,7 +1233,7 @@ describe("boop event-driven state transitions", function()
         targetName = boop.state.targeting.targetName,
         aliasAction = boop.state.queue.aliasAction,
         prequeued = boop.state.queue.prequeuedStandard,
-        blocker = blockerFor("test:unrelated"),
+        blocker = blockerFor("interrupt:unrelated"),
       }
 
       leaderCallback()
@@ -1246,7 +1251,7 @@ describe("boop event-driven state transitions", function()
         targetName = boop.state.targeting.targetName,
         aliasAction = boop.state.queue.aliasAction,
         prequeued = boop.state.queue.prequeuedStandard,
-        blocker = blockerFor("test:unrelated"),
+        blocker = blockerFor("interrupt:unrelated"),
       })
       assert.are.equal(0, #sent_commands)
       assert.are.equal(0, countSent("queue clear"))
@@ -1501,14 +1506,6 @@ describe("boop event-driven state transitions", function()
     state.walk.refreshTimer = 333
     state.walk.emitterTimer = 334
     state.walk.refreshWarned = false
-    helper.setRuntimeBlocker({
-      owner = "walk:12",
-      code = "walk_move_pending",
-      label = "move already queued",
-      systems = { walk = true },
-      waitsFor = { room = true },
-    })
-
     local beforeSame = {
       observation = boop.runtime.roomObservationSnapshot(),
       denizens = boop.state.targeting.denizens,
@@ -1540,8 +1537,6 @@ describe("boop event-driven state transitions", function()
     state.walk.moveIssuedForRoomGeneration = false
     state.walk.refreshTimer = nil
     state.walk.emitterTimer = nil
-    boop.runtime.clearBlocker("walk:12", "missing-response setup")
-
     local warnings = {}
     local traces = {}
     util_warn_stub = stub(boop.util, "warn", function(message)
@@ -1587,7 +1582,7 @@ describe("boop event-driven state transitions", function()
         refreshAttempted = true,
         warningCount = 1,
         timeoutTraceCount = 1,
-        roomOwnerPresent = true,
+        roomOwnerPresent = false,
         denizen = "the complete same-room denizen",
       },
     }, {
@@ -1727,7 +1722,7 @@ describe("boop event-driven state transitions", function()
         reservationId = 1,
         moveQueued = true,
         moveIssued = true,
-        ownerCode = "walk_move_pending",
+        ownerCode = false,
         moveCount = 1,
         requestCount = 2,
         timerCount = 3,
@@ -1854,12 +1849,14 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(0, boop.state.gold.operation.getRetries)
   end)
 
-  it("resumes one unchanged gold stage through the real GMCP recovery release path", function()
+  it("resumes one unchanged gold stage when lifecycle readiness returns", function()
     seedSettledGoldRoom("1", 1)
     boop.config.goldPack = ""
+    boop.runtime.beginConnectionLifecycle("gold reconnect test")
     gmcp.IRE = nil
     boop.onCharStatus()
-    assert.is_table(boop.state.combat.blockersByOwner["gmcp:ire"])
+    assert.is_false(boop.runtime.lifecycleSnapshot().ready)
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
     local operation = copyGoldOperation(boop.state.gold.operation)
     assert.are.equal(0, countGoldSends())
@@ -1883,13 +1880,17 @@ describe("boop event-driven state transitions", function()
     }
     boop.onCharStatus()
 
-    assert.is_table(boop.state.combat.blockersByOwner["gmcp:ire"])
+    local lifecycle = boop.runtime.lifecycleSnapshot()
+    assert.is_true(lifecycle.ireSeen)
+    assert.is_false(lifecycle.promptSeen)
+    assert.is_false(lifecycle.ready)
     assert.are.equal(0, tickCalls)
     assert.are.equal(0, flushCalls)
     assert.are.equal(0, countGoldSends())
 
     boop.onPrompt()
 
+    assert.is_true(boop.runtime.lifecycleSnapshot().ready)
     assert.is_nil(boop.state.combat.blockersByOwner["gmcp:ire"])
     assert.are.equal(1, tickCalls)
     assert.are.equal(1, flushCalls)
@@ -2080,13 +2081,6 @@ describe("boop event-driven state transitions", function()
       boop.runtime.roomObservationSnapshot().generation
     state.walk.moveIssuedForRoomGeneration = false
     state.walk.reservationId = 7
-    helper.setRuntimeBlocker({
-      owner = "walk:44",
-      code = "walk_room_unsettled",
-      label = "walker waits for current room",
-      systems = { walk = true },
-      waitsFor = { room = true, items = true },
-    })
     captureRuntimeBlockerCalls()
 
     gmcp.Room.Info = {
@@ -2142,7 +2136,8 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(reservationAfterMove, state.walk.reservationId)
     assert.are.equal(0, countRaised("demonwalker.move"))
     assert.are.equal(1, goldOwnerClearCount())
-    assert.is_table(blockerFor("walk:44"))
+    assert.is_nil(blockerFor("walk:44"))
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
 
     boop.config.useQueueing = true
     boop.executeAction("warp 42")
@@ -2235,52 +2230,43 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(sendsBeforeTerminal, countGoldSends())
   end)
 
-  it("keeps singleton GMCP, room, and target owners isolated at event boundaries", function()
+  it("keeps computed readiness independent from an active operation", function()
     boop.config.enabled = true
+    boop.runtime.beginConnectionLifecycle("event boundary test")
+    gmcp.IRE = nil
     helper.setRuntimeBlocker({
-      owner = "gmcp:ire",
-      code = "gmcp_ire_missing",
+      owner = "interrupt:88",
+      code = "interrupt_pending",
+      label = "interrupt pending",
       systems = { combat = true, walk = true },
-      waitsFor = { gmcp = true, prompt = true },
+      waitsFor = { prompt = true },
     })
-    helper.setRuntimeBlocker({
-      owner = "room:observation",
-      code = "room_partial",
-      systems = { combat = true, walk = true },
-      waitsFor = { gmcp = true },
-    })
-    helper.setRuntimeBlocker({
-      owner = "target:loss",
-      code = "target_lost",
-      systems = { combat = true, queue = true },
-      waitsFor = { gmcp = true, prompt = true },
-    })
-    captureRuntimeBlockerCalls()
+
+    boop.onCharStatus()
+    assert.is_false(boop.runtime.lifecycleSnapshot().ready)
+    assert.are.equal("interrupt:88", blockerSnapshot().owner)
+
+    gmcp.Room.Info = {
+      num = "2",
+      area = "Test Area",
+      exits = { south = "1" },
+    }
+    boop.onRoomInfo()
+    assert.is_false(boop.runtime.readinessSnapshot().room.ready)
+    assert.are.equal("interrupt:88", blockerSnapshot().owner)
 
     publishAcceptedRoomList({})
+    assert.is_true(boop.runtime.readinessSnapshot().room.ready)
+    assert.are.equal("interrupt:88", blockerSnapshot().owner)
 
-    local blockers = boop.runtime.blockersSnapshot()
-    assert.are.equal(2, #blockers)
-    assert.are.equal("gmcp:ire", blockers[1].owner)
-    assert.are.equal("target:loss", blockers[2].owner)
-    assert.are.equal("room:observation", clear_blocker_calls[1][1])
-
-    gmcp.IRE.Target.Set = "77"
-    boop.onTargetSet()
-    blockers = boop.runtime.blockersSnapshot()
-    assert.are.equal(2, #blockers)
-    assert.are.equal("gmcp:ire", blockers[1].owner)
-    assert.are.equal("target:loss", blockers[2].owner)
-    assert.are.equal("target:loss", note_gmcp_calls[#note_gmcp_calls][1])
-
+    gmcp.IRE = {
+      Display = { ButtonActions = {} },
+    }
+    boop.onIreSupportObserved("gmcp.IRE.Display.ButtonActions")
+    assert.is_false(boop.runtime.lifecycleSnapshot().ready)
     boop.onPrompt()
-    blockers = boop.runtime.blockersSnapshot()
-    assert.are.equal(0, #blockers)
-    assert.are.equal(
-      "gmcp:ire",
-      clear_blocker_calls[#clear_blocker_calls - 1][1]
-    )
-    assert.are.equal("target:loss", clear_blocker_calls[#clear_blocker_calls][1])
+    assert.is_true(boop.runtime.lifecycleSnapshot().ready)
+    assert.are.equal("interrupt:88", blockerSnapshot().owner)
   end)
 
   local targetEvidenceCases = {
@@ -2305,10 +2291,12 @@ describe("boop event-driven state transitions", function()
 
   for _, entry in ipairs(targetEvidenceCases) do
     local case = entry
-    it("satisfies only target:loss from " .. case.name .. " evidence", function()
+    it("keeps operations independent from " .. case.name .. " evidence", function()
       helper.setTarget("42", "a removed denizen", "80%")
       helper.setDenizens({
         { id = "42", name = "a removed denizen" },
+        { id = "77", name = "a set replacement" },
+        { id = "78", name = "an info replacement" },
       })
       helper.setRuntimeBlocker({
         owner = "interrupt:88",
@@ -2318,38 +2306,113 @@ describe("boop event-driven state transitions", function()
       })
       boop.config.enabled = true
       boop.config.targetingMode = "auto"
-      captureRuntimeBlockerCalls()
-
-      gmcp.Char.Items.Remove = {
-        location = "room",
-        item = { id = "42", name = "a removed denizen", attrib = "m" },
-      }
-      boop.onRoomItemsRemove()
-      local lossCallback = scheduled_callbacks[#scheduled_callbacks].callback
-      assert.is_function(lossCallback)
-      lossCallback()
-
-      assert.are.equal("target:loss", set_blocker_calls[1][1])
-      local blockers = boop.runtime.blockersSnapshot()
-      assert.are.equal(2, #blockers)
-      assert.are.equal("target:loss", blockers[1].owner)
-      assert.are.equal("interrupt:88", blockers[2].owner)
 
       case.invoke()
 
-      assert.are.equal("target:loss", note_gmcp_calls[#note_gmcp_calls][1])
-      assert.are.equal("target", note_gmcp_calls[#note_gmcp_calls][2])
-      blockers = boop.runtime.blockersSnapshot()
-      assert.are.equal(2, #blockers)
-
-      boop.onPrompt()
-
-      blockers = boop.runtime.blockersSnapshot()
+      local blockers = boop.runtime.operationLocksSnapshot()
       assert.are.equal(1, #blockers)
       assert.are.equal("interrupt:88", blockers[1].owner)
-      assert.are.equal("target:loss", clear_blocker_calls[#clear_blocker_calls][1])
+      assert.is_nil(blockerFor("target:loss"))
+      assert.is_nil(blockerFor("room:observation"))
     end)
   end
+
+  it("clears old-room target identity on movement without stopping walk", function()
+    helper.setArea("Test Area")
+    helper.setTarget("42", "Thierry, the ferryman", "80%")
+    helper.setDenizens({
+      { id = "42", name = "Thierry, the ferryman" },
+    })
+    boop.state.targeting.room = "1"
+    boop.state.walk.active = true
+    boop.state.walk.owned = true
+    boop.state.walk.generation = 17
+    boop.config.enabled = true
+    boop.config.targetingMode = "whitelist"
+    helper.setWhitelist("Test Area", { "Thierry, the ferryman" })
+
+    gmcp.Room.Info = {
+      num = "2",
+      area = "Test Area",
+      exits = { west = "1" },
+    }
+    boop.onRoomInfo()
+
+    assert.are.equal("", boop.state.targeting.currentTargetId)
+    assert.are.equal("", boop.state.targeting.targetName)
+    assert.is_true(boop.state.walk.active)
+    assert.is_true(boop.state.walk.owned)
+    assert.are.equal(17, boop.state.walk.generation)
+    assert.is_nil(blockerFor("room:observation"))
+    assert.is_nil(blockerFor("target:loss"))
+    assert.is_nil(blockerFor("walk:17"))
+  end)
+
+  it("reconciles an absent target from accepted room contents", function()
+    helper.setArea("Test Area")
+    helper.setTarget("42", "Thierry, the ferryman", "80%")
+    helper.setDenizens({
+      { id = "42", name = "Thierry, the ferryman" },
+    })
+    boop.state.targeting.room = "1"
+    boop.config.enabled = false
+    boop.config.targetingMode = "whitelist"
+    helper.setWhitelist("Test Area", { "Thierry, the ferryman" })
+
+    boop.runtime.startRoomObservation("1", {
+      boundary = "fresh_start",
+      reason = "accepted empty room test",
+    })
+    publishAcceptedRoomList({})
+
+    assert.are.equal("", boop.state.targeting.currentTargetId)
+    assert.are.equal("", boop.state.targeting.targetName)
+    assert.are.equal(0, #boop.state.targeting.denizens)
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+  end)
+
+  it("recovers an empty room after target removal without stopping walk or creating a target owner", function()
+    helper.setArea("Test Area")
+    helper.setTarget("42", "a departing denizen", "80%")
+    helper.setDenizens({
+      { id = "42", name = "a departing denizen" },
+    })
+    helper.seedRoomObservation("1", {
+      generation = 5,
+      infoSeen = true,
+      itemsSeen = true,
+      acceptedItems = {
+        denizenItem("42", "a departing denizen"),
+      },
+    })
+    boop.state.targeting.room = "1"
+    boop.state.walk.active = true
+    boop.state.walk.owned = true
+    boop.state.walk.generation = 23
+    boop.state.walk.roomGeneration = 5
+    boop.state.walk.arrivalRoom = "1"
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
+
+    gmcp.Char.Items.Remove = {
+      location = "room",
+      item = denizenItem("42", "a departing denizen"),
+    }
+    boop.onRoomItemsRemove()
+
+    assert.are.equal("", boop.state.targeting.currentTargetId)
+    assert.is_true(boop.state.walk.active)
+    assert.is_nil(blockerFor("target:loss"))
+
+    local callback = scheduled_callbacks[#scheduled_callbacks]
+      and scheduled_callbacks[#scheduled_callbacks].callback
+    assert.is_function(callback)
+    callback()
+
+    assert.is_true(boop.state.walk.active)
+    assert.are.equal(23, boop.state.walk.generation)
+    assert.is_nil(blockerFor("target:loss"))
+  end)
 
   it("retargets without clearing the server queue when the current denizen is removed from the room", function()
     helper.setArea("Test Area")
@@ -2390,7 +2453,7 @@ describe("boop event-driven state transitions", function()
     assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
   end)
 
-  it("releases prior-room target loss only after fresh room evidence can retarget", function()
+  it("retargets only after fresh room evidence replaces a lost target", function()
     helper.setArea("Test Area")
     helper.setClass("Occultist")
     helper.learnSkill("Lycantha", "Domination")
@@ -2420,16 +2483,17 @@ describe("boop event-driven state transitions", function()
     local lossCallback = scheduled_callbacks[#scheduled_callbacks].callback
     assert.is_function(lossCallback)
     lossCallback()
-    assert.is_table(blockerFor("target:loss"))
+    assert.is_nil(blockerFor("target:loss"))
+    assert.are.equal("", boop.state.targeting.currentTargetId)
 
     helper.setRuntimeBlocker({
-      owner = "test:retained",
+      owner = "interrupt:retained",
       code = "interrupt_pending",
       systems = {},
       waitsFor = { timeout = true },
     })
     boop.onPrompt()
-    assert.is_table(blockerFor("target:loss"))
+    assert.is_nil(blockerFor("target:loss"))
 
     gmcp.Room.Info = {
       num = "2",
@@ -2437,8 +2501,9 @@ describe("boop event-driven state transitions", function()
       exits = { west = "1" },
     }
     boop.onRoomInfo()
-    assert.is_table(blockerFor("target:loss"))
-    assert.is_table(blockerFor("room:observation"))
+    assert.is_nil(blockerFor("target:loss"))
+    assert.is_nil(blockerFor("room:observation"))
+    assert.is_false(boop.runtime.readinessSnapshot().room.ready)
 
     publishAcceptedRoomList({
       denizenItem("43", "a fresh denizen"),
@@ -2446,7 +2511,7 @@ describe("boop event-driven state transitions", function()
 
     assert.is_nil(blockerFor("target:loss"))
     assert.is_nil(blockerFor("room:observation"))
-    assert.is_table(blockerFor("test:retained"))
+    assert.is_table(blockerFor("interrupt:retained"))
     assert.are.equal("43", boop.state.targeting.currentTargetId)
     assert.are.equal("a fresh denizen", boop.state.targeting.targetName)
     assert.are.equal(1, countSent("settarget 43"))
@@ -2461,7 +2526,7 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(0, countSent("settarget 42"))
   end)
 
-  it("treats a valid denizen add as target-loss recovery evidence", function()
+  it("wakes targeting when a valid denizen is added", function()
     helper.setArea("Test Area")
     helper.setClass("Occultist")
     helper.learnSkill("Lycantha", "Domination")
@@ -2471,23 +2536,6 @@ describe("boop event-driven state transitions", function()
     boop.config.enabled = true
     boop.config.useQueueing = true
     boop.config.targetingMode = "auto"
-    helper.setRuntimeBlocker({
-      owner = "target:loss",
-      code = "target_lost",
-      label = "target left room",
-      systems = {
-        target = true,
-        combat = true,
-        queue = true,
-      },
-      waitsFor = {
-        gmcp = true,
-        prompt = true,
-      },
-    })
-    boop.onPrompt()
-    assert.is_table(blockerFor("target:loss"))
-
     gmcp.Char.Items.Add = {
       location = "room",
       item = denizenItem("44", "an arriving denizen"),
@@ -2496,7 +2544,9 @@ describe("boop event-driven state transitions", function()
 
     assert.is_nil(blockerFor("target:loss"))
     assert.are.equal("44", boop.state.targeting.denizens[1].id)
-    assert.is_true(boop.tick())
+    local wakeCallback = scheduled_callbacks[#scheduled_callbacks].callback
+    assert.is_function(wakeCallback)
+    wakeCallback()
     assert.are.equal("44", boop.state.targeting.currentTargetId)
     assert.are.equal(1, countSent("settarget 44"))
     assert.are.equal(
@@ -2550,7 +2600,7 @@ describe("boop event-driven state transitions", function()
       state.walk.moveIssuedForRoomGeneration = false
       state.walk.reservationId = 0
       helper.setRuntimeBlocker({
-        owner = "test:retained",
+        owner = "interrupt:retained-audit",
         code = "interrupt_pending",
         label = "retained unrelated owner",
         systems = {
@@ -2583,7 +2633,7 @@ describe("boop event-driven state transitions", function()
       assert.is_true(operation.revalidationAttempted)
       assert.are.same({ "Char.Items.Room" }, gmcp_requests)
       assert.is_table(blockerFor(operation.blockerOwner))
-      assert.is_table(blockerFor("test:retained"))
+      assert.is_table(blockerFor("interrupt:retained-audit"))
 
       gmcp.Char.Items.Remove = {
         location = "room",
@@ -2615,11 +2665,14 @@ describe("boop event-driven state transitions", function()
       assert.are.equal(operation.generation, accepted.generation)
       assert.are.equal("pickup_pending", accepted.phase)
       assert.is_table(blockerFor(accepted.blockerOwner))
-      assert.is_table(blockerFor("test:retained"))
+      assert.is_table(blockerFor("interrupt:retained-audit"))
       assert.are.equal(0, countGoldSends())
       assert.are.equal(0, countRaised("demonwalker.move"))
 
-      boop.runtime.clearBlocker("test:retained", "real release")
+      boop.runtime.clearOperationLock(
+        "interrupt:retained-audit",
+        "real release"
+      )
       assert.is_true(boop.flushPendingGold("unrelated owner released"))
       assert.are.equal(1, countGoldSends())
       assert.are.equal(0, countSent("queue clear"))
@@ -2648,7 +2701,7 @@ describe("boop event-driven state transitions", function()
 
       assert.is_false(boop.state.gold.operation)
       assert.is_nil(blockerFor(operation.blockerOwner))
-      assert.is_table(blockerFor("test:retained"))
+      assert.is_table(blockerFor("interrupt:retained-audit"))
       local moved = boop.runtime.roomObservationSnapshot()
       assert.is_false(moved.itemsSeen)
       assert.are.equal(0, boop.runtime.state().walk.reservationId)
@@ -2658,7 +2711,7 @@ describe("boop event-driven state transitions", function()
       local drained = boop.runtime.roomObservationSnapshot()
       assert.is_false(drained.itemsSeen)
       assert.is_false(boop.state.gold.operation)
-      assert.is_table(blockerFor("test:retained"))
+      assert.is_table(blockerFor("interrupt:retained-audit"))
       assert.are.equal(0, countGoldSends())
       assert.are.equal(0, countSent("queue clear"))
       assert.are.equal(0, countRaised("demonwalker.move"))
@@ -2829,7 +2882,6 @@ describe("boop event-driven state transitions", function()
     helper.setTarget("42", "a test denizen", "80%")
     boop.state.targeting.targetShield = { attempted = false, timer = 55 }
     gmcp.IRE.Target.Set = "77"
-    captureRuntimeBlockerCalls()
 
     boop.onTargetSet()
 
@@ -2838,10 +2890,7 @@ describe("boop event-driven state transitions", function()
     assert.is_false(boop.state.targeting.targetShield)
     assert.stub(kill_timer_stub).was_called_with(55)
     assert.stub(send_stub).was_not_called_with("settarget 77", false)
-    assert.are.equal("gmcp:ire", note_gmcp_calls[1][1])
-    assert.are.equal("ire", note_gmcp_calls[1][2])
-    assert.are.equal("target:loss", note_gmcp_calls[#note_gmcp_calls][1])
-    assert.are.equal("target", note_gmcp_calls[#note_gmcp_calls][2])
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
   end)
 
   it("clears tracked shield state when gmcp target info changes", function()
@@ -2850,7 +2899,6 @@ describe("boop event-driven state transitions", function()
     boop.state.targeting.targetShield = { attempted = false, timer = 56 }
     gmcp.IRE.Target.Info.id = "78"
     gmcp.IRE.Target.Info.short_desc = "a target-info denizen"
-    captureRuntimeBlockerCalls()
 
     boop.onTargetInfo()
 
@@ -2859,10 +2907,7 @@ describe("boop event-driven state transitions", function()
     assert.is_false(boop.state.targeting.targetShield)
     assert.stub(kill_timer_stub).was_called_with(56)
     assert.stub(send_stub).was_not_called_with("settarget 78", false)
-    assert.are.equal("gmcp:ire", note_gmcp_calls[1][1])
-    assert.are.equal("ire", note_gmcp_calls[1][2])
-    assert.are.equal("target:loss", note_gmcp_calls[#note_gmcp_calls][1])
-    assert.are.equal("target", note_gmcp_calls[#note_gmcp_calls][2])
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
   end)
 
   it("clears stale target name when gmcp target set clears", function()
@@ -2929,7 +2974,7 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(sendsBeforeRemove, countGoldSends())
   end)
 
-  it("routes current Room.Info and complete List through one walker owner", function()
+  it("routes current Room.Info and complete List through walker state", function()
     _G.demonwalker = {
       enabled = true,
       init = function() return true end,
@@ -2960,7 +3005,6 @@ describe("boop event-driven state transitions", function()
     state.walk.refreshWarned = false
 
     assert.is_true(boop.walk.maybeAdvance("event ordering seed"))
-    local owner = "walk:12"
     local oldEmitter = state.walk.emitterTimer
     local oldEmitterCallback
     for _, entry in ipairs(scheduled_callbacks) do
@@ -2969,10 +3013,7 @@ describe("boop event-driven state transitions", function()
       end
     end
     assert.is_function(oldEmitterCallback)
-    assert.are.equal(
-      "walk_move_pending",
-      state.combat.blockersByOwner[owner].code
-    )
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
 
     gmcp.Room.Info = {
       num = 2,
@@ -2990,10 +3031,8 @@ describe("boop event-driven state transitions", function()
     assert.is_false(state.walk.moveIssuedForRoomGeneration)
     assert.is_nil(state.walk.emitterTimer)
     assert.stub(kill_timer_stub).was_called_with(oldEmitter)
-    assert.are.equal(
-      "walk_room_unsettled",
-      state.combat.blockersByOwner[owner].code
-    )
+    assert.is_false(boop.runtime.readinessSnapshot().room.ready)
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
 
     local roomGeneration = state.walk.roomGeneration
     local reservationAfterRoomInfo = state.walk.reservationId
@@ -3010,10 +3049,7 @@ describe("boop event-driven state transitions", function()
     assert.is_true(state.walk.moveQueued)
     assert.is_true(state.walk.moveIssuedForRoomGeneration)
     assert.are.equal(reservationAfterRoomInfo + 1, state.walk.reservationId)
-    assert.are.equal(
-      "walk_move_pending",
-      state.combat.blockersByOwner[owner].code
-    )
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
     local currentEmitter = state.walk.emitterTimer
     local currentEmitterCallback
     for _, entry in ipairs(scheduled_callbacks) do
@@ -3044,13 +3080,6 @@ describe("boop event-driven state transitions", function()
     state.walk.generation = 22
     state.walk.roomGeneration = 9
     state.walk.arrivalRoom = "1"
-    helper.setRuntimeBlocker({
-      owner = "walk:22",
-      code = "walk_room_unsettled",
-      label = "current room evidence is incomplete",
-      systems = { walk = true },
-      waitsFor = { room = true, items = true },
-    })
     local before = {
       active = state.walk.active,
       owned = state.walk.owned,
@@ -3116,7 +3145,7 @@ describe("boop event-driven state transitions", function()
         exits = {},
       }
       helper.setRuntimeBlocker({
-        owner = "test:retained",
+        owner = "interrupt:retained-audit",
         code = "interrupt_pending",
         label = "retained unrelated owner",
         systems = { audit = true },
@@ -3146,15 +3175,16 @@ describe("boop event-driven state transitions", function()
       assert.are.equal("away", boop.state.combat.pullState.phase)
       assert.is_table(blockerFor(interrupt.blockerOwner))
       assert.is_table(blockerFor(pull.blockerOwner))
-      assert.is_table(blockerFor("room:observation"))
-      assert.is_table(blockerFor("test:retained"))
+      assert.is_nil(blockerFor("room:observation"))
+      assert.is_false(boop.runtime.readinessSnapshot().room.ready)
+      assert.is_table(blockerFor("interrupt:retained-audit"))
 
       boop.onPrompt()
       assert.is_false(boop.state.diag.operation)
       assert.is_nil(blockerFor(interrupt.blockerOwner))
       assert.is_table(blockerFor(pull.blockerOwner))
-      assert.is_table(blockerFor("room:observation"))
-      assert.is_table(blockerFor("test:retained"))
+      assert.is_nil(blockerFor("room:observation"))
+      assert.is_table(blockerFor("interrupt:retained-audit"))
 
       interruptTimeout()
       assert.is_false(boop.state.diag.operation)
@@ -3169,8 +3199,8 @@ describe("boop event-driven state transitions", function()
 
       assert.is_false(boop.state.combat.pullState)
       assert.is_nil(blockerFor(pull.blockerOwner))
-      assert.is_table(blockerFor("room:observation"))
-      assert.is_table(blockerFor("test:retained"))
+      assert.is_nil(blockerFor("room:observation"))
+      assert.is_table(blockerFor("interrupt:retained-audit"))
 
       pullTimeout()
       assert.is_false(boop.state.combat.pullState)
@@ -3224,7 +3254,7 @@ describe("boop event-driven state transitions", function()
       boop.config.prequeueEnabled = true
       boop.config.goldPack = case.pack
       helper.setRuntimeBlocker({
-        owner = "test:retained",
+        owner = "interrupt:retained-audit",
         code = "interrupt_pending",
         label = "retained unrelated owner",
         systems = { audit = true },
@@ -3246,7 +3276,7 @@ describe("boop event-driven state transitions", function()
       assert.is_function(retargetCallback)
       assert.are.equal("", boop.state.targeting.currentTargetId)
       assert.are.same(operation, copyGoldOperation(boop.state.gold.operation))
-      assert.is_table(blockerFor("test:retained"))
+      assert.is_table(blockerFor("interrupt:retained-audit"))
       assert.are.equal(0, countSent("queue clear"))
       assert.are.equal(0, countSent("command hound at 43"))
       assert.are.equal(0, countSent("harry 43"))
@@ -3262,7 +3292,7 @@ describe("boop event-driven state transitions", function()
       assert.are.equal(0, countSent("setalias BOOP_ATTACK command hound at 43"))
       assert.is_false(case.stale())
       assert.are.same(operation, copyGoldOperation(boop.state.gold.operation))
-      assert.is_table(blockerFor("test:retained"))
+      assert.is_table(blockerFor("interrupt:retained-audit"))
       assert.are.equal(0, countRaised("demonwalker.move"))
     end)
   end
@@ -3295,14 +3325,7 @@ describe("boop event-driven state transitions", function()
     state.walk.moveIssuedForRoomGeneration = false
     state.walk.reservationId = 0
     helper.setRuntimeBlocker({
-      owner = "walk:12",
-      code = "walk_room_unsettled",
-      label = "current room evidence is incomplete",
-      systems = { walk = true },
-      waitsFor = { room = true, items = true },
-    })
-    helper.setRuntimeBlocker({
-      owner = "test:retained",
+      owner = "interrupt:retained-audit",
       code = "interrupt_pending",
       label = "retained unrelated owner",
       systems = { audit = true },
@@ -3338,8 +3361,8 @@ describe("boop event-driven state transitions", function()
 
     assert.are.equal(1, state.walk.reservationId)
     assert.is_true(state.walk.moveQueued)
-    assert.are.equal("walk_move_pending", blockerFor("walk:12").code)
-    assert.is_table(blockerFor("test:retained"))
+    assert.is_nil(blockerFor("walk:12"))
+    assert.is_table(blockerFor("interrupt:retained-audit"))
     local emitter = callbackForTimer(state.walk.emitterTimer)
     assert.is_function(emitter)
 
@@ -3349,7 +3372,7 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(1, countRaised("demonwalker.move"))
     assert.are.equal(0, countRaised("demonwalker.stop"))
     assert.are.equal(1, countGoldSends())
-    assert.is_table(blockerFor("test:retained"))
+    assert.is_table(blockerFor("interrupt:retained-audit"))
   end)
 
   it("makes old gold and walker callbacks no-ops after new room and run generations", function()
@@ -3366,7 +3389,7 @@ describe("boop event-driven state transitions", function()
     helper.setDenizens({})
     seedSettledGoldRoom("1", 1)
     helper.setRuntimeBlocker({
-      owner = "test:retained",
+      owner = "interrupt:retained-audit",
       code = "interrupt_pending",
       label = "retained unrelated owner",
       systems = { audit = true },
@@ -3386,11 +3409,6 @@ describe("boop event-driven state transitions", function()
     assert.is_true(boop.walk.maybeAdvance("old generation seed"))
     local oldEmitter = callbackForTimer(state.walk.emitterTimer)
     assert.is_function(oldEmitter)
-    boop.runtime.clearBlocker(
-      "walk:" .. tostring(state.walk.generation),
-      "cross-lifecycle callback setup"
-    )
-
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
     local oldGold = copyGoldOperation(boop.state.gold.operation)
     local oldGoldTimeout = callbackForTimer(oldGold.timeoutTimer)
@@ -3442,7 +3460,7 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(timerCount, #scheduled_callbacks)
     assert.are.equal(0, countRaised("demonwalker.move"))
     assert.are.equal(0, countRaised("demonwalker.stop"))
-    assert.is_table(blockerFor("test:retained"))
+    assert.is_table(blockerFor("interrupt:retained-audit"))
   end)
 
   it("treats Mudlet event names as adapter metadata instead of generation tokens", function()

@@ -108,6 +108,7 @@ describe("boop runtime coordinator", function()
     local state = boop.runtime.state()
     local domains = {
       "combat",
+      "lifecycle",
       "targeting",
       "queue",
       "gold",
@@ -142,6 +143,88 @@ describe("boop runtime coordinator", function()
     assert.is_table(snapshot.systems)
     assert.is_table(snapshot.waitsFor)
     assert.is_table(snapshot.observed)
+  end)
+
+  it("migrates legacy readiness owners and retains only operations", function()
+    local state = boop.runtime.state()
+    state.combat.operationModelVersion = nil
+    state.combat.blockersByOwner = {
+      ["gmcp:ire"] = {
+        code = "gmcp_ire_missing",
+      },
+      ["room:observation"] = {
+        code = "room_partial",
+      },
+      ["target:loss"] = {
+        code = "target_lost",
+      },
+      ["walk:7"] = {
+        code = "walk_move_pending",
+      },
+      ["interrupt:8"] = {
+        code = "interrupt_pending",
+      },
+      ["pull:9"] = {
+        code = "pull_active",
+      },
+      ["gold:10"] = {
+        code = "gold_pickup_pending",
+      },
+    }
+
+    state = boop.runtime.ensureState()
+
+    assert.are.same({
+      ["gold:10"] = {
+        code = "gold_pickup_pending",
+      },
+      ["interrupt:8"] = {
+        code = "interrupt_pending",
+      },
+      ["pull:9"] = {
+        code = "pull_active",
+      },
+    }, state.combat.operationLocksByOwner)
+    assert.are.equal(1, state.combat.operationModelVersion)
+    assert.are.equal(
+      state.combat.blockersByOwner,
+      state.combat.operationLocksByOwner
+    )
+  end)
+
+  it("keeps compatibility blockers out of operation decisions", function()
+    helper.setRuntimeBlocker({
+      owner = "room:observation",
+      code = "room_partial",
+      label = "legacy room hold",
+      systems = { combat = true, walk = true },
+    })
+    assert.is_table(boop.runtime.setOperationLock(
+      "interrupt:8",
+      "interrupt_pending",
+      "interrupt pending",
+      { combat = true },
+      { prompt = true }
+    ))
+
+    assert.are.equal(2, #boop.runtime.blockersSnapshot())
+    local operations = boop.runtime.operationLocksSnapshot()
+    assert.are.equal(1, #operations)
+    assert.are.equal("interrupt:8", operations[1].owner)
+    assert.are.equal(
+      "interrupt:8",
+      boop.runtime.operationLockSnapshot().owner
+    )
+    assert.is_true(boop.runtime.operationHolds("combat"))
+    assert.is_false(boop.runtime.operationHolds("walk"))
+
+    assert.is_true(boop.runtime.clearOperationLock(
+      "interrupt:8",
+      "test complete"
+    ))
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal("", boop.runtime.operationLockSnapshot().owner)
+    assert.is_false(boop.runtime.operationHolds("combat"))
   end)
 
   it("resets pull generation and active-record fields independently", function()
@@ -510,7 +593,7 @@ describe("boop runtime coordinator", function()
     assert.are.equal("harry 42", result.effects[2].plan.rage)
   end)
 
-  it("holds automation effects while the owned blocker affects runtime systems", function()
+  it("holds automation effects while an operation affects runtime systems", function()
     helper.setClass("Occultist")
     helper.setTargetHp("80%")
     helper.setRage(14)
@@ -523,8 +606,9 @@ describe("boop runtime coordinator", function()
       { id = "42", name = "a test denizen" },
     })
     helper.setRuntimeBlocker({
-      code = "gmcp_ire_missing",
-      label = "GMCP IRE missing",
+      owner = "interrupt:hold-test",
+      code = "interrupt_pending",
+      label = "interrupt pending",
       systems = {
         target = true,
         combat = true,
@@ -548,11 +632,11 @@ describe("boop runtime coordinator", function()
     boop.config.useQueueing = true
     boop.state.gold.autoGrabPending = true
 
-    assert.is_true(boop.runtime.shouldHold("target"))
-    assert.is_true(boop.runtime.shouldHold("combat"))
-    assert.is_true(boop.runtime.shouldHold("queue"))
-    assert.is_true(boop.runtime.shouldHold("gold"))
-    assert.is_true(boop.runtime.shouldHold("walk"))
+    assert.is_true(boop.runtime.operationHolds("target"))
+    assert.is_true(boop.runtime.operationHolds("combat"))
+    assert.is_true(boop.runtime.operationHolds("queue"))
+    assert.is_true(boop.runtime.operationHolds("gold"))
+    assert.is_true(boop.runtime.operationHolds("walk"))
 
     local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
     local kinds = effectKinds(result)

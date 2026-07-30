@@ -171,6 +171,9 @@ describe("boop staged gold handling", function()
   end)
 
   it("waits for complete current-room evidence and coalesces duplicate text, Add, and List signals", function()
+    local observation = boop.runtime.startRoomObservation("1", {
+      boundary = "fresh_start",
+    })
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
 
     assert.are.equal(0, #sent)
@@ -183,7 +186,7 @@ describe("boop staged gold handling", function()
     assert.is_false(deferred.terminal)
     assert.are.equal("gold:1", deferred.blockerOwner)
     assert.are.equal("1", deferred.roomId)
-    assert.are.equal(1, deferred.roomGeneration)
+    assert.are.equal(observation.generation, deferred.roomGeneration)
     local deferredFlushTimer = deferred.flushTimer
     local deferredTimeoutTimer = deferred.timeoutTimer
 
@@ -288,10 +291,8 @@ describe("boop staged gold handling", function()
     assert.are.equal(sendsAfterMove, #sent)
   end)
 
-  it("authorizes initial get only by exact self-owner exclusion", function()
+  it("authorizes initial get only after other operations release", function()
     local owners = {
-      "room:observation",
-      "flee:active",
       "pull:8",
       "interrupt:9",
     }
@@ -314,17 +315,15 @@ describe("boop staged gold handling", function()
       assert.are.equal(0, blocked.getRetries)
       assert.are.equal(0, #sent)
 
-      boop.runtime.clearBlocker(owner, "test release")
+      boop.runtime.clearOperationLock(owner, "test release")
       assert.is_true(boop.flushPendingGold("test release"))
       assert.are.equal(1, #sent)
       assert.are.equal("queue add full get sovereigns", sent[1].command)
     end
   end)
 
-  it("authorizes initial put only by exact self-owner exclusion", function()
+  it("authorizes initial put only after other operations release", function()
     local owners = {
-      "room:observation",
-      "flee:active",
       "pull:8",
       "interrupt:9",
     }
@@ -348,7 +347,7 @@ describe("boop staged gold handling", function()
       assert.are.equal(0, blocked.putRetries)
       assert.are.equal(sendsBeforeSuccess, #sent)
 
-      boop.runtime.clearBlocker(owner, "test release")
+      boop.runtime.clearOperationLock(owner, "test release")
       assert.is_true(boop.flushPendingGold("test release"))
       assert.are.equal(sendsBeforeSuccess + 1, #sent)
       assert.are.equal("queue add freestand put sovereigns in pack", sent[#sent].command)
@@ -483,10 +482,13 @@ describe("boop staged gold handling", function()
     boop.onGoldDropLine("A final handful of sovereigns spills.")
 
     assert.are.equal(
-      1,
+      0,
       countSent("queue add full get sovereigns"),
-      "GOLD_SAME_ROOM_PIPELINE_BROKEN: copied accepted evidence depended on persistent GMCP"
+      "GOLD_SAME_ROOM_PIPELINE_BROKEN: mismatched room state authorized pickup"
     )
+    gmcp.Room.Info.num = "1"
+    assert.is_true(boop.flushPendingGold("room identity restored"))
+    assert.are.equal(1, countSent("queue add full get sovereigns"))
   end)
 
   describe("G-03-5 settled-add-revalidation", function()

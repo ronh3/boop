@@ -15,7 +15,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `bh` (toggle on/off)
 - `boop on` / `boop off`
 - `boop help` / `boop help <number|topic|home>` (workflow help; examples: `boop help targeting`, `boop help rage`, `boop help gold`; `boop help audit` is an advanced review dump)
-- `boop status` (status summary with blocker `code -- label`, affected systems, and waits-for state)
+- `boop status` (installed version, computed status, next action, and any active operation)
 - `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow; core sections are `combat`, `targeting`, `loot`, and `debug`)
 - `boop preset` / `boop preset list` / `boop preset <solo|party|leader|leader-call>` (show or apply recommended baseline settings)
 - `boop party` / `boop party <status|mode ...|walk ...|assist ...|targetcall ...|affcalls ...|size <n>|roster ...|combos>` (party dashboard and coordination shortcuts)
@@ -81,6 +81,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `merge-reorder` matches the sender's order for shared entries, appends missing sender entries, then keeps your local-only extras at the bottom in their current order.
 - `ih` shows all valid object rows, but only GMCP-recognized denizens get whitelist/blacklist action labels.
 - Denizens on the global blacklist do not show `ih` whitelist/blacklist action labels.
+- The global blacklist overrides every targeting mode, including manual targeting and leader target calls.
 - `boop walk` integrates with `demonnicAutoWalker`; if it is missing, use `boop walk install`.
 - Manual targeting is an intentional automatic-walk hold; use `boop targeting auto` before expecting route movement.
 - `boop walk stop` ends a boop-owned run or detaches from an external run; when no boop walk is active it reports `walk stop: no active boop walk`.
@@ -103,8 +104,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - `fly` queues `fly` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
 - `leap <direction>` queues `leap <direction>` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
 - `pull <mobname> <direction>` uses the configured `boop separator` to send one chained game command: move in, use the highest available damage battlerage attack against the typed mob name, then `leap` back using the opposite direction.
-- Pull uses a runtime hold and never changes saved enabled configuration.
-- Return-room GMCP or the current operation timeout releases only the pull-owned hold; stale callbacks from older pull generations are ignored.
+- Pull uses an owner-keyed operation lock and never changes saved enabled configuration.
+- Return-room GMCP or the current operation timeout releases only the pull operation; stale callbacks from older pull generations are ignored.
 - If there is no ready damage battlerage attack or not enough rage to use one, `pull` aborts before movement.
 - `pullRageReserve` optionally makes normal battlerage spending hold back enough rage to preserve a pull-capable damage hit.
 - With `pullRageReserve` on, rage shieldbreak also yields to a standard shieldbreak when the class/profile already has one available.
@@ -118,7 +119,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop trace on|off` controls persisted collection into the bounded trace buffer; `show` reads retained entries and `clear` empties them.
 - `boop trace live on|off` controls session-only streaming, starts off on package initialization, is not persisted, and does not enable collection.
 - Live trace output requires collection and live streaming to both be on; each newly accepted entry prints once as `trace live: HH:MM:SS | ...`.
-- Blockers display as code -- label | +N more; trace/debug list all active blocker owners.
+- Status surfaces compute lifecycle, room, target, and walker readiness directly. Trace/debug list only active interrupt, pull, and gold operations.
+- Movement and accepted room contents clear stale target intent without stopping the walker; an active pull deliberately preserves its target until the pull returns or terminates.
 - Attack-line gagging can be toggled separately for your own attacks and other players' attacks, replacing matched lines with `Who: What -> Victim`.
 - Self attack gag summaries coalesce repeated same-source/same-type damage such as multihit weapon attacks and gear procs, and append total damage before balance time.
 - Battlerage attack lines on the same target fold into the pending self attack summary so their damage remains visible when standard and rage actions fire together.
