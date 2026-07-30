@@ -163,6 +163,10 @@ describe("boop walk integration", function()
   end
 
   local function runTargetingAlias(mode)
+    local testsDirectory = tostring(os.getenv("TESTS_DIRECTORY") or "")
+    local repoRoot = os.getenv("BOOP_REPO_ROOT")
+      or testsDirectory:match("^(.*)/tests/?$")
+    repoRoot = assert(repoRoot, "boop repository root is required")
     local previousMatches = _G.matches
     _G.matches = {
       "boop targeting " .. tostring(mode),
@@ -170,8 +174,7 @@ describe("boop walk integration", function()
     }
     local ok, err = pcall(
       dofile,
-      os.getenv("BOOP_REPO_ROOT")
-        .. "/src/aliases/boop/Targeting/Boop_Targeting.lua"
+      repoRoot .. "/src/aliases/boop/Targeting/Boop_Targeting.lua"
     )
     _G.matches = previousMatches
     assert.is_true(ok, tostring(err))

@@ -1695,10 +1695,14 @@ function boop.targets.onShielded(name)
       boop.trace.log("shield seen: " .. captured)
     end
     if boop.refreshPrequeuedStandard then
-      boop.refreshPrequeuedStandard(
-        "shield seen",
-        prequeueAuthority or nil
-      )
+      if prequeueAuthority then
+        boop.refreshPrequeuedStandard(
+          "shield seen",
+          prequeueAuthority
+        )
+      else
+        boop.refreshPrequeuedStandard("shield seen")
+      end
     end
     return true
   end
