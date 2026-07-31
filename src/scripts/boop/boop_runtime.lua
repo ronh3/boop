@@ -452,6 +452,7 @@ function boop.runtime.beginRoomResponseFence(reason, opts)
     roomSeen = false,
     invItems = false,
     roomItems = false,
+    roomDeltas = {},
     completed = false,
     consumed = false,
     operationGeneration = roomOnly
@@ -544,6 +545,126 @@ local function deepEqual(left, right, seen)
     end
   end
   return true
+end
+
+local function roomItemId(item)
+  if type(item) ~= "table" then
+    return ""
+  end
+  return normalizeRoomId(item.id)
+end
+
+local function applyRoomItemDelta(items, kind, item)
+  local out = type(items) == "table" and deepCopy(items) or {}
+  local id = roomItemId(item)
+  if id == "" then
+    return out
+  end
+
+  if kind == "remove" then
+    for index = #out, 1, -1 do
+      if roomItemId(out[index]) == id then
+        table.remove(out, index)
+      end
+    end
+    return out
+  end
+
+  for index, existing in ipairs(out) do
+    if roomItemId(existing) == id then
+      local merged = deepCopy(existing)
+      for key, value in pairs(item) do
+        if merged[key] == nil then
+          merged[key] = deepCopy(value)
+        end
+      end
+      out[index] = merged
+      return out
+    end
+  end
+  out[#out + 1] = deepCopy(item)
+  return out
+end
+
+local function applyRoomItemDeltas(items, deltas)
+  local out = type(items) == "table" and deepCopy(items) or {}
+  for _, delta in ipairs(deltas or {}) do
+    local kind = tostring(delta and delta.kind or ""):lower()
+    if kind == "add" or kind == "remove" then
+      out = applyRoomItemDelta(out, kind, delta.item)
+    end
+  end
+  return out
+end
+
+function boop.runtime.observeRoomItemDelta(kind, item)
+  local normalizedKind = tostring(kind or ""):lower()
+  local id = roomItemId(item)
+  if (normalizedKind ~= "add" and normalizedKind ~= "remove")
+      or id == "" then
+    return { status = "ignored" }
+  end
+
+  local observation = roomObservationState()
+  if not observation.infoSeen
+      or observation.roomId == ""
+      or currentRoomId() ~= observation.roomId then
+    return { status = "stale" }
+  end
+
+  local delta = {
+    kind = normalizedKind,
+    item = deepCopy(item),
+  }
+  local fenceId = false
+  for _, fence in ipairs(observation.fenceQueue) do
+    if type(fence) == "table"
+        and fence.valid
+        and not fence.consumed
+        and tonumber(fence.generation) == tonumber(observation.generation)
+        and normalizeRoomId(fence.roomId) == observation.roomId then
+      fence.roomDeltas = type(fence.roomDeltas) == "table"
+        and fence.roomDeltas
+        or {}
+      fence.roomDeltas[#fence.roomDeltas + 1] = deepCopy(delta)
+      fenceId = tonumber(fence.fenceId) or false
+    end
+  end
+
+  local applicationId = false
+  local application = observation.activeApplication
+  local authority = type(application) == "table"
+      and application.sourceAuthority
+    or false
+  if type(application) == "table"
+      and application.valid
+      and not application.claimed
+      and not application.consumed
+      and type(authority) == "table"
+      and tonumber(authority.observationGeneration)
+        == tonumber(observation.generation)
+      and normalizeRoomId(authority.roomId) == observation.roomId then
+    application.items = applyRoomItemDelta(
+      application.items,
+      normalizedKind,
+      item
+    )
+    observation.acceptedItems = deepCopy(application.items)
+    applicationId = tonumber(application.applicationId) or false
+  end
+
+  if not fenceId and not applicationId then
+    return { status = "ignored" }
+  end
+  return {
+    status = "recorded",
+    kind = normalizedKind,
+    itemId = id,
+    roomId = observation.roomId,
+    observationGeneration = observation.generation,
+    fenceId = fenceId,
+    applicationId = applicationId,
+  }
 end
 
 local function createRoomApplication(observation, fence, items)
@@ -845,21 +966,26 @@ function boop.runtime.observeRoomItemsList(location, items)
     }
   end
 
+  local acceptedItems = applyRoomItemDeltas(
+    fence.roomItems,
+    fence.roomDeltas
+  )
+  fence.roomItems = deepCopy(acceptedItems)
   observation.itemsSeen = true
-  observation.acceptedItems = deepCopy(fence.roomItems)
+  observation.acceptedItems = deepCopy(acceptedItems)
   observation.lastCompletedFence = deepCopy(fence)
   observation.lastCompletedFence.postCompletionDuplicates = {}
   local application = createRoomApplication(
     observation,
     fence,
-    fence.roomItems
+    acceptedItems
   )
   return {
     status = "accepted",
     fenceId = fence.fenceId,
     generation = observation.generation,
     roomId = observation.roomId,
-    items = deepCopy(fence.roomItems),
+    items = deepCopy(acceptedItems),
     inventoryItems = inventoryItems,
     applicationId = application.applicationId,
     sourceAuthority = copySourceAuthority(application.sourceAuthority),

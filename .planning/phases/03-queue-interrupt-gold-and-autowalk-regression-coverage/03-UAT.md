@@ -4,7 +4,7 @@ phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-30T15:31:39-07:00
+updated: 2026-07-30T23:22:10-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -14,11 +14,11 @@ updated: 2026-07-30T15:31:39-07:00
 number: 2
 name: Simplified runtime and stale-target recovery
 expected: |
-  With boop 0.1.448 installed, lifecycle, room, target, and walker status are
+  With boop 0.1.450 installed, lifecycle, room, target, and walker status are
   computed directly. Only interrupt, pull, and gold operations may hold
   automation. Movement, accepted room evidence, or a global-blacklist edit
   clears an ineligible target without stopping the walker.
-awaiting: package build, exact-SHA CI, then user response
+awaiting: exact-SHA CI, package installation, then user response
 
 ## Tests
 
@@ -53,7 +53,7 @@ observed: "Clean reconnect, prompt-first, and enable-before-prompt checks passed
 ### 2. Cross-owner attack, loot, and walk release
 
 expected: |
-  With boop 0.1.448 installed, manual targeting remains an intentional
+  With boop 0.1.450 installed, manual targeting remains an intentional
   automatic-walk status and is reported as `manual_targeting`, not
   `room_clear`. Lifecycle, room readiness, target eligibility, and walker state
   are computed directly; only interrupt, pull, and gold appear as active
@@ -61,13 +61,15 @@ expected: |
   target intent without stopping the walker.
 
   Easy check:
-  1. Install 0.1.448, reconnect or reload, then run `boop status`. Confirm it
-     prints `version: 0.1.448`. In `boop debug`, `ACTIVE OPERATIONS` should be
+  1. Install 0.1.450, reconnect or reload, then run `boop status`. Confirm it
+     prints `version: 0.1.450`. In `boop debug`, `ACTIVE OPERATIONS` should be
      empty unless an interrupt, pull, or gold action is actually in progress.
   2. Run `boop on`, `boop targeting auto`, and `boop walk start`. Engage a
-     wanted denizen, stop combat if necessary, then leave the room. `boop
-     status` must not retain that old target as `engaged_target`; the walker
-     must remain active and proceed when the destination room is clear.
+     wanted denizen without issuing `ql`, `ih`, `boop status`, or another
+     refresh after entering the room. Combat must begin from the natural GMCP
+     sequence. Stop combat if necessary, then leave the room. `boop status`
+     must not retain that old target as `engaged_target`; the walker must remain
+     active and proceed when the destination room is clear.
   3. In a safe room, target a denizen and add that exact name to the global
      blacklist. The target id/name and queued attack intent must clear
      immediately, even in manual mode, while the walker state remains intact.
@@ -76,19 +78,26 @@ expected: |
      produce room, target, GMCP, or walker operation enter/exit records.
 result: [pending]
 reported: |
-  Check output.md. Thierry, the ferryman is not a target I wanted killed. I stopped combat, moved out, and added him to the global blacklist. However, boop is now stuck, thinking it's on engaged_target for the blocker.
+  Okay, things seem to be improving. However, the problem I'm running into now
+  is that the room apparently needs a ql or other refresh of gmcp before it
+  will start attacking.
 severity: major
-observed: "output.md shows targeting mode whitelist, walk active, zero room denizens, current target 152345 / Thierry, the ferryman, and engaged_target still owning combat and target after movement and the global-blacklist edit."
+observed: "Version 0.1.449 trace shows Room.Info 18988->18803, then a valid pirate Items.Add while room evidence is partial. The accepted room List follows with count=1, but tick reports no target. A later refreshed List has count=2 and immediately queues hyena maul/dsl against that same pirate."
 previous_result: issue
 previous_reported: |
+  Check output.md. Thierry, the ferryman is not a target I wanted killed. I stopped combat, moved out, and added him to the global blacklist. However, boop is now stuck, thinking it's on engaged_target for the blocker.
+previous_severity: major
+previous_observed: "output.md shows targeting mode whitelist, walk active, zero room denizens, current target 152345 / Thierry, the ferryman, and engaged_target still owning combat and target after movement and the global-blacklist edit."
+earlier_result: issue
+earlier_reported: |
   1. Pass.
   2. Appears not to pass.
      See output.md. The walker does not appear to ever actually start moving rooms/start. Version is 441.
-previous_severity: major
-previous_observed: "Step 1 passed with the exact inactive-stop message. After walk start, output.md shows the active walker held by walk_room_unsettled, followed by room_partial; it never reaches the expected manual_targeting hold or emits movement. Switching to automatic targeting instead exposes engaged_target for stale target 6832 while room denizens remain zero."
-earlier_reported: "boop walk stop doesn't return any sort of message when running in step 1. After doing boop walk start, no movement is done. blocker shown is room_clear -- room clear. This is after seeing the same issue, and completely restarting mudlet."
 earlier_severity: major
-earlier_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room Info created a new partial generation and stalled the walker."
+earlier_observed: "Step 1 passed with the exact inactive-stop message. After walk start, output.md shows the active walker held by walk_room_unsettled, followed by room_partial; it never reaches the expected manual_targeting hold or emits movement. Switching to automatic targeting instead exposes engaged_target for stale target 6832 while room denizens remain zero."
+oldest_reported: "boop walk stop doesn't return any sort of message when running in step 1. After doing boop walk start, no movement is done. blocker shown is room_clear -- room clear. This is after seeing the same issue, and completely restarting mudlet."
+oldest_severity: major
+oldest_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room Info created a new partial generation and stalled the walker."
 
 ### 3. Wrong-room gold and pack transfer
 
@@ -471,3 +480,33 @@ blocked: 0
   resolved_by:
     - "0.1.448 runtime simplification hardening"
   verification: "Focused host suites pass for runtime, lifecycle, event transitions, targeting, walking, UI, trace, pull preservation, queueing, and gold behavior; packaged Mudlet CI and live UAT remain pending."
+
+- gap_id: G-03-11
+  truth: "A current-generation Char.Items.Add or Remove received while the requested room snapshot is pending remains authoritative when that snapshot is applied, so hunting starts from the natural GMCP sequence without ql or another refresh."
+  status: resolved
+  reason: "Version 0.1.449 receives a valid pirate Items.Add while the room response fence is incomplete, then applies a requested room List that omits the pirate and reports tick: no target. A later refreshed List includes the pirate and combat starts immediately."
+  severity: major
+  test: 2
+  root_cause: "boop.onRoomItemsAdd updates the live denizen table, but applyRoomApplication later calls updateRoomItems with the copied List and replaces the entire table. The response fence retains Inv and Room snapshots but does not retain newer Add/Remove deltas that arrive between the room boundary and deferred snapshot application."
+  artifacts:
+    - path: "src/scripts/boop/boop_runtime.lua"
+      issue: "Response fences and pending room applications have no generation-bound room-item delta journal."
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "Room Add/Remove events mutate live consumers without attaching the event to an incomplete fence or unclaimed application."
+    - path: "src/scripts/boop/boop_targets.lua"
+      issue: "Accepted snapshot application replaces denizens, erasing any newer valid Add that was already observed."
+    - path: "tests/boop_event_transitions_spec.lua"
+      issue: "Existing tests cover settled Add wake-up and response order, but not Add/Remove interleaving with a pending room snapshot."
+  missing:
+    - "Journal copied room Add/Remove events only on the matching current room generation while a response fence or room application is pending."
+    - "Replay those deltas in event order over the copied room List before accepted items, denizens, gold, walk, and tick consume it."
+    - "Discard the journal at movement boundaries and reject stale-generation deltas."
+    - "Add regressions proving a newer Add survives a stale snapshot, a newer Remove is not resurrected, and no second room List is required."
+  resolution:
+    - "Attach copied Add/Remove deltas to the exact valid response fence, room ID, and observation generation."
+    - "Replay the ordered deltas over the copied room snapshot before creating its deferred room application, and apply later deltas directly to an unclaimed application."
+    - "Keep existing snapshot attributes when duplicate IDs occur, preserving mx/d target exclusions while filling only missing fields."
+    - "Trace Add/Remove attributes, reconciled denizen counts, and every recorded pending delta for live correlation."
+  resolved_by:
+    - "0.1.450 room snapshot/delta reconciliation"
+  verification: "G-03-11 event regressions cover Add before List, Remove before List, Add after List before application, restrictive duplicate attributes, and one-room-request liveness. Event transitions pass 62/62; adjacent gold/walk and target/tick/runtime/trace suites pass; the packaged real-Mudlet suite completed without a Busted failure or error marker."

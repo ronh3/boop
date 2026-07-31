@@ -135,16 +135,29 @@ end
 local function traceRoomItemsList(items, goldItem)
   if not boop.trace or not boop.trace.log then return end
   local count = type(items) == "table" and #items or 0
+  local denizens = 0
+  for _, item in ipairs(items or {}) do
+    if boop.targets
+        and boop.targets.isValidDenizen
+        and boop.targets.isValidDenizen(item) then
+      denizens = denizens + 1
+    end
+  end
   if goldItem then
     boop.trace.log(string.format(
-      "gmcp room items list: count=%d | gold=yes | gold=%s (%s)",
+      "gmcp room items list: count=%d | gold=yes | gold=%s (%s) | denizens=%d",
       count,
       tostring(goldItem.name or "?"),
-      tostring(goldItem.id or "?")
+      tostring(goldItem.id or "?"),
+      denizens
     ))
     return
   end
-  boop.trace.log(string.format("gmcp room items list: count=%d | gold=no", count))
+  boop.trace.log(string.format(
+    "gmcp room items list: count=%d | gold=no | denizens=%d",
+    count,
+    denizens
+  ))
 end
 
 local function traceRoomItemEvent(kind, item)
@@ -152,7 +165,36 @@ local function traceRoomItemEvent(kind, item)
   local name = item and item.name or "?"
   local id = item and item.id or "?"
   local gold = isGoldItem(item) and "yes" or "no"
-  boop.trace.log(string.format("gmcp room item %s: %s (%s) | gold=%s", tostring(kind or "?"), tostring(name), tostring(id), gold))
+  local attrib = item and item.attrib or ""
+  boop.trace.log(string.format(
+    "gmcp room item %s: %s (%s) | gold=%s | attrib=%s",
+    tostring(kind or "?"),
+    tostring(name),
+    tostring(id),
+    gold,
+    tostring(attrib)
+  ))
+end
+
+local function recordPendingRoomDelta(kind, item)
+  local result = boop.runtime
+      and boop.runtime.observeRoomItemDelta
+      and boop.runtime.observeRoomItemDelta(kind, item)
+    or { status = "ignored" }
+  if result.status == "recorded"
+      and boop.trace
+      and boop.trace.log then
+    boop.trace.log(string.format(
+      "room item delta recorded: %s %s | room=%s | generation=%s | fence=%s | application=%s",
+      tostring(result.kind or kind or "?"),
+      tostring(result.itemId or (item and item.id) or "?"),
+      tostring(result.roomId or ""),
+      tostring(result.observationGeneration or ""),
+      tostring(result.fenceId or ""),
+      tostring(result.applicationId or "")
+    ))
+  end
+  return result
 end
 
 local GMCP_RETRY_SECONDS = 2
@@ -1682,6 +1724,7 @@ function boop.onRoomItemsAdd()
   if gmcp.Char.Items.Add.location ~= "room" then return end
   local item = gmcp.Char.Items.Add.item
   traceRoomItemEvent("add", item)
+  recordPendingRoomDelta("add", item)
   local denizenAdded = boop.targets.addRoomItem(item)
   autoGrabRoomItem(item, {
     source = "gmcp room item Add",
@@ -1716,6 +1759,7 @@ function boop.onRoomItemsRemove()
   local removedName = removed and removed.name or ""
   local removedWasGold = isGoldItem(removed)
   traceRoomItemEvent("remove", removed)
+  recordPendingRoomDelta("remove", removed)
   boop.targets.removeRoomItem(removed)
 
   if removedWasGold then

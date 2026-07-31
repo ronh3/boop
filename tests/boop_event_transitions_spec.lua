@@ -186,6 +186,16 @@ describe("boop event-driven state transitions", function()
     return count
   end
 
+  local function countGmcpRequest(command)
+    local count = 0
+    for _, request in ipairs(gmcp_requests) do
+      if request == command then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
   local function countRaised(name)
     local count = 0
     for _, entry in ipairs(raised_events) do
@@ -2557,6 +2567,170 @@ describe("boop event-driven state transitions", function()
       1,
       countSent("queue addclearfull freestand BOOP_ATTACK")
     )
+  end)
+
+  it("G-03-11 preserves a denizen Add newer than the pending room snapshot", function()
+    helper.setArea("Test Area")
+    helper.setClass("Occultist")
+    helper.learnSkill("Lycantha", "Domination")
+    helper.setDenizens({})
+    helper.setTarget("", "", "100%")
+    boop.state.targeting.room = "1"
+    boop.config.enabled = true
+    boop.config.useQueueing = true
+    boop.config.targetingMode = "auto"
+
+    gmcp.Room.Info = {
+      num = "2",
+      area = "Test Area",
+      exits = { west = "1" },
+    }
+    boop.onRoomInfo()
+    publishItemsList("inv", {})
+
+    gmcp.Char.Items.Add = {
+      location = "room",
+      item = denizenItem("44", "an arriving denizen"),
+    }
+    boop.onRoomItemsAdd()
+
+    publishItemsList("room", {
+      {
+        id = "7001",
+        name = "an unrelated room item",
+        attrib = "t",
+      },
+    })
+    assert.is_true(runPendingRoomApplication())
+
+    assert.are.equal(1, #boop.state.targeting.denizens)
+    assert.are.equal("44", boop.state.targeting.denizens[1].id)
+    assert.are.equal("44", boop.state.targeting.currentTargetId)
+    assert.are.equal(1, countSent("settarget 44"))
+    assert.are.equal(
+      1,
+      countSent("setalias BOOP_ATTACK command hound at 44")
+    )
+    assert.are.equal(
+      1,
+      countSent("queue addclearfull freestand BOOP_ATTACK")
+    )
+    assert.are.equal("Char.Items.Inv", gmcp_requests[1])
+    assert.are.equal("Char.Items.Room", gmcp_requests[2])
+    assert.are.equal(1, countGmcpRequest("Char.Items.Room"))
+  end)
+
+  it("G-03-11 preserves a denizen Remove newer than the pending room snapshot", function()
+    helper.setArea("Test Area")
+    helper.setClass("Occultist")
+    helper.learnSkill("Lycantha", "Domination")
+    helper.setDenizens({})
+    helper.setTarget("", "", "100%")
+    boop.state.targeting.room = "1"
+    boop.config.enabled = true
+    boop.config.useQueueing = true
+    boop.config.targetingMode = "auto"
+
+    gmcp.Room.Info = {
+      num = "2",
+      area = "Test Area",
+      exits = { west = "1" },
+    }
+    boop.onRoomInfo()
+    publishItemsList("inv", {})
+
+    gmcp.Char.Items.Remove = {
+      location = "room",
+      item = denizenItem("44", "a departing denizen"),
+    }
+    boop.onRoomItemsRemove()
+
+    publishItemsList("room", {
+      denizenItem("44", "a departing denizen"),
+    })
+    assert.is_true(runPendingRoomApplication())
+
+    assert.are.equal(0, #boop.state.targeting.denizens)
+    assert.are.equal("", boop.state.targeting.currentTargetId)
+    assert.are.equal(0, countSent("settarget 44"))
+    assert.are.equal(
+      0,
+      countSent("setalias BOOP_ATTACK command hound at 44")
+    )
+    assert.are.equal("Char.Items.Inv", gmcp_requests[1])
+    assert.are.equal("Char.Items.Room", gmcp_requests[2])
+    assert.are.equal(1, countGmcpRequest("Char.Items.Room"))
+  end)
+
+  it("G-03-11 preserves an Add received after the room snapshot response", function()
+    helper.setArea("Test Area")
+    helper.setClass("Occultist")
+    helper.learnSkill("Lycantha", "Domination")
+    helper.setDenizens({})
+    helper.setTarget("", "", "100%")
+    boop.state.targeting.room = "1"
+    boop.config.enabled = true
+    boop.config.useQueueing = true
+    boop.config.targetingMode = "auto"
+
+    gmcp.Room.Info = {
+      num = "2",
+      area = "Test Area",
+      exits = { west = "1" },
+    }
+    boop.onRoomInfo()
+    publishItemsList("inv", {})
+    publishItemsList("room", {})
+
+    gmcp.Char.Items.Add = {
+      location = "room",
+      item = denizenItem("44", "an arriving denizen"),
+    }
+    boop.onRoomItemsAdd()
+    assert.is_true(runPendingRoomApplication())
+
+    assert.are.equal(1, #boop.state.targeting.denizens)
+    assert.are.equal("44", boop.state.targeting.currentTargetId)
+    assert.are.equal(1, countSent("settarget 44"))
+    assert.are.equal(1, countGmcpRequest("Char.Items.Room"))
+  end)
+
+  it("G-03-11 keeps restrictive snapshot attributes for duplicate Add ids", function()
+    helper.setArea("Test Area")
+    helper.setClass("Occultist")
+    helper.learnSkill("Lycantha", "Domination")
+    helper.setDenizens({})
+    helper.setTarget("", "", "100%")
+    boop.state.targeting.room = "1"
+    boop.config.enabled = true
+    boop.config.useQueueing = true
+    boop.config.targetingMode = "auto"
+
+    gmcp.Room.Info = {
+      num = "2",
+      area = "Test Area",
+      exits = { west = "1" },
+    }
+    boop.onRoomInfo()
+    publishItemsList("inv", {})
+
+    gmcp.Char.Items.Add = {
+      location = "room",
+      item = denizenItem("44", "a protected denizen"),
+    }
+    boop.onRoomItemsAdd()
+    publishItemsList("room", {
+      {
+        id = "44",
+        name = "a protected denizen",
+        attrib = "mx",
+      },
+    })
+    assert.is_true(runPendingRoomApplication())
+
+    assert.are.equal(0, #boop.state.targeting.denizens)
+    assert.are.equal("", boop.state.targeting.currentTargetId)
+    assert.are.equal(0, countSent("settarget 44"))
   end)
 
   describe("G-03-5 settled-add-revalidation", function()

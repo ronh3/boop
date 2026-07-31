@@ -127,8 +127,63 @@ describe("boop trace gmcp events", function()
     assert.is_true(trace:find("gmcp room info:", 1, true) ~= nil)
     assert.is_true(trace:find("| area=Test Area | exits=2 | moved=yes", 1, true) ~= nil)
     assert.is_true(trace:find("gmcp room items list: count=2 | gold=yes | gold=a gold sovereign (1)", 1, true) ~= nil)
+    assert.is_true(trace:find("| denizens=1", 1, true) ~= nil)
     assert.is_true(trace:find("gmcp room item add: a small pile of sovereigns (2) | gold=yes", 1, true) ~= nil)
     assert.is_true(trace:find("gmcp room item remove: a vicious gnoll soldier (42) | gold=no", 1, true) ~= nil)
+  end)
+
+  it("logs pending room deltas and the reconciled denizen count", function()
+    boop.runtime.startRoomObservation("1", {
+      boundary = "fresh_start",
+    })
+    assert.is_true(boop.requestRoomItemsOnce(
+      "trace pending room delta"
+    ))
+
+    gmcp.Char.Items.List = {
+      location = "inv",
+      items = {},
+    }
+    boop.onRoomItemsList()
+
+    gmcp.Char.Items.Add = {
+      location = "room",
+      item = {
+        id = "42",
+        name = "an arriving denizen",
+        attrib = "m",
+      },
+    }
+    boop.onRoomItemsAdd()
+
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = {
+        {
+          id = "7001",
+          name = "an unrelated room item",
+          attrib = "t",
+        },
+      },
+    }
+    boop.onRoomItemsList()
+
+    for index = #scheduled, 1, -1 do
+      if scheduled[index].delay == 0 then
+        scheduled[index].callback()
+        break
+      end
+    end
+
+    assertTraceContains(
+      "gmcp room item add: an arriving denizen (42) | gold=no | attrib=m"
+    )
+    assertTraceContains(
+      "room item delta recorded: add 42 | room=1"
+    )
+    assertTraceContains(
+      "gmcp room items list: count=2 | gold=no | denizens=1"
+    )
   end)
 
   it("logs operation enter and exit transitions once per state change", function()
