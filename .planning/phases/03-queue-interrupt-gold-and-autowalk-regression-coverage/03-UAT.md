@@ -510,3 +510,29 @@ blocked: 0
   resolved_by:
     - "0.1.450 room snapshot/delta reconciliation"
   verification: "G-03-11 event regressions cover Add before List, Remove before List, Add after List before application, restrictive duplicate attributes, and one-room-request liveness. Event transitions pass 62/62; adjacent gold/walk and target/tick/runtime/trace suites pass; the packaged real-Mudlet suite completed without a Busted failure or error marker."
+
+- gap_id: G-03-12
+  truth: "When the current target shields or a normal attack rebounds, a staged standard shieldbreak remains selected until it executes and explicit combat evidence clears the shield."
+  status: resolved
+  reason: "Live version 0.1.450 rebuilt BOOP_ATTACK from Infernal dsl to raze after both the shield-gain and rebound lines, then replaced it with dsl before equilibrium recovered."
+  severity: major
+  test: 2
+  root_cause: "prequeueStandard and refreshPrequeuedStandard call onShieldbreakAttempt immediately after staging BOOP_ATTACK. The following Balance/Equilibrium used event resets prequeuedStandard and schedules another prequeue; because the shield is already marked attempted even though raze has not executed, standard selection falls through to normal damage and overwrites the queued alias."
+  artifacts:
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "Future queued shieldbreaks are marked attempted at alias staging/rebuild time instead of after execution evidence."
+    - path: "src/scripts/boop/boop_attacks.lua"
+      issue: "The attempted guard correctly suppresses repeat direct attempts, but receives a false-positive attempt from prequeue staging."
+    - path: "tests/boop_prequeue_spec.lua"
+      issue: "Existing shield refresh coverage expects premature attempted state and omits the shield-gain, rebound, balance-use, replacement-prequeue chronology."
+  missing:
+    - "Do not mark a shieldbreak attempted merely because a future BOOP_ATTACK alias was queued or rebuilt."
+    - "Keep direct standard and rage dispatch attempt tracking intact."
+    - "Prove the live Infernal dsl-to-raze chronology cannot downgrade back to dsl before shield-down evidence."
+  resolution:
+    - "Prequeue staging and shield-triggered alias rebuilds retain unattempted shield state until combat output proves execution."
+    - "Normal queued standard dispatch also avoids premature attempt state, while direct standard and direct rage dispatch retain the existing retry guard."
+    - "The exact Infernal hyena-maul/dsl, shield, rebound, balance-use, replacement-prequeue sequence remains hyena-maul/raze."
+  resolved_by:
+    - "0.1.451 queued shieldbreak execution semantics"
+  verification: "Prequeue/planner/shield focused regressions pass 21/21, adjacent event/tick/runtime regressions pass 100/100, Lua 5.1 syntax and release gates pass, Muddler builds 0.1.451, and the packaged real-Mudlet suite completes without a new Busted failure/error marker."

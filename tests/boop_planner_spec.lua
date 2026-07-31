@@ -55,4 +55,35 @@ describe("boop combat planner", function()
     assert.stub(send_stub).was_called_with("command hound at 42", false)
     assert.stub(send_stub).was_called_with("harry 42", false)
   end)
+
+  it("marks a direct standard shieldbreak attempted after dispatch", function()
+    boop.state.targeting.targetShield = {
+      gained = os.clock(),
+      attempted = false,
+    }
+    local context = boop.runtime.context()
+    local plan = boop.attacks.choose(context)
+
+    assert.is_true(plan.standardShieldbreak)
+    assert.is_true(boop.attacks.execute(plan, context))
+    assert.is_true(boop.state.targeting.targetShield.attempted)
+  end)
+
+  it("does not mark a queued standard shieldbreak attempted before execution", function()
+    boop.config.useQueueing = true
+    boop.state.targeting.targetShield = {
+      gained = os.clock(),
+      attempted = false,
+    }
+    local context = boop.runtime.context()
+    local plan = boop.attacks.choose(context)
+
+    assert.is_true(plan.standardShieldbreak)
+    assert.is_true(boop.attacks.execute(plan, context))
+    assert.stub(send_stub).was_called_with(
+      "setalias BOOP_ATTACK command hound at 42",
+      false
+    )
+    assert.is_false(boop.state.targeting.targetShield.attempted)
+  end)
 end)

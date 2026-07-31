@@ -2301,9 +2301,6 @@ function boop.prequeueStandard(sourceAuthority, options)
     if actions.standardIsOpener and boop.attacks and boop.attacks.markOpenerUsed then
       boop.attacks.markOpenerUsed(classKeyForOpener(), targetId)
     end
-    if actions.standardShieldbreak and boop.targets and boop.targets.onShieldbreakAttempt then
-      boop.targets.onShieldbreakAttempt()
-    end
     boop.state.queue.prequeuedStandard = true
     boop.state.queue.prequeueSourceAuthority =
       copySourceAuthority(authority)
@@ -2366,9 +2363,6 @@ function boop.refreshPrequeuedStandard(reason, sourceAuthority, options)
       automaticDispatchOptions(authority, roomOwned)
     ) then
     return false
-  end
-  if boop.targets and boop.targets.onShieldbreakAttempt then
-    boop.targets.onShieldbreakAttempt()
   end
   boop.trace.log("prequeue rebuilt: " .. tostring(reason or "state change"))
   return true

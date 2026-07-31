@@ -1668,7 +1668,19 @@ function boop.attacks.execute(plan, context, sourceAuthority)
         if plan.standardIsOpener and boop.attacks and boop.attacks.markOpenerUsed then
           boop.attacks.markOpenerUsed(plan.class or "", activeContext and activeContext.target and activeContext.target.id or "")
         end
-        if plan.standardShieldbreak and boop.targets and boop.targets.onShieldbreakAttempt then
+        local standardWasQueued = boop.config
+          and boop.config.useQueueing
+          or false
+        if activeContext
+            and activeContext.config
+            and activeContext.config.useQueueing ~= nil then
+          standardWasQueued =
+            activeContext.config.useQueueing
+        end
+        if plan.standardShieldbreak
+            and not standardWasQueued
+            and boop.targets
+            and boop.targets.onShieldbreakAttempt then
           boop.targets.onShieldbreakAttempt()
         end
         didAction = true

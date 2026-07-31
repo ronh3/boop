@@ -106,7 +106,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Gold get/put tracking now listens for success/failure lines and performs bounded retries before warning.
 - Gold queue state is now guarded by a short stale-pending timeout; if get/put success/failure triggers are missed, boop warns, clears stale pending state, and resumes.
 - `boop prequeue` and `boop lead` make prequeue behavior explicit and independent from `useQueueing`.
-- If a standard attack is already prequeued and the current target gains shield before it fires, boop rebuilds `BOOP_ATTACK` immediately to the current shieldbreak standard when appropriate.
+- If a standard attack is already prequeued and the current target gains shield before it fires, boop rebuilds `BOOP_ATTACK` immediately to the current shieldbreak standard when appropriate. Staging or rebuilding that queued alias does not count as executing the shieldbreak, so a rebound cannot downgrade the next prequeue back to normal damage before shield-down evidence arrives.
 - `breakShields` defaults on; when disabled, tracked target shield state is retained but does not change standard or rage attack selection.
 - Runtime safety uses owner-keyed operation locks only for asynchronous interrupt, pull, and gold work, so each operation releases only itself.
 - Lifecycle, room readiness, target eligibility, and walker state are computed from canonical state. They never depend on a later callback releasing a pseudo-owner.

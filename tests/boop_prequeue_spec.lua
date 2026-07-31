@@ -150,7 +150,56 @@ describe("boop prequeue", function()
     assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK touch hammer 42", false)
     assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
     assert.is_true(boop.state.queue.prequeuedStandard)
-    assert.is_true(type(boop.state.targeting.targetShield) == "table" and boop.state.targeting.targetShield.attempted)
+    assert.is_false(boop.state.targeting.targetShield.attempted)
+  end)
+
+  it("keeps a rebuilt shieldbreak after a damage prequeue rebounds", function()
+    helper.reset()
+    dofile(
+      os.getenv("TESTS_DIRECTORY")
+        .. "/../src/scripts/boop/attacks/infernal.lua"
+    )
+    helper.setArea("Test Area")
+    helper.setClass("Infernal")
+    helper.setSpec("Dual Cutting")
+    helper.setTargetHp("80%")
+    helper.learnSkills({
+      { name = "Duality", group = "Weaponmastery" },
+      { name = "Raze", group = "Weaponmastery" },
+      { name = "Maul", group = "Malignity" },
+    })
+    boop.rage.setReady("maul", true)
+    helper.setDenizens({
+      { id = "42", name = "a test denizen" },
+    })
+
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
+    boop.config.prequeueEnabled = true
+    boop.config.attackLeadSeconds = 1
+    gmcp.Char.Vitals.bal = "0"
+    gmcp.Char.Vitals.eq = "0"
+
+    boop.prequeueStandard()
+    boop.targets.onShielded("a test denizen")
+    boop.targets.onShielded("a test denizen")
+    boop.onBalanceUsed("equilibrium", 1.7)
+
+    local delayedPrequeue = scheduled[#scheduled]
+    assert.is_table(delayedPrequeue)
+    assert.is_true(math.abs(delayedPrequeue.delay - 0.7) < 0.001)
+    delayedPrequeue.callback()
+
+    assert.are.equal("hyena maul 42/raze 42", boop.state.queue.aliasAction)
+    assert.are.equal(
+      1,
+      commandCount("setalias BOOP_ATTACK hyena maul 42/dsl 42")
+    )
+    assert.are.equal(
+      1,
+      commandCount("setalias BOOP_ATTACK hyena maul 42/raze 42")
+    )
+    assert.is_false(boop.state.targeting.targetShield.attempted)
   end)
 
   it("does not prequeue attacks while gold commands are pending", function()
