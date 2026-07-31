@@ -207,43 +207,54 @@ describe("boop diagnose pause and resume", function()
     assert.are.equal(1, tick_count)
   end)
 
-  it("never scans past an unresolved or already-result-seen FIFO head", function()
+  it("accepts the diagnose affliction snapshot before the completion prompt", function()
+    boop.ui.diag()
+    local generation = boop.state.diag.operation.generation
+    gmcp.Char.Afflictions = {
+      List = {},
+    }
+
+    assert.is_true(boop.onDiagAfflictionsList())
+    assert.is_true(boop.state.diag.operation.resultSeen)
+    assert.is_true(boop.state.diag.evidenceQueue[1].resultSeen)
+    assert.is_true(boop.state.diag.awaitPrompt)
+
+    boop.onPrompt()
+
+    assert.is_false(boop.state.diag.operation)
+    assert.are.same({}, boop.state.diag.evidenceQueue)
+    assert.is_nil(blockerFor("interrupt:" .. tostring(generation)))
+    assert.are.equal(1, tick_count)
+    assert.are.same({ "diag complete; attacks resumed" }, ok_messages)
+    assert.are.equal(0, #warn_messages)
+  end)
+
+  it("bounds diagnose evidence to the current dispatch after a timeout", function()
     boop.ui.diag()
     scheduled[1].callback()
     boop.ui.diag()
 
-    assert.are.equal(2, #boop.state.diag.evidenceQueue)
+    assert.are.equal(1, #boop.state.diag.evidenceQueue)
+    assert.are.equal(2, boop.state.diag.evidenceQueue[1].generation)
     assert.is_false(boop.state.diag.evidenceQueue[1].resultSeen)
-    assert.is_false(boop.state.diag.evidenceQueue[2].resultSeen)
 
     boop.onPrompt()
 
-    assert.are.equal(2, #boop.state.diag.evidenceQueue)
+    assert.are.equal(1, #boop.state.diag.evidenceQueue)
     assert.are.equal(2, boop.state.diag.operation.generation)
     assert.is_false(boop.state.diag.operation.resultSeen)
     assert.are.equal(1, tick_count)
 
     runTrigger("Diag_Result_Detail.lua")
-    runTrigger("Diag_Result_Perfect.lua")
 
     assert.is_true(boop.state.diag.evidenceQueue[1].resultSeen)
-    assert.is_false(boop.state.diag.evidenceQueue[2].resultSeen)
-    assert.is_false(boop.state.diag.operation.resultSeen)
+    assert.is_true(boop.state.diag.operation.resultSeen)
 
-    boop.onPrompt()
-
-    assert.are.equal(1, #boop.state.diag.evidenceQueue)
-    assert.are.equal(2, boop.state.diag.evidenceQueue[1].generation)
-    assert.is_false(boop.state.diag.evidenceQueue[1].resultSeen)
-    assert.are.equal(2, boop.state.diag.operation.generation)
-    assert.is_false(boop.state.diag.operation.resultSeen)
-    assert.are.equal(1, tick_count)
-
-    runTrigger("Diag_Result_Perfect.lua")
     boop.onPrompt()
 
     assert.is_false(boop.state.diag.operation)
     assert.are.same({}, boop.state.diag.evidenceQueue)
     assert.are.equal(2, tick_count)
+    assert.are.same({ "diag complete; attacks resumed" }, ok_messages)
   end)
 end)

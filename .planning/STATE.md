@@ -98,11 +98,11 @@ Recent decisions affecting current work:
 - [Phase 02]: GitHub Actions run 29143523210 and user live validation confirmed the real Mudlet suite and compact blocker/trace readability.
 - [Phase 03 planning]: Commits whose staged paths are all under `.planning/` preserve the package version; any commit touching another path bumps all four version checkpoints.
 - [Phase 03 planning]: Final authority is the tracked repository extension `tools/wait_for_exact_ci.sh` against immutable final HEAD after all GSD mutations.
-- [Phase 03 planning]: Diagnose output uses a zero-argument FIFO/tombstone evidence queue so late output cannot release a newer interrupt generation.
+- [Phase 03]: Diagnose completion prefers Char.Afflictions.List with visible result-line fallback; a new explicit diagnose supersedes unresolved evidence from a timed-out dispatch so stale FIFO state cannot poison later generations.
 - [Phase 03]: Plan 03-01 makes blockersByOwner authoritative and keeps combat.blocker only as a derived primary compatibility snapshot.
 - [Phase 03]: Plan 03-01 permits blocker mutation and self-exclusion only by exact owner key, never by blocker code, family, or subsystem.
 - [Phase 03]: Plan 03-01 requires Room.Info plus a later complete current-cycle room item list, with one capped Char.Items.Room refresh per generation.
-- [Phase 03]: Interrupts use exact generation owners, FIFO/tombstone diagnose evidence, and one completeInterrupt terminal boundary.
+- [Phase 03]: Interrupts use exact generation owners and one completeInterrupt terminal boundary; diagnose evidence is bounded to the current explicit dispatch.
 - [Phase 03]: Pulls use monotonic generation owners and one completePull boundary; timeout-away retains its hold without mutating enabled configuration.
 - [Phase 03]: Use one monotonic gold generation and gold:<generation> blocker owner as canonical authority; legacy pending fields remain derived compatibility views.
 - [Phase 03]: Keep DEFERRED_ROOM and PICKUP_PENDING tied to current room evidence, then clear room identity before inventory-owned PACK_PENDING.

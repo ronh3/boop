@@ -122,7 +122,7 @@ describe("boop diagnose timeout", function()
     assert.are.same({}, native_queue.errorsSnapshot())
   end)
 
-  it("absorbs N's late zero-argument result and prompt without mutating diagnose N+1", function()
+  it("does not let N's missing result consume diagnose N+1 forever", function()
     helper.setRuntimeBlocker({
       owner = "pull:unrelated",
       code = "pull_active",
@@ -139,58 +139,31 @@ describe("boop diagnose timeout", function()
     boop.ui.diag()
     local operation = boop.state.diag.operation
     local second_generation = operation.generation
-    local snapshot = {
-      generation = boop.state.diag.generation,
-      operationGeneration = operation.generation,
-      resultSeen = operation.resultSeen,
-      blockerOwner = operation.blockerOwner,
-      timeoutTimer = operation.timeoutTimer,
-      terminal = operation.terminal,
-      hold = boop.state.diag.hold,
-      awaitPrompt = boop.state.diag.awaitPrompt,
-      label = boop.state.diag.label,
-      sends = #sent,
-      ticks = tick_count,
-      warnings = #warn_messages,
-      oks = #ok_messages,
-      infos = #info_messages,
-      traces = #boop.state.trace.buffer,
-    }
 
     assert.are.equal(first_generation + 1, second_generation)
-    assert.are.equal(2, #boop.state.diag.evidenceQueue)
-    assert.is_true(boop.state.diag.evidenceQueue[1].tombstone)
-    assert.is_false(boop.state.diag.evidenceQueue[1].resultSeen)
-    assert.is_false(boop.state.diag.evidenceQueue[2].resultSeen)
-
-    runDetailTrigger()
-
-    assert.is_true(boop.state.diag.evidenceQueue[1].resultSeen)
-    assert.is_false(boop.state.diag.evidenceQueue[2].resultSeen)
-    assert.is_false(boop.state.diag.operation.resultSeen)
-
-    boop.onPrompt()
-
     assert.are.equal(1, #boop.state.diag.evidenceQueue)
     assert.are.equal(second_generation, boop.state.diag.evidenceQueue[1].generation)
     assert.is_false(boop.state.diag.evidenceQueue[1].resultSeen)
-    assert.are.equal(snapshot.generation, boop.state.diag.generation)
-    assert.are.equal(snapshot.operationGeneration, boop.state.diag.operation.generation)
-    assert.are.equal(snapshot.resultSeen, boop.state.diag.operation.resultSeen)
-    assert.are.equal(snapshot.blockerOwner, boop.state.diag.operation.blockerOwner)
-    assert.are.equal(snapshot.timeoutTimer, boop.state.diag.operation.timeoutTimer)
-    assert.are.equal(snapshot.terminal, boop.state.diag.operation.terminal)
-    assert.are.equal(snapshot.hold, boop.state.diag.hold)
-    assert.are.equal(snapshot.awaitPrompt, boop.state.diag.awaitPrompt)
-    assert.are.equal(snapshot.label, boop.state.diag.label)
-    assert.are.equal(snapshot.sends, #sent)
-    assert.are.equal(snapshot.ticks, tick_count)
-    assert.are.equal(snapshot.warnings, #warn_messages)
-    assert.are.equal(snapshot.oks, #ok_messages)
-    assert.are.equal(snapshot.infos, #info_messages)
-    assert.are.equal(snapshot.traces, #boop.state.trace.buffer)
-    assert.is_table(blockerFor("interrupt:" .. second_generation))
+
+    gmcp.Char.Afflictions = {
+      List = {
+        { name = "weariness" },
+      },
+    }
+    assert.is_true(boop.onDiagAfflictionsList())
+
+    assert.is_true(boop.state.diag.evidenceQueue[1].resultSeen)
+    assert.is_true(boop.state.diag.operation.resultSeen)
+
+    boop.onPrompt()
+
+    assert.is_false(boop.state.diag.operation)
+    assert.are.same({}, boop.state.diag.evidenceQueue)
+    assert.is_nil(blockerFor("interrupt:" .. second_generation))
     assert.is_table(blockerFor("pull:unrelated"))
+    assert.are.equal(2, tick_count)
+    assert.are.same({ "diag timeout; attacks resumed" }, warn_messages)
+    assert.are.same({ "diag complete; attacks resumed" }, ok_messages)
   end)
 
   it("drains a timed-out head once and makes every later terminal call a no-op", function()
@@ -211,14 +184,15 @@ describe("boop diagnose timeout", function()
     assert.are.equal(1, tick_count)
     assert.are.equal(warning_count, #warn_messages)
     assert.are.equal(0, #ok_messages)
-    assert.are.equal(trace_count, #boop.state.trace.buffer)
+    assert.are.equal(trace_count + 2, #boop.state.trace.buffer)
     assert.are.equal(send_count, #sent)
 
+    local drained_trace_count = #boop.state.trace.buffer
     assert.is_false(boop.runtime.completeInterrupt(generation, "diagnose_result_prompt"))
     assert.is_false(boop.runtime.markOldestDiagEvidenceResult())
     assert.is_false(boop.runtime.consumeOldestDiagEvidencePrompt())
     assert.are.equal(warning_count, #warn_messages)
-    assert.are.equal(trace_count, #boop.state.trace.buffer)
+    assert.are.equal(drained_trace_count, #boop.state.trace.buffer)
     assert.are.equal(send_count, #sent)
     assert.are.equal(1, tick_count)
   end)

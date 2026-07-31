@@ -784,7 +784,7 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
     summary = "Commands that pause boop long enough to run a defensive or utility action cleanly.",
     aliases = { "interrupt", "interrupts", "diag", "diagnose", "matic", "catarin", "fly", "ts", "shield", "leap" },
     steps = {
-      helpCommand("diag", "Clear the attack queue, queue diagnose, and pause attacks until the diagnose result plus prompt."),
+      helpCommand("diag", "Clear the attack queue, queue diagnose, and pause attacks until diagnose evidence plus prompt."),
       helpCommand("matic", "Queue `ldeck draw matic` on boop's attack queue and resume on prompt or timeout."),
       helpCommand("fly", "Queue `fly` and pause attacks until prompt or timeout."),
       helpCommand("boop config combat", "Use the combat config screen if you need to tune the interrupt timeout."),
@@ -804,6 +804,7 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
       "These commands are meant for quick intervention while boop is otherwise managing attacks.",
       "Pending interrupts are operation-owned; repeats do not resend or restart the timer.",
       "`diag` clears queued attacks first; the other queued interrupts preserve the queue style boop normally uses.",
+      "`diag` prefers the GMCP affliction snapshot and retains visible diagnose lines as fallback evidence.",
     },
   },
   {

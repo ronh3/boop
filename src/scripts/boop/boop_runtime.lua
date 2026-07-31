@@ -1474,7 +1474,23 @@ end
 
 function boop.runtime.enqueueDiagEvidence(generation)
   local state = boop.runtime.ensureState()
-  state.diag.evidenceQueue = state.diag.evidenceQueue or {}
+  local staleQueue = state.diag.evidenceQueue or {}
+  if #staleQueue > 0 then
+    local staleGenerations = {}
+    for _, record in ipairs(staleQueue) do
+      if type(record) == "table" then
+        staleGenerations[#staleGenerations + 1] = tostring(
+          record.generation or ""
+        )
+      end
+    end
+    trace(string.format(
+      "diag evidence superseded: generations=%s | next=%s",
+      table.concat(staleGenerations, ","),
+      tostring(generation or "")
+    ))
+  end
+  state.diag.evidenceQueue = {}
   local record = {
     generation = tonumber(generation) or 0,
     resultSeen = false,
@@ -1540,7 +1556,7 @@ function boop.runtime.completeInterrupt(generation, terminalReason)
   return true
 end
 
-function boop.runtime.markOldestDiagEvidenceResult()
+function boop.runtime.markOldestDiagEvidenceResult(source)
   local state = boop.runtime.ensureState()
   local head = state.diag.evidenceQueue and state.diag.evidenceQueue[1] or nil
   if type(head) ~= "table" or head.resultSeen then
@@ -1557,6 +1573,13 @@ function boop.runtime.markOldestDiagEvidenceResult()
     operation.resultSeen = true
     state.diag.awaitPrompt = true
   end
+  trace(string.format(
+    "diag result observed: source=%s | evidenceGeneration=%s | activeGeneration=%s | tombstone=%s",
+    tostring(source or "text"),
+    tostring(head.generation or ""),
+    tostring(type(operation) == "table" and operation.generation or ""),
+    tostring(head.tombstone == true)
+  ))
   return true
 end
 
@@ -1569,6 +1592,16 @@ function boop.runtime.consumeOldestDiagEvidencePrompt()
   end
 
   table.remove(queue, 1)
+  trace(string.format(
+    "diag prompt consumed: evidenceGeneration=%s | activeGeneration=%s | tombstone=%s",
+    tostring(head.generation or ""),
+    tostring(
+      type(state.diag.operation) == "table"
+        and state.diag.operation.generation
+        or ""
+    ),
+    tostring(head.tombstone == true)
+  ))
   if head.terminal or head.tombstone then
     return true, false
   end

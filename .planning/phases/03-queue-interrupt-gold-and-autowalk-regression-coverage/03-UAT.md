@@ -4,7 +4,7 @@ phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-30T23:45:09-07:00
+updated: 2026-07-31T00:54:45-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -14,7 +14,7 @@ updated: 2026-07-30T23:45:09-07:00
 number: 2
 name: Simplified runtime and stale-target recovery
 expected: |
-  With boop 0.1.450 installed, lifecycle, room, target, and walker status are
+  With boop 0.1.453 installed, lifecycle, room, target, and walker status are
   computed directly. Only interrupt, pull, and gold operations may hold
   automation. Movement, accepted room evidence, or a global-blacklist edit
   clears an ineligible target without stopping the walker.
@@ -53,7 +53,7 @@ observed: "Clean reconnect, prompt-first, and enable-before-prompt checks passed
 ### 2. Cross-owner attack, loot, and walk release
 
 expected: |
-  With boop 0.1.450 installed, manual targeting remains an intentional
+  With boop 0.1.453 installed, manual targeting remains an intentional
   automatic-walk status and is reported as `manual_targeting`, not
   `room_clear`. Lifecycle, room readiness, target eligibility, and walker state
   are computed directly; only interrupt, pull, and gold appear as active
@@ -61,8 +61,8 @@ expected: |
   target intent without stopping the walker.
 
   Easy check:
-  1. Install 0.1.450, reconnect or reload, then run `boop status`. Confirm it
-     prints `version: 0.1.450`. In `boop debug`, `ACTIVE OPERATIONS` should be
+  1. Install 0.1.453, reconnect or reload, then run `boop status`. Confirm it
+     prints `version: 0.1.453`. In `boop debug`, `ACTIVE OPERATIONS` should be
      empty unless an interrupt, pull, or gold action is actually in progress.
   2. Run `boop on`, `boop targeting auto`, and `boop walk start`. Engage a
      wanted denizen without issuing `ql`, `ih`, `boop status`, or another
@@ -102,7 +102,7 @@ oldest_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room
 ### 3. Wrong-room gold and pack transfer
 
 expected: |
-  With boop 0.1.452 installed, a gold Item.Add in an already settled room
+  With boop 0.1.453 installed, a gold Item.Add in an already settled room
   requests one current-room revalidation but cannot authorize pickup by itself.
   Only the matching fenced room List may queue one
   `queue add full get sovereigns`. Confirmed pickup may queue one freestand put,
@@ -127,7 +127,10 @@ expected: |
      Native output must show `clearqueue all` before
      `queue addclearfull freestand diagnose`, with no unknown-queue error. After
      the exact diag owner clears, exactly one eligible gold command may replay
-     and hunting must not remain jammed.
+     and hunting must not remain jammed. The trace should show
+     `diag result observed: source=gmcp` followed by `diag prompt consumed`;
+     running `diag` again must complete normally instead of timing out one
+     generation behind.
   5. Run `boop trace show 100`. Confirm no standard/rage attack command
      contains get or put, no gold generation dispatches twice, and stale room
      responses have no side effects. A fresh replay timeout may remain held for
@@ -556,3 +559,28 @@ blocked: 0
   resolved_by:
     - "0.1.452 live gold pickup confirmation coverage"
   verification: "Gold core passes 10/10, gold retry passes 26/26, event transitions pass 62/62, and tick/runtime passes 38/38. Lua syntax, JSON parsing, release gates, Muddler 0.1.452 build, and packaged trigger inspection pass; local Mudlet is unavailable, so exact-SHA real-Mudlet CI remains pending."
+
+- gap_id: G-03-14
+  truth: "A diagnose result completes the current interrupt after its following prompt, and one missed or timed-out result cannot consume every later diagnose result."
+  status: resolved
+  reason: "Live 0.1.452 trace shows diagnose generations 51 and 52 both reaching the eight-second timeout even though diagnose was visibly run; the trace had no result-evidence event to distinguish a missed text trigger from stale FIFO consumption."
+  severity: major
+  test: 3
+  root_cause: "Diagnose completion depended only on two rendered text prefixes. Every timeout also retained an unresolved FIFO tombstone indefinitely. When a prior result was genuinely absent or its text trigger was missed, the next valid result was assigned to that tombstone, leaving the current generation one result behind and repeating the timeout cycle."
+  artifacts:
+    - path: "src/scripts/boop/boop_runtime.lua"
+      issue: "A new diagnose appended behind every unresolved timeout tombstone, allowing stale evidence to poison all later generations."
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "The documented diagnose-time Char.Afflictions.List event was not registered as completion evidence."
+    - path: "src/scripts/boop/boop_init.lua"
+      issue: "Boop did not explicitly announce Char.Afflictions GMCP support."
+    - path: "src/triggers/boop/Diag/triggers.json"
+      issue: "Rendered-line matching was the only result signal and could be missed or preempted by another package's output handling."
+  resolution:
+    - "Announce Char.Afflictions 1 and treat its List event as primary current-dispatch result evidence."
+    - "Retain both visible diagnose result triggers as fallback evidence."
+    - "Keep at most one dispatch's evidence when a new explicit diagnose starts, so an unresolved timed-out record cannot create permanent generation lag."
+    - "Trace result source, evidence generation, active generation, prompt consumption, and stale-evidence supersession."
+  resolved_by:
+    - "0.1.453 diagnose GMCP evidence and bounded timeout recovery"
+  verification: "Focused host diagnose, timeout, lifecycle-registration, and event-transition suites pass 74/74; full release gates, package build, and exact-SHA Mudlet CI remain pending."

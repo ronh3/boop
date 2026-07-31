@@ -3662,6 +3662,7 @@ describe("boop event-driven state transitions", function()
 
     assert.stub(send_gmcp_stub).was_called_with('Core.Supports.Add ["IRE.Target 1"]')
     assert.stub(send_gmcp_stub).was_called_with('Core.Supports.Add ["IRE.Display 3"]')
+    assert.stub(send_gmcp_stub).was_called_with('Core.Supports.Add ["Char.Afflictions 1"]')
     assert.stub(send_gmcp_stub).was_called_with('Core.Supports.Add ["Char.Skills 1"]')
     assert.stub(send_gmcp_stub).was_called_with([[Char.Skills.Get]])
   end)

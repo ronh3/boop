@@ -1553,7 +1553,17 @@ function boop.onGoldCommandFailure(line)
 end
 
 function boop.onDiagReadyLine()
-  return boop.runtime.markOldestDiagEvidenceResult()
+  return boop.runtime.markOldestDiagEvidenceResult("text")
+end
+
+function boop.onDiagAfflictionsList()
+  if not gmcp
+      or not gmcp.Char
+      or not gmcp.Char.Afflictions
+      or type(gmcp.Char.Afflictions.List) ~= "table" then
+    return false
+  end
+  return boop.runtime.markOldestDiagEvidenceResult("gmcp")
 end
 
 function boop.events.register()
@@ -1573,6 +1583,7 @@ function boop.events.register()
     boop.handlers[#boop.handlers + 1] = id
   end
 
+  add("gmcp.Char.Afflictions.List", "boop.onDiagAfflictionsList")
   add("gmcp.Char.Items.List", "boop.onRoomItemsList")
   add("gmcp.Char.Items.Add", "boop.onRoomItemsAdd")
   add("gmcp.Char.Items.Remove", "boop.onRoomItemsRemove")

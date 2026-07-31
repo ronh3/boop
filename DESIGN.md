@@ -111,8 +111,8 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Runtime safety uses owner-keyed operation locks only for asynchronous interrupt, pull, and gold work, so each operation releases only itself.
 - Lifecycle, room readiness, target eligibility, and walker state are computed from canonical state. They never depend on a later callback releasing a pseudo-owner.
 - Movement, accepted room contents, and blacklist edits reconcile stale target intent without stopping an active walker. An active pull preserves its target and queued intent until return or termination.
-- `diag` clears queue, queues `diagnose`, and temporarily blocks attacks until a diagnose result line plus prompt.
-- `diag` includes a timeout fallback to release attack hold if diagnose result lines are missed.
+- `diag` clears queue, queues `diagnose`, and temporarily blocks attacks until a `Char.Afflictions.List` diagnose snapshot plus prompt; visible diagnose result lines remain fallback evidence.
+- `diag` includes a timeout fallback, and unresolved evidence from a timed-out dispatch is bounded to that dispatch instead of consuming every later diagnose result.
 - `pull <mobname> <direction>` uses an operation lock without changing saved enabled configuration, sends the configured separator-delimited move/ready-damage-rage/leap-back chain, and releases its own lock after origin-room confirmation or the current operation timeout.
 - Interrupt, pull, and gold operations plus room and walk transitions are generation-owned; callbacks from superseded generations cannot mutate current state.
 - `boop get/set` provides scriptable config access, and `boop trace` exposes a rolling decision/command buffer.

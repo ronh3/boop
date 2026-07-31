@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = "0.1.452"
+boop.version = "0.1.453"
 
 boop.defaults = {
   enabled = false,
@@ -121,6 +121,7 @@ function boop.requestCoreSupports(opts)
 
   sendGMCP('Core.Supports.Add ["IRE.Target 1"]')
   sendGMCP('Core.Supports.Add ["IRE.Display 3"]')
+  sendGMCP('Core.Supports.Add ["Char.Afflictions 1"]')
   sendGMCP('Core.Supports.Add ["Char.Skills 1"]')
   boop.gmcp.lastSupportAnnounceAt = now
 

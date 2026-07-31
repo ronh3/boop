@@ -40,7 +40,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop gag` / `boop gag on|off|own|others|mobs|all|<scope> on|off|colors [own|others|mobs]|color [own|others|mobs] <who|ability|target|meta|separator|bg> [<color|off>]|color [own|others|mobs] reset`
 - `boop targeting <manual|whitelist|blacklist|auto>`
 - `boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>` (default: `simple`)
-- `diag` (queue-clear + diagnose; temporarily pauses boop attacks until diagnose result + prompt)
+- `diag` (queue-clear + diagnose; temporarily pauses boop attacks until the diagnose GMCP snapshot or visible result plus prompt)
 - `matic` (queues `ldeck draw matic` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
 - `catarin` (queues `ldeck draw catarin` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
 - `fly` (queues `fly` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
@@ -98,7 +98,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Psion includes `weave flurry &tar` as a standard damage option, so it can be selected with `boop prefer dam flurry`.
 - Hybrid rage skips fear-affliction primers; Psion hybrid treats `weave whirlwind &tar` as conditional on target `inhibit` or `stun`, uses `enact regrowth &tar` to prime inhibit, and otherwise falls back to simple damage with `psi devastate &tar` as the high-damage hit.
 - `Triumph suffuses you with incredible rage.` sets a one-shot free-rage flag; hybrid rage spends it on the highest ready damage or satisfied conditional rage attack, then clears it when a rage action is used.
-- `diag` clears queue, queues `diagnose`, and pauses attacks until `You are: ...` or `You are in perfect health.` and the following prompt (with timeout fallback via `diagTimeoutSeconds`).
+- `diag` clears queue, queues `diagnose`, and pauses attacks until the `Char.Afflictions.List` snapshot and following prompt; `You are: ...` and `You are in perfect health.` remain text fallbacks. A timeout releases the current hold, and a later explicit `diag` supersedes any unresolved evidence from that timed-out dispatch.
 - `matic` queues `ldeck draw matic` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
 - `catarin` queues `ldeck draw catarin` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
 - `fly` queues `fly` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).

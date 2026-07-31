@@ -227,6 +227,7 @@ describe("boop lifecycle recovery", function()
       ["gmcp.IRE.Display.Ohmap"] = "boop.onIreSupportObserved",
       ["gmcp.IRE.Target.Set"] = "boop.onTargetSet",
       ["gmcp.IRE.Target.Info"] = "boop.onTargetInfo",
+      ["gmcp.Char.Afflictions.List"] = "boop.onDiagAfflictionsList",
     }
     local counts = {}
     for _, entry in ipairs(registrations) do
