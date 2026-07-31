@@ -6,7 +6,7 @@ Current coverage:
 
 Owner-keyed operation tests cover interrupt, pull, and gold clear order plus exact-owner exclusion; compatibility blockers cannot hold production work.
 Interrupt and pull tests cover idempotent repeats, first-terminal callbacks, and stale generations.
-Gold tests cover room-owned pickup, inventory-owned packing, get-confirm-put order, and wrong-room retries.
+Gold tests cover room-owned pickup, direct-to-inventory corpse gold, inventory-owned packing, get-confirm-put order, and wrong-room retries.
 Room observation tests require current Room.Info plus a complete current room item list, reconcile newer generation-bound Add/Remove deltas before application, compute readiness without release owners, and reject stale authority.
 Walker tests cover computed automatic/manual gating, one move per room generation, stale-target reconciliation, owned stop, attached detach, explicit install, and package loss.
 SAFE-02 tests cover disabled and manual-targeting holds plus existing release actions.
@@ -40,7 +40,7 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
 - `boop_skill_gating_spec.lua`
   Confirms attack selection falls back correctly when required skills are unknown.
 - `boop_gold_spec.lua`
-  Confirms staged room-owned pickup, inventory-owned packing, and get-confirm-put command order.
+  Confirms staged room-owned pickup, direct-to-inventory packing without a redundant get, and get-confirm-put command order.
 - `boop_gold_retry_spec.lua`
   Confirms gold get/put retry and give-up behavior after command failures.
 - `boop_safety_spec.lua`

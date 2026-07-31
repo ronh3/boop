@@ -1,0 +1,1 @@
+boop.onGoldDirectPickup(line or "")

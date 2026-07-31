@@ -4,7 +4,7 @@ phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-31T00:54:45-07:00
+updated: 2026-07-31T02:01:15-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -14,7 +14,7 @@ updated: 2026-07-31T00:54:45-07:00
 number: 2
 name: Simplified runtime and stale-target recovery
 expected: |
-  With boop 0.1.453 installed, lifecycle, room, target, and walker status are
+  With boop 0.1.454 installed, lifecycle, room, target, and walker status are
   computed directly. Only interrupt, pull, and gold operations may hold
   automation. Movement, accepted room evidence, or a global-blacklist edit
   clears an ineligible target without stopping the walker.
@@ -53,7 +53,7 @@ observed: "Clean reconnect, prompt-first, and enable-before-prompt checks passed
 ### 2. Cross-owner attack, loot, and walk release
 
 expected: |
-  With boop 0.1.453 installed, manual targeting remains an intentional
+  With boop 0.1.454 installed, manual targeting remains an intentional
   automatic-walk status and is reported as `manual_targeting`, not
   `room_clear`. Lifecycle, room readiness, target eligibility, and walker state
   are computed directly; only interrupt, pull, and gold appear as active
@@ -61,8 +61,8 @@ expected: |
   target intent without stopping the walker.
 
   Easy check:
-  1. Install 0.1.453, reconnect or reload, then run `boop status`. Confirm it
-     prints `version: 0.1.453`. In `boop debug`, `ACTIVE OPERATIONS` should be
+  1. Install 0.1.454, reconnect or reload, then run `boop status`. Confirm it
+     prints `version: 0.1.454`. In `boop debug`, `ACTIVE OPERATIONS` should be
      empty unless an interrupt, pull, or gold action is actually in progress.
   2. Run `boop on`, `boop targeting auto`, and `boop walk start`. Engage a
      wanted denizen without issuing `ql`, `ih`, `boop status`, or another
@@ -102,7 +102,7 @@ oldest_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room
 ### 3. Wrong-room gold and pack transfer
 
 expected: |
-  With boop 0.1.453 installed, a gold Item.Add in an already settled room
+  With boop 0.1.454 installed, a gold Item.Add in an already settled room
   requests one current-room revalidation but cannot authorize pickup by itself.
   Only the matching fenced room List may queue one
   `queue add full get sovereigns`. Confirmed pickup may queue one freestand put,
@@ -136,6 +136,11 @@ expected: |
      responses have no side effects. A fresh replay timeout may remain held for
      explicit evidence, but it must not duplicate the command; movement must
      invalidate pickup and disabling boop must invalidate packing.
+  6. When Achaea prints `Numerous golden sovereigns spill from the corpse,
+     flying into your hands before they can reach the ground.`, confirm boop
+     sends one `queue add freestand put sovereigns in <container>` and no
+     `get sovereigns`. The trace should show `gold direct pickup` followed by
+     the normal pack success or bounded failure handling.
 result: [pending]
 previous_result: issue
 previous_reported: "Check output.md. Behavior does not seem quite right. Boop did not start attacking until another command (boop status, ql, etc.) were checked. Gold pickup seems wonky at best, pickup seeming to not occur after death when doing a diag prior, etc. Think the gold timeout may be too short?"
@@ -164,7 +169,7 @@ expected: |
   The immutable final commit is present on origin and `main.yml` succeeds for
   that exact `headSha`. The complete packaged real-Mudlet Busted suite,
   including Psion and Dragon pull-profile cases, reports no failures or errors
-  while building synchronized package 0.1.448.
+  while building synchronized package 0.1.454.
 result: [pending]
 source: automated
 previous_result: pass
@@ -583,4 +588,26 @@ blocked: 0
     - "Trace result source, evidence generation, active generation, prompt consumption, and stale-evidence supersession."
   resolved_by:
     - "0.1.453 diagnose GMCP evidence and bounded timeout recovery"
-  verification: "Focused host diagnose, timeout, lifecycle-registration, and event-transition suites pass 74/74; full release gates, package build, and exact-SHA Mudlet CI remain pending."
+  verification: "Focused host diagnose, timeout, lifecycle-registration, and event-transition suites pass 74/74; release gates, package build, and exact-SHA Mudlet CI passed for package 0.1.453."
+
+- gap_id: G-03-15
+  truth: "When Achaea sends corpse gold directly into inventory, boop skips room pickup and puts the sovereigns into the configured gold container."
+  status: resolved
+  reason: "The live line `Numerous golden sovereigns spill from the corpse, flying into your hands before they can reach the ground.` left the sovereigns in inventory instead of starting pack storage."
+  severity: major
+  test: 3
+  root_cause: "The line was neither a room-gold drop nor the result of a boop-owned get operation. Existing triggers therefore did not observe it, and the get-success handler could only advance an already-active pickup generation."
+  artifacts:
+    - path: "src/triggers/boop/Gold/triggers.json"
+      issue: "No trigger recognized Achaea's direct-to-hands corpse-gold wording."
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "Gold operations could begin from room evidence but not from authoritative inventory-delivery text."
+    - path: "tests/boop_gold_spec.lua"
+      issue: "Gold regressions omitted direct inventory delivery and the required absence of a redundant get command."
+  resolution:
+    - "Recognize the direct-to-hands corpse-gold line with a dedicated trigger."
+    - "Create or advance one normal inventory-owned pack operation and dispatch `queue add freestand put sovereigns in <container>`."
+    - "Never issue `get sovereigns` for this line; retain the existing pack success, failure, retry, timeout, and operation cleanup."
+  resolved_by:
+    - "0.1.454 direct-to-inventory corpse-gold packing"
+  verification: "Focused host gold core passes 11/11, gold retry passes 26/26, and event transitions pass 62/62. Lua syntax, release gates, Muddler 0.1.454 build, and packaged trigger inspection pass; exact-SHA Mudlet CI remains pending."

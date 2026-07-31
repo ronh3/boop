@@ -271,6 +271,30 @@ describe("boop staged gold handling", function()
     assert.are.equal("queue add full get sovereigns", sent[1].command)
   end)
 
+  it("packs corpse gold delivered directly to inventory without queuing get", function()
+    boop.config.goldPack = "pack"
+
+    assert.is_true(boop.onGoldDirectPickup(
+      "Numerous golden sovereigns spill from the corpse, flying into your hands before they can reach the ground."
+    ))
+
+    local packing = currentOperation()
+    assert.are.equal("pack_pending", packing.phase)
+    assert.are.equal("", packing.roomId)
+    assert.are.equal(0, packing.roomGeneration)
+    assert.are.equal("", packing.goldItemId)
+    assert.are.equal("pack", packing.packTarget)
+    assert.are.equal(1, #sent)
+    assert.are.equal(
+      "queue add freestand put sovereigns in pack",
+      sent[1].command
+    )
+    assert.are.equal(0, countSent("queue add full get sovereigns"))
+
+    assert.is_true(boop.onGoldPutSuccess())
+    assert.is_false(boop.state.gold.operation)
+  end)
+
   it("invalidates room-owned pickup before success and ignores the late success", function()
     startPickup("pack")
 
@@ -614,7 +638,7 @@ describe("boop staged gold handling", function()
     assert.stub(mark_intent_stub).was_not_called()
   end)
 
-  it("registers both live gold pickup success wordings", function()
+  it("registers room pickup and direct-to-inventory gold success wordings", function()
     local testsDir = assert(os.getenv("TESTS_DIRECTORY"))
     local repoRoot = assert(testsDir:match("^(.*)/tests$"))
     local handle = assert(io.open(
@@ -631,6 +655,11 @@ describe("boop staged gold handling", function()
     ) ~= nil)
     assert.is_true(contents:find(
       [["pattern": "^You scoop up .*[Ss]overeign.*\\.$"]],
+      1,
+      true
+    ) ~= nil)
+    assert.is_true(contents:find(
+      [["pattern": "^.+ golden sovereigns spill from the corpse, flying into your hands before they can reach the ground\\.$"]],
       1,
       true
     ) ~= nil)

@@ -1139,6 +1139,41 @@ completeGoldOperation = function(generation, terminalReason)
   return true
 end
 
+local function createGoldOperation(source, observation, packTarget, phase, goldItemId)
+  local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
+  observation = type(observation) == "table" and observation or {}
+  state.gold.generation = (tonumber(state.gold.generation) or 0) + 1
+  local generation = state.gold.generation
+  local operation = {
+    generation = generation,
+    phase = phase,
+    terminal = false,
+    blockerOwner = "gold:" .. tostring(generation),
+    source = tostring(source or "gold detected"),
+    roomId = tostring(observation.roomId or ""),
+    roomGeneration = tonumber(observation.generation) or 0,
+    goldItemId = tostring(goldItemId or ""),
+    packTarget = boop.util.trim(packTarget or ""),
+    getRetries = 0,
+    putRetries = 0,
+    flushTimer = false,
+    timeoutTimer = false,
+    dispatchId = 0,
+    dispatchProvenance = false,
+    displacedByOwner = nil,
+    displacedPhase = nil,
+    displacedDispatchId = nil,
+    replayPending = false,
+    awaitingExplicitEvidence = false,
+    replayWarningDispatchId = false,
+    revalidationAttempted = false,
+    revalidationFenceId = false,
+    sourceAuthority = copySourceAuthority(observation.sourceAuthority),
+  }
+  state.gold.operation = operation
+  return operation
+end
+
 startGoldOperation = function(source, observation, packTarget)
   if not boop.config or not boop.config.enabled or not boop.config.autoGrabGold then
     return false
@@ -1220,40 +1255,17 @@ startGoldOperation = function(source, observation, packTarget)
     end
   end
 
-  state.gold.generation = (tonumber(state.gold.generation) or 0) + 1
-  local generation = state.gold.generation
   local phase = evidenceComplete and currentGoldItem
     and GOLD_PHASE.PICKUP_PENDING
     or GOLD_PHASE.DEFERRED_ROOM
-  operation = {
-    generation = generation,
-    phase = phase,
-    terminal = false,
-    blockerOwner = "gold:" .. tostring(generation),
-    source = tostring(source or "gold detected"),
-    roomId = roomId,
-    roomGeneration = roomGeneration,
-    goldItemId = tostring(
-      currentGoldItem and currentGoldItem.id or requestedItemId
-    ),
-    packTarget = boop.util.trim(packTarget or ""),
-    getRetries = 0,
-    putRetries = 0,
-    flushTimer = false,
-    timeoutTimer = false,
-    dispatchId = 0,
-    dispatchProvenance = false,
-    displacedByOwner = nil,
-    displacedPhase = nil,
-    displacedDispatchId = nil,
-    replayPending = false,
-    awaitingExplicitEvidence = false,
-    replayWarningDispatchId = false,
-    revalidationAttempted = false,
-    revalidationFenceId = false,
-    sourceAuthority = copySourceAuthority(observation.sourceAuthority),
-  }
-  state.gold.operation = operation
+  operation = createGoldOperation(
+    source,
+    observation,
+    packTarget,
+    phase,
+    currentGoldItem and currentGoldItem.id or requestedItemId
+  )
+  local generation = operation.generation
 
   if phase == GOLD_PHASE.DEFERRED_ROOM then
     setOperationLock(operation.blockerOwner, "gold_deferred_room", "gold awaiting room evidence", {
@@ -1447,6 +1459,52 @@ function boop.onGoldDropLine(rawLine)
   local line = boop.util.safeLower(boop.util.trim(rawLine or ""))
   if line == "" or not line:find("sovereign", 1, true) then return end
   onGoldDetected("text line")
+end
+
+function boop.onGoldDirectPickup(rawLine)
+  if not boop.config
+      or not boop.config.enabled
+      or not boop.config.autoGrabGold then
+    return false
+  end
+
+  local line = boop.util.safeLower(boop.util.trim(rawLine or ""))
+  if not line:find("golden sovereigns spill from the corpse", 1, true)
+      or not line:find("flying into your hands", 1, true) then
+    return false
+  end
+
+  local operation = currentGoldOperation()
+  if operation and operation.phase == GOLD_PHASE.PACK_PENDING then
+    boop.trace.log("gold direct pickup coalesced: packing already pending")
+    return true
+  end
+
+  if operation and operation.phase == GOLD_PHASE.DEFERRED_ROOM then
+    cancelAutoGrabGoldTimer()
+    stopGoldPendingTimeout()
+    operation = currentGoldOperation(operation.generation, GOLD_PHASE.DEFERRED_ROOM)
+    if not operation then return false end
+    operation.phase = GOLD_PHASE.PICKUP_PENDING
+  elseif operation and operation.phase ~= GOLD_PHASE.PICKUP_PENDING then
+    return false
+  end
+
+  if not operation then
+    operation = createGoldOperation(
+      "direct corpse pickup",
+      {},
+      boop.config.goldPack,
+      GOLD_PHASE.PICKUP_PENDING,
+      ""
+    )
+  end
+
+  boop.trace.log(string.format(
+    "gold direct pickup: inventory confirmed | generation=%s",
+    tostring(operation.generation)
+  ))
+  return transferGoldToPacking(operation.generation)
 end
 
 local function retryGoldGet(reason)

@@ -100,10 +100,11 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `boop whitelist browse [tag]` browses area-level whitelist entries with optional tag filter.
 - `boop whitelist share [area]` emits structured party-chat packets for one area's ordered whitelist; incoming shares stay pending until explicitly applied as `merge`, `merge-reorder`, `overwrite`, or `reject`.
 - Whitelist areas support multi-tag metadata via `boop whitelist tag add/remove`, with `boop whitelist tag list` summary and per-area `boop whitelist tags <area>`.
-- Gold is a get-confirm-put pipeline: pickup is queued independently from attacks, and confirmed inventory ownership starts inventory-owned packing through `put sovereigns in <container>`.
+- Gold is normally a get-confirm-put pipeline: pickup is queued independently from attacks, and confirmed inventory ownership starts inventory-owned packing through `put sovereigns in <container>`.
+- Achaea's corpse line that sends sovereigns directly into the character's hands bypasses room pickup and enters the same inventory-owned packing stage without issuing `get sovereigns`.
 - `boop pack <container>` configures the optional container consumed by the inventory-owned packing stage.
 - `boop import foxhunt [merge|overwrite|dryrun]` imports area list data from Foxhunt's `hunting` DB into boop lists.
-- Gold get/put tracking listens for success/failure lines, including Achaea's `pick up` and `scoop up` pickup confirmations, and performs bounded retries before warning.
+- Gold get/put tracking listens for success/failure lines, including Achaea's `pick up`, `scoop up`, and direct-to-hands pickup confirmations, and performs bounded retries before warning.
 - Gold queue state is now guarded by a short stale-pending timeout; if get/put success/failure triggers are missed, boop warns, clears stale pending state, and resumes.
 - `boop prequeue` and `boop lead` make prequeue behavior explicit and independent from `useQueueing`.
 - If a standard attack is already prequeued and the current target gains shield before it fires, boop rebuilds `BOOP_ATTACK` immediately to the current shieldbreak standard when appropriate. Staging or rebuilding that queued alias does not count as executing the shieldbreak, so a rebound cannot downgrade the next prequeue back to normal damage before shield-down evidence arrives.

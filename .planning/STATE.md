@@ -6,9 +6,9 @@ current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
 status: verifying
 stopped_at: Completed 03-24-PLAN.md
-last_updated: "2026-07-29T07:16:38.327Z"
-last_activity: 2026-07-29
-last_activity_desc: Phase 03 execution started
+last_updated: "2026-07-31T02:01:15-07:00"
+last_activity: 2026-07-31
+last_activity_desc: Resolved Phase 03 direct-to-inventory gold packing gap
 progress:
   total_phases: 6
   completed_phases: 3
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
 Plan: 24 of 24
 Status: Phase complete — ready for verification
-Last activity: 2026-07-29 — Phase 03 execution started
+Last activity: 2026-07-31 — Resolved Phase 03 direct-to-inventory gold packing gap
 
 Progress: [██████████] 100%
 
@@ -99,6 +99,7 @@ Recent decisions affecting current work:
 - [Phase 03 planning]: Commits whose staged paths are all under `.planning/` preserve the package version; any commit touching another path bumps all four version checkpoints.
 - [Phase 03 planning]: Final authority is the tracked repository extension `tools/wait_for_exact_ci.sh` against immutable final HEAD after all GSD mutations.
 - [Phase 03]: Diagnose completion prefers Char.Afflictions.List with visible result-line fallback; a new explicit diagnose supersedes unresolved evidence from a timed-out dispatch so stale FIFO state cannot poison later generations.
+- [Phase 03]: A corpse line that sends sovereigns directly into inventory bypasses room pickup and starts the existing inventory-owned pack operation without issuing get.
 - [Phase 03]: Plan 03-01 makes blockersByOwner authoritative and keeps combat.blocker only as a derived primary compatibility snapshot.
 - [Phase 03]: Plan 03-01 permits blocker mutation and self-exclusion only by exact owner key, never by blocker code, family, or subsystem.
 - [Phase 03]: Plan 03-01 requires Room.Info plus a later complete current-cycle room item list, with one capped Char.Items.Room refresh per generation.
