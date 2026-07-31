@@ -103,7 +103,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Gold is a get-confirm-put pipeline: pickup is queued independently from attacks, and confirmed inventory ownership starts inventory-owned packing through `put sovereigns in <container>`.
 - `boop pack <container>` configures the optional container consumed by the inventory-owned packing stage.
 - `boop import foxhunt [merge|overwrite|dryrun]` imports area list data from Foxhunt's `hunting` DB into boop lists.
-- Gold get/put tracking now listens for success/failure lines and performs bounded retries before warning.
+- Gold get/put tracking listens for success/failure lines, including Achaea's `pick up` and `scoop up` pickup confirmations, and performs bounded retries before warning.
 - Gold queue state is now guarded by a short stale-pending timeout; if get/put success/failure triggers are missed, boop warns, clears stale pending state, and resumes.
 - `boop prequeue` and `boop lead` make prequeue behavior explicit and independent from `useQueueing`.
 - If a standard attack is already prequeued and the current target gains shield before it fires, boop rebuilds `BOOP_ATTACK` immediately to the current shieldbreak standard when appropriate. Staging or rebuilding that queued alias does not count as executing the shieldbreak, so a rebound cannot downgrade the next prequeue back to normal damage before shield-down evidence arrives.

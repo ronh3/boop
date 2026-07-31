@@ -613,4 +613,26 @@ describe("boop staged gold handling", function()
     assert.is_nil(sent[1].command:find("sovereigns", 1, true))
     assert.stub(mark_intent_stub).was_not_called()
   end)
+
+  it("registers both live gold pickup success wordings", function()
+    local testsDir = assert(os.getenv("TESTS_DIRECTORY"))
+    local repoRoot = assert(testsDir:match("^(.*)/tests$"))
+    local handle = assert(io.open(
+      repoRoot .. "/src/triggers/boop/Gold/triggers.json",
+      "r"
+    ))
+    local contents = assert(handle:read("*a"))
+    handle:close()
+
+    assert.is_true(contents:find(
+      [["pattern": "^You pick up .*[Ss]overeign.*\\.$"]],
+      1,
+      true
+    ) ~= nil)
+    assert.is_true(contents:find(
+      [["pattern": "^You scoop up .*[Ss]overeign.*\\.$"]],
+      1,
+      true
+    ) ~= nil)
+  end)
 end)

@@ -4,7 +4,7 @@ phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-30T23:22:10-07:00
+updated: 2026-07-30T23:45:09-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -102,7 +102,7 @@ oldest_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room
 ### 3. Wrong-room gold and pack transfer
 
 expected: |
-  With boop 0.1.448 installed, a gold Item.Add in an already settled room
+  With boop 0.1.452 installed, a gold Item.Add in an already settled room
   requests one current-room revalidation but cannot authorize pickup by itself.
   Only the matching fenced room List may queue one
   `queue add full get sovereigns`. Confirmed pickup may queue one freestand put,
@@ -536,3 +536,23 @@ blocked: 0
   resolved_by:
     - "0.1.451 queued shieldbreak execution semantics"
   verification: "Prequeue/planner/shield focused regressions pass 21/21, adjacent event/tick/runtime regressions pass 100/100, Lua 5.1 syntax and release gates pass, Muddler builds 0.1.451, and the packaged real-Mudlet suite completes without a new Busted failure/error marker."
+
+- gap_id: G-03-13
+  truth: "A successful live gold pickup confirmation terminates the pickup operation immediately, allowing the current target or walker to resume without waiting for the stale-pending timeout."
+  status: resolved
+  reason: "Live output repeatedly showed `You scoop up <amount> gold sovereigns.`, followed by no `gold get success` transition and a four-second `pending_timeout` before combat resumed."
+  severity: major
+  test: 3
+  root_cause: "The Gold Get Success trigger recognized only Achaea's `You pick up ... sovereigns.` wording. The live `You scoop up ... gold sovereigns.` wording never called boop.onGoldGetSuccess, so the room-item removal remained intentionally ambiguous and the gold operation held combat, queue, and walk until timeout."
+  artifacts:
+    - path: "src/triggers/boop/Gold/triggers.json"
+      issue: "Pickup success omitted the live `scoop up` wording."
+    - path: "tests/boop_gold_spec.lua"
+      issue: "Gold behavior tests called boop.onGoldGetSuccess directly and did not assert the packaged trigger wording."
+  resolution:
+    - "Recognize both observed `pick up` and `scoop up` sovereign confirmation lines as pickup success."
+    - "Keep room-item removal alone nonterminal because it does not prove inventory ownership."
+    - "Regress the packaged trigger manifest so either observed confirmation reaches the existing get-confirm-put transition."
+  resolved_by:
+    - "0.1.452 live gold pickup confirmation coverage"
+  verification: "Gold core passes 10/10, gold retry passes 26/26, event transitions pass 62/62, and tick/runtime passes 38/38. Lua syntax, JSON parsing, release gates, Muddler 0.1.452 build, and packaged trigger inspection pass; local Mudlet is unavailable, so exact-SHA real-Mudlet CI remains pending."

@@ -95,6 +95,10 @@
       {
         "pattern": "^You pick up .*[Ss]overeign.*\\.$",
         "type": "regex"
+      },
+      {
+        "pattern": "^You scoop up .*[Ss]overeign.*\\.$",
+        "type": "regex"
       }
     ],
     "script": ""
