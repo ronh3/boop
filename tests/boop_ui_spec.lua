@@ -549,14 +549,19 @@ describe("boop ui home", function()
     ))
   end)
 
-  it("states get-confirm-put gold timing without stale attack chaining", function()
+  it("distinguishes room pickup from direct-to-hands gold without attack chaining", function()
     echoes = {}
 
     boop.ui.help("loot")
 
     local joined = table.concat(echoes, "\n")
     assert.is_true(joined:find(
-      "Gold is get-confirm-put: pickup, packing, and attacks are separate queued effects.",
+      "Room gold is get-confirm-put; direct-to-hands gold skips get. Packing and attacks remain separate queued effects.",
+      1,
+      true
+    ) ~= nil)
+    assert.is_true(joined:find(
+      "the corpse line that sends sovereigns directly into your hands",
       1,
       true
     ) ~= nil)

@@ -6,9 +6,9 @@ current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
 status: verifying
 stopped_at: Completed 03-24-PLAN.md
-last_updated: "2026-07-31T02:01:15-07:00"
+last_updated: "2026-07-31T02:08:00-07:00"
 last_activity: 2026-07-31
-last_activity_desc: Resolved Phase 03 direct-to-inventory gold packing gap
+last_activity_desc: Aligned direct-gold help contract after exact-SHA Mudlet CI
 progress:
   total_phases: 6
   completed_phases: 3
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
 Plan: 24 of 24
 Status: Phase complete — ready for verification
-Last activity: 2026-07-31 — Resolved Phase 03 direct-to-inventory gold packing gap
+Last activity: 2026-07-31 — Aligned direct-gold help contract after exact-SHA Mudlet CI
 
 Progress: [██████████] 100%
 
