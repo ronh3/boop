@@ -126,6 +126,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Unnamable standards prepend `hound maul &tar/` and Infernal standards prepend `hyena maul &tar/` when the class-specific `Maul` skill is known and ready. Queued intent does not consume readiness before Achaea confirms use or rejection through the existing trigger lines.
 - Dragon profiles include `blast &tar` as a standard damage option exposed through `boop prefer`; rage and pull-rage dragon actions are not blast-prefixed.
 - Infernal profiles include `quash &tar/arc` as the `quarc` standard damage option exposed through `boop prefer`.
+- The Magi profile keeps Horripilation as its default staffcast and exposes Scintilla and Dissolution as standard damage preferences; Dissolution availability follows the Artificing `Staff` ability.
 - Standard attacks and rage actions are independent; standard builds rage and there is no mode toggle.
 - Triumph's free-rage line sets a one-shot flag consumed by hybrid rage selection; that path ignores current rage amount but still respects cooldown and conditional state.
 - Skill gating issues `Char.Skills.Get` requests per skill (group-aware).

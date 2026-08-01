@@ -4,7 +4,7 @@ phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-31T21:24:54-07:00
+updated: 2026-07-31T21:31:58-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -14,7 +14,7 @@ updated: 2026-07-31T21:24:54-07:00
 number: 2
 name: Simplified runtime and stale-target recovery
 expected: |
-  With boop 0.1.456 installed, lifecycle, room, target, and walker status are
+  With boop 0.1.457 installed, lifecycle, room, target, and walker status are
   computed directly. Only interrupt, pull, and gold operations may hold
   automation. Movement, accepted room evidence, or a global-blacklist edit
   clears an ineligible target without stopping the walker.
@@ -53,7 +53,7 @@ observed: "Clean reconnect, prompt-first, and enable-before-prompt checks passed
 ### 2. Cross-owner attack, loot, and walk release
 
 expected: |
-  With boop 0.1.456 installed, manual targeting remains an intentional
+  With boop 0.1.457 installed, manual targeting remains an intentional
   automatic-walk status and is reported as `manual_targeting`, not
   `room_clear`. Lifecycle, room readiness, target eligibility, and walker state
   are computed directly; only interrupt, pull, and gold appear as active
@@ -61,8 +61,8 @@ expected: |
   target intent without stopping the walker.
 
   Easy check:
-  1. Install 0.1.456, reconnect or reload, then run `boop status`. Confirm it
-     prints `version: 0.1.456`. In `boop debug`, `ACTIVE OPERATIONS` should be
+  1. Install 0.1.457, reconnect or reload, then run `boop status`. Confirm it
+     prints `version: 0.1.457`. In `boop debug`, `ACTIVE OPERATIONS` should be
      empty unless an interrupt, pull, or gold action is actually in progress.
   2. Run `boop on`, `boop targeting auto`, and `boop walk start`. Engage a
      wanted denizen without issuing `ql`, `ih`, `boop status`, or another
@@ -102,7 +102,7 @@ oldest_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room
 ### 3. Wrong-room gold and pack transfer
 
 expected: |
-  With boop 0.1.456 installed, a gold Item.Add in an already settled room
+  With boop 0.1.457 installed, a gold Item.Add in an already settled room
   requests one current-room revalidation but cannot authorize pickup by itself.
   Only the matching fenced room List may queue one
   `queue add full get sovereigns`. Confirmed pickup may queue one freestand put,
@@ -169,7 +169,7 @@ expected: |
   The immutable final commit is present on origin and `main.yml` succeeds for
   that exact `headSha`. The complete packaged real-Mudlet Busted suite,
   including Psion and Dragon pull-profile cases, reports no failures or errors
-  while building synchronized package 0.1.456.
+  while building synchronized package 0.1.457.
 result: [pending]
 source: automated
 previous_result: pass
@@ -612,3 +612,23 @@ blocked: 0
     - "0.1.455 direct-to-inventory corpse-gold packing and help-contract alignment"
     - "0.1.456 generalized sovereign-prefix recognition with exact-suffix and false-positive guards"
   verification: "Focused host gold core passes 13/13, gold retry passes 26/26, event transitions pass 62/62, and the aligned UI help contract passes 46/46. Lua syntax, JSON validation, release gates, Muddler build, packaged trigger inspection, and direct regex samples pass; package 0.1.456 exact-SHA Mudlet CI remains pending."
+
+- gap_id: G-03-16
+  truth: "A Magi can retain Horripilation as the default standard attack or explicitly prefer Scintilla or Dissolution through the normal attack preference surface."
+  status: resolved
+  reason: "The Magi profile exposed only Horripilation even though Scintilla and Dissolution are valid elemental staff damage attacks."
+  severity: minor
+  test: 2
+  root_cause: "The Magi `standard.dam` profile was a single attack entry rather than an ordered preference list."
+  artifacts:
+    - path: "src/scripts/boop/attacks/magi.lua"
+      issue: "Scintilla and Dissolution were absent from standard damage selection."
+    - path: "tests/boop_attacks_spec.lua"
+      issue: "No contract covered Magi preference labels, commands, or Artificing skill gates."
+  resolution:
+    - "Preserve Horripilation as the first/default Magi damage option."
+    - "Add `staffcast scintilla at &tar`, gated by Artificing Scintilla."
+    - "Add `staffcast dissolution at &tar`, labeled Dissolution and gated by the Artificing Staff ability."
+  resolved_by:
+    - "0.1.457 Magi staffcast preference expansion"
+  verification: "Focused host Magi attack-profile contracts pass 4/4; adjacent attack and packaged Mudlet verification remain pending."

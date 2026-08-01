@@ -1,6 +1,13 @@
 local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper.lua")
 
 describe("boop attack selection", function()
+  local function loadMagiProfile()
+    dofile(
+      os.getenv("TESTS_DIRECTORY")
+        .. "/../src/scripts/boop/attacks/magi.lua"
+    )
+  end
+
   before_each(function()
     helper.reset()
     helper.setClass("Occultist")
@@ -153,4 +160,72 @@ describe("boop attack selection", function()
     assert.is_true(joined:find("Charge -> weave charge &tar", 1, true) ~= nil)
     assert.is_true(joined:find("Flurry -> weave flurry &tar", 1, true) ~= nil)
   end)
+
+  it("lists Magi staffcast damage preference options", function()
+    loadMagiProfile()
+    local options = boop.attacks.standardOptions("magi", "dam")
+    local labels = {}
+    for _, option in ipairs(options) do
+      labels[#labels + 1] = option.label
+    end
+    local joined = table.concat(labels, "\n")
+
+    assert.is_true(joined:find(
+      "Horripilation -> staffcast horripilation at &tar",
+      1,
+      true
+    ) ~= nil)
+    assert.is_true(joined:find(
+      "Scintilla -> staffcast scintilla at &tar",
+      1,
+      true
+    ) ~= nil)
+    assert.is_true(joined:find(
+      "Dissolution -> staffcast dissolution at &tar",
+      1,
+      true
+    ) ~= nil)
+  end)
+
+  it("keeps Magi horripilation as the default staffcast", function()
+    loadMagiProfile()
+    helper.setClass("Magi")
+    helper.learnSkills({
+      { name = "Horripilation", group = "Artificing" },
+      { name = "Scintilla", group = "Artificing" },
+      { name = "Staff", group = "Artificing" },
+    })
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("staffcast horripilation at 42", actions.standard)
+  end)
+
+  for _, case in ipairs({
+    {
+      preference = "scintilla",
+      skill = "Scintilla",
+      command = "staffcast scintilla at 42",
+    },
+    {
+      preference = "dissolution",
+      skill = "Staff",
+      command = "staffcast dissolution at 42",
+    },
+  }) do
+    it("uses Magi " .. case.preference .. " when preferred", function()
+      loadMagiProfile()
+      helper.setClass("Magi")
+      helper.learnSkills({
+        { name = "Horripilation", group = "Artificing" },
+        { name = case.skill, group = "Artificing" },
+      })
+      boop.config[boop.attacks.preferenceConfigKey("magi", "dam", "")] =
+        case.preference
+
+      local actions = boop.attacks.choose()
+
+      assert.are.equal(case.command, actions.standard)
+    end)
+  end
 end)

@@ -97,6 +97,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Dragon classes include `blast &tar` as a standard damage option, so it can be selected with `boop prefer dam blast`; rage and pull-rage actions are left unchanged.
 - Infernal includes `quash &tar/arc` as `quarc`, so it can be selected with `boop prefer dam quarc`.
 - Psion includes `weave flurry &tar` as a standard damage option, so it can be selected with `boop prefer dam flurry`.
+- Magi includes `staffcast scintilla at &tar` and `staffcast dissolution at &tar` as standard damage options, selectable with `boop prefer dam scintilla` or `boop prefer dam dissolution`.
 - Hybrid rage skips fear-affliction primers; Psion hybrid treats `weave whirlwind &tar` as conditional on target `inhibit` or `stun`, uses `enact regrowth &tar` to prime inhibit, and otherwise falls back to simple damage with `psi devastate &tar` as the high-damage hit.
 - `Triumph suffuses you with incredible rage.` sets a one-shot free-rage flag; hybrid rage spends it on the highest ready damage or satisfied conditional rage attack, then clears it when a rage action is used.
 - `diag` clears queue, queues `diagnose`, and pauses attacks until the `Char.Afflictions.List` snapshot and following prompt; `You are: ...` and `You are in perfect health.` remain text fallbacks. A timeout releases the current hold, and a later explicit `diag` supersedes any unresolved evidence from that timed-out dispatch.
