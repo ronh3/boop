@@ -113,6 +113,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - With `pullRageReserve` on, rage shieldbreak also yields to a standard shieldbreak when the class/profile already has one available.
 - Set `boop set breakShields off` to stop tracked shields from interrupting normal standard or rage attack selection.
 - A queued shieldbreak remains eligible until combat output confirms the shield is down; merely staging or rebuilding `BOOP_ATTACK` does not count as a completed attempt.
+- Magi Staffcast damage does not clear tracked shield state because it can land while the target's shield remains active.
 - Auto-flee can be toggled independently from its threshold; `boop flee off` disables it without clearing the saved percentage.
 - Prequeue is separately configurable from queueing (`boop prequeue`); when enabled, it queues standard attacks before recovery using `boop lead` seconds (default `1.00`).
 - Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.

@@ -47,7 +47,7 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
 - `boop_safety_spec.lua`
   Confirms flee threshold parsing and flee execution.
 - `boop_shields_spec.lua`
-  Confirms shield seen/down tracking and shieldbreak attempt state updates.
+  Confirms shield seen/down tracking, shieldbreak attempt state updates, and that Magi Staffcast damage is not packaged as shield-down evidence.
 - `boop_prequeue_spec.lua`
   Confirms prequeue scheduling, queued standard attack behavior, and that a shield-gain/rebound rebuild cannot be downgraded to normal damage before the shieldbreak executes.
 - `boop_profiles_spec.lua`

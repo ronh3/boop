@@ -109,6 +109,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `boop prequeue` and `boop lead` make prequeue behavior explicit and independent from `useQueueing`.
 - If a standard attack is already prequeued and the current target gains shield before it fires, boop rebuilds `BOOP_ATTACK` immediately to the current shieldbreak standard when appropriate. Staging or rebuilding that queued alias does not count as executing the shieldbreak, so a rebound cannot downgrade the next prequeue back to normal damage before shield-down evidence arrives.
 - `breakShields` defaults on; when disabled, tracked target shield state is retained but does not change standard or rage attack selection.
+- Magi Staffcast damage can land while a target's magical shield remains active, so Staffcast output is not shield-down evidence.
 - Runtime safety uses owner-keyed operation locks only for asynchronous interrupt, pull, and gold work, so each operation releases only itself.
 - Lifecycle, room readiness, target eligibility, and walker state are computed from canonical state. They never depend on a later callback releasing a pseudo-owner.
 - Movement, accepted room contents, and blacklist edits reconcile stale target intent without stopping an active walker. An active pull preserves its target and queued intent until return or termination.

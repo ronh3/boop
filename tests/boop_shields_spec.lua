@@ -66,4 +66,21 @@ describe("boop shield tracking", function()
     assert.is_true(boop.state.targeting.targetShield.attempted)
     assert.is_number(boop.state.targeting.targetShield.lastAttempt)
   end)
+
+  it("does not treat Magi staffcast damage as shield-down evidence", function()
+    local root = os.getenv("TESTS_DIRECTORY") .. "/.."
+    local manifestPath = root
+      .. "/src/triggers/boop/Shield/Magi/triggers.json"
+    local manifestHandle = assert(io.open(manifestPath, "r"))
+    local manifest = manifestHandle:read("*a")
+    manifestHandle:close()
+
+    assert.is_nil(manifest:find("Magi General Staffcast", 1, true))
+
+    local scriptPath = root
+      .. "/src/triggers/boop/Shield/Magi/Magi_General_Staffcast.lua"
+    local scriptHandle = io.open(scriptPath, "r")
+    if scriptHandle then scriptHandle:close() end
+    assert.is_nil(scriptHandle)
+  end)
 end)

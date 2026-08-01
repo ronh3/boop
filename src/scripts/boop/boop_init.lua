@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = "0.1.459"
+boop.version = "0.1.460"
 
 boop.defaults = {
   enabled = false,

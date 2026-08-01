@@ -661,3 +661,25 @@ blocked: 0
   resolved_by:
     - "0.1.459 exact-authority natural-tick room application wake"
   verification: "The named G-03-17 regression and the existing moved-room invalidation chronology pass in the 63-case event-transition suite; adjacent trace, tick/runtime, gold, walk, prequeue, and target suites pass. Exact-SHA Mudlet CI and live 0.1.459 confirmation remain pending."
+
+- gap_id: G-03-18
+  truth: "Magi Staffcast damage does not clear a target's tracked magical shield because Staffcast can land while that shield remains active."
+  status: resolved
+  reason: "Live 0.1.459 output showed a target gain a magical shield, Scintilla land for damage, boop clear shield state from the generic Staffcast trigger, and the actual shield fade later."
+  severity: major
+  test: 2
+  root_cause: "The generated Magi Staffcast success trigger was incorrectly included in the shield-down trigger family, treating damage that bypasses shield as proof that shield was removed."
+  artifacts:
+    - path: "src/triggers/boop/Shield/Magi/triggers.json"
+      issue: "All successful Staffcast variants were registered as shield-down evidence."
+    - path: "src/triggers/boop/Shield/Magi/Magi_General_Staffcast.lua"
+      issue: "The trigger unconditionally called onShieldDownTrigger for ordinary Staffcast damage."
+    - path: "tests/boop_shields_spec.lua"
+      issue: "Shield tests did not constrain the packaged Magi evidence boundary."
+  resolution:
+    - "Remove ordinary Magi Staffcast damage from the shield-down trigger manifest."
+    - "Retain explicit Magi Erode and Disintegrate shield-down evidence."
+    - "Regress both manifest and script absence so generated package wiring cannot silently restore the false signal."
+  resolved_by:
+    - "0.1.460 Magi Staffcast shield-evidence correction"
+  verification: "Focused shield/prequeue regressions pass 18/18 and focused Magi profile checks pass 4/4. Lua syntax, release gates, and the 0.1.460 package build pass; built XML retains the Staffcast gag trigger with no Staffcast shield-down handler. Exact-SHA Mudlet CI and live confirmation remain pending."
