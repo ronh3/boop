@@ -99,6 +99,19 @@ local DOMAIN_DEFAULTS = {
       refreshTimeoutTimer = false,
       warned = false,
     },
+    movementIntent = {
+      generation = 0,
+      active = false,
+      direction = "",
+      originRoomId = "",
+      originObservationGeneration = 0,
+      sentAt = nil,
+      candidateItems = false,
+      candidateAt = nil,
+      candidateFenceId = false,
+      candidateStatus = "",
+      lastReason = "",
+    },
   },
   gold = {
     generation = 0,
@@ -253,6 +266,9 @@ local function lifecycleState()
 end
 
 function boop.runtime.beginConnectionLifecycle(source)
+  local state = boop.runtime.ensureState()
+  state.targeting.movementIntent =
+    deepCopy(DOMAIN_DEFAULTS.targeting.movementIntent)
   local lifecycle = lifecycleState()
   lifecycle.connectionGeneration = lifecycle.connectionGeneration + 1
   lifecycle.promptSeen = false
@@ -347,6 +363,17 @@ function boop.runtime.startRoomObservation(roomId, opts)
     return false
   end
   local state = boop.runtime.ensureState()
+  if boundary == "fresh_start" then
+    local previousIntent = state.targeting.movementIntent
+    local intentGeneration = type(previousIntent) == "table"
+        and tonumber(previousIntent.generation)
+      or 0
+    state.targeting.movementIntent =
+      deepCopy(DOMAIN_DEFAULTS.targeting.movementIntent)
+    state.targeting.movementIntent.generation = intentGeneration or 0
+    state.targeting.movementIntent.lastReason =
+      tostring(opts.reason or "fresh room observation")
+  end
   local previous = roomObservationState()
   local generation = tonumber(previous.generation) or 0
   local normalizedRoomId = normalizeRoomId(roomId)
@@ -412,6 +439,138 @@ local function currentRoomId()
       and gmcp.Room.Info.num
       or ""
   )
+end
+
+local MOVEMENT_INTENT_TTL_SECONDS = 2
+local MOVEMENT_CANDIDATE_TTL_SECONDS = 1
+
+local function movementClock()
+  if getEpoch then
+    return tonumber(getEpoch()) or os.clock()
+  end
+  return os.clock()
+end
+
+local function movementIntentState()
+  local state = boop.runtime.ensureState()
+  local intent = state.targeting.movementIntent
+  if type(intent) ~= "table" then
+    intent = deepCopy(DOMAIN_DEFAULTS.targeting.movementIntent)
+    state.targeting.movementIntent = intent
+  end
+  intent.generation = tonumber(intent.generation) or 0
+  intent.active = not not intent.active
+  intent.direction = tostring(intent.direction or "")
+  intent.originRoomId = normalizeRoomId(intent.originRoomId)
+  intent.originObservationGeneration =
+    tonumber(intent.originObservationGeneration) or 0
+  intent.sentAt = tonumber(intent.sentAt)
+  intent.candidateItems = type(intent.candidateItems) == "table"
+    and intent.candidateItems
+    or false
+  intent.candidateAt = tonumber(intent.candidateAt)
+  intent.candidateFenceId = intent.candidateFenceId or false
+  intent.candidateStatus = tostring(intent.candidateStatus or "")
+  intent.lastReason = tostring(intent.lastReason or "")
+  return intent
+end
+
+local function resetMovementIntent(intent, reason)
+  intent.active = false
+  intent.direction = ""
+  intent.originRoomId = ""
+  intent.originObservationGeneration = 0
+  intent.sentAt = nil
+  intent.candidateItems = false
+  intent.candidateAt = nil
+  intent.candidateFenceId = false
+  intent.candidateStatus = ""
+  intent.lastReason = tostring(reason or "cleared")
+end
+
+local function movementIntentExpired(intent, now)
+  local sentAt = tonumber(intent.sentAt)
+  local elapsed = sentAt and (now - sentAt) or nil
+  return not elapsed
+    or elapsed < 0
+    or elapsed > MOVEMENT_INTENT_TTL_SECONDS
+end
+
+function boop.runtime.movementIntentSnapshot()
+  local intent = movementIntentState()
+  return {
+    generation = intent.generation,
+    active = intent.active,
+    direction = intent.direction,
+    originRoomId = intent.originRoomId,
+    originObservationGeneration =
+      intent.originObservationGeneration,
+    sentAt = intent.sentAt,
+    candidateItems = deepCopy(intent.candidateItems),
+    candidateAt = intent.candidateAt,
+    candidateFenceId = intent.candidateFenceId,
+    candidateStatus = intent.candidateStatus,
+    lastReason = intent.lastReason,
+  }
+end
+
+local function currentObservationFence(observation, roomId)
+  local fence = observation.fenceQueue[1]
+  return type(fence) == "table"
+    and fence.valid ~= false
+    and tonumber(fence.fenceId)
+      == tonumber(observation.activeFenceId)
+    and normalizeRoomId(fence.roomId) == roomId
+    and tonumber(fence.generation)
+      == tonumber(observation.generation)
+    and fence.roomOnly ~= true
+end
+
+function boop.runtime.noteMovementIntent(direction)
+  local normalizedDirection = tostring(direction or "")
+    :lower()
+    :match("^%s*(.-)%s*$")
+  local observation = roomObservationState()
+  local originRoomId = currentRoomId()
+  local authority = observation.acceptedSourceAuthority
+  local settledOrigin = observation.itemsSeen
+    and type(authority) == "table"
+    and normalizeRoomId(authority.roomId) == originRoomId
+    and tonumber(authority.observationGeneration)
+      == tonumber(observation.generation)
+    and boop.runtime.validateRoomSourceAuthority
+    and boop.runtime.validateRoomSourceAuthority(authority)
+  local fencedOrigin = not observation.itemsSeen
+    and currentObservationFence(observation, originRoomId)
+  if normalizedDirection == ""
+      or originRoomId == ""
+      or observation.roomId ~= originRoomId
+      or not observation.infoSeen
+      or not (settledOrigin or fencedOrigin) then
+    return false
+  end
+
+  local intent = movementIntentState()
+  local now = movementClock()
+  if intent.active and not movementIntentExpired(intent, now) then
+    resetMovementIntent(intent, "overlapping movement commands")
+    return false
+  end
+  if intent.active then
+    resetMovementIntent(intent, "expired movement replaced")
+  end
+  intent.generation = intent.generation + 1
+  intent.active = true
+  intent.direction = normalizedDirection
+  intent.originRoomId = originRoomId
+  intent.originObservationGeneration = observation.generation
+  intent.sentAt = now
+  intent.candidateItems = false
+  intent.candidateAt = nil
+  intent.candidateFenceId = false
+  intent.candidateStatus = ""
+  intent.lastReason = "movement command observed"
+  return boop.runtime.movementIntentSnapshot()
 end
 
 function boop.runtime.beginRoomResponseFence(reason, opts)
@@ -545,6 +704,154 @@ local function deepEqual(left, right, seen)
     end
   end
   return true
+end
+
+local function movementBaselineCurrent(observation, intent, fenceId)
+  local authority = observation.acceptedSourceAuthority
+  local accepted = observation.itemsSeen
+    and type(authority) == "table"
+    and normalizeRoomId(authority.roomId) == intent.originRoomId
+    and tonumber(authority.observationGeneration)
+      == tonumber(intent.originObservationGeneration)
+
+  local application = observation.activeApplication
+  local applicationAuthority = type(application) == "table"
+      and application.sourceAuthority
+    or false
+  local completedFence = observation.lastCompletedFence
+  local pending = observation.itemsSeen
+    and type(application) == "table"
+    and application.valid ~= false
+    and not application.claimed
+    and not application.consumed
+    and type(applicationAuthority) == "table"
+    and normalizeRoomId(applicationAuthority.roomId)
+      == intent.originRoomId
+    and tonumber(applicationAuthority.observationGeneration)
+      == tonumber(intent.originObservationGeneration)
+    and type(completedFence) == "table"
+    and tonumber(completedFence.fenceId) == tonumber(fenceId)
+    and normalizeRoomId(completedFence.roomId) == intent.originRoomId
+    and tonumber(completedFence.generation)
+      == tonumber(intent.originObservationGeneration)
+    and deepEqual(application.items, observation.acceptedItems)
+
+  return accepted or pending
+end
+
+function boop.runtime.clearMovementIntent(reason)
+  local intent = movementIntentState()
+  resetMovementIntent(intent, reason)
+  return boop.runtime.movementIntentSnapshot()
+end
+
+function boop.runtime.captureMovementRoomItems(items, response)
+  if type(items) ~= "table" or type(response) ~= "table" then
+    return false
+  end
+  local status = tostring(response.status or "")
+  if status ~= "duplicate" and status ~= "orphan" then
+    return false
+  end
+
+  local intent = movementIntentState()
+  if not intent.active then
+    return false
+  end
+  if status == "orphan"
+      and type(intent.candidateItems) ~= "table" then
+    return false
+  end
+  local now = movementClock()
+  if movementIntentExpired(intent, now) then
+    resetMovementIntent(intent, "movement intent expired")
+    return false
+  end
+
+  local observation = roomObservationState()
+  if currentRoomId() ~= intent.originRoomId
+      or observation.roomId ~= intent.originRoomId
+      or tonumber(observation.generation)
+        ~= tonumber(intent.originObservationGeneration)
+      or not observation.infoSeen
+      or not observation.itemsSeen
+      or observation.activeFenceId
+      or #observation.fenceQueue > 0
+      or not movementBaselineCurrent(
+        observation,
+        intent,
+        response.fenceId or intent.candidateFenceId
+      ) then
+    return false
+  end
+
+  if deepEqual(items, observation.acceptedItems) then
+    intent.candidateItems = false
+    intent.candidateAt = nil
+    intent.candidateFenceId = false
+    intent.candidateStatus = ""
+    intent.lastReason = "post-move list still matches origin"
+    return false
+  end
+
+  intent.candidateItems = deepCopy(items)
+  intent.candidateAt = now
+  intent.candidateFenceId = response.fenceId
+    or intent.candidateFenceId
+    or false
+  intent.candidateStatus = status
+  intent.lastReason = "changed list retained pending Room.Info"
+  return boop.runtime.movementIntentSnapshot()
+end
+
+function boop.runtime.consumeMovementRoomItems(destinationRoomId)
+  local intent = movementIntentState()
+  if not intent.active then
+    return false
+  end
+
+  local destination = normalizeRoomId(destinationRoomId)
+  local now = movementClock()
+  local observation = roomObservationState()
+  local candidateAt = tonumber(intent.candidateAt)
+  local candidateElapsed = candidateAt and (now - candidateAt) or nil
+  local valid = destination ~= ""
+    and destination ~= intent.originRoomId
+    and not movementIntentExpired(intent, now)
+    and type(intent.candidateItems) == "table"
+    and candidateElapsed ~= nil
+    and candidateElapsed >= 0
+    and candidateElapsed <= MOVEMENT_CANDIDATE_TTL_SECONDS
+    and candidateAt >= (tonumber(intent.sentAt) or math.huge)
+    and observation.roomId == intent.originRoomId
+    and tonumber(observation.generation)
+      == tonumber(intent.originObservationGeneration)
+    and observation.infoSeen
+    and observation.itemsSeen
+    and not observation.activeFenceId
+    and #observation.fenceQueue == 0
+    and movementBaselineCurrent(
+      observation,
+      intent,
+      intent.candidateFenceId
+    )
+
+  local result = valid and {
+    intentGeneration = intent.generation,
+    direction = intent.direction,
+    originRoomId = intent.originRoomId,
+    destinationRoomId = destination,
+    originObservationGeneration =
+      intent.originObservationGeneration,
+    candidateItems = deepCopy(intent.candidateItems),
+    candidateFenceId = intent.candidateFenceId,
+    candidateStatus = intent.candidateStatus,
+  } or false
+  resetMovementIntent(
+    intent,
+    valid and "movement confirmed" or "movement confirmation rejected"
+  )
+  return result
 end
 
 local function roomItemId(item)
@@ -857,6 +1164,7 @@ function boop.runtime.observeRoomItemsList(location, items)
           status = "duplicate",
           fenceId = completed.fenceId,
           location = normalizedLocation,
+          items = deepCopy(copiedItems),
         }
       end
     end
@@ -869,6 +1177,7 @@ function boop.runtime.observeRoomItemsList(location, items)
         status = "duplicate",
         fenceId = completed.fenceId,
         location = normalizedLocation,
+        items = deepCopy(copiedItems),
       }
     end
     if normalizedLocation == "inv" and copiedItems then
@@ -882,6 +1191,7 @@ function boop.runtime.observeRoomItemsList(location, items)
     return {
       status = copiedItems and "orphan" or "rejected",
       location = normalizedLocation,
+      items = copiedItems and deepCopy(copiedItems) or nil,
     }
   end
 
@@ -917,6 +1227,7 @@ function boop.runtime.observeRoomItemsList(location, items)
       status = "duplicate",
       fenceId = fence.fenceId,
       location = normalizedLocation,
+      items = deepCopy(copiedItems),
     }
   end
   fence[seenKey] = true
@@ -1938,6 +2249,7 @@ function boop.runtime.context(sourceAuthority, options)
     config = boop.config or {},
     gmcp = gmcp,
     roomOwned = roomOwned,
+    provisionalCombat = options.provisionalCombat == true,
     sourceAuthority = authority,
     class = currentClass(state),
     spec = currentSpec(state),
@@ -2038,6 +2350,7 @@ local function tickStep(context)
   local effects = {}
   local authority = copySourceAuthority(context.sourceAuthority)
   local roomOwned = context.roomOwned == true
+  local provisionalCombat = context.provisionalCombat == true
 
   if not (context.config and context.config.enabled) then
     return { effects = effects, didAction = false }
@@ -2057,6 +2370,9 @@ local function tickStep(context)
 
   local goldOperation = state.gold.operation
   if type(goldOperation) == "table" and not goldOperation.terminal then
+    if provisionalCombat then
+      return { effects = effects, didAction = false }
+    end
     if boop.safety and boop.safety.shouldFlee and boop.safety.shouldFlee() then
       effects[#effects + 1] = { kind = "flee" }
       return { effects = effects, didAction = false }
@@ -2090,14 +2406,16 @@ local function tickStep(context)
     effects[#effects + 1] = heldEffect(context, "automation", "tick")
     return { effects = effects, didAction = false }
   end
-  if boop.maybeFlushPendingGold and boop.maybeFlushPendingGold("tick pending age") then
+  if not provisionalCombat
+      and boop.maybeFlushPendingGold
+      and boop.maybeFlushPendingGold("tick pending age") then
     return { effects = effects, didAction = false }
   end
   if state.gold.getPending or state.gold.putPending then
     return { effects = effects, didAction = false }
   end
   local roomReadiness = readiness.room or {}
-  if roomReadiness.ready ~= true then
+  if roomReadiness.ready ~= true and not provisionalCombat then
     effects[#effects + 1] =
       readinessHeldEffect("tick", roomReadiness)
     return { effects = effects, didAction = false }
@@ -2110,6 +2428,13 @@ local function tickStep(context)
 
   local targetId = boop.targets and boop.targets.choose and boop.targets.choose() or ""
   if not targetId or targetId == "" then
+    if provisionalCombat then
+      effects[#effects + 1] = {
+        kind = "trace",
+        message = "provisional combat: no eligible target",
+      }
+      return { effects = effects, didAction = false }
+    end
     if context.config.useQueueing and state.gold.autoGrabPending then
       effects[#effects + 1] = {
         kind = "flush_gold",
@@ -2155,6 +2480,7 @@ local function tickStep(context)
       config = context.config,
       gmcp = context.gmcp,
       roomOwned = context.roomOwned == true,
+      provisionalCombat = context.provisionalCombat == true,
       sourceAuthority = copySourceAuthority(context.sourceAuthority),
       class = context.class,
       spec = context.spec,

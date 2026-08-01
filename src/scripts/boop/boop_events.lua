@@ -96,6 +96,20 @@ end
 
 local AUTO_GOLD_FLUSH_SECONDS = 0.35
 local ROOM_RESPONSE_FENCE_WARNING_SECONDS = 8.0
+local MOVEMENT_DIRECTIONS = {
+  n = true,
+  s = true,
+  e = true,
+  w = true,
+  ["in"] = true,
+  out = true,
+  u = true,
+  d = true,
+  nw = true,
+  ne = true,
+  se = true,
+  sw = true,
+}
 local GOLD_PICKUP_QUEUE = "full"
 local GOLD_PACK_QUEUE = "freestand"
 local GOLD_DIRECT_PICKUP_SUFFIX =
@@ -160,6 +174,27 @@ local function traceRoomItemsList(items, goldItem)
     count,
     denizens
   ))
+end
+
+local function countCombatDenizens(items)
+  local count = 0
+  for _, item in ipairs(items or {}) do
+    if boop.targets
+        and boop.targets.isValidDenizen
+        and boop.targets.isValidDenizen(item) then
+      count = count + 1
+    end
+  end
+  return count
+end
+
+local function movementDirection(command)
+  local normalized = boop.util
+      and boop.util.trim
+      and boop.util.safeLower
+      and boop.util.safeLower(boop.util.trim(command or ""))
+    or tostring(command or ""):lower():match("^%s*(.-)%s*$")
+  return MOVEMENT_DIRECTIONS[normalized] and normalized or false
 end
 
 local function traceRoomItemsResponse(list, transition)
@@ -1704,9 +1739,34 @@ function boop.events.register()
   add("gmcp.Char.Skills.Groups", "boop.onSkillsGroups")
   add("gmcp.Char.Skills.List", "boop.onSkillsList")
   add("gmcp.Char.Skills.Info", "boop.onSkillsInfo")
+  add("sysDataSendRequest", "boop.onDataSendRequest")
   add("sysConnectionEvent", "boop.onConnectionEvent")
   add("demonwalker.arrived", "boop.onWalkArrived")
   add("demonwalker.finished", "boop.onWalkFinished")
+end
+
+function boop.onDataSendRequest(_, command)
+  if not (boop.config and boop.config.enabled) then
+    return false
+  end
+  local direction = movementDirection(command)
+  if not direction
+      or not (runtime() and boop.runtime.noteMovementIntent) then
+    return false
+  end
+  local intent = boop.runtime.noteMovementIntent(direction)
+  if not intent then
+    return false
+  end
+  if boop.trace and boop.trace.log then
+    boop.trace.log(string.format(
+      "movement intent armed: direction=%s | origin=%s | generation=%s",
+      tostring(intent.direction or direction),
+      tostring(intent.originRoomId or ""),
+      tostring(intent.originObservationGeneration or "")
+    ))
+  end
+  return true
 end
 
 function boop.onConnectionEvent()
@@ -1721,6 +1781,47 @@ function boop.onConnectionEvent()
     supportAlreadyRequested = true,
     requestIfMissing = false,
   })
+end
+
+local function applyMovementProvisionalCombat(movement)
+  if type(movement) ~= "table"
+      or type(movement.candidateItems) ~= "table" then
+    return false
+  end
+  local currentRoom = tostring(
+    gmcp
+      and gmcp.Room
+      and gmcp.Room.Info
+      and gmcp.Room.Info.num
+      or ""
+  )
+  if currentRoom == ""
+      or currentRoom ~= tostring(movement.destinationRoomId or "") then
+    return false
+  end
+
+  local items = deepCopy(movement.candidateItems)
+  local denizenCount = countCombatDenizens(items)
+  if boop.trace and boop.trace.log then
+    boop.trace.log(string.format(
+      "movement confirmed: direction=%s | %s -> %s | provisional combat=%s | count=%d | denizens=%d",
+      tostring(movement.direction or ""),
+      tostring(movement.originRoomId or ""),
+      currentRoom,
+      denizenCount > 0 and "yes" or "no",
+      #items,
+      denizenCount
+    ))
+  end
+  if denizenCount == 0
+      or not (boop.targets and boop.targets.updateRoomItems) then
+    return false
+  end
+
+  boop.targets.updateRoomItems(items)
+  return boop.tick
+    and boop.tick(nil, { provisionalCombat = true })
+    or false
 end
 
 local function applyRoomApplication(
@@ -1856,6 +1957,28 @@ function boop.onRoomItemsList()
     and boop.runtime.observeRoomItemsList(list.location, list.items)
     or { status = "ignored" }
   traceRoomItemsResponse(list, transition)
+  if tostring(list.location or ""):lower() == "room"
+      and (transition.status == "duplicate"
+        or transition.status == "orphan")
+      and runtime()
+      and boop.runtime.captureMovementRoomItems then
+    local movement = boop.runtime.captureMovementRoomItems(
+      transition.items or list.items,
+      transition
+    )
+    if movement and boop.trace and boop.trace.log then
+      boop.trace.log(string.format(
+        "movement provisional list retained: direction=%s | origin=%s | count=%d | fence=%s | status=%s",
+        tostring(movement.direction or ""),
+        tostring(movement.originRoomId or ""),
+        type(movement.candidateItems) == "table"
+          and #movement.candidateItems
+          or 0,
+        tostring(movement.candidateFenceId or "none"),
+        tostring(movement.candidateStatus or transition.status)
+      ))
+    end
+  end
   if transition.inventoryItems then
     rebuildWieldedFromInventory(
       transition.inventoryItems,
@@ -2065,6 +2188,16 @@ function boop.onRoomInfo()
   local sameTrackedRoom = previousRoomText ~= ""
     and previousRoomText == currentRoomText
     and tostring(priorObservation.roomId or "") == currentRoomText
+  if sameTrackedRoom
+      and runtime()
+      and boop.runtime.clearMovementIntent then
+    local intent = boop.runtime.movementIntentSnapshot
+      and boop.runtime.movementIntentSnapshot()
+      or false
+    if intent and intent.active then
+      boop.runtime.clearMovementIntent("same-room Room.Info")
+    end
+  end
   if sameTrackedRoom and priorObservation.infoSeen and priorObservation.itemsSeen then
     return
   end
@@ -2074,6 +2207,13 @@ function boop.onRoomInfo()
   end
 
   local movedRooms = previousRoomText ~= currentRoomText
+  local provisionalMovement = false
+  if movedRooms
+      and runtime()
+      and boop.runtime.consumeMovementRoomItems then
+    provisionalMovement =
+      boop.runtime.consumeMovementRoomItems(currentRoomText)
+  end
   if movedRooms then
     if boop.runtime and boop.runtime.invalidateRoomApplication then
       boop.runtime.invalidateRoomApplication(nil, "room changed")
@@ -2182,6 +2322,9 @@ function boop.onRoomInfo()
   end
 
   boop.requestRoomItemsOnce("room info awaiting complete item list")
+  if provisionalMovement then
+    applyMovementProvisionalCombat(provisionalMovement)
+  end
 end
 
 function boop.onWalkArrived(...)
@@ -2546,12 +2689,12 @@ end
 
 function boop.tick(sourceAuthority, options)
   if boop.runtime and boop.runtime.step and boop.runtime.applyEffects then
+    options = type(options) == "table" and options or {}
     local suppliedAuthority = copySourceAuthority(sourceAuthority)
-    if not suppliedAuthority then
+    if not suppliedAuthority and options.provisionalCombat ~= true then
       local applied, attacking = applyPendingRoomApplicationFromTick()
       if applied then return attacking end
     end
-    options = type(options) == "table" and options or {}
     local roomOwned = options.roomOwned == true
       or suppliedAuthority and true or false
     if suppliedAuthority
@@ -2568,6 +2711,7 @@ function boop.tick(sourceAuthority, options)
     end
     local context = boop.runtime.context(authority, {
       roomOwned = roomOwned,
+      provisionalCombat = options.provisionalCombat == true,
     })
     local result = boop.runtime.step({ type = "tick", context = context })
     boop.state.combat.attacking = boop.runtime.applyEffects(result, context)

@@ -713,6 +713,179 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(0, countRaised("demonwalker.move"))
   end)
 
+  it("G-03-20 recognizes only the supported outbound movement commands", function()
+    boop.config.enabled = true
+    boop.state.targeting.room = "1"
+    local directions = {
+      "n", "s", "e", "w", "in", "out",
+      "u", "d", "nw", "ne", "se", "sw",
+    }
+
+    for index, direction in ipairs(directions) do
+      assert.is_true(boop.onDataSendRequest(
+        "sysDataSendRequest",
+        direction
+      ))
+      local intent = boop.runtime.movementIntentSnapshot()
+      assert.is_true(intent.active)
+      assert.are.equal(direction, intent.direction)
+      assert.are.equal(index, intent.generation)
+      assert.are.equal("1", intent.originRoomId)
+      boop.runtime.clearMovementIntent("direction matrix")
+    end
+
+    assert.is_false(boop.onDataSendRequest(
+      "sysDataSendRequest",
+      "north"
+    ))
+    assert.is_false(boop.onDataSendRequest(
+      "sysDataSendRequest",
+      "queue add full n"
+    ))
+    assert.are.equal(
+      #directions,
+      boop.runtime.movementIntentSnapshot().generation
+    )
+
+    assert.is_true(boop.onDataSendRequest(
+      "sysDataSendRequest",
+      "n"
+    ))
+    assert.is_false(boop.onDataSendRequest(
+      "sysDataSendRequest",
+      "e"
+    ))
+    assert.is_false(boop.runtime.movementIntentSnapshot().active)
+
+    assert.is_true(boop.onDataSendRequest(
+      "sysDataSendRequest",
+      "s"
+    ))
+    boop.onRoomInfo()
+    assert.is_false(boop.runtime.movementIntentSnapshot().active)
+  end)
+
+  it("G-03-20 starts combat from a changed pre-Info list only after movement confirms", function()
+    helper.setArea("Origin Area")
+    helper.setClass("Occultist")
+    helper.setRage(14)
+    helper.learnSkills({
+      { name = "Lycantha", group = "Domination" },
+      { name = "Warp", group = "Occultism" },
+      { name = "harry", group = "Attainment" },
+    })
+    helper.setTarget("", "", "100%")
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
+    boop.config.targetCall = false
+    boop.config.attackMode = "simple"
+    boop.config.useQueueing = false
+    boop.config.autoGrabGold = true
+    boop.config.goldPack = "pack"
+    boop.state.targeting.room = "1"
+    walk_settled_stub = stub(boop.walk, "onRoomSettled", function()
+      return false
+    end)
+    helper.seedRoomObservation("1", {
+      generation = 23,
+      infoSeen = true,
+      itemsSeen = false,
+    })
+    assert.is_true(boop.requestRoomItemsOnce(
+      "G-03-20 origin response in flight"
+    ))
+
+    sent_commands = {}
+    gmcp_requests = {}
+    raised_events = {}
+    assert.is_true(boop.onDataSendRequest(
+      "sysDataSendRequest",
+      "s"
+    ))
+    publishItemsList("inv", {})
+    publishItemsList("room", {})
+    publishItemsList("room", {
+      denizenItem("42", "a destination denizen"),
+      goldItem("9042"),
+    })
+
+    local pendingIntent = boop.runtime.movementIntentSnapshot()
+    assert.is_true(pendingIntent.active)
+    assert.are.equal(2, #pendingIntent.candidateItems)
+    assert.are.equal(0, #sent_commands)
+    assert.are.equal(0, countGoldSends())
+
+    gmcp.Room.Info = {
+      num = "2",
+      area = "Destination Area",
+      exits = { north = "1" },
+    }
+    boop.onRoomInfo()
+
+    local observation = boop.runtime.roomObservationSnapshot()
+    assert.are.equal("2", observation.roomId)
+    assert.is_false(observation.itemsSeen)
+    assert.is_false(boop.runtime.readinessSnapshot().room.ready)
+    assert.is_false(boop.runtime.movementIntentSnapshot().active)
+    assert.are.equal("42", boop.state.targeting.currentTargetId)
+    assert.are.equal("a destination denizen", boop.state.targeting.targetName)
+    assert.are.equal(1, countSent("settarget 42"))
+    assert.are.equal(1, countSent("command hound at 42"))
+    assert.are.equal(1, countSent("harry 42"))
+    assert.are.equal(0, countGoldSends())
+    assert.are.equal(0, countRaised("demonwalker.move"))
+    assert.stub(walk_settled_stub).was_not_called()
+    assert.are.equal(1, countGmcpRequest([[Char.Items.Inv]]))
+    assert.are.equal(1, countGmcpRequest([[Char.Items.Room]]))
+  end)
+
+  it("G-03-20 rejects an expired provisional list and remains room partial", function()
+    helper.setClass("Occultist")
+    helper.setRage(14)
+    helper.learnSkills({
+      { name = "Lycantha", group = "Domination" },
+      { name = "Warp", group = "Occultism" },
+      { name = "harry", group = "Attainment" },
+    })
+    helper.setTarget("", "", "100%")
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
+    boop.config.targetCall = false
+    boop.config.attackMode = "simple"
+    boop.config.useQueueing = false
+    boop.state.targeting.room = "1"
+    publishAcceptedRoomList({})
+
+    sent_commands = {}
+    gmcp_requests = {}
+    assert.is_true(boop.onDataSendRequest(
+      "sysDataSendRequest",
+      "nw"
+    ))
+    publishItemsList("room", {
+      denizenItem("43", "an expired destination denizen"),
+    })
+    fake_epoch = fake_epoch + 3
+    gmcp.Room.Info = {
+      num = "3",
+      area = "Expired Destination",
+      exits = { southeast = "1" },
+    }
+    boop.onRoomInfo()
+
+    assert.is_false(boop.runtime.movementIntentSnapshot().active)
+    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.is_false(boop.runtime.readinessSnapshot().room.ready)
+    assert.are.equal("", boop.state.targeting.currentTargetId)
+    assert.are.equal(0, countSent("settarget 43"))
+    assert.are.equal(0, countSent("command hound at 43"))
+    assert.are.equal(0, countSent("harry 43"))
+    assert.are.same(
+      { [[Char.Items.Inv]], [[Char.Items.Room]] },
+      gmcp_requests
+    )
+  end)
+
   local roomResponseOrders = {
     {
       name = "Inv then Room",

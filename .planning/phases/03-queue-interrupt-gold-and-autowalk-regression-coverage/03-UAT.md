@@ -708,3 +708,26 @@ blocked: 0
   resolved_by:
     - "0.1.461 class-agnostic session shield mode"
   verification: "Focused shield, prequeue, attack, persistence, UI, registry, lifecycle, event-transition, tick, runtime, and planner host regressions pass 194/194. Lua syntax and JSON validation pass; release gates, package build, and exact-SHA real-Mudlet CI remain pending."
+
+- gap_id: G-03-20
+  truth: "A changed room item list that arrives immediately before moved Room.Info can wake destination combat without authorizing gold or walker settlement."
+  status: resolved
+  reason: "Live trace showed the destination denizen list arrive as a post-completion duplicate for the origin generation immediately before Room.Info changed rooms; boop then waited for a second authoritative list while the destination mob attacked first."
+  severity: major
+  test: 2
+  root_cause: "Char.Items.List has no room identifier, so the response fence correctly rejected the early list but had no outbound movement correlation with which to retain it as a bounded combat hint."
+  artifacts:
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "Outbound movement was not observed, and every non-authoritative list was discarded before Room.Info could confirm the destination."
+    - path: "src/scripts/boop/boop_runtime.lua"
+      issue: "Room readiness had no separate, fail-closed combat-only path for short-lived movement-correlated evidence."
+    - path: "tests/boop_event_transitions_spec.lua"
+      issue: "No chronology covered direction send -> changed duplicate list -> moved Room.Info -> provisional attack while room_partial."
+  resolution:
+    - "Observe exact outbound directions through Mudlet's sysDataSendRequest event without replacing typed commands or keybindings."
+    - "Arm against settled origin evidence or its exact active response fence, then retain only a changed duplicate after that fence completes and consume it only when moved Room.Info confirms a different room within the bounded intent window."
+    - "Use the retained list for synchronous target selection and combat only; keep room readiness partial and continue requiring the normal post-move fenced list for gold and walker settlement."
+    - "Reject unsupported commands, overlapping movement sends, unchanged lists, orphan-first lists, expired candidates, failed movement, and movement from an unsettled origin."
+  resolved_by:
+    - "0.1.462 movement-correlated provisional combat wake"
+  verification: "The focused event-transition suite passes 66/66, including all 12 direction tokens, combat-only destination wake-up, no provisional gold/walker authority, and expiry rejection. Eleven adjacent lifecycle, runtime, tick, trace, gold, walk, target, prequeue, state-contract, and safety host suites pass 173/173; the 0.1.462 Muddler package and release gates pass. Exact-SHA Mudlet CI remains pending."
