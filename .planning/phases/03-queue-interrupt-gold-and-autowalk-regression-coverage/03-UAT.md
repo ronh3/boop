@@ -4,7 +4,7 @@ phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-31T22:18:00-07:00
+updated: 2026-07-31T22:23:42-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -14,7 +14,7 @@ updated: 2026-07-31T22:18:00-07:00
 number: 2
 name: Simplified runtime and stale-target recovery
 expected: |
-  With boop 0.1.458 installed, lifecycle, room, target, and walker status are
+  With boop 0.1.459 installed, lifecycle, room, target, and walker status are
   computed directly. Only interrupt, pull, and gold operations may hold
   automation. Movement, accepted room evidence, or a global-blacklist edit
   clears an ineligible target without stopping the walker.
@@ -53,7 +53,7 @@ observed: "Clean reconnect, prompt-first, and enable-before-prompt checks passed
 ### 2. Cross-owner attack, loot, and walk release
 
 expected: |
-  With boop 0.1.458 installed, manual targeting remains an intentional
+  With boop 0.1.459 installed, manual targeting remains an intentional
   automatic-walk status and is reported as `manual_targeting`, not
   `room_clear`. Lifecycle, room readiness, target eligibility, and walker state
   are computed directly; only interrupt, pull, and gold appear as active
@@ -61,8 +61,8 @@ expected: |
   target intent without stopping the walker.
 
   Easy check:
-  1. Install 0.1.458, reconnect or reload, then run `boop status`. Confirm it
-     prints `version: 0.1.458`. In `boop debug`, `ACTIVE OPERATIONS` should be
+  1. Install 0.1.459, reconnect or reload, then run `boop status`. Confirm it
+     prints `version: 0.1.459`. In `boop debug`, `ACTIVE OPERATIONS` should be
      empty unless an interrupt, pull, or gold action is actually in progress.
   2. Run `boop on`, `boop targeting auto`, and `boop walk start`. Engage a
      wanted denizen without issuing `ql`, `ih`, `boop status`, or another
@@ -79,14 +79,18 @@ expected: |
   5. For any delayed room, inspect `gmcp item list response` trace entries.
      `waits=inv` means the room contents arrived first but were held for the
      inventory barrier; `waits=room` means the requested room snapshot itself
-     had not arrived. Prompt lines must not settle either half.
+     had not arrived. After `status=accepted`, the next natural tick should log
+     `room application claimed: source=tick` and queue the attack without
+     another `room_partial` hold.
 result: [pending]
 reported: |
-  Okay, things seem to be improving. However, the problem I'm running into now
-  is that the room apparently needs a ql or other refresh of gmcp before it
-  will start attacking.
+  Take a look at the log trace from output.md. Am still seeing delay between
+  entering a room, and when boop identifies a mob and starts attacking. Seems
+  to require a prompt or two to come in before it starts.
 severity: major
-observed: "Version 0.1.449 trace shows Room.Info 18988->18803, then a valid pirate Items.Add while room evidence is partial. The accepted room List follows with count=1, but tick reports no target. A later refreshed List has count=2 and immediately queues hyena maul/dsl against that same pirate."
+observed: "Version 0.1.458 trace shows Inv then Room completing fence 481 at 22:18:07 with status=accepted and waits=none. A following natural tick still reports room_partial because acceptedSourceAuthority is unset until the zero-delay application callback. The callback runs only after another mob action/prompt, then applies the room and queues Staffcast in the same second."
+prior_reported: "Version 0.1.449 required ql or another GMCP refresh before natural-room combat began."
+prior_observed: "A valid pirate Add arrived while room evidence was partial, then the copied List replaced it; 0.1.450 resolved that separate delta-reconciliation defect."
 previous_result: issue
 previous_reported: |
   Check output.md. Thierry, the ferryman is not a target I wanted killed. I stopped combat, moved out, and added him to the global blacklist. However, boop is now stuck, thinking it's on engaged_target for the blocker.
@@ -106,7 +110,7 @@ oldest_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room
 ### 3. Wrong-room gold and pack transfer
 
 expected: |
-  With boop 0.1.458 installed, a gold Item.Add in an already settled room
+  With boop 0.1.459 installed, a gold Item.Add in an already settled room
   requests one current-room revalidation but cannot authorize pickup by itself.
   Only the matching fenced room List may queue one
   `queue add full get sovereigns`. Confirmed pickup may queue one freestand put,
@@ -173,7 +177,7 @@ expected: |
   The immutable final commit is present on origin and `main.yml` succeeds for
   that exact `headSha`. The complete packaged real-Mudlet Busted suite,
   including Psion and Dragon pull-profile cases, reports no failures or errors
-  while building synchronized package 0.1.458.
+  while building synchronized package 0.1.459.
 result: [pending]
 source: automated
 previous_result: pass
@@ -636,3 +640,24 @@ blocked: 0
   resolved_by:
     - "0.1.457 Magi staffcast preference expansion"
   verification: "Focused host Magi attack-profile contracts pass 4/4; adjacent attack and packaged Mudlet verification remain pending."
+
+- gap_id: G-03-17
+  truth: "Once both current room-response halves are accepted, the next natural tick can claim that exact pending room application without waiting behind its zero-delay fallback, while moved-room invalidation remains fail closed."
+  status: resolved
+  reason: "Live 0.1.458 trace showed status=accepted and waits=none, followed by tick held: room_partial; the room application and first attack occurred only after another mob action and prompt allowed the zero-delay callback to run."
+  severity: major
+  test: 2
+  root_cause: "The response fence marked itemsSeen immediately but withheld acceptedSourceAuthority, denizen application, and tick until a zero-delay timer callback. A natural Vitals/prompt tick arriving before that callback therefore remained room_partial even though the complete copied room evidence was already pending."
+  artifacts:
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "boop.tick did not recognize or claim a complete, valid pending room application before evaluating room readiness."
+    - path: "tests/boop_event_transitions_spec.lua"
+      issue: "Room-application tests covered timer completion and moved-room invalidation but omitted a normal tick between fence acceptance and timer execution."
+  resolution:
+    - "Before a no-authority normal tick evaluates readiness, claim only the exact current valid pending application through the existing application/room/generation validator."
+    - "Cancel the claimed application's fallback timer and run the unchanged authority-stamped target, gold, walker, and combat consumers exactly once."
+    - "Retain the zero-delay callback when no natural tick intervenes, and preserve zero stale effects when moved Room.Info invalidates the application first."
+    - "Trace whether the application was claimed by `source=tick` or `source=timer` for live chronology."
+  resolved_by:
+    - "0.1.459 exact-authority natural-tick room application wake"
+  verification: "The named G-03-17 regression and the existing moved-room invalidation chronology pass in the 63-case event-transition suite; adjacent trace, tick/runtime, gold, walk, prequeue, and target suites pass. Exact-SHA Mudlet CI and live 0.1.459 confirmation remain pending."

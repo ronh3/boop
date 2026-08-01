@@ -1722,7 +1722,12 @@ function boop.onConnectionEvent()
   })
 end
 
-local function applyRoomApplication(applicationId, sourceAuthority, timerId)
+local function applyRoomApplication(
+  applicationId,
+  sourceAuthority,
+  timerId,
+  claimSource
+)
   if not (runtime() and boop.runtime.claimRoomApplication) then
     return false
   end
@@ -1737,6 +1742,15 @@ local function applyRoomApplication(applicationId, sourceAuthority, timerId)
 
   local authority = copySourceAuthority(application.sourceAuthority)
   local items = deepCopy(application.items)
+  if boop.trace and boop.trace.log then
+    boop.trace.log(string.format(
+      "room application claimed: source=%s | application=%s | room=%s | generation=%s",
+      tostring(claimSource or "timer"),
+      tostring(application.applicationId or ""),
+      tostring(authority.roomId or ""),
+      tostring(authority.observationGeneration or "")
+    ))
+  end
   boop.targets.updateRoomItems(items, authority)
 
   local goldItem = findRoomGoldItem(items)
@@ -1762,10 +1776,9 @@ local function applyRoomApplication(applicationId, sourceAuthority, timerId)
       traceHeld("walk", "room items list")
     end
   end
-  if boop.tick then
-    boop.tick(authority)
-  end
-  return true
+  local attacking = false
+  if boop.tick then attacking = boop.tick(authority) end
+  return true, attacking
 end
 
 local function scheduleRoomApplication(transition)
@@ -1795,7 +1808,7 @@ local function scheduleRoomApplication(transition)
 
   local timerId = false
   timerId = tempTimer(0, function()
-    applyRoomApplication(applicationId, authority, timerId)
+    applyRoomApplication(applicationId, authority, timerId, "timer")
   end)
   if not boop.runtime.setRoomApplicationTimer(
       applicationId,
@@ -1807,6 +1820,31 @@ local function scheduleRoomApplication(transition)
     return false
   end
   return true
+end
+
+local function applyPendingRoomApplicationFromTick()
+  if not (runtime() and boop.runtime.roomApplicationSnapshot) then
+    return false
+  end
+  local application = boop.runtime.roomApplicationSnapshot()
+  if type(application) ~= "table"
+      or not application.valid
+      or application.claimed
+      or application.consumed
+      or not application.pendingTimer then
+    return false
+  end
+
+  local timerId = application.pendingTimer
+  local applied, attacking = applyRoomApplication(
+    application.applicationId,
+    application.sourceAuthority,
+    timerId,
+    "tick"
+  )
+  if not applied then return false end
+  if killTimer then killTimer(timerId) end
+  return true, attacking
 end
 
 function boop.onRoomItemsList()
@@ -2507,6 +2545,10 @@ end
 function boop.tick(sourceAuthority, options)
   if boop.runtime and boop.runtime.step and boop.runtime.applyEffects then
     local suppliedAuthority = copySourceAuthority(sourceAuthority)
+    if not suppliedAuthority then
+      local applied, attacking = applyPendingRoomApplicationFromTick()
+      if applied then return attacking end
+    end
     options = type(options) == "table" and options or {}
     local roomOwned = options.roomOwned == true
       or suppliedAuthority and true or false

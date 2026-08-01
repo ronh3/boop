@@ -846,6 +846,77 @@ describe("boop event-driven state transitions", function()
     end)
   end
 
+  it("G-03-17 natural tick claims accepted room application before timer", function()
+    boop.config.enabled = true
+    boop.config.traceEnabled = true
+    boop.config.autoGrabGold = false
+    boop.config.useQueueing = false
+    boop.config.goldPack = ""
+    boop.config.targetingMode = "auto"
+    boop.state.targeting.room = "1"
+    helper.setDenizens({
+      { id = "10", name = "the prior-room denizen" },
+    })
+
+    local targetUpdates = 0
+    local originalUpdate = boop.targets.updateRoomItems
+    targets_update_stub = stub(
+      boop.targets,
+      "updateRoomItems",
+      function(items, sourceAuthority)
+        targetUpdates = targetUpdates + 1
+        return originalUpdate(items, sourceAuthority)
+      end
+    )
+
+    boop.runtime.startRoomObservation("1", {
+      boundary = "fresh_start",
+      reason = "G-03-17 accepted application wake",
+    })
+    assert.is_true(boop.requestRoomItemsOnce(
+      "G-03-17 accepted application wake"
+    ))
+    publishItemsList("inv", {})
+    publishItemsList("room", {
+      denizenItem("17", "the current-room denizen"),
+    })
+
+    local pending = boop.runtime.roomApplicationSnapshot()
+    local pendingCallback = callbackForTimer(pending.pendingTimer)
+    assert.is_table(pending)
+    assert.is_function(pendingCallback)
+    assert.is_false(pending.claimed)
+    assert.is_false(pending.consumed)
+    assert.are.equal(0, targetUpdates)
+
+    boop.tick()
+
+    local claimed = boop.runtime.roomApplicationSnapshot(
+      pending.applicationId
+    )
+    local readiness = boop.runtime.readinessSnapshot()
+    assert.is_true(claimed.claimed)
+    assert.is_true(claimed.consumed)
+    assert.is_false(claimed.pendingTimer)
+    assert.is_true(readiness.room.ready)
+    assert.are.equal(1, targetUpdates)
+    assert.is_true(
+      table.concat(boop.state.trace.buffer or {}, "\n"):find(
+        "room application claimed: source=tick",
+        1,
+        true
+      ) ~= nil
+    )
+    assert.are.equal(
+      "the current-room denizen",
+      boop.state.targeting.denizens[1]
+        and boop.state.targeting.denizens[1].name
+    )
+
+    pendingCallback()
+    assert.are.equal(1, targetUpdates)
+  end)
+
   it("G-03-7 post-Inv pre-Info application invalidation", function()
     boop.config.enabled = true
     boop.config.autoGrabGold = true

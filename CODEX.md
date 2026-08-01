@@ -106,7 +106,7 @@ Guidance for Codex when working in this repository.
 ## Session Checkpoint
 - Branch to continue from: `codex/pre-1.0-hardening-pass`
 - The branch tip moves with normal hardening commits; rely on git history rather than this file for the exact latest hash.
-- Current synchronized package version: `0.1.458`
+- Current synchronized package version: `0.1.459`
 - The purposeful pre-1.0 hardening work that is currently in this branch:
   - runtime/state ownership and coordinator path
   - combat planner split from execution

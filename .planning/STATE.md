@@ -154,7 +154,7 @@ Recent decisions affecting current work:
 - [Phase 03]: Plan 03-19 documents persisted collection, session-only live streaming, show, and clear as independent controls with live reset off by default.
 - [Phase 03]: The parent retains immutable-final-HEAD push, exact-SHA CI, and live Phase 03 UAT authority after all repository mutations.
 - [Phase 03]: Room Inv and Room responses are independent copied latches that settle exactly once in either order.
-- [Phase 03]: Accepted room evidence applies only through a zero-delay record with captured applicationId, roomId, and observationGeneration.
+- [Phase 03]: Accepted room evidence retains a zero-delay fallback record with captured applicationId, roomId, and observationGeneration; the next natural tick may claim that exact current record first through the same validator.
 - [Phase 03]: Moved Room.Info invalidates stale room applications and local attack intent without queue-wide cleanup.
 - [Phase 03]: Deferred room-owned callbacks retain their copied application, room, and generation authority without destination fallback.
 - [Phase 03]: Every automatic target, alias, queue, standard, and rage boundary revalidates exact room authority before send or success-dependent state.
