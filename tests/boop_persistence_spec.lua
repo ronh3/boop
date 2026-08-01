@@ -98,7 +98,7 @@ describe("boop config and list persistence paths", function()
     end
   end)
 
-  it("persists canonicalized targeting, target-call and leader auto-call modes, gold-pack, rage aff callout, and theme edits, but keeps party size session-local", function()
+  it("persists durable edits but keeps party size and shield mode session-local", function()
     boop.config.assistLeader = "Person"
     boop.ui.setTargetingMode("wl", true)
     boop.ui.targetCallCommand("on")
@@ -107,6 +107,7 @@ describe("boop config and list persistence paths", function()
     boop.ui.affCallCommand("off")
     boop.ui.themeCommand("ocean")
     boop.ui.setConfigValue("partySize", "3")
+    boop.ui.setConfigValue("breakShields", "off")
 
     assert.are.equal("whitelist", boop.config.targetingMode)
     assert.is_false(boop.config.targetCall)
@@ -115,6 +116,7 @@ describe("boop config and list persistence paths", function()
     assert.is_false(boop.config.rageAffCalloutsEnabled)
     assert.are.equal("ocean", boop.config.uiTheme)
     assert.are.equal(3, boop.config.partySize)
+    assert.is_false(boop.config.breakShields)
     assert.are.same({ key = "targetingMode", value = "whitelist" }, saved_configs[1])
     assert.are.same({ key = "targetCall", value = true }, saved_configs[2])
     assert.are.same({ key = "autoTargetCall", value = true }, saved_configs[3])
@@ -123,7 +125,9 @@ describe("boop config and list persistence paths", function()
     assert.are.same({ key = "rageAffCalloutsEnabled", value = false }, saved_configs[6])
     assert.are.same({ key = "uiTheme", value = "ocean" }, saved_configs[7])
     assert.are.same({ delete = "partySize" }, saved_configs[8])
+    assert.are.same({ delete = "breakShields" }, saved_configs[9])
     assert.stub(save_config_stub).was_not.called_with("partySize", 3)
+    assert.stub(save_config_stub).was_not.called_with("breakShields", false)
   end)
 
   it("resets party size to the default on a fresh load", function()
@@ -132,6 +136,14 @@ describe("boop config and list persistence paths", function()
     helper.reset()
 
     assert.are.equal(1, boop.config.partySize)
+  end)
+
+  it("resets shield mode to break on a fresh load", function()
+    boop.config.breakShields = false
+
+    helper.reset()
+
+    assert.are.equal("break", boop.getShieldMode())
   end)
 
   it("persists disabling boop and clears the outstanding prequeue timer", function()

@@ -59,11 +59,11 @@ describe("boop class profile selection", function()
     assert.is_true(actions.standardShieldbreak)
   end)
 
-  it("does not use a standard shieldbreak when shield breaking is disabled", function()
+  it("uses the class/spec's normal standard selection in bypass mode", function()
     helper.setClass("Infernal")
     helper.setSpec("Sword and Shield")
     helper.learnSkill("Combination", "Weaponmastery")
-    boop.config.breakShields = false
+    assert.is_true(boop.ui.setShieldMode("bypass", true))
     boop.state.targeting.targetShield = { attempted = false }
 
     local actions = boop.attacks.choose()

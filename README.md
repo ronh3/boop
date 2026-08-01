@@ -28,6 +28,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop roster` / `boop roster <class...>` / `boop roster clear` (save party class roster; your own class is auto-included)
 - `boop combos` / `boop combos <class...>` / `boop combos list` (party combo inference from rage afflictions + conditional needs)
 - `boop prefer` / `boop prefer <dam|shield> <option>` / `boop prefer clear <dam|shield>` (bias standard attack choice within a profile)
+- `boop shieldmode [break|bypass|toggle]` (session-only shield policy for every class/spec; defaults and resets to `break`)
 - `boop weapon` / `boop weapon <role> <item-id>` / `boop weapon clear <role>` (save class-scoped weapon designations such as `scythe` or `dagger`; prefer raw GMCP item ids)
 - `boop theme <name|auto|list>` (`list` opens an ADB-style sample browser with boop themes plus the built-in ADB city/class themes)
 - `boop autogold` / `boop autogold on` / `boop autogold off`
@@ -51,7 +52,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop focus <speed|precision>` (sets which battlefury focus verb two-handed standards use when `Focus` is known)
 - `boop flee <on|off|toggle|percent>` (controls auto-flee and sets its threshold; example: `boop flee 25%`)
 - `boop set pullRageReserve on|off` (advanced toggle; keep enough rage reserved for a pull-capable damage battlerage attack)
-- `boop set breakShields on|off` (default: `on`; when off, boop ignores shield state and keeps normal damage/rage selection)
+- `boop set breakShields on|off` (advanced compatibility form of `boop shieldmode break|bypass`; session-only)
 - `boop whitelist` / `boop whitelist add <name>` / `boop whitelist remove <name>` (display is clickable: up/down/remove)
 - `boop whitelist browse [tag]` (browse whitelist areas; optional tag filter)
 - `boop whitelist share [area]` (share one area's whitelist to party chat `pt`)
@@ -111,7 +112,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - If there is no ready damage battlerage attack or not enough rage to use one, `pull` aborts before movement.
 - `pullRageReserve` optionally makes normal battlerage spending hold back enough rage to preserve a pull-capable damage hit.
 - With `pullRageReserve` on, rage shieldbreak also yields to a standard shieldbreak when the class/profile already has one available.
-- Set `boop set breakShields off` to stop tracked shields from interrupting normal standard or rage attack selection.
+- Shield mode `break` uses the current class/spec's available standard or rage shield response. Mode `bypass` retains shield tracking but keeps that profile's normal standard and rage selection; it applies to every class and resets to `break` on reload or reconnect. Bypass mode does not make attacks pierce shields, so use it only when another game mechanic already provides that behavior.
 - A queued shieldbreak remains eligible until combat output confirms the shield is down; merely staging or rebuilding `BOOP_ATTACK` does not count as a completed attempt.
 - Magi Staffcast damage does not clear tracked shield state because it can land while the target's shield remains active.
 - Auto-flee can be toggled independently from its threshold; `boop flee off` disables it without clearing the saved percentage.

@@ -8,7 +8,7 @@ end
 
 local function saveConfigValue(key, value)
   boop.config[key] = value
-  if key == "partySize" then
+  if key == "partySize" or key == "breakShields" then
     if boop.db and boop.db.deleteConfig then
       boop.db.deleteConfig(key)
     end
@@ -60,6 +60,13 @@ end
 
 local function boolColor(value)
   return value and "green" or "red"
+end
+
+local function shieldMode()
+  if boop.getShieldMode then
+    return boop.getShieldMode()
+  end
+  return boop.config.breakShields == false and "bypass" or "break"
 end
 
 local function currentClass()
@@ -712,7 +719,8 @@ local function renderStatusDashboard()
     row = row + 1
     uiPrintRow(row, "Rage aff calls", boolText(not not boop.config.rageAffCalloutsEnabled), boolColor(not not boop.config.rageAffCalloutsEnabled))
     row = row + 1
-    uiPrintRow(row, "Break shields", boolText(boop.config.breakShields ~= false), boolColor(boop.config.breakShields ~= false))
+    local currentShieldMode = shieldMode()
+    uiPrintRow(row, "Shield mode", string.upper(currentShieldMode), currentShieldMode == "break" and "green" or "yellow")
     row = row + 1
     uiPrintRow(row, "Auto gold", boolText(not not boop.config.autoGrabGold), boolColor(not not boop.config.autoGrabGold))
     row = row + 1
@@ -763,7 +771,7 @@ local function renderStatusDashboard()
   boop.util.echo(string.format("  tempoRageWindowSeconds: %.2f", tempoWindow))
   boop.util.echo(string.format("  tempoSqueezeEtaSeconds: %.2f", tempoEta))
   boop.util.echo("  rageAffCalloutsEnabled: " .. tostring(boop.config.rageAffCalloutsEnabled))
-  boop.util.echo("  breakShields: " .. tostring(boop.config.breakShields ~= false))
+  boop.util.echo("  shieldMode: " .. shieldMode() .. " (session only)")
   boop.util.echo("  autoGrabGold: " .. tostring(boop.config.autoGrabGold))
   boop.util.echo("  goldPack: " .. tostring(shownPack))
   boop.util.echo("  whitelistPriorityOrder: " .. tostring(boop.config.whitelistPriorityOrder))
@@ -1317,6 +1325,65 @@ function boop.ui.setPrequeueEnabled(value)
     boop.schedulePrequeue()
   end
   boop.util.ok("prequeue: " .. (boop.config.prequeueEnabled and "on" or "off"))
+end
+
+function boop.ui.setShieldMode(mode, quiet)
+  local selected = boop.util.safeLower(boop.util.trim(mode or ""))
+  if selected ~= "break" and selected ~= "bypass" then
+    return false
+  end
+
+  local previous = shieldMode()
+  boop.config.breakShields = selected == "break"
+  if boop.db and boop.db.deleteConfig then
+    boop.db.deleteConfig("breakShields")
+  end
+  if boop.state and boop.state.queue then
+    boop.state.queue.aliasDirty = true
+  end
+
+  local rebuilt = false
+  if boop.refreshPrequeuedStandard then
+    rebuilt = boop.refreshPrequeuedStandard(
+      "shield mode " .. selected,
+      nil,
+      { requireShieldbreak = false }
+    ) and true or false
+  end
+  if boop.trace and boop.trace.log then
+    boop.trace.log(string.format(
+      "shield mode: %s -> %s | prequeue rebuilt=%s",
+      previous,
+      selected,
+      tostring(rebuilt)
+    ))
+  end
+  if not quiet then
+    boop.util.ok("shield mode: " .. selected .. " (session only)")
+  end
+  return true
+end
+
+function boop.ui.shieldModeCommand(raw)
+  local selected = boop.util.safeLower(boop.util.trim(raw or ""))
+  local usage = "Usage: boop shieldmode break|bypass|toggle"
+  if selected == "" or selected == "status" or selected == "show" then
+    boop.util.info("shield mode: " .. shieldMode() .. " (session only)")
+    boop.util.info(usage)
+    return true
+  end
+  if selected == "toggle" then
+    selected = shieldMode() == "break" and "bypass" or "break"
+  elseif selected == "on" or selected == "normal" then
+    selected = "break"
+  elseif selected == "off" then
+    selected = "bypass"
+  end
+  if not boop.ui.setShieldMode(selected) then
+    boop.util.warn(usage)
+    return false
+  end
+  return true
 end
 
 function boop.ui.showPrequeue()
@@ -4512,9 +4579,17 @@ local function configRenderCombatSection()
     uiPrintToggleControl(12, "Pull reserve", not not boop.config.pullRageReserve, function()
       boop.ui.config("combat 12")
     end, "Keep enough rage in reserve for pull")
-    uiPrintToggleControl(13, "Break shields", boop.config.breakShields ~= false, function()
-      boop.ui.config("combat 13")
-    end, "Toggle automatic shieldbreak selection")
+    local currentShieldMode = shieldMode()
+    uiPrintActionControl(
+      13,
+      "Shield mode",
+      string.upper(currentShieldMode),
+      currentShieldMode == "break" and "green" or "yellow",
+      "[toggle]",
+      "info",
+      function() boop.ui.config("combat 13") end,
+      "Toggle between shieldbreak and normal-attack planning"
+    )
     uiPrintToggleControl(14, "Auto flee", not not boop.config.fleeEnabled, function()
       boop.ui.config("combat 14")
     end, "Toggle auto flee")
@@ -4547,7 +4622,7 @@ local function configRenderCombatSection()
   boop.util.echo("[10] Assist leader           [ " .. assistStatusText() .. " ] [set]")
   boop.util.echo("[11] Rage aff calls          [ " .. boolText(not not boop.config.rageAffCalloutsEnabled) .. " ] [toggle]")
   boop.util.echo("[12] Pull reserve            [ " .. boolText(not not boop.config.pullRageReserve) .. " ] [toggle]")
-  boop.util.echo("[13] Break shields           [ " .. boolText(boop.config.breakShields ~= false) .. " ] [toggle]")
+  boop.util.echo("[13] Shield mode             [ " .. string.upper(shieldMode()) .. " ] [toggle]")
   boop.util.echo("[14] Auto flee               [ " .. boolText(not not boop.config.fleeEnabled) .. " ] [toggle]")
   boop.util.echo("[15] Flee at                 [ " .. fleeShown .. " ] [set]")
   boop.util.echo("[16] Focus verb              [ " .. tostring(boop.config.focusVerb or "speed") .. " ] [set]")

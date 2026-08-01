@@ -183,6 +183,15 @@ local function castValue(raw, default)
   end
 end
 
+local SESSION_CONFIG_KEYS = {
+  breakShields = true,
+  partySize = true,
+}
+
+local function isSessionConfig(key)
+  return SESSION_CONFIG_KEYS[key] == true
+end
+
 function boop.db.init()
   if not db then
     boop.util.warn("Mudlet DB not available; config will not persist.")
@@ -247,8 +256,8 @@ function boop.db.loadConfig()
   local rows = db:fetch(boop.db.handle.config, nil, { boop.db.handle.config.name })
   for _, row in ipairs(rows) do
     local key = row.name
-    if key == "partySize" then
-      -- party size is session-local and should reset to the default on startup.
+    if isSessionConfig(key) then
+      -- Session settings reset to their defaults on startup.
     elseif boop.defaults[key] ~= nil then
       boop.config[key] = castValue(row.value, boop.defaults[key])
     else
@@ -260,16 +269,17 @@ function boop.db.loadConfig()
     if boop.config[k] == nil then
       boop.config[k] = v
     end
-    if k ~= "partySize" then
+    if not isSessionConfig(k) then
       boop.db.saveConfig(k, boop.config[k])
     end
   end
 
   boop.db.deleteConfig("partySize")
+  boop.db.deleteConfig("breakShields")
 end
 
 function boop.db.saveConfig(key, value)
-  if key == "partySize" then return end
+  if isSessionConfig(key) then return end
   if not boop.db.handle then return end
   local dbtable = boop.db.handle.config
   local row = db:fetch(dbtable, db:eq(dbtable.name, key))[1]

@@ -153,6 +153,53 @@ describe("boop prequeue", function()
     assert.is_false(boop.state.targeting.targetShield.attempted)
   end)
 
+  it("rebuilds a queued class attack in both shield-mode directions", function()
+    helper.reset()
+    dofile(
+      os.getenv("TESTS_DIRECTORY")
+        .. "/../src/scripts/boop/attacks/infernal.lua"
+    )
+    helper.setArea("Test Area")
+    helper.setClass("Infernal")
+    helper.setSpec("Sword and Shield")
+    helper.setTargetHp("80%")
+    helper.learnSkill("Combination", "Weaponmastery")
+    helper.setDenizens({
+      { id = "42", name = "a test denizen" },
+    })
+
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
+    boop.config.prequeueEnabled = true
+    gmcp.Char.Vitals.bal = "0"
+    gmcp.Char.Vitals.eq = "0"
+
+    boop.prequeueStandard()
+    local trackedShield = { attempted = false }
+    boop.state.targeting.targetShield = trackedShield
+
+    boop.ui.shieldModeCommand("break")
+    assert.are.equal(
+      "combination 42 raze smash",
+      boop.state.queue.aliasAction
+    )
+
+    boop.ui.shieldModeCommand("bypass")
+    assert.are.equal(
+      "combination 42 rend smash",
+      boop.state.queue.aliasAction
+    )
+    assert.are.equal(trackedShield, boop.state.targeting.targetShield)
+    assert.are.equal(
+      1,
+      commandCount("setalias BOOP_ATTACK combination 42 raze smash")
+    )
+    assert.are.equal(
+      2,
+      commandCount("setalias BOOP_ATTACK combination 42 rend smash")
+    )
+  end)
+
   it("keeps a rebuilt shieldbreak after a damage prequeue rebounds", function()
     helper.reset()
     dofile(

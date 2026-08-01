@@ -51,4 +51,30 @@ describe("boop ui registries", function()
     assert.is_function(boop.config.setters.breakShields)
     assert.is_function(boop.ui.screens.configActions.combat[13])
   end)
+
+  it("replaces retained shield-mode handlers on package reload", function()
+    local stale = function() end
+    boop.registry.config.setters.breakShields = stale
+    boop.registry.ui.screens.configActions.combat[13] = stale
+    boop.registry.ui.helpTopics = { { key = "stale" } }
+
+    dofile(
+      os.getenv("TESTS_DIRECTORY")
+        .. "/../src/scripts/boop/boop_ui_registry.lua"
+    )
+
+    assert.are_not.equal(stale, boop.config.setters.breakShields)
+    assert.are_not.equal(
+      stale,
+      boop.ui.screens.configActions.combat[13]
+    )
+    local foundCombat = false
+    for _, topic in ipairs(boop.ui.helpTopics) do
+      if topic.key == "combat" then
+        foundCombat = true
+        break
+      end
+    end
+    assert.is_true(foundCombat)
+  end)
 end)

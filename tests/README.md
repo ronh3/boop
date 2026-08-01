@@ -10,7 +10,7 @@ Gold tests cover room-owned pickup, variable direct-to-inventory sovereign lines
 Room observation tests require current Room.Info plus a complete current room item list, reconcile newer generation-bound Add/Remove deltas before application, trace both response orders and their outstanding half, let a natural tick claim the exact pending application ahead of its timer, compute readiness without release owners, and reject stale authority.
 Walker tests cover computed automatic/manual gating, one move per room generation, stale-target reconciliation, owned stop, attached detach, explicit install, and package loss.
 SAFE-02 tests cover disabled and manual-targeting holds plus existing release actions.
-Attack profile tests cover Magi Scintilla and Staff-gated Dissolution preference selection while preserving Horripilation as the default.
+Attack profile tests cover Magi Scintilla and Staff-gated Dissolution preference selection while preserving Horripilation as the default, plus class-agnostic session shield modes for normal and shield-response planning.
 Standard GSD SUMMARY/STATE/ROADMAP/REQUIREMENTS/phase-completion commits are planning-only and version-exempt when every staged path is under .planning; plan task commits touching tests, docs, or source are package-affecting and synchronize all four version checkpoints.
 Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: after upstream GSD execution and every repository mutation finish, the parent pushes immutable FINAL_SHA and runs tools/wait_for_exact_ci.sh "$FINAL_SHA"; CI evidence remains uncommitted, and any later mutation requires a rerun.
 
@@ -47,9 +47,9 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
 - `boop_safety_spec.lua`
   Confirms flee threshold parsing and flee execution.
 - `boop_shields_spec.lua`
-  Confirms shield seen/down tracking, shieldbreak attempt state updates, and that Magi Staffcast damage is not packaged as shield-down evidence.
+  Confirms shield seen/down tracking, shieldbreak attempt state updates, packaged shieldmode command wiring, session reset behavior, and that Magi Staffcast damage is not packaged as shield-down evidence.
 - `boop_prequeue_spec.lua`
-  Confirms prequeue scheduling, queued standard attack behavior, and that a shield-gain/rebound rebuild cannot be downgraded to normal damage before the shieldbreak executes.
+  Confirms prequeue scheduling, queued standard attack behavior, class-attack rebuilds in both shield-mode directions, and that a shield-gain/rebound rebuild cannot be downgraded to normal damage before the shieldbreak executes.
 - `boop_profiles_spec.lua`
   Confirms class/spec-specific standard attack selection for additional profiles.
 - `boop_profile_matrix_spec.lua`
@@ -77,7 +77,7 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
 - `boop_trace_spec.lua`
   Confirms `boop trace` captures compact GMCP room, item, and gold-related item events plus the response-fence half still awaited for debugging live hunting flow.
 - `boop_persistence_spec.lua`
-  Confirms public config, including rage affliction callout settings, with party size intentionally kept session-local, trigger-folder sync for hunting on/off, plus whitelist/blacklist and whitelist-tag edits through the DB hooks.
+  Confirms public config, including rage affliction callout settings, with party size and shield mode intentionally kept session-local, trigger-folder sync for hunting on/off, plus whitelist/blacklist and whitelist-tag edits through the DB hooks.
 - `boop_db_spec.lua`
   Confirms DB guard paths degrade to warnings instead of throwing when optional Mudlet sheets are missing in an older local profile DB.
 - `boop_ui_spec.lua`

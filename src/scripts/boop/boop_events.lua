@@ -1710,6 +1710,7 @@ function boop.events.register()
 end
 
 function boop.onConnectionEvent()
+  boop.resetShieldMode("connection")
   if boop.requestCoreSupports then
     boop.requestCoreSupports({
       force = true,
@@ -2471,6 +2472,7 @@ function boop.refreshPrequeuedStandard(reason, sourceAuthority, options)
       boop.state.queue.prequeueSourceAuthority
     )
   options = type(options) == "table" and options or {}
+  local requireShieldbreak = options.requireShieldbreak ~= false
   local roomOwned = options.roomOwned == true
     or authority and true or false
   if not authority or not readinessAllows(true) then
@@ -2510,7 +2512,7 @@ function boop.refreshPrequeuedStandard(reason, sourceAuthority, options)
     or nil
   local actions = boop.attacks.choose(context)
   if not actions.standard or actions.standard == "" then return false end
-  if not actions.standardShieldbreak then return false end
+  if requireShieldbreak and not actions.standardShieldbreak then return false end
 
   if not boop.executeAction(
       actions.standard,

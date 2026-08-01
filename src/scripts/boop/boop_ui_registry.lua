@@ -354,6 +354,14 @@ local function gagColorSetter(scope, role)
   end
 end
 
+local shieldModeConfigSetter = configBoolSetter({
+  key = "breakShields",
+  warn = "breakShields expects on/off",
+  apply = function(parsed)
+    boop.ui.shieldModeCommand(parsed and "break" or "bypass")
+  end,
+})
+
 boop.registry.config.setters = boop.registry.config.setters or {
   enabled = configBoolSetter({
     key = "enabled",
@@ -416,12 +424,7 @@ boop.registry.config.setters = boop.registry.config.setters or {
     okLabel = "pull rage reserve",
     reopen = { screen = "combat" },
   }),
-  breakShields = configBoolSetter({
-    key = "breakShields",
-    warn = "breakShields expects on/off",
-    okLabel = "break shields",
-    reopen = { screen = "combat" },
-  }),
+  breakShields = shieldModeConfigSetter,
   fleeEnabled = configBoolSetter({
     key = "fleeEnabled",
     warn = "flee expects on/off",
@@ -592,6 +595,9 @@ boop.registry.config.setters = boop.registry.config.setters or {
   }),
 }
 
+-- Refresh changed command behavior when a package update reuses the live registry.
+boop.registry.config.setters.breakShields = shieldModeConfigSetter
+
 local function helpCommand(command, description)
   return {
     command = tostring(command or ""),
@@ -599,7 +605,7 @@ local function helpCommand(command, description)
   }
 end
 
-boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
+boop.registry.ui.helpTopics = {
   {
     key = "start",
     title = "Start Here",
@@ -752,6 +758,7 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
       helpCommand("boop prefer", "Show standard attack preference options for your current class/spec."),
       helpCommand("boop prefer <dam|shield> <option>", "Prefer one valid standard damage or shield attack over another."),
       helpCommand("boop prefer clear <dam|shield>", "Return one standard attack preference to the profile default."),
+      helpCommand("boop shieldmode break|bypass|toggle", "Use shieldbreaks or keep the current class/spec's normal attacks for this session."),
       helpCommand("boop aff", "Show manually tracked target afflictions used by aff/combo/hybrid rage logic."),
       helpCommand("boop aff add|remove <a/b>", "Manually add or remove one or more slash-separated target afflictions."),
       helpCommand("boop aff clear", "Clear manually tracked target afflictions."),
@@ -765,7 +772,7 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
       helpCommand("boop separator <text>", "Set the game-side separator used by pull, such as `|`."),
       helpCommand("pull <mobname> <direction>", "Move in, use a ready damage battlerage attack on the typed mob name, then leap back."),
       helpCommand("boop set pullRageReserve on|off", "Reserve enough rage for a pull-capable damage hit."),
-      helpCommand("boop set breakShields on|off", "Choose whether shielded targets should interrupt normal attacks with shieldbreaks."),
+      helpCommand("boop set breakShields on|off", "Compatibility form of session-only `boop shieldmode break|bypass`."),
       helpCommand("boop set tempoRageWindowSeconds <seconds>", "Tune tempo mode's rage recovery prediction window."),
       helpCommand("boop set tempoSqueezeEtaSeconds <seconds>", "Tune when tempo mode may spend damage while preserving affliction tempo."),
     },
@@ -773,6 +780,8 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
       "Standard attacks and rage actions are independent; boop may use both when balance/rage/state allow.",
       "`simple` is the default rage mode. `combo` and `hybrid` are party-aware and depend on roster/profile affliction data.",
       "`none` disables rage attacks only; it does not disable standard attacks.",
+      "Shield mode resets to `break` on package reload or reconnect; `bypass` applies to every class profile.",
+      "Bypass mode only keeps normal attack selection; it does not make those attacks pierce shields.",
       "Queueing and prequeue are different: queueing changes how actions are sent; prequeue controls when the next standard attack is prepared.",
       "`pull` uses your configured separator and the typed mob name directly inside the rage command.",
       "`pull` clears a stuck in-progress state after the interrupt timeout; it only resumes boop automatically when the current room still matches the origin.",
@@ -980,6 +989,12 @@ boop.registry.ui.screens.configHomeRoutes = boop.registry.ui.screens.configHomeR
     stats = "stats",
     mode = "mode",
 }
+
+local function toggleShieldModeAction()
+  boop.ui.shieldModeCommand("toggle")
+  return "refresh"
+end
+
 boop.registry.ui.screens.configActions = boop.registry.ui.screens.configActions or {
     combat = {
       [1] = function()
@@ -1031,10 +1046,7 @@ boop.registry.ui.screens.configActions = boop.registry.ui.screens.configActions 
         boop.ui.toggleConfigBool("pullRageReserve", true)
         return "refresh"
       end,
-      [13] = function()
-        boop.ui.toggleConfigBool("breakShields", true)
-        return "refresh"
-      end,
+      [13] = toggleShieldModeAction,
       [14] = function()
         boop.ui.fleeCommand((boop.config and boop.config.fleeEnabled) and "off" or "on")
         return "refresh"
@@ -1158,6 +1170,8 @@ boop.registry.ui.screens.configActions = boop.registry.ui.screens.configActions 
       end,
     },
 }
+
+boop.registry.ui.screens.configActions.combat[13] = toggleShieldModeAction
 
 local function attachRegistryFallback(target, public)
   if type(target) ~= "table" or type(public) ~= "table" then

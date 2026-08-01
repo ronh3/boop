@@ -132,6 +132,7 @@ Trace diagnostics contract
 
 - Bare trace status uses `trace: collection on|off | live on|off` so persisted collection and runtime streaming remain visibly separate.
 - `boop trace live on|off` is session-only, starts/reset off on package initialization, is not persisted, and does not enable collection.
+- `boop shieldmode break|bypass|toggle` is session-only, displays as an enum-style `Shield mode` control, and resets to `break` on package reload or reconnect.
 - Enabling live while collection is off must explicitly report `trace live: on | collection remains off`.
 - Each accepted streamed entry uses the `trace live: {timestamped entry}` prefix and appears exactly once.
 - `boop trace show [n]` and `boop trace clear` retain their existing bounded-buffer behavior; clearing entries does not toggle live streaming.

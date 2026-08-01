@@ -42,6 +42,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Shieldmode",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+shieldmode(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Diag",
     "isActive": "yes",
     "regex": "^(?i)diag$",

@@ -683,3 +683,28 @@ blocked: 0
   resolved_by:
     - "0.1.460 Magi Staffcast shield-evidence correction"
   verification: "Focused shield/prequeue regressions pass 18/18 and focused Magi profile checks pass 4/4. Lua syntax, release gates, and the 0.1.460 package build pass; built XML retains the Staffcast gag trigger with no Staffcast shield-down handler. Exact-SHA Mudlet CI and live confirmation remain pending."
+
+- gap_id: G-03-19
+  truth: "The operator can switch every class/spec between normal shield responses and ordinary attack planning for the current session, with the safe shieldbreak policy restored on reload or reconnect."
+  status: resolved
+  reason: "A temporary game mode lets otherwise ordinary attacks pass shields, but the behavior is not Magi-specific and must never become a persistent assumption in normal play."
+  severity: minor
+  test: 2
+  root_cause: "The planner's existing `breakShields` gate was already class-agnostic, but it was exposed only as a persisted advanced boolean and could leave a nonstandard bypass policy active across normal sessions."
+  artifacts:
+    - path: "src/scripts/boop/boop_ui.lua"
+      issue: "There was no explicit session shield-mode command, enum control, or immediate two-way rebuild of a staged class attack."
+    - path: "src/scripts/boop/boop_db.lua"
+      issue: "The legacy `breakShields` value persisted across package loads and connections."
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "Prequeue refresh accepted only shieldbreak plans, so changing back to an ordinary class attack could not rebuild the staged alias."
+    - path: "tests/boop_shields_spec.lua"
+      issue: "No contract covered mode commands, package wiring, retained shield evidence, or safe session resets."
+  resolution:
+    - "Add `boop shieldmode break|bypass|toggle` and an enum-style combat control that operate on the shared planner gate for every class and spec."
+    - "Keep tracked shield evidence in both modes; `break` selects profile shield responses and `bypass` selects the profile's ordinary standard and rage actions."
+    - "Make the mode session-only, remove stale persisted values, and reset to `break` on package reload and reconnect."
+    - "Rebuild an existing prequeued class attack in either direction without weakening ordinary shield-gain refreshes."
+  resolved_by:
+    - "0.1.461 class-agnostic session shield mode"
+  verification: "Focused shield, prequeue, attack, persistence, UI, registry, lifecycle, event-transition, tick, runtime, and planner host regressions pass 194/194. Lua syntax and JSON validation pass; release gates, package build, and exact-SHA real-Mudlet CI remain pending."

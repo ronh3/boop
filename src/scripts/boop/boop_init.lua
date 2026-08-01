@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = "0.1.460"
+boop.version = "0.1.461"
 
 boop.defaults = {
   enabled = false,
@@ -57,6 +57,22 @@ boop.defaults = {
 }
 
 boop.config = boop.config or {}
+
+function boop.getShieldMode()
+  return boop.config.breakShields == false and "bypass" or "break"
+end
+
+function boop.resetShieldMode(reason)
+  boop.config.breakShields = true
+  if boop.state and boop.state.queue then
+    boop.state.queue.aliasDirty = true
+  end
+  if reason and boop.trace and boop.trace.log then
+    boop.trace.log("shield mode reset: break | reason=" .. tostring(reason))
+  end
+  return "break"
+end
+
 boop.lists = boop.lists or {}
 boop.lists.whitelist = boop.lists.whitelist or {}
 boop.lists.blacklist = boop.lists.blacklist or {}

@@ -53,10 +53,10 @@ describe("boop attack selection", function()
     assert.are.equal("ruin 42", actions.rage)
   end)
 
-  it("does not choose a rage shieldbreak when shield breaking is disabled", function()
+  it("uses the class's normal rage selection in bypass mode", function()
     helper.setTargetHp("80%")
     helper.setRage(17)
-    boop.config.breakShields = false
+    assert.is_true(boop.ui.setShieldMode("bypass", true))
     boop.state.targeting.targetShield = { gained = os.clock(), attempted = false }
 
     local actions = boop.attacks.choose()
