@@ -186,6 +186,68 @@ describe("boop trace gmcp events", function()
     )
   end)
 
+  it("logs a room-first response waiting for the inventory barrier", function()
+    boop.runtime.startRoomObservation("1", {
+      boundary = "fresh_start",
+    })
+    assert.is_true(boop.requestRoomItemsOnce(
+      "trace room-first response"
+    ))
+
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = {
+        { id = "42", name = "a waiting denizen", attrib = "m" },
+      },
+    }
+    boop.onRoomItemsList()
+
+    assertTraceContains(
+      "gmcp item list response: location=room | count=1 | status=latched | fence=1 | seen=room | waits=inv | room=1"
+    )
+
+    gmcp.Char.Items.List = {
+      location = "inv",
+      items = {},
+    }
+    boop.onRoomItemsList()
+
+    assertTraceContains(
+      "gmcp item list response: location=inv | count=0 | status=accepted | fence=1 | seen=inv,room | waits=none | room=1"
+    )
+  end)
+
+  it("logs an inventory-first response waiting for the room snapshot", function()
+    boop.runtime.startRoomObservation("1", {
+      boundary = "fresh_start",
+    })
+    assert.is_true(boop.requestRoomItemsOnce(
+      "trace inventory-first response"
+    ))
+
+    gmcp.Char.Items.List = {
+      location = "inv",
+      items = {},
+    }
+    boop.onRoomItemsList()
+
+    assertTraceContains(
+      "gmcp item list response: location=inv | count=0 | status=inventory | fence=1 | seen=inv | waits=room | room=1"
+    )
+
+    gmcp.Char.Items.List = {
+      location = "room",
+      items = {
+        { id = "42", name = "a waiting denizen", attrib = "m" },
+      },
+    }
+    boop.onRoomItemsList()
+
+    assertTraceContains(
+      "gmcp item list response: location=room | count=1 | status=accepted | fence=1 | seen=inv,room | waits=none | room=1"
+    )
+  end)
+
   it("logs operation enter and exit transitions once per state change", function()
     setOperation({
       owner = "interrupt:1",

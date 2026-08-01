@@ -162,6 +162,51 @@ local function traceRoomItemsList(items, goldItem)
   ))
 end
 
+local function traceRoomItemsResponse(list, transition)
+  if not boop.trace or not boop.trace.log then return end
+  if not boop.config or not boop.config.traceEnabled then return end
+  if type(list) ~= "table" or type(transition) ~= "table" then return end
+
+  local observation = boop.runtime
+    and boop.runtime.roomObservationSnapshot
+    and boop.runtime.roomObservationSnapshot()
+    or {}
+  local fenceId = tonumber(transition.fenceId)
+  local fence = false
+  for _, candidate in ipairs(observation.fenceQueue or {}) do
+    if tonumber(candidate.fenceId) == fenceId then
+      fence = candidate
+      break
+    end
+  end
+  if not fence
+      and type(observation.lastCompletedFence) == "table"
+      and tonumber(observation.lastCompletedFence.fenceId) == fenceId then
+    fence = observation.lastCompletedFence
+  end
+
+  local seen = {}
+  local waits = {}
+  if fence and fence.invSeen then seen[#seen + 1] = "inv" end
+  if fence and fence.roomSeen then seen[#seen + 1] = "room" end
+  if fence and not fence.roomOnly and not fence.invSeen then
+    waits[#waits + 1] = "inv"
+  end
+  if fence and not fence.roomSeen then waits[#waits + 1] = "room" end
+
+  boop.trace.log(string.format(
+    "gmcp item list response: location=%s | count=%d | status=%s | fence=%s | seen=%s | waits=%s | room=%s | generation=%s",
+    tostring(list.location or ""),
+    type(list.items) == "table" and #list.items or 0,
+    tostring(transition.status or "ignored"),
+    tostring(transition.fenceId or "none"),
+    #seen > 0 and table.concat(seen, ",") or "none",
+    #waits > 0 and table.concat(waits, ",") or "none",
+    tostring(fence and fence.roomId or observation.roomId or ""),
+    tostring(fence and fence.generation or observation.generation or "")
+  ))
+end
+
 local function traceRoomItemEvent(kind, item)
   if not boop.trace or not boop.trace.log then return end
   local name = item and item.name or "?"
@@ -1771,6 +1816,7 @@ function boop.onRoomItemsList()
     and boop.runtime.observeRoomItemsList
     and boop.runtime.observeRoomItemsList(list.location, list.items)
     or { status = "ignored" }
+  traceRoomItemsResponse(list, transition)
   if transition.inventoryItems then
     rebuildWieldedFromInventory(
       transition.inventoryItems,

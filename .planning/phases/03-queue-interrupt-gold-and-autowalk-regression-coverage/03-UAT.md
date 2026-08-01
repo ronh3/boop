@@ -4,7 +4,7 @@ phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-31T21:31:58-07:00
+updated: 2026-07-31T22:18:00-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -14,7 +14,7 @@ updated: 2026-07-31T21:31:58-07:00
 number: 2
 name: Simplified runtime and stale-target recovery
 expected: |
-  With boop 0.1.457 installed, lifecycle, room, target, and walker status are
+  With boop 0.1.458 installed, lifecycle, room, target, and walker status are
   computed directly. Only interrupt, pull, and gold operations may hold
   automation. Movement, accepted room evidence, or a global-blacklist edit
   clears an ineligible target without stopping the walker.
@@ -53,7 +53,7 @@ observed: "Clean reconnect, prompt-first, and enable-before-prompt checks passed
 ### 2. Cross-owner attack, loot, and walk release
 
 expected: |
-  With boop 0.1.457 installed, manual targeting remains an intentional
+  With boop 0.1.458 installed, manual targeting remains an intentional
   automatic-walk status and is reported as `manual_targeting`, not
   `room_clear`. Lifecycle, room readiness, target eligibility, and walker state
   are computed directly; only interrupt, pull, and gold appear as active
@@ -61,8 +61,8 @@ expected: |
   target intent without stopping the walker.
 
   Easy check:
-  1. Install 0.1.457, reconnect or reload, then run `boop status`. Confirm it
-     prints `version: 0.1.457`. In `boop debug`, `ACTIVE OPERATIONS` should be
+  1. Install 0.1.458, reconnect or reload, then run `boop status`. Confirm it
+     prints `version: 0.1.458`. In `boop debug`, `ACTIVE OPERATIONS` should be
      empty unless an interrupt, pull, or gold action is actually in progress.
   2. Run `boop on`, `boop targeting auto`, and `boop walk start`. Engage a
      wanted denizen without issuing `ql`, `ih`, `boop status`, or another
@@ -76,6 +76,10 @@ expected: |
   4. Run `boop trace show 100`. Normal room and target transitions may report
      computed `room_partial`, `room_clear`, or `ready` status, but must not
      produce room, target, GMCP, or walker operation enter/exit records.
+  5. For any delayed room, inspect `gmcp item list response` trace entries.
+     `waits=inv` means the room contents arrived first but were held for the
+     inventory barrier; `waits=room` means the requested room snapshot itself
+     had not arrived. Prompt lines must not settle either half.
 result: [pending]
 reported: |
   Okay, things seem to be improving. However, the problem I'm running into now
@@ -102,7 +106,7 @@ oldest_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room
 ### 3. Wrong-room gold and pack transfer
 
 expected: |
-  With boop 0.1.457 installed, a gold Item.Add in an already settled room
+  With boop 0.1.458 installed, a gold Item.Add in an already settled room
   requests one current-room revalidation but cannot authorize pickup by itself.
   Only the matching fenced room List may queue one
   `queue add full get sovereigns`. Confirmed pickup may queue one freestand put,
@@ -169,7 +173,7 @@ expected: |
   The immutable final commit is present on origin and `main.yml` succeeds for
   that exact `headSha`. The complete packaged real-Mudlet Busted suite,
   including Psion and Dragon pull-profile cases, reports no failures or errors
-  while building synchronized package 0.1.457.
+  while building synchronized package 0.1.458.
 result: [pending]
 source: automated
 previous_result: pass

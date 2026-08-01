@@ -122,6 +122,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop trace on|off` controls persisted collection into the bounded trace buffer; `show` reads retained entries and `clear` empties them.
 - `boop trace live on|off` controls session-only streaming, starts off on package initialization, is not persisted, and does not enable collection.
 - Live trace output requires collection and live streaming to both be on; each newly accepted entry prints once as `trace live: HH:MM:SS | ...`.
+- Fenced item-list trace entries expose each GMCP response's `location`, `status`, `seen`, and `waits` fields. A `waits=inv` line means room contents arrived first but remain safety-held; `waits=room` means the requested room snapshot has not arrived yet.
 - Status surfaces compute lifecycle, room, target, and walker readiness directly. Trace/debug list only active interrupt, pull, and gold operations.
 - Movement and accepted room contents clear stale target intent without stopping the walker; an active pull deliberately preserves its target until the pull returns or terminates.
 - Attack-line gagging can be toggled separately for your own attacks and other players' attacks, replacing matched lines with `Who: What -> Victim`.

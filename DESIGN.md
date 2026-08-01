@@ -118,6 +118,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Interrupt, pull, and gold operations plus room and walk transitions are generation-owned; callbacks from superseded generations cannot mutate current state.
 - `boop get/set` provides scriptable config access, and `boop trace` exposes a rolling decision/command buffer.
 - `boop trace` now includes compact GMCP room/info/item/gold-related room events for debugging movement and loot timing.
+- Fenced `Char.Items.List` responses are traced before settlement with response location, transition status, observed halves, and the still-awaited half, allowing room-entry latency to be attributed without weakening room authority.
 - Trace collection and live streaming are independent: persisted `traceEnabled` remains the sole gate before entries are appended, while runtime-only `boop.state.trace.live` resets to `false` on package/session initialization and is never saved.
 - When collection and live streaming are both enabled, each accepted entry is timestamped, appended, trimmed to the 100-entry bound, and then emitted exactly once as `trace live: <timestamped entry>` through non-tracing output so the stream cannot recursively trace itself.
 - Live state does not alter retained-buffer behavior: `boop trace show [n]` continues to read collected entries, and `boop trace clear` empties the buffer without changing whether live streaming is enabled.
