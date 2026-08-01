@@ -295,6 +295,36 @@ describe("boop staged gold handling", function()
     assert.is_false(boop.state.gold.operation)
   end)
 
+  it("accepts variable sovereign wording with the stable direct-pickup suffix", function()
+    boop.config.goldPack = "pack"
+
+    assert.is_true(boop.onGoldDirectPickup(
+      "A cache of sovereigns bursts loose, flying into your hands before they can reach the ground."
+    ))
+
+    assert.are.equal("pack_pending", currentOperation().phase)
+    assert.are.equal(1, #sent)
+    assert.are.equal(
+      "queue add freestand put sovereigns in pack",
+      sent[1].command
+    )
+    assert.are.equal(0, countSent("queue add full get sovereigns"))
+  end)
+
+  it("rejects direct-to-hands lines without both sovereign evidence and the exact suffix", function()
+    boop.config.goldPack = "pack"
+
+    assert.is_false(boop.onGoldDirectPickup(
+      "Several gemstones tumble free, flying into your hands before they can reach the ground."
+    ))
+    assert.is_false(boop.onGoldDirectPickup(
+      "Several sovereigns tumble free, flying into your hands before they can reach the ground. Something else happens."
+    ))
+
+    assert.is_false(boop.state.gold.operation)
+    assert.are.equal(0, #sent)
+  end)
+
   it("invalidates room-owned pickup before success and ignores the late success", function()
     startPickup("pack")
 
@@ -659,7 +689,7 @@ describe("boop staged gold handling", function()
       true
     ) ~= nil)
     assert.is_true(contents:find(
-      [["pattern": "^.+ golden sovereigns spill from the corpse, flying into your hands before they can reach the ground\\.$"]],
+      [["pattern": "^.*[Ss]overeign.*flying into your hands before they can reach the ground\\.$"]],
       1,
       true
     ) ~= nil)

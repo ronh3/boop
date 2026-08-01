@@ -6,7 +6,7 @@ Current coverage:
 
 Owner-keyed operation tests cover interrupt, pull, and gold clear order plus exact-owner exclusion; compatibility blockers cannot hold production work.
 Interrupt and pull tests cover idempotent repeats, first-terminal callbacks, and stale generations.
-Gold tests cover room-owned pickup, direct-to-inventory corpse gold, inventory-owned packing, get-confirm-put order, and wrong-room retries.
+Gold tests cover room-owned pickup, variable direct-to-inventory sovereign lines, inventory-owned packing, get-confirm-put order, and wrong-room retries.
 Room observation tests require current Room.Info plus a complete current room item list, reconcile newer generation-bound Add/Remove deltas before application, compute readiness without release owners, and reject stale authority.
 Walker tests cover computed automatic/manual gating, one move per room generation, stale-target reconciliation, owned stop, attached detach, explicit install, and package loss.
 SAFE-02 tests cover disabled and manual-targeting holds plus existing release actions.

@@ -61,7 +61,7 @@
     "highlightBG": "#ffff00",
     "patterns": [
       {
-        "pattern": "^.+ golden sovereigns spill from the corpse, flying into your hands before they can reach the ground\\.$",
+        "pattern": "^.*[Ss]overeign.*flying into your hands before they can reach the ground\\.$",
         "type": "regex"
       }
     ],

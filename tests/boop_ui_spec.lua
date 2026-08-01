@@ -561,7 +561,7 @@ describe("boop ui home", function()
       true
     ) ~= nil)
     assert.is_true(joined:find(
-      "the corpse line that sends sovereigns directly into your hands",
+      "sovereign lines ending with `flying into your hands before they can reach the ground.`",
       1,
       true
     ) ~= nil)

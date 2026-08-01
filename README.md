@@ -88,7 +88,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - demonnicAutoWalker installation is explicit; runtime paths never install or update it.
 - Room settlement requires current Room.Info plus a complete current room item list; prompts and timers never settle the room.
 - Auto gold pickup grabs newly dropped room items whose names contain `gold sovereign`.
-- The corpse line saying sovereigns fly directly into your hands skips room pickup and starts the configured pack stage immediately.
+- Sovereign lines ending with `flying into your hands before they can reach the ground.` skip room pickup and start the configured pack stage immediately.
 - Gold uses get-confirm-put and never chains loot with an attack.
 - If `boop pack <container>` is set, confirmed inventory pickup starts the separate `put sovereigns in <container>` stage.
 - Gold get/put has trigger-based success/failure tracking, including Achaea's `pick up` and `scoop up` pickup confirmations, with limited retries and warning output when retries are exhausted.

@@ -98,6 +98,8 @@ local AUTO_GOLD_FLUSH_SECONDS = 0.35
 local ROOM_RESPONSE_FENCE_WARNING_SECONDS = 8.0
 local GOLD_PICKUP_QUEUE = "full"
 local GOLD_PACK_QUEUE = "freestand"
+local GOLD_DIRECT_PICKUP_SUFFIX =
+  "flying into your hands before they can reach the ground."
 local GOLD_PHASE = {
   DEFERRED_ROOM = "deferred_room",
   PICKUP_PENDING = "pickup_pending",
@@ -1469,8 +1471,8 @@ function boop.onGoldDirectPickup(rawLine)
   end
 
   local line = boop.util.safeLower(boop.util.trim(rawLine or ""))
-  if not line:find("golden sovereigns spill from the corpse", 1, true)
-      or not line:find("flying into your hands", 1, true) then
+  if not line:find("sovereign", 1, true)
+      or line:sub(-#GOLD_DIRECT_PICKUP_SUFFIX) ~= GOLD_DIRECT_PICKUP_SUFFIX then
     return false
   end
 
@@ -1492,7 +1494,7 @@ function boop.onGoldDirectPickup(rawLine)
 
   if not operation then
     operation = createGoldOperation(
-      "direct corpse pickup",
+      "direct sovereign pickup",
       {},
       boop.config.goldPack,
       GOLD_PHASE.PICKUP_PENDING,

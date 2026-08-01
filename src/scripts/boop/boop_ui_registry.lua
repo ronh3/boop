@@ -829,7 +829,7 @@ boop.registry.ui.helpTopics = boop.registry.ui.helpTopics or {
       helpCommand("boop import foxhunt [merge|overwrite|dryrun]", "Import whitelist and blacklist data from Foxhunt's Mudlet DB."),
     },
     notes = {
-      "Autogold reacts to room items whose names contain `gold sovereign` and the corpse line that sends sovereigns directly into your hands.",
+      "Autogold reacts to room items whose names contain `gold sovereign` and sovereign lines ending with `flying into your hands before they can reach the ground.`",
       "Room gold is get-confirm-put; direct-to-hands gold skips get. Packing and attacks remain separate queued effects.",
       "`merge` is the normal Foxhunt import mode. Use `dryrun` first if you want counts without changing boop lists.",
     },
