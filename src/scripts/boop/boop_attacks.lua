@@ -332,17 +332,38 @@ local function addEntryToken(tokens, raw)
   end
 end
 
+local function entryCanonicalPreference(entry)
+  if type(entry) ~= "table" then
+    return ""
+  end
+  local raw = entry.label or entry.skill or entry.name or ""
+  if boop.util.trim(raw) == "" then
+    raw = tostring(entry.cmd or ""):match("^(%S+)") or ""
+  end
+  return boop.util.safeLower(boop.util.trim(raw))
+end
+
+local function entryPreferenceTokens(entry, description)
+  local tokens = {}
+  if type(entry) ~= "table" then
+    return tokens
+  end
+  addEntryToken(tokens, entryCanonicalPreference(entry))
+  addEntryToken(tokens, entry.label)
+  addEntryToken(tokens, entry.name)
+  addEntryToken(tokens, entry.skill)
+  addEntryToken(tokens, entry.cmd)
+  addEntryToken(tokens, description)
+  return tokens
+end
+
 local function entryMatchesPreference(entry, preference)
   local pref = boop.util.safeLower(boop.util.trim(preference or ""))
   if pref == "" or type(entry) ~= "table" then
     return false
   end
 
-  local tokens = {}
-  addEntryToken(tokens, entry.label)
-  addEntryToken(tokens, entry.name)
-  addEntryToken(tokens, entry.skill)
-  addEntryToken(tokens, entry.cmd)
+  local tokens = entryPreferenceTokens(entry)
   return tokens[pref] == true
 end
 
@@ -380,10 +401,17 @@ local function appendStandardOptions(entry, out, seen)
     local key = boop.util.safeLower(desc)
     if desc ~= "" and not seen[key] then
       seen[key] = true
+      local aliases = {}
+      for alias in pairs(entryPreferenceTokens(entry, desc)) do
+        aliases[#aliases + 1] = alias
+      end
+      table.sort(aliases)
       out[#out + 1] = {
+        key = entryCanonicalPreference(entry),
         label = desc,
         skill = entry.skill or entry.name or "",
         command = entry.cmd or "",
+        aliases = aliases,
       }
     end
     return
@@ -407,6 +435,55 @@ function boop.attacks.standardOptions(classKey, section)
   local out, seen = {}, {}
   appendStandardOptions(entry, out, seen)
   return out
+end
+
+function boop.attacks.resolveStandardPreference(classKey, section, choice)
+  local wanted = boop.util.safeLower(boop.util.trim(choice or ""))
+  if wanted == "" then
+    return "", "unknown", {}
+  end
+
+  local exact = {}
+  local prefixes = {}
+  local function addCandidate(target, option)
+    local key = tostring(option.key or "")
+    if key ~= "" then
+      target[key] = option
+    end
+  end
+
+  for _, option in ipairs(boop.attacks.standardOptions(classKey, section)) do
+    local exactMatch = option.key == wanted
+    for _, alias in ipairs(option.aliases or {}) do
+      if alias == wanted then
+        exactMatch = true
+        break
+      end
+    end
+    if exactMatch then
+      addCandidate(exact, option)
+    elseif tostring(option.key or ""):find(wanted, 1, true) == 1 then
+      addCandidate(prefixes, option)
+    end
+  end
+
+  local candidates = next(exact) and exact or prefixes
+  local keys = {}
+  for key in pairs(candidates) do
+    keys[#keys + 1] = key
+  end
+  table.sort(keys)
+  if #keys == 1 then
+    return keys[1], "resolved", { candidates[keys[1]] }
+  end
+  if #keys > 1 then
+    local options = {}
+    for _, key in ipairs(keys) do
+      options[#options + 1] = candidates[key]
+    end
+    return "", "ambiguous", options
+  end
+  return "", "unknown", {}
 end
 
 local function entrySkillsKnown(entry, defaultGroup)
@@ -500,6 +577,32 @@ local function findByDesc(profile, desc, rage)
     end
   end
   return nil
+end
+
+local function rageProfileHasDesc(profile, desc)
+  if not profile or type(profile.abilities) ~= "table" then
+    return false
+  end
+  for _, ability in pairs(profile.abilities) do
+    if ability.desc == desc then
+      return true
+    end
+  end
+  return false
+end
+
+function boop.attacks.rageModeAvailability(classKey, mode)
+  local cls = boop.util.safeLower(boop.util.trim(classKey or ""))
+  local requested = boop.util.safeLower(boop.util.trim(mode or ""))
+  local profile = boop.attacks.registry[cls]
+  if not profile then
+    return nil, "attack profile unavailable"
+  end
+  if requested == "aff"
+      and not rageProfileHasDesc(profile.rage, "Gives Affliction") then
+    return false, "no affliction rage ability"
+  end
+  return true, ""
 end
 
 local function findByDescList(profile, descs, rage)
@@ -1193,6 +1296,16 @@ function boop.attacks.selectRage(profile, rage, classKey, standardShieldbreak)
   }
   mode = modeAliases[mode] or mode
 
+  if mode == "aff" and not rageProfileHasDesc(profile, "Gives Affliction") then
+    if boop.trace and boop.trace.log then
+      boop.trace.log(string.format(
+        "ragemode fallback: aff -> simple | class=%s | reason=no affliction rage ability",
+        tostring(classKey or "")
+      ))
+    end
+    mode = "simple"
+  end
+
   if mode == "none" then
     return finalizeRageDecision(mode, "suppressed", nil)
   end
@@ -1308,6 +1421,47 @@ local function standardCommand(entry, preference)
     return entry
   end
   return ""
+end
+
+function boop.attacks.profileReadiness(classKey)
+  local cls = boop.util.safeLower(boop.util.trim(classKey or ""))
+  local spec = planningSpec()
+  local profile = boop.attacks.registry[cls]
+  if cls == "" or cls == "unknown" or not profile then
+    return {
+      ready = false,
+      code = "unsupported_class",
+      label = "attack profile unavailable",
+      class = cls,
+      spec = spec,
+      command = "",
+    }
+  end
+
+  local standard = profile.standard
+  local command = standard and standardCommand(
+    standard.dam,
+    boop.attacks.getStandardPreference(cls, "dam")
+  ) or ""
+  if command == "" then
+    return {
+      ready = false,
+      code = "no_usable_attack",
+      label = "no usable standard attack",
+      class = cls,
+      spec = spec,
+      command = "",
+    }
+  end
+
+  return {
+    ready = true,
+    code = "ready",
+    label = "ready",
+    class = cls,
+    spec = spec,
+    command = command,
+  }
 end
 
 function boop.attacks.openerUsedForTarget(classKey, targetId)

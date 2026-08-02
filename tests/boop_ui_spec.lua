@@ -17,6 +17,7 @@ describe("boop ui home", function()
   local append_cmd_stub
   local clear_cmd_stub
   local walk_install_stub
+  local gag_picker_stub
   local walker_fixture
   local saved_temp_timer
   local saved_kill_timer
@@ -146,6 +147,10 @@ describe("boop ui home", function()
       walk_install_stub:revert()
       walk_install_stub = nil
     end
+    if gag_picker_stub then
+      gag_picker_stub:revert()
+      gag_picker_stub = nil
+    end
     if walker_fixture then
       walker_fixture.restore()
       walker_fixture = nil
@@ -161,6 +166,7 @@ describe("boop ui home", function()
 
   it("shows a compact operations dashboard on bare boop", function()
     helper.setClass("occultist")
+    helper.learnSkill("Warp", "Occultism")
     helper.setArea("Test Area")
     helper.setTarget("42", "a vicious gnoll soldier", "100%")
     boop.state.targeting.denizens = {
@@ -227,6 +233,27 @@ describe("boop ui home", function()
     assert.is_true(joined:find("status: room_clear -- room clear", 1, true) ~= nil)
   end)
 
+  it("reports a missing attack profile without creating an operation hold", function()
+    helper.setClass("Futureclass")
+    helper.setTarget("42", "a test denizen", "80%")
+    helper.setDenizens({
+      { id = "42", name = "a test denizen" },
+    })
+    boop.config.targetingMode = "auto"
+    boop.ui.setEnabled(true, true)
+
+    boop.ui.status("status")
+
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find(
+      "unsupported_class -- attack profile unavailable",
+      1,
+      true
+    ) ~= nil)
+    assert.is_true(joined:find("attackProfile: MISSING", 1, true) ~= nil)
+    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+  end)
+
   it("makes the home dashboard walk install row clickable when the walker package is missing", function()
     local links = {}
     local install_calls = 0
@@ -260,6 +287,7 @@ describe("boop ui home", function()
 
   it("shows a dedicated control dashboard", function()
     helper.setClass("occultist")
+    helper.learnSkill("Warp", "Occultism")
     helper.setArea("Test Area")
     helper.setTarget("42", "a vicious gnoll soldier", "100%")
     boop.state.targeting.denizens = {
@@ -291,6 +319,7 @@ describe("boop ui home", function()
 
   it("shows a cleaner configuration hub", function()
     helper.setClass("occultist")
+    helper.learnSkill("Warp", "Occultism")
     helper.setTarget("42", "a vicious gnoll soldier", "100%")
     boop.state.targeting.denizens = {
       { id = "42", name = "a vicious gnoll soldier" },
@@ -349,6 +378,8 @@ describe("boop ui home", function()
   end)
 
   it("shows a hunting subsection with live context and inline controls", function()
+    helper.setClass("occultist")
+    helper.learnSkill("Warp", "Occultism")
     helper.setTarget("42", "a vicious gnoll soldier", "100%")
     helper.setDenizens({
       { id = "42", name = "a vicious gnoll soldier" },
@@ -405,6 +436,50 @@ describe("boop ui home", function()
     )
     assert.are.equal("saved", details.source)
     assert.are.equal("warp", details.value)
+  end)
+
+  it("canonicalizes unique preference prefixes and rejects ambiguous aliases", function()
+    dofile(
+      os.getenv("TESTS_DIRECTORY")
+        .. "/../src/scripts/boop/attacks/magi.lua"
+    )
+    helper.setClass("Magi")
+
+    boop.ui.attackPreferenceCommand("dam horri")
+
+    local key = boop.attacks.preferenceConfigKey("magi", "dam", "")
+    assert.are.equal("horripilation", boop.config[key])
+    assert.are.equal(
+      "[OK] dam preference: horripilation (default)",
+      echoes[#echoes]
+    )
+
+    echoes = {}
+    boop.ui.attackPreferenceCommand("dam staffcast")
+
+    assert.are.equal("horripilation", boop.config[key])
+    assert.is_true(echoes[1]:find(
+      "[WARN] Ambiguous dam preference `staffcast` for magi:",
+      1,
+      true
+    ) ~= nil)
+  end)
+
+  it("rejects an aff rage mode when the active profile cannot use it", function()
+    dofile(
+      os.getenv("TESTS_DIRECTORY")
+        .. "/../src/scripts/boop/attacks/infernal.lua"
+    )
+    helper.setClass("Infernal")
+    boop.config.attackMode = "simple"
+
+    assert.is_false(boop.ui.setAttackMode("aff"))
+
+    assert.are.equal("simple", boop.config.attackMode)
+    assert.are.equal(
+      "[WARN] ragemode aff unavailable for Infernal: no affliction rage ability",
+      echoes[#echoes]
+    )
   end)
 
   it("validates and updates the rage pool threshold", function()
@@ -520,6 +595,21 @@ describe("boop ui home", function()
     assert.are.equal("loot", boop.ui.configScreen)
   end)
 
+  it("reports autogold settings without changing them", function()
+    boop.config.autoGrabGold = true
+    boop.config.goldPack = "tophat"
+    boop.state.gold.getPending = true
+
+    boop.ui.autoGoldStatus()
+
+    assert.is_true(boop.config.autoGrabGold)
+    assert.are.equal("tophat", boop.config.goldPack)
+    assert.are.equal(
+      "[INFO] autogold: on | pack: tophat | operation: pickup pending",
+      echoes[#echoes]
+    )
+  end)
+
   it("shows a cleaner debug snapshot", function()
     helper.setClass("Unnamable")
     helper.setDenizens({
@@ -602,7 +692,7 @@ describe("boop ui home", function()
     assert.is_true(joined:find("Switch between solo hunting, assist mode, leader auto%-calling, and leader%-following target mode%.") ~= nil)
     assert.is_true(joined:find("Require a leader%-called target before boop starts attacking when following another leader%.") ~= nil)
     assert.is_true(joined:find("Inspect or control external autowalker integration when the walker package is available%.") ~= nil)
-    assert.is_true(joined:find("Install the required demonnicAutoWalker package into Mudlet%.") ~= nil)
+    assert.is_true(joined:find("Install the optional demonnicAutoWalker package required only for autowalk%.") ~= nil)
   end)
 
   it("states operation-owned interrupt timing without stale broad release wording", function()
@@ -702,7 +792,7 @@ describe("boop ui home", function()
 
     assert.are.same({
       "<clear>", "boop config home",
-      "<clear>", "boop config debug",
+      "<clear>", "boop config debug ",
       "<clear>", "boop trace show",
       "<clear>", "boop debug attacks",
     }, cmdline)
@@ -732,7 +822,7 @@ describe("boop ui home", function()
 
     assert.are.same({
       "<clear>", "boop help home",
-      "<clear>", "boop help",
+      "<clear>", "boop help ",
     }, cmdline)
   end)
 
@@ -1142,6 +1232,14 @@ describe("boop ui home", function()
     assert.is_true(table.concat(echoes, "\n"):find("%[OK%] gag mobs who color: orange") ~= nil)
     assert.is_true(table.concat(echoes, "\n"):find("%[INFO%] gag colors %(mobs%)") ~= nil)
     assert.is_true(table.concat(echoes, "\n"):find("sample: Mob: Damage %-%> You %(649 asphyxiation%)") ~= nil)
+  end)
+
+  it("opens a scoped gag role picker instead of treating the scope as a role", function()
+    gag_picker_stub = stub(boop.gag, "showColorPicker")
+
+    boop.ui.gagCommand("color others who")
+
+    assert.stub(gag_picker_stub).was_called_with("others", "who")
   end)
 
   it("renders gag colors as an interactive browser", function()

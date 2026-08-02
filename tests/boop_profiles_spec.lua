@@ -1,4 +1,10 @@
 local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper.lua")
+local attacksRoot = os.getenv("BOOP_REPO_ROOT") .. "/src/scripts/boop/attacks/"
+dofile(attacksRoot .. "infernal.lua")
+dofile(attacksRoot .. "runewarden.lua")
+dofile(attacksRoot .. "depthswalker.lua")
+dofile(attacksRoot .. "psion.lua")
+dofile(attacksRoot .. "blue_dragon.lua")
 
 describe("boop class profile selection", function()
   before_each(function()

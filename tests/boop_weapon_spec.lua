@@ -1,4 +1,5 @@
 local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper.lua")
+dofile(os.getenv("BOOP_REPO_ROOT") .. "/src/scripts/boop/attacks/depthswalker.lua")
 
 describe("boop weapon designations", function()
   local ok_stub
@@ -30,7 +31,7 @@ describe("boop weapon designations", function()
     if echo_stub then echo_stub:revert() echo_stub = nil end
   end)
 
-  it("saves a weapon designation for the current class", function()
+  it("saves a Depthswalker weapon designation", function()
     boop.ui.weaponCommand("scythe 47177")
 
     local key = boop.attacks.weaponConfigKey("depthswalker", "scythe")
@@ -46,5 +47,24 @@ describe("boop weapon designations", function()
 
     assert.is_nil(boop.config[key])
     assert.are.equal(key, deleted[1])
+  end)
+
+  it("rejects weapon roles that Depthswalker does not consume", function()
+    boop.ui.weaponCommand("sword 999")
+
+    assert.are.equal("[WARN] weapon role: use dagger or scythe", echoes[#echoes])
+    assert.are.equal(0, #saved)
+  end)
+
+  it("rejects weapon designations for other classes", function()
+    helper.setClass("Occultist")
+
+    boop.ui.weaponCommand("dagger 999")
+
+    assert.are.equal(
+      "[WARN] weapon designations are only used by Depthswalker",
+      echoes[#echoes]
+    )
+    assert.are.equal(0, #saved)
   end)
 end)

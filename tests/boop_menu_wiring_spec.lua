@@ -9,14 +9,17 @@ describe("boop menu wiring", function()
   local calls
   local active_stubs
 
-  local function helpTopicCommands(topic)
-    local commands = {}
+  local function helpTopicEntries(topic)
+    local entries = {}
     for _, section in ipairs({ topic.steps or {}, topic.commands or {}, topic.advanced or {} }) do
       for _, entry in ipairs(section) do
-        commands[#commands + 1] = tostring((type(entry) == "table" and entry.command) or entry or "")
+        entries[#entries + 1] = {
+          command = tostring((type(entry) == "table" and entry.command) or entry or ""),
+          seed = tostring((type(entry) == "table" and entry.seed) or entry or ""),
+        }
       end
     end
-    return commands
+    return entries
   end
 
   local function helpTopics()
@@ -24,7 +27,7 @@ describe("boop menu wiring", function()
     for _, topic in ipairs(boop.ui.helpTopics or {}) do
       topics[#topics + 1] = {
         key = topic.key,
-        commands = helpTopicCommands(topic),
+        commands = helpTopicEntries(topic),
       }
     end
     return topics
@@ -213,14 +216,14 @@ describe("boop menu wiring", function()
     expectCallback(callbacks[9].callback, { { label = "affCallCommand", args = { "off" } } })
     expectCallback(callbacks[10].callback, { { label = "rosterCommand", args = { "" } } })
     expectCallback(callbacks[11].callback, { { label = "combos", args = { "party" } } })
-    expectCallback(callbacks[12].callback, { { label = "config", args = { "party" } } })
+    expectCallback(callbacks[12].callback, { { label = "config", args = { "home" } } })
     expectCallback(callbacks[13].callback, { { label = "controlCommand", args = { "" } } })
     expectCallback(callbacks[14].callback, { { label = "displayWhitelist", args = {} } })
 
-    expectCallback(callbacks[15].callback, seedExpectation("boop party assist"))
-    expectCallback(callbacks[16].callback, seedExpectation("boop party targetcall on|off"))
-    expectCallback(callbacks[17].callback, seedExpectation("boop party affcalls on|off"))
-    expectCallback(callbacks[18].callback, seedExpectation("boop whitelist share [area]"))
+    expectCallback(callbacks[15].callback, seedExpectation("boop party assist "))
+    expectCallback(callbacks[16].callback, seedExpectation("boop party targetcall on"))
+    expectCallback(callbacks[17].callback, seedExpectation("boop party affcalls on"))
+    expectCallback(callbacks[18].callback, seedExpectation("boop whitelist share"))
     expectCallback(callbacks[19].callback, seedExpectation("boop whitelist receive"))
   end)
 
@@ -253,8 +256,8 @@ describe("boop menu wiring", function()
     expectCallback(callbacks[11].callback, { { label = "stats.command", args = { "" } } })
 
     expectCallback(callbacks[12].callback, seedExpectation("boop config home"))
-    expectCallback(callbacks[13].callback, seedExpectation("boop config"))
-    expectCallback(callbacks[14].callback, seedExpectation("boop config"))
+    expectCallback(callbacks[13].callback, seedExpectation("boop config "))
+    expectCallback(callbacks[14].callback, seedExpectation("boop config "))
     expectCallback(callbacks[15].callback, seedExpectation("boop party"))
     expectCallback(callbacks[16].callback, seedExpectation("boop theme"))
     expectCallback(callbacks[17].callback, seedExpectation("boop control"))
@@ -281,7 +284,7 @@ describe("boop menu wiring", function()
     end
 
     expectCallback(callbacks[37].callback, seedExpectation("boop config home"))
-    expectCallback(callbacks[38].callback, seedExpectation("boop config combat"))
+    expectCallback(callbacks[38].callback, seedExpectation("boop config combat "))
     expectCallback(callbacks[39].callback, seedExpectation("boop config back"))
   end)
 
@@ -303,7 +306,7 @@ describe("boop menu wiring", function()
     end
 
     expectCallback(callbacks[9].callback, seedExpectation("boop config home"))
-    expectCallback(callbacks[10].callback, seedExpectation("boop config targeting"))
+    expectCallback(callbacks[10].callback, seedExpectation("boop config targeting "))
     expectCallback(callbacks[11].callback, seedExpectation("boop config back"))
   end)
 
@@ -328,7 +331,7 @@ describe("boop menu wiring", function()
     end
 
     expectCallback(callbacks[9].callback, seedExpectation("boop config home"))
-    expectCallback(callbacks[10].callback, seedExpectation("boop config loot"))
+    expectCallback(callbacks[10].callback, seedExpectation("boop config loot "))
     expectCallback(callbacks[11].callback, seedExpectation("boop config back"))
   end)
 
@@ -353,7 +356,7 @@ describe("boop menu wiring", function()
     end
 
     expectCallback(callbacks[21].callback, seedExpectation("boop config home"))
-    expectCallback(callbacks[22].callback, seedExpectation("boop config debug"))
+    expectCallback(callbacks[22].callback, seedExpectation("boop config debug "))
     expectCallback(callbacks[23].callback, seedExpectation("boop config back"))
   end)
 
@@ -385,7 +388,7 @@ describe("boop menu wiring", function()
     expectCallback(callbacks[14].callback, seedExpectation("boop party"))
     expectCallback(callbacks[15].callback, seedExpectation("boop stats"))
 
-    expectCallback(callbacks[16].callback, seedExpectation("boop help"))
+    expectCallback(callbacks[16].callback, seedExpectation("boop help "))
     expectCallback(callbacks[17].callback, seedExpectation("boop help diagnostics"))
   end)
 
@@ -400,12 +403,25 @@ describe("boop menu wiring", function()
 
       assert.are.equal(#topic.commands + 2, #callbacks)
 
-      for i, command in ipairs(topic.commands) do
-        expectCallback(callbacks[i].callback, seedExpectation(command))
+      for i, entry in ipairs(topic.commands) do
+        expectCallback(callbacks[i].callback, seedExpectation(entry.seed))
       end
 
       expectCallback(callbacks[#topic.commands + 1].callback, seedExpectation("boop help home"))
-      expectCallback(callbacks[#topic.commands + 2].callback, seedExpectation("boop help"))
+      expectCallback(callbacks[#topic.commands + 2].callback, seedExpectation("boop help "))
+    end
+  end)
+
+  it("keeps help display grammar out of command-line seeds", function()
+    for _, topic in ipairs(helpTopics()) do
+      for _, entry in ipairs(topic.commands) do
+        assert.is_true(entry.seed ~= "")
+        assert.is_nil(entry.seed:find("<", 1, true), entry.command)
+        assert.is_nil(entry.seed:find(">", 1, true), entry.command)
+        assert.is_nil(entry.seed:find("[", 1, true), entry.command)
+        assert.is_nil(entry.seed:find("]", 1, true), entry.command)
+        assert.is_nil(entry.seed:find("|", 1, true), entry.command)
+      end
     end
   end)
 
@@ -425,7 +441,7 @@ describe("boop menu wiring", function()
     addStub(_G, "clearCmdLine", "clearCmdLine")
 
     expectCallback(callbacks[1].callback, { { label = "stats.command", args = { "compare trip lasttrip" } } })
-    expectCallback(callbacks[2].callback, { { label = "stats.command", args = { "areas trip 5 xp" } } })
+    expectCallback(callbacks[2].callback, { { label = "stats.command", args = { "areas trip 5 xphr" } } })
     expectCallback(callbacks[3].callback, { { label = "stats.command", args = { "targets trip 5" } } })
     expectCallback(callbacks[4].callback, { { label = "stats.command", args = { "abilities trip 5" } } })
     expectCallback(callbacks[5].callback, { { label = "stats.command", args = { "rage trip" } } })

@@ -53,7 +53,7 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
 - `boop_profiles_spec.lua`
   Confirms class/spec-specific standard attack selection for additional profiles.
 - `boop_profile_matrix_spec.lua`
-  Confirms spec-based standard and shield commands across all by-spec profiles.
+  Confirms every shipped class/form/spec profile is registered, reports a usable standard attack through the profile-readiness contract, and preserves expected spec-based standard and shield commands.
 - `boop_diag_spec.lua`
   Confirms diagnose pauses attacks and resumes after the GMCP affliction snapshot or visible result fallback plus prompt.
 - `boop_diag_timeout_spec.lua`
@@ -67,7 +67,7 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
 - `boop_wield_spec.lua`
   Confirms inventory GMCP list/add/update/remove events track currently wielded left/right-hand items.
 - `boop_weapon_spec.lua`
-  Confirms `boop weapon` saves and clears class-scoped weapon designations consumed by weapon-dependent profiles.
+  Confirms `boop weapon` saves and clears Depthswalker dagger/scythe designations and rejects unsupported classes or roles.
 - `boop_gag_spec.lua`
   Confirms condensed gag summaries for attack, mob-damage, and kill replay lines.
 - `boop_skills_spec.lua`
@@ -85,7 +85,7 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
 - `boop_ui_registry_spec.lua`
   Confirms the shared config, screen, mode, preset, and help registries exist and drive the corresponding UI commands.
 - `boop_menu_wiring_spec.lua`
-  Confirms rich Mudlet dashboard/help callbacks seed commands or route to the expected UI functions.
+  Confirms rich Mudlet dashboard/help callbacks seed executable canonical commands, strip display-only grammar, or route to the expected UI functions.
 - `boop_stats_spec.lua`
   Confirms gold/xp accumulation across session/login/trip/lifetime scopes, party-size-aware mob xp bucketing, workflow-style stats help output, per-target efficiency and profitability summaries, richer area rankings, trip comparison output, rage-efficiency summaries, per-ability damage/crit/kill summaries, crit/record rollups, reset behavior, whitelist rendering, and human-readable stats summaries.
 

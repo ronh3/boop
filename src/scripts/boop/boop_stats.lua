@@ -2051,7 +2051,7 @@ function boop.stats.showAreas(scopeName, limit, sortKey)
       end
       renderRichRows(printRow, richRows, 10)
     end
-    printFooter("Type: boop stats areas " .. label .. " " .. tostring(maxRows) .. " xp")
+    printFooter("Type: boop stats areas " .. label .. " " .. tostring(maxRows) .. " " .. sortMode)
     return
   end
 
@@ -2592,7 +2592,7 @@ local function showDashboardRich(context)
   if scopeHasActivity(trip) then
     renderRichRows(printRow, {
       { index = 13, label = "Trip vs last trip", value = "OPEN", color = "cyan", onClick = statsCommandAction("compare trip lasttrip"), hint = "Compare current trip against the previous completed trip" },
-      { index = 14, label = "Area rankings", value = "OPEN", color = "cyan", onClick = statsCommandAction("areas trip 5 xp"), hint = "Show trip area rankings sorted by xp/hr" },
+      { index = 14, label = "Area rankings", value = "OPEN", color = "cyan", onClick = statsCommandAction("areas trip 5 xphr"), hint = "Show trip area rankings sorted by xp/hr" },
       { index = 15, label = "Target breakdown", value = "OPEN", color = "cyan", onClick = statsCommandAction("targets trip 5"), hint = "Show trip target efficiency" },
       { index = 16, label = "Ability breakdown", value = "OPEN", color = "cyan", onClick = statsCommandAction("abilities trip 5"), hint = "Show trip ability performance" },
       { index = 17, label = "Rage report", value = "OPEN", color = "cyan", onClick = statsCommandAction("rage trip"), hint = "Show trip rage usage summary" },
@@ -2727,7 +2727,7 @@ function boop.stats.showDashboard()
   boop.util.info("  next views:")
   if scopeHasActivity(trip) then
     boop.util.info("    boop stats compare trip lasttrip")
-    boop.util.info("    boop stats areas trip 5 xp")
+    boop.util.info("    boop stats areas trip 5 xphr")
     boop.util.info("    boop stats targets trip 5")
     boop.util.info("    boop stats abilities trip 5")
     boop.util.info("    boop stats rage trip")

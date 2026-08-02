@@ -634,10 +634,32 @@ boop.registry.config.setters = boop.registry.config.setters or {
 boop.registry.config.setters.breakShields = shieldModeConfigSetter
 boop.registry.config.setters.ragePoolThreshold = ragePoolConfigSetter
 
-local function helpCommand(command, description)
+local function helpSeedCommand(command)
+  local seed = boop.util.trim(tostring(command or ""))
+  seed = seed:gsub("%s*%b[]", "")
+  local requiredAt = seed:find("<", 1, true)
+  local needsValue = requiredAt ~= nil
+  if requiredAt then
+    seed = seed:sub(1, requiredAt - 1)
+  end
+  seed = seed:gsub("%S+", function(token)
+    return token:match("^([^|]+)|") or token
+  end)
+  seed = boop.util.trim(seed:gsub("%s+", " "))
+  if needsValue and seed ~= "" then
+    seed = seed .. " "
+  end
+  return seed
+end
+
+boop.registry.ui.helpSeedCommand = helpSeedCommand
+
+local function helpCommand(command, description, seed)
+  local display = tostring(command or "")
   return {
-    command = tostring(command or ""),
+    command = display,
     description = tostring(description or ""),
+    seed = seed ~= nil and tostring(seed) or helpSeedCommand(display),
   }
 end
 
@@ -661,7 +683,7 @@ boop.registry.ui.helpTopics = {
       helpCommand("boop config", "Settings hub for combat, targeting, loot, diagnostics, party, theme, and stats routes."),
       helpCommand("boop party", "Party dashboard for assist, leader target calls, walker state, and roster."),
       helpCommand("boop stats", "Stats dashboard for current hunt performance and drill-downs."),
-      helpCommand("boop status", "Print the compact computed status and any active operation `code -- label`."),
+      helpCommand("boop status", "Open the full status dashboard with computed readiness and active operation details."),
       helpCommand("boop help <goal>", "Open a focused help page such as `solo`, `targeting`, `rage`, `gold`, `party`, or `diagnostics`."),
     },
     notes = {
@@ -682,7 +704,7 @@ boop.registry.ui.helpTopics = {
       helpCommand("boop control <route>", "Jump straight to a related surface such as `combat`, `targeting`, `loot`, `debug`, `party`, `stats`, or `mode`."),
     },
     commands = {
-      helpCommand("boop status", "Print a compact state summary with computed status and any active operation."),
+      helpCommand("boop status", "Open the full status dashboard with configuration, readiness, target, and active operation details."),
       helpCommand("boop control status", "Open the fuller status dashboard from the control route, including active operation systems and waits."),
       helpCommand("boop control combat|targeting|loot|debug", "Jump from control to the matching config subsection."),
       helpCommand("boop control party|roster|stats|theme|mode", "Jump from control to related operator surfaces."),
@@ -718,7 +740,7 @@ boop.registry.ui.helpTopics = {
       helpCommand("bh", "Toggle boop on/off with the compact hunting summary."),
       helpCommand("boop on|off", "Enable or disable hunting explicitly without changing saved settings."),
       helpCommand("boop off", "Stop hunting without clearing settings."),
-      helpCommand("boop status", "Check enabled state, class, targeting mode, rage mode, computed status, and active operation in one line."),
+      helpCommand("boop status", "Open the full status dashboard for enabled state, class/profile readiness, targeting, rage, loot, and active operations."),
       helpCommand("boop control", "Watch target, active operations, queue, party, and walker state while hunting."),
       helpCommand("boop flee <on|off|percent>", "Control auto-flee and set its HP threshold, for example `boop flee 25%`."),
       helpCommand("bflee", "Immediately run boop's flee action using the last room direction and disable hunting."),
@@ -788,7 +810,7 @@ boop.registry.ui.helpTopics = {
       helpCommand("boop prefer", "Show class/spec standard attack options before overriding damage or shieldbreak preference."),
     },
     commands = {
-      helpCommand("boop ragemode <number|simple|big|small|aff|tempo|combo|hybrid|none>", "Set how boop chooses battlerage actions."),
+      helpCommand("boop ragemode <number|simple|big|small|aff|tempo|combo|hybrid|none>", "Set how boop chooses battlerage actions; unavailable class modes are marked and rejected."),
       helpCommand("boop ragepool <0-100|off>", "Hold ordinary battlerage actions until current rage reaches this threshold."),
       helpCommand("boop prequeue [on|off]", "Show, enable, or disable early standard-attack queueing."),
       helpCommand("boop lead [seconds]", "Show or set how early boop should prequeue before balance returns."),
@@ -804,9 +826,9 @@ boop.registry.ui.helpTopics = {
     },
     advanced = {
       helpCommand("boop set queueing on|off", "Toggle Mudlet/game queue usage directly; most users should use `boop config combat`."),
-      helpCommand("boop weapon", "Show saved class-scoped weapon designations."),
-      helpCommand("boop weapon <role> <item-id>", "Save a weapon id for profiles that need a specific role, such as `scythe 47177`."),
-      helpCommand("boop weapon clear <role>", "Clear one saved weapon designation for the current class profile."),
+      helpCommand("boop weapon", "Show Depthswalker dagger and scythe designations."),
+      helpCommand("boop weapon <dagger|scythe> <item-id>", "Save a Depthswalker weapon id, such as `scythe 47177`."),
+      helpCommand("boop weapon clear <dagger|scythe>", "Clear one saved Depthswalker weapon designation."),
       helpCommand("boop focus <speed|precision>", "Choose which battlefury focus verb two-handed standards prepend when Focus is known."),
       helpCommand("boop separator <text>", "Set the game-side separator used by pull, such as `|`."),
       helpCommand("pull <mobname> <direction>", "Move in, use a ready damage battlerage attack on the typed mob name, then leap back."),
@@ -819,6 +841,7 @@ boop.registry.ui.helpTopics = {
     notes = {
       "Standard attacks and rage actions are independent; boop may use both when balance/rage/state allow.",
       "`simple` is the default rage mode. `combo` and `hybrid` are party-aware and depend on roster/profile affliction data.",
+      "`aff` is unavailable when the active class profile has no affliction rage ability; stale cross-class `aff` settings use `simple` until changed.",
       "`none` disables rage attacks only; it does not disable standard attacks.",
       "A rage-pool threshold holds normal damage, affliction, and conditional rage actions below the configured amount; shieldbreaks and Triumph free rage remain immediate.",
       "Temporary attack preferences reset on package reload or reconnect and never replace the saved class/spec preference.",
@@ -826,7 +849,7 @@ boop.registry.ui.helpTopics = {
       "Bypass mode only keeps normal attack selection; it does not make those attacks pierce shields.",
       "Queueing and prequeue are different: queueing changes how actions are sent; prequeue controls when the next standard attack is prepared.",
       "`pull` uses your configured separator and the typed mob name directly inside the rage command.",
-      "`pull` clears a stuck in-progress state after the interrupt timeout; it only resumes boop automatically when the current room still matches the origin.",
+      "`pull` releases on timeout only when you are back in the origin room; timing out elsewhere keeps combat held until matching return-room GMCP arrives.",
     },
   },
   {
@@ -835,18 +858,18 @@ boop.registry.ui.helpTopics = {
     summary = "Commands that pause boop long enough to run a defensive or utility action cleanly.",
     aliases = { "interrupt", "interrupts", "diag", "diagnose", "matic", "catarin", "fly", "ts", "shield", "leap" },
     steps = {
-      helpCommand("diag", "Clear the attack queue, queue diagnose, and pause attacks until diagnose evidence plus prompt."),
-      helpCommand("matic", "Queue `ldeck draw matic` on boop's attack queue and resume on prompt or timeout."),
-      helpCommand("fly", "Queue `fly` and pause attacks until prompt or timeout."),
+      helpCommand("diag", "Send `clearqueue all`, replace the full balance/equilibrium queue with diagnose, and pause attacks until diagnose evidence plus prompt."),
+      helpCommand("matic", "Replace the full balance/equilibrium queue with `ldeck draw matic` and resume on prompt or timeout."),
+      helpCommand("fly", "Replace the full balance/equilibrium queue with `fly` and pause attacks until prompt or timeout."),
       helpCommand("boop config combat", "Use the combat config screen if you need to tune the interrupt timeout."),
     },
     commands = {
-      helpCommand("diag", "Clear boop's attack queue, run diagnose, and pause boop until diagnose completes or times out."),
-      helpCommand("matic", "Queue `ldeck draw matic` on the same queue boop uses for attacks."),
-      helpCommand("catarin", "Queue `ldeck draw catarin` on the same queue boop uses for attacks."),
-      helpCommand("fly", "Queue `fly` and pause attacks until prompt or timeout."),
-      helpCommand("ts", "Queue `touch shield` and pause attacks until prompt or timeout."),
-      helpCommand("leap <direction>", "Queue a leap command and pause attacks until prompt or timeout."),
+      helpCommand("diag", "Clear every server queue, replace the full balance/equilibrium queue with diagnose, and pause boop until diagnose completes or times out."),
+      helpCommand("matic", "Replace the full balance/equilibrium queue with `ldeck draw matic`."),
+      helpCommand("catarin", "Replace the full balance/equilibrium queue with `ldeck draw catarin`."),
+      helpCommand("fly", "Replace the full balance/equilibrium queue with `fly` and pause attacks until prompt or timeout."),
+      helpCommand("ts", "Replace the full balance/equilibrium queue with `touch shield` and pause attacks until prompt or timeout."),
+      helpCommand("leap <direction>", "Replace the full balance/equilibrium queue with a leap command and pause attacks until prompt or timeout."),
     },
     advanced = {
       helpCommand("boop set diagtimeout <seconds>", "Set the timeout used by diag and queued interrupt holds."),
@@ -854,7 +877,7 @@ boop.registry.ui.helpTopics = {
     notes = {
       "These commands are meant for quick intervention while boop is otherwise managing attacks.",
       "Pending interrupts are operation-owned; repeats do not resend or restart the timer.",
-      "`diag` clears queued attacks first; the other queued interrupts preserve the queue style boop normally uses.",
+      "`diag` sends `clearqueue all`; every interrupt then uses `queue addclearfull freestand` regardless of boop's normal queue setting.",
       "`diag` prefers the GMCP affliction snapshot and retains visible diagnose lines as fallback evidence.",
     },
   },
@@ -871,7 +894,8 @@ boop.registry.ui.helpTopics = {
       helpCommand("boop import foxhunt dryrun", "Preview how many Foxhunt whitelist/blacklist entries can be imported before changing boop data."),
     },
     commands = {
-      helpCommand("boop autogold", "Show whether automatic sovereign pickup is enabled."),
+      helpCommand("boop autogold", "Toggle automatic sovereign pickup."),
+      helpCommand("boop autogold status", "Show automatic pickup, pack, and current gold-operation state without changing settings."),
       helpCommand("boop autogold on|off", "Enable or disable automatic pickup of newly dropped sovereigns."),
       helpCommand("boop pack", "Show the current automatic sovereign stash container."),
       helpCommand("boop pack <container>", "Set the container used by `put sovereigns in <container>` after pickup."),
@@ -909,7 +933,7 @@ boop.registry.ui.helpTopics = {
       helpCommand("boop party size <n>", "Set the session-local party size used by stats and party summaries."),
       helpCommand("boop affcalls on|off", "Enable or suppress battlerage affliction party callouts."),
       helpCommand("boop walk [status|start|stop|move]", "Inspect or control external autowalker integration when the walker package is available."),
-      helpCommand("boop walk install", "Install the required demonnicAutoWalker package into Mudlet."),
+      helpCommand("boop walk install", "Install the optional demonnicAutoWalker package required only for autowalk."),
       helpCommand("boop roster", "Show the stored party roster and your combo-relevant party composition."),
       helpCommand("boop roster <class...>", "Set the party roster classes used for combo and conditional help."),
       helpCommand("boop roster clear", "Clear the stored party roster."),
@@ -938,7 +962,7 @@ boop.registry.ui.helpTopics = {
     steps = {
       helpCommand("boop trip start", "Start a tracked hunt before you turn boop on."),
       helpCommand("boop stats", "Open the stats dashboard and use the suggested drill-downs for the current data state."),
-      helpCommand("boop stats areas trip 10 xp", "Find which areas produced the best trip XP rate."),
+      helpCommand("boop stats areas trip 10 xphr", "Find which areas produced the best trip XP rate."),
       helpCommand("boop stats targets trip 10", "Find which targets were efficient, slow, or unusually profitable."),
       helpCommand("boop trip stop", "Finish the tracked hunt and save it as lasttrip."),
       helpCommand("boop stats compare", "Compare the current trip with the previous completed trip."),

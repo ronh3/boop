@@ -382,7 +382,7 @@ describe("boop stats", function()
     assert.are.equal("    xp/hr: 480000 vs 324000 (+156000 | +48.1%)", messages[13])
     assert.are.equal("  next views:", messages[14])
     assert.are.equal("    boop stats compare trip lasttrip", messages[15])
-    assert.are.equal("    boop stats areas trip 5 xp", messages[16])
+    assert.are.equal("    boop stats areas trip 5 xphr", messages[16])
   end)
 
   it("falls back to lifetime guidance when session and trip are empty", function()
@@ -453,6 +453,13 @@ describe("boop stats", function()
     assert.are.equal("session areas (sorted by goldhr):", messages[1])
     assert.is_true(messages[2]:find("Fast Area | 8 kills | 240.0 kills/hr | 800 gold | 24000.0 gold/hr | 40000 xp | 1200000.0 xp/hr | avg ttk 2.50s", 1, true) ~= nil)
     assert.is_true(messages[3]:find("Slow Area | 6 kills | 36.0 kills/hr | 1200 gold | 7200.0 gold/hr | 70000 xp | 420000.0 xp/hr | avg ttk 10.00s", 1, true) ~= nil)
+
+    messages = {}
+    boop.stats.showAreas("session", 5, "xphr")
+
+    assert.are.equal("session areas (sorted by xphr):", messages[1])
+    assert.is_true(messages[2]:find("Fast Area", 1, true) ~= nil)
+    assert.is_true(messages[3]:find("Slow Area", 1, true) ~= nil)
   end)
 
   it("shows current-area mob xp summaries", function()

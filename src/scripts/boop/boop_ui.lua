@@ -73,6 +73,27 @@ local function currentClass()
   return boop.state.combat.class or (gmcp and gmcp.Char and gmcp.Char.Status and gmcp.Char.Status.class) or "unknown"
 end
 
+local function currentProfileReadiness()
+  if boop.attacks and boop.attacks.profileReadiness then
+    return boop.attacks.profileReadiness(currentClass())
+  end
+  return {
+    ready = false,
+    code = "unsupported_class",
+    label = "attack profile unavailable",
+  }
+end
+
+local function profileReadinessText(readiness)
+  if readiness and readiness.ready then
+    return "READY"
+  end
+  if readiness and readiness.code == "no_usable_attack" then
+    return "NO USABLE ATTACK"
+  end
+  return "MISSING"
+end
+
 local function assistLeader()
   return boop.util.trim(boop.config.assistLeader or "")
 end
@@ -174,9 +195,13 @@ local function footerSeedCommand(text)
   if command == "" then
     return ""
   end
-  command = command:gsub("%s*<[^>]+>", "")
-  command = command:gsub("%s+$", "")
-  return boop.util.trim(command)
+  local seedCommand = boop.registry
+    and boop.registry.ui
+    and boop.registry.ui.helpSeedCommand
+  if seedCommand then
+    return seedCommand(command)
+  end
+  return command
 end
 
 local function footerClickableParts(text)
@@ -480,6 +505,20 @@ local function currentBlockerDetails()
     and boop.targets.isCurrentTargetEligible
     and boop.targets.isCurrentTargetEligible()
   if targetEligible then
+    local profileReadiness = currentProfileReadiness()
+    if not profileReadiness.ready then
+      local nextAction = profileReadiness.code == "unsupported_class"
+          and "boop debug attacks"
+        or "boop debug skills"
+      return makeBlockerDetails(
+        profileReadiness.code,
+        profileReadiness.label,
+        nextAction,
+        { combat = true },
+        {},
+        "profile"
+      )
+    end
     return makeBlockerDetails("engaged_target", "engaged target", "let boop attack", { combat = true, target = true }, {}, "ui")
   end
   local eligibleDenizen = boop.targets
@@ -628,6 +667,7 @@ end
 
 local function renderStatusDashboard()
   local class = currentClass()
+  local profileReadiness = currentProfileReadiness()
   local lead = tonumber(boop.config.attackLeadSeconds) or 0
   local diagTimeout = tonumber(boop.config.diagTimeoutSeconds) or 0
   local tempoWindow = tonumber(boop.config.tempoRageWindowSeconds) or 10
@@ -669,6 +709,13 @@ local function renderStatusDashboard()
     uiPrintRow(row, "Enabled", boolText(boop.config.enabled), boolColor(boop.config.enabled))
     row = row + 1
     uiPrintRow(row, "Class", tostring(class), "cyan")
+    row = row + 1
+    uiPrintRow(
+      row,
+      "Attack profile",
+      profileReadinessText(profileReadiness),
+      profileReadiness.ready and "green" or "red"
+    )
     row = row + 1
     uiPrintRow(row, "Operating mode", modeShown, "yellow")
     row = row + 1
@@ -748,6 +795,7 @@ local function renderStatusDashboard()
   boop.util.echo("  version: " .. tostring(boop.version or "unknown"))
   boop.util.echo("  enabled: " .. tostring(boop.config.enabled))
   boop.util.echo("  class: " .. tostring(class))
+  boop.util.echo("  attackProfile: " .. profileReadinessText(profileReadiness))
   boop.util.echo("  mode: " .. tostring(modeShown))
   boop.util.echo("  theme: " .. tostring(themeShown))
   boop.util.echo("  walk: " .. tostring(walkShown))
@@ -1147,13 +1195,22 @@ local function rageModeById(id)
   return nil
 end
 
+local function rageModeAvailability(mode)
+  if not boop.attacks or not boop.attacks.rageModeAvailability then
+    return true, ""
+  end
+  return boop.attacks.rageModeAvailability(currentClass(), mode)
+end
+
 function boop.ui.showRageModeMenu()
   local current = canonicalRageMode(boop.config.attackMode or "simple")
 
   if cecho then
     local rows = {}
     for _, option in ipairs(RAGE_MODE_OPTIONS) do
-      rows[#rows + 1] = { index = option.id, label = option.label .. " - " .. option.desc }
+      local available, reason = rageModeAvailability(option.key)
+      local suffix = available == false and (" Unavailable: " .. reason .. ".") or ""
+      rows[#rows + 1] = { index = option.id, label = option.label .. " - " .. option.desc .. suffix }
     end
     local labelWidth = uiComputeLabelWidth(rows, 54, 120)
 
@@ -1161,9 +1218,13 @@ function boop.ui.showRageModeMenu()
     uiPrintSection("modes")
     for _, option in ipairs(RAGE_MODE_OPTIONS) do
       local active = (current == option.key)
-      uiPrintRow(option.id, option.label .. " - " .. option.desc, active and "ACTIVE" or "SET", active and "green" or "cyan", function()
+      local available, reason = rageModeAvailability(option.key)
+      local suffix = available == false and (" Unavailable: " .. reason .. ".") or ""
+      local state = available == false and "N/A" or (active and "ACTIVE" or "SET")
+      local color = available == false and "grey" or (active and "green" or "cyan")
+      uiPrintRow(option.id, option.label .. " - " .. option.desc .. suffix, state, color, function()
         boop.ui.setAttackMode(tostring(option.id))
-      end, "Set ragemode to " .. option.key, labelWidth)
+      end, available == false and (option.label .. " is unavailable: " .. reason) or ("Set ragemode to " .. option.key), labelWidth)
     end
     uiPrintFooter("Type: boop ragemode <number|mode> | boop config combat | boop help combat")
     return
@@ -1172,8 +1233,10 @@ function boop.ui.showRageModeMenu()
   boop.util.echo("CONFIGURATION > RAGEMODE")
   boop.util.echo("----------------------------------------")
   for _, option in ipairs(RAGE_MODE_OPTIONS) do
-    local state = (current == option.key) and "ACTIVE" or "SET"
-    boop.util.echo(string.format("[%d] %s - %s [%s]", option.id, option.label, option.desc, state))
+    local available, reason = rageModeAvailability(option.key)
+    local state = available == false and "N/A" or ((current == option.key) and "ACTIVE" or "SET")
+    local suffix = available == false and (" Unavailable: " .. reason .. ".") or ""
+    boop.util.echo(string.format("[%d] %s - %s%s [%s]", option.id, option.label, option.desc, suffix, state))
   end
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop ragemode <number|mode> | boop config combat | boop help combat")
@@ -1284,6 +1347,19 @@ function boop.ui.setAttackMode(mode)
     boop.ui.showRageModeMenu()
     return
   end
+  local available, reason = rageModeAvailability(mode)
+  if available == false then
+    boop.util.warn(string.format(
+      "ragemode %s unavailable for %s: %s",
+      mode,
+      tostring(currentClass()),
+      reason
+    ))
+    if chosenByNumber then
+      boop.ui.showRageModeMenu()
+    end
+    return false
+  end
   boop.config.attackMode = mode
   if boop.db and boop.db.saveConfig then
     boop.db.saveConfig("attackMode", boop.config.attackMode)
@@ -1297,6 +1373,7 @@ function boop.ui.setAttackMode(mode)
   if chosenByNumber then
     boop.ui.showRageModeMenu()
   end
+  return true
 end
 
 function boop.ui.setRageMode(mode)
@@ -1351,6 +1428,26 @@ end
 
 function boop.ui.toggleAutoGrabGold()
   boop.ui.setAutoGrabGold(not boop.config.autoGrabGold)
+end
+
+function boop.ui.autoGoldStatus()
+  local pack = boop.util.trim(boop.config.goldPack or "")
+  local gold = boop.state and boop.state.gold or {}
+  local operation = "idle"
+  if gold.putPending then
+    operation = "pack pending"
+  elseif gold.getPending then
+    operation = "pickup pending"
+  elseif gold.autoGrabPending then
+    operation = "room pending"
+  end
+
+  boop.util.info(string.format(
+    "autogold: %s | pack: %s | operation: %s",
+    boop.config.autoGrabGold and "on" or "off",
+    pack ~= "" and pack or "(off)",
+    operation
+  ))
 end
 
 function boop.ui.setPrequeueEnabled(value)
@@ -2103,15 +2200,15 @@ function boop.ui.gagCommand(raw)
       return
     end
 
-    local roleOnly, valueOnly = colorArgs:match("^(%S+)%s+(.+)$")
-    if roleOnly and valueOnly then
-      boop.gag.setColor("own", roleOnly, valueOnly)
-      return
-    end
-
     local pickerScope, pickerRole = colorArgs:match("^(%S+)%s+(%S+)$")
     if pickerScope and pickerRole and (pickerScope == "own" or pickerScope == "self" or pickerScope == "others" or pickerScope == "other" or pickerScope == "mob" or pickerScope == "mobs" or pickerScope == "incoming") and boop.gag and boop.gag.showColorPicker then
       boop.gag.showColorPicker(pickerScope, pickerRole)
+      return
+    end
+
+    local roleOnly, valueOnly = colorArgs:match("^(%S+)%s+(.+)$")
+    if roleOnly and valueOnly then
+      boop.gag.setColor("own", roleOnly, valueOnly)
       return
     end
 
@@ -2519,7 +2616,7 @@ function boop.ui.partyCommand(raw)
       boop.ui.combos("party")
     end, "Open combo synergy dashboard")
     uiPrintRow(14, "Config hub", "OPEN", "cyan", function()
-      boop.ui.config("party")
+      boop.ui.config("home")
     end, "Open the broader config hub near party controls")
     uiPrintRow(15, "Control dashboard", "OPEN", "cyan", function()
       boop.ui.controlCommand("")
@@ -2685,6 +2782,11 @@ local function currentWeaponConfigClass()
   return ""
 end
 
+local DEPTHSWALKER_WEAPON_ROLES = {
+  dagger = true,
+  scythe = true,
+}
+
 function boop.ui.weaponCommand(raw)
   local text = boop.util.trim(raw or "")
   local lower = boop.util.safeLower(text)
@@ -2692,6 +2794,10 @@ function boop.ui.weaponCommand(raw)
 
   if classKey == "" then
     boop.util.warn("No active class profile is loaded yet")
+    return
+  end
+  if classKey ~= "depthswalker" then
+    boop.util.warn("weapon designations are only used by Depthswalker")
     return
   end
 
@@ -2709,7 +2815,7 @@ function boop.ui.weaponCommand(raw)
     if not found then
       boop.util.echo("  (none)")
     end
-    boop.util.info("Usage: boop weapon <role> <item-id> | boop weapon clear <role>")
+    boop.util.info("Usage: boop weapon <dagger|scythe> <item-id> | boop weapon clear <dagger|scythe>")
     boop.util.info("Prefer raw GMCP item ids for reliability.")
   end
 
@@ -2720,6 +2826,10 @@ function boop.ui.weaponCommand(raw)
 
   local clearRole = lower:match("^clear%s+(%S+)$")
   if clearRole then
+    if not DEPTHSWALKER_WEAPON_ROLES[clearRole] then
+      boop.util.warn("weapon role: use dagger or scythe")
+      return
+    end
     local key = boop.attacks.weaponConfigKey(classKey, clearRole)
     if key == "" then
       boop.util.warn("weapon clear expects a role")
@@ -2737,8 +2847,12 @@ function boop.ui.weaponCommand(raw)
   role = boop.util.safeLower(boop.util.trim(role or ""))
   value = boop.util.trim(value or "")
   if role == "" or value == "" then
-    boop.util.warn("Usage: boop weapon <role> <item-id>")
+    boop.util.warn("Usage: boop weapon <dagger|scythe> <item-id>")
     boop.util.info("Use: boop weapon")
+    return
+  end
+  if not DEPTHSWALKER_WEAPON_ROLES[role] then
+    boop.util.warn("weapon role: use dagger or scythe")
     return
   end
 
@@ -2751,22 +2865,33 @@ function boop.ui.weaponCommand(raw)
   boop.util.ok(string.format("weapon %s: %s (%s)", role, value, classKey))
 end
 
-local function standardPreferenceKnown(classKey, section, choice)
-  local wanted = boop.util.safeLower(boop.util.trim(choice or ""))
-  if wanted == "" then
-    return false
+local function resolveStandardPreference(classKey, section, choice)
+  if not boop.attacks or not boop.attacks.resolveStandardPreference then
+    return "", "unknown", {}
   end
-  for _, option in ipairs(boop.attacks.standardOptions(classKey, section)) do
-    local label = boop.util.safeLower(option.label)
-    local skill = boop.util.safeLower(option.skill)
-    local command = boop.util.safeLower(option.command)
-    if label:find(wanted, 1, true)
-        or skill == wanted
-        or command:find(wanted, 1, true) then
-      return true
-    end
+  return boop.attacks.resolveStandardPreference(classKey, section, choice)
+end
+
+local function preferenceResolutionWarning(classKey, section, choice, status, options)
+  if status ~= "ambiguous" then
+    return string.format(
+      "Unknown %s preference `%s` for %s",
+      section,
+      choice,
+      classKey
+    )
   end
-  return false
+  local labels = {}
+  for _, option in ipairs(options or {}) do
+    labels[#labels + 1] = tostring(option.label or option.key or "")
+  end
+  return string.format(
+    "Ambiguous %s preference `%s` for %s: %s",
+    section,
+    choice,
+    classKey,
+    table.concat(labels, ", ")
+  )
 end
 
 local function attackPreferenceStatus(details)
@@ -2879,12 +3004,18 @@ function boop.ui.attackPreferenceCommand(raw)
       boop.util.info("Clear with: boop prefer temp clear [dam|shield]")
       return
     end
-    if not standardPreferenceKnown(classKey, section, choice) then
-      boop.util.warn(string.format(
-        "Unknown %s preference `%s` for %s",
+    local resolved, resolution, options = resolveStandardPreference(
+      classKey,
+      section,
+      choice
+    )
+    if resolved == "" then
+      boop.util.warn(preferenceResolutionWarning(
+        classKey,
         section,
         choice,
-        classKey
+        resolution,
+        options
       ))
       showStatus()
       return
@@ -2893,7 +3024,7 @@ function boop.ui.attackPreferenceCommand(raw)
       classKey,
       section,
       spec,
-      choice
+      resolved
     ) then
       boop.util.warn("Unable to set temporary attack preference")
       return
@@ -2901,7 +3032,7 @@ function boop.ui.attackPreferenceCommand(raw)
     boop.util.ok(string.format(
       "temporary %s preference: %s (%s, session only)",
       section,
-      choice,
+      resolved,
       spec ~= "" and spec or "default"
     ))
     return
@@ -2935,8 +3066,19 @@ function boop.ui.attackPreferenceCommand(raw)
     return
   end
 
-  if not standardPreferenceKnown(classKey, section, choice) then
-    boop.util.warn(string.format("Unknown %s preference `%s` for %s", section, choice, classKey))
+  local resolved, resolution, options = resolveStandardPreference(
+    classKey,
+    section,
+    choice
+  )
+  if resolved == "" then
+    boop.util.warn(preferenceResolutionWarning(
+      classKey,
+      section,
+      choice,
+      resolution,
+      options
+    ))
     showStatus()
     return
   end
@@ -2946,12 +3088,12 @@ function boop.ui.attackPreferenceCommand(raw)
     boop.util.warn("Unable to save attack preference")
     return
   end
-  boop.config[key] = choice
+  boop.config[key] = resolved
   if boop.db and boop.db.saveConfig then
-    boop.db.saveConfig(key, choice)
+    boop.db.saveConfig(key, resolved)
   end
   markAttackAliasDirty()
-  boop.util.ok(string.format("%s preference: %s (%s)", section, choice, spec ~= "" and spec or "default"))
+  boop.util.ok(string.format("%s preference: %s (%s)", section, resolved, spec ~= "" and spec or "default"))
 end
 
 local function copyList(list)
@@ -4077,6 +4219,13 @@ local function helpEntryDescription(entry)
   return ""
 end
 
+local function helpEntrySeed(entry)
+  if type(entry) == "table" then
+    return tostring(entry.seed or entry.command or "")
+  end
+  return tostring(entry or "")
+end
+
 local function helpRenderHome()
   local helpTopics = helpTopicRegistry()
   if cecho then
@@ -4149,8 +4298,12 @@ local function helpRenderAudit()
         boop.util.echo(section.label .. ":")
         for _, entry in ipairs(section.entries) do
           local cmd = helpEntryCommand(entry)
+          local seed = helpEntrySeed(entry)
           local description = helpEntryDescription(entry)
           boop.util.echo("  " .. cmd)
+          if seed ~= cmd then
+            boop.util.echo("    Seed: " .. seed)
+          end
           if description ~= "" then
             boop.util.echo("    " .. description)
           end
@@ -4188,10 +4341,11 @@ local function helpRenderTopic(topic)
     local commandWidth = uiComputeLabelWidth(commandRows, minWidth or 56, maxWidth or 92)
     for i, entry in ipairs(entries) do
       local value = helpEntryCommand(entry)
+      local seed = helpEntrySeed(entry)
       local description = helpEntryDescription(entry)
-      local hint = description ~= "" and (description .. " | Click to seed this command.") or ("Prepare command: " .. value)
+      local hint = description ~= "" and (description .. " | Click to prepare: " .. seed) or ("Prepare command: " .. seed)
       uiPrintRow(i, value, buttonText or "TYPE", color or "yellow", function()
-        uiSetCommandLine(value)
+        uiSetCommandLine(seed)
       end, hint, commandWidth)
     end
   end

@@ -15,7 +15,25 @@ describe("boop rage modes", function()
     loadProfile("psion")
     loadProfile("sentinel")
     loadProfile("unnamable")
+    loadProfile("infernal")
     helper.setTarget("42", "a test denizen", "80%")
+  end)
+
+  it("falls back to simple rage for a stale unsupported aff mode", function()
+    helper.setClass("Infernal")
+    helper.setSpec("Dual Cutting")
+    helper.setRage(14)
+    helper.learnSkills({
+      { name = "Duality", group = "Weaponmastery" },
+      { name = "ravage", group = "Attainment" },
+    })
+    boop.config.attackMode = "aff"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("dsl 42", actions.standard)
+    assert.are.equal("ravage 42", actions.rage)
+    assert.are.equal("simple", actions.rageDecision.mode)
   end)
 
   it("falls back to simple damage in combo mode when no provider support exists", function()

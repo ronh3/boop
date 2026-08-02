@@ -15,7 +15,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `bh` (toggle on/off)
 - `boop on` / `boop off`
 - `boop help` / `boop help <number|topic|home>` (workflow help; examples: `boop help targeting`, `boop help rage`, `boop help gold`; `boop help audit` is an advanced review dump)
-- `boop status` (installed version, computed status, next action, and any active operation)
+- `boop status` (installed version, computed status, attack-profile readiness, next action, and any active operation)
 - `boop config` / `boop config <number|section|section number|back|home>` (menu-style config flow; core sections are `combat`, `targeting`, `loot`, and `debug`)
 - `boop preset` / `boop preset list` / `boop preset <solo|party|leader|leader-call>` (show or apply recommended baseline settings)
 - `boop party` / `boop party <status|mode ...|walk ...|assist ...|targetcall ...|affcalls ...|size <n>|roster ...|combos>` (party dashboard and coordination shortcuts)
@@ -24,15 +24,15 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop targetcall on|off`
 - `boop affcalls on|off`
 - `boop walk [status|start|stop|move]`
-- `boop walk install` (installs the required `demonnicAutoWalker` Mudlet package)
+- `boop walk install` (installs the optional `demonnicAutoWalker` package required only for autowalk)
 - `boop roster` / `boop roster <class...>` / `boop roster clear` (save party class roster; your own class is auto-included)
 - `boop combos` / `boop combos <class...>` / `boop combos list` (party combo inference from rage afflictions + conditional needs)
 - `boop prefer` / `boop prefer <dam|shield> <option>` / `boop prefer clear <dam|shield>` (save a standard attack preference within the current class/spec profile)
 - `boop prefer temp <dam|shield> <option>` / `boop prefer temp clear [dam|shield]` (apply or clear session-only overrides without replacing saved preferences)
 - `boop shieldmode [break|bypass|toggle]` (session-only shield policy for every class/spec; defaults and resets to `break`)
-- `boop weapon` / `boop weapon <role> <item-id>` / `boop weapon clear <role>` (save class-scoped weapon designations such as `scythe` or `dagger`; prefer raw GMCP item ids)
+- `boop weapon` / `boop weapon <dagger|scythe> <item-id>` / `boop weapon clear <dagger|scythe>` (Depthswalker-only weapon designations; prefer raw GMCP item ids)
 - `boop theme <name|auto|list>` (`list` opens an ADB-style sample browser with boop themes plus the built-in ADB city/class themes)
-- `boop autogold` / `boop autogold on` / `boop autogold off`
+- `boop autogold` (toggle) / `boop autogold status` (read-only summary) / `boop autogold on` / `boop autogold off`
 - `boop pack` / `boop pack <container>` / `boop pack off` / `boop pack test` (auto-stash container for sovereigns)
 - `boop import foxhunt [merge|overwrite|dryrun]` (imports Foxhunt DB whitelist/blacklist into boop)
 - `boop prequeue` / `boop prequeue on` / `boop prequeue off`
@@ -41,15 +41,15 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop trace` / `boop trace on|off|live on|off|show [n]|clear`
 - `boop gag` / `boop gag on|off|own|others|mobs|all|<scope> on|off|colors [own|others|mobs]|color [own|others|mobs] <who|ability|target|meta|separator|bg> [<color|off>]|color [own|others|mobs] reset`
 - `boop targeting <manual|whitelist|blacklist|auto>`
-- `boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>` (default: `simple`)
+- `boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>` (default: `simple`; class modes without a matching rage ability are marked unavailable)
 - `boop ragepool <0-100|off>` (hold ordinary battlerage actions until current rage reaches the configured threshold)
-- `diag` (queue-clear + diagnose; temporarily pauses boop attacks until the diagnose GMCP snapshot or visible result plus prompt)
-- `matic` (queues `ldeck draw matic` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
-- `catarin` (queues `ldeck draw catarin` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
-- `fly` (queues `fly` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
-- `ts` (queues `touch shield` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
-- `leap <direction>` (queues `leap <direction>` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
-- `pull <mobname> <direction>` (places a runtime hold, sends `<direction><sep><damage rage on mobname><sep>leap <opposite direction>`, and releases only that hold after return confirmation or timeout)
+- `diag` (sends `clearqueue all`, replaces the full balance/equilibrium queue with diagnose, and pauses attacks until diagnose evidence plus prompt)
+- `matic` (replaces the full balance/equilibrium queue with `ldeck draw matic`; pauses attacks until prompt or timeout)
+- `catarin` (replaces the full balance/equilibrium queue with `ldeck draw catarin`; pauses attacks until prompt or timeout)
+- `fly` (replaces the full balance/equilibrium queue with `fly`; pauses attacks until prompt or timeout)
+- `ts` (replaces the full balance/equilibrium queue with `touch shield`; pauses attacks until prompt or timeout)
+- `leap <direction>` (replaces the full balance/equilibrium queue with `leap <direction>`; pauses attacks until prompt or timeout)
+- `pull <mobname> <direction>` (places a runtime hold, sends `<direction><sep><damage rage on mobname><sep>leap <opposite direction>`, and releases after returning to the origin or timing out while already there)
 - `boop separator <text>` (sets the game-side command separator used by `pull`; for example `|`)
 - `boop focus <speed|precision>` (sets which battlefury focus verb two-handed standards use when `Focus` is known)
 - `boop flee <on|off|toggle|percent>` (controls auto-flee and sets its threshold; example: `boop flee 25%`)
@@ -74,6 +74,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Standard attacks and rage actions are independent and can fire together.
 - When hunting is off, boop disables its trigger/text-replacement folder; aliases remain available so `boop on` and configuration commands still work.
 - `boop ragemode big` pools rage until a `Big Damage` rage attack is usable; it only uses `Small Damage` while big is on cooldown.
+- `boop ragemode aff` is rejected when the active class has no affliction rage ability; a stale cross-class `aff` setting uses `simple` damage selection until changed.
 - `boop ragepool 50` waits until current rage reaches 50 before selecting an ordinary rage action; it is a reach-before-spend threshold, not a permanent 50-rage reserve. Shieldbreaks and Triumph free rage remain immediate. Use `boop ragepool off` to disable it.
 - Temporary attack preferences take precedence over the saved value for the current class/spec, are visibly labeled by `boop prefer`, and reset on package reload or reconnect.
 - Denizens come from `gmcp.Char.Items.List` with attrib `m` and exclude `x`/`d`.
@@ -105,14 +106,11 @@ Standalone Mudlet package for Achaea auto hunting.
 - Magi includes `staffcast scintilla at &tar` and `staffcast dissolution at &tar` as standard damage options, selectable with `boop prefer dam scintilla` or `boop prefer dam dissolution`.
 - Hybrid rage skips fear-affliction primers; Psion hybrid treats `weave whirlwind &tar` as conditional on target `inhibit` or `stun`, uses `enact regrowth &tar` to prime inhibit, and otherwise falls back to simple damage with `psi devastate &tar` as the high-damage hit.
 - `Triumph suffuses you with incredible rage.` sets a one-shot free-rage flag; hybrid rage spends it on the highest ready damage or satisfied conditional rage attack, then clears it when a rage action is used.
-- `diag` clears queue, queues `diagnose`, and pauses attacks until the `Char.Afflictions.List` snapshot and following prompt; `You are: ...` and `You are in perfect health.` remain text fallbacks. A timeout releases the current hold, and a later explicit `diag` supersedes any unresolved evidence from that timed-out dispatch.
-- `matic` queues `ldeck draw matic` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
-- `catarin` queues `ldeck draw catarin` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
-- `fly` queues `fly` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
-- `leap <direction>` queues `leap <direction>` on the same queue boop uses for standard attacks and pauses attacks until the next prompt (with the same timeout fallback via `diagTimeoutSeconds`).
+- `diag` sends `clearqueue all`, then `queue addclearfull freestand diagnose`, and pauses attacks until the `Char.Afflictions.List` snapshot and following prompt; `You are: ...` and `You are in perfect health.` remain text fallbacks. A timeout releases the current hold, and a later explicit `diag` supersedes unresolved evidence from that dispatch.
+- `matic`, `catarin`, `fly`, `ts`, and `leap` always use `queue addclearfull freestand` regardless of normal attack queueing and pause attacks until the next prompt, with the same timeout fallback via `diagTimeoutSeconds`.
 - `pull <mobname> <direction>` uses the configured `boop separator` to send one chained game command: move in, use the highest available damage battlerage attack against the typed mob name, then `leap` back using the opposite direction.
 - Pull uses an owner-keyed operation lock and never changes saved enabled configuration.
-- Return-room GMCP or the current operation timeout releases only the pull operation; stale callbacks from older pull generations are ignored.
+- Return-room GMCP releases the pull operation. A timeout at the origin also releases it; a timeout away keeps the same hold until matching return-room GMCP arrives, and stale callbacks from older generations are ignored.
 - If there is no ready damage battlerage attack or not enough rage to use one, `pull` aborts before movement.
 - `pullRageReserve` optionally makes normal battlerage spending hold back enough rage to preserve a pull-capable damage hit.
 - With `pullRageReserve` on, rage shieldbreak also yields to a standard shieldbreak when the class/profile already has one available.
@@ -123,14 +121,14 @@ Standalone Mudlet package for Achaea auto hunting.
 - Prequeue is separately configurable from queueing (`boop prequeue`); when enabled, it queues standard attacks before recovery using `boop lead` seconds (default `1.00`).
 - Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.
 - In queueing mode, boop caches the last `BOOP_ATTACK` alias payload and skips redundant `setalias` sends when unchanged.
-- `boop weapon` stores class-scoped wield targets that profiles can consume when they need a specific weapon role; prefer raw GMCP item ids because wield tracking matches exact ids most reliably.
+- `boop weapon` is Depthswalker-only and stores `dagger` or `scythe` wield targets; prefer raw GMCP item ids because wield tracking matches exact ids most reliably.
 - `boop theme list` exposes boop's built-in themes plus the built-in ADB city/class palette names, so themes like `ashtan`, `depthswalker`, and `targossas` work directly in boop.
 - `boop trace on|off` controls persisted collection into the bounded trace buffer; `show` reads retained entries and `clear` empties them.
 - `boop trace live on|off` controls session-only streaming, starts off on package initialization, is not persisted, and does not enable collection.
 - Live trace output requires collection and live streaming to both be on; each newly accepted entry prints once as `trace live: HH:MM:SS | ...`.
 - Fenced item-list trace entries expose each GMCP response's `location`, `status`, `seen`, and `waits` fields. A `waits=inv` line means room contents arrived first but remain safety-held; `waits=room` means the requested room snapshot has not arrived yet.
 - After a fenced pair is accepted, the next natural tick may claim that exact pending room application ahead of its zero-delay fallback timer. The claim still requires the same application, room, and observation generation, so moved-room evidence remains fail closed.
-- Status surfaces compute lifecycle, room, target, and walker readiness directly. Trace/debug list only active interrupt, pull, and gold operations.
+- Status surfaces compute lifecycle, room, target, attack-profile, and walker readiness directly. A missing or unusable attack profile is diagnostic state, not a new operation hold. Trace/debug list only active interrupt, pull, and gold operations.
 - Movement and accepted room contents clear stale target intent without stopping the walker; an active pull deliberately preserves its target until the pull returns or terminates.
 - Attack-line gagging can be toggled separately for your own attacks and other players' attacks, replacing matched lines with `Who: What -> Victim`.
 - Self attack gag summaries coalesce repeated same-source/same-type damage such as multihit weapon attacks and gear procs, and append total damage before balance time.

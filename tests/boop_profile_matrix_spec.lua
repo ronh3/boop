@@ -1,5 +1,76 @@
 local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper.lua")
 
+local profileFiles = {
+  "air_elemental_lady",
+  "air_elemental_lord",
+  "alchemist",
+  "apostate",
+  "bard",
+  "black_dragon",
+  "blademaster",
+  "blue_dragon",
+  "depthswalker",
+  "druid",
+  "earth_elemental_lady",
+  "earth_elemental_lord",
+  "fire_elemental_lady",
+  "fire_elemental_lord",
+  "golden_dragon",
+  "green_dragon",
+  "infernal",
+  "jester",
+  "magi",
+  "monk",
+  "occultist",
+  "paladin",
+  "pariah",
+  "priest",
+  "psion",
+  "red_dragon",
+  "runewarden",
+  "sentinel",
+  "serpent",
+  "shaman",
+  "silver_dragon",
+  "sylvan",
+  "unnamable",
+  "water_elemental_lady",
+  "water_elemental_lord",
+}
+
+for _, name in ipairs(profileFiles) do
+  dofile(
+    os.getenv("TESTS_DIRECTORY")
+      .. "/../src/scripts/boop/attacks/"
+      .. name
+      .. ".lua"
+  )
+end
+
+local baseClasses = {
+  "alchemist",
+  "apostate",
+  "bard",
+  "blademaster",
+  "depthswalker",
+  "druid",
+  "infernal",
+  "jester",
+  "magi",
+  "monk",
+  "occultist",
+  "paladin",
+  "pariah",
+  "priest",
+  "psion",
+  "runewarden",
+  "sentinel",
+  "serpent",
+  "shaman",
+  "sylvan",
+  "unnamable",
+}
+
 local function learnEntrySkills(entry)
   if type(entry) ~= "table" then
     return
@@ -11,6 +82,11 @@ local function learnEntrySkills(entry)
     end
     learnEntrySkills(entry.default)
     return
+  end
+
+
+  if type(entry.needs) == "table" then
+    helper.addTargetAfflictions(entry.needs)
   end
 
   if entry.cmd or entry.skill or entry.name then
@@ -65,11 +141,17 @@ local function firstExpectedCommand(entry)
 end
 
 local profileCases = {}
+local allProfileCases = {}
 for classKey, profile in pairs(boop.attacks.registry or {}) do
   local standard = profile and profile.standard or nil
   local damBySpec = standard and standard.dam and standard.dam.bySpec or nil
   if damBySpec then
     for spec, entry in pairs(damBySpec) do
+      allProfileCases[#allProfileCases + 1] = {
+        class = classKey,
+        spec = spec,
+        standard = standard,
+      }
       profileCases[#profileCases + 1] = {
         class = classKey,
         spec = spec,
@@ -78,8 +160,20 @@ for classKey, profile in pairs(boop.attacks.registry or {}) do
         standard = standard,
       }
     end
+  elseif standard and standard.dam then
+    allProfileCases[#allProfileCases + 1] = {
+      class = classKey,
+      spec = "",
+      standard = standard,
+    }
   end
 end
+table.sort(allProfileCases, function(a, b)
+  if a.class == b.class then
+    return a.spec < b.spec
+  end
+  return a.class < b.class
+end)
 table.sort(profileCases, function(a, b)
   if a.class == b.class then
     return a.spec < b.spec
@@ -88,6 +182,30 @@ table.sort(profileCases, function(a, b)
 end)
 
 describe("boop class profile matrix", function()
+  it("loads every supported base class profile", function()
+    for _, classKey in ipairs(baseClasses) do
+      assert.is_table(boop.attacks.registry[classKey], classKey)
+    end
+  end)
+
+  for _, case in ipairs(allProfileCases) do
+    local caseLabel = case.spec ~= ""
+        and (case.class .. " / " .. case.spec)
+      or case.class
+    it("provides a usable standard attack for " .. caseLabel, function()
+      helper.reset()
+      helper.setClass(case.class)
+      helper.setSpec(case.spec)
+      helper.setTarget("42", "a test denizen", "80%")
+      learnEntrySkills(case.standard)
+
+      local readiness = boop.attacks.profileReadiness(case.class)
+
+      assert.is_true(readiness.ready)
+      assert.is_true(readiness.command ~= "")
+    end)
+  end
+
   for _, case in ipairs(profileCases) do
     it("uses the standard command for " .. case.class .. " / " .. case.spec, function()
       helper.reset()

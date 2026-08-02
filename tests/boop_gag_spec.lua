@@ -2,6 +2,7 @@ local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper
 
 describe("boop gag summaries", function()
   local cecho_stub
+  local cecho_link_stub
   local echo_stub
   local select_stub
   local delete_stub
@@ -23,6 +24,7 @@ describe("boop gag summaries", function()
     cecho_stub = stub(_G, "cecho", function(msg)
       outputs[#outputs + 1] = msg
     end)
+    cecho_link_stub = stub(_G, "cechoLink", function() end)
     echo_stub = stub(_G, "echo", function(msg)
       outputs[#outputs + 1] = msg
     end)
@@ -38,6 +40,10 @@ describe("boop gag summaries", function()
     if cecho_stub then
       cecho_stub:revert()
       cecho_stub = nil
+    end
+    if cecho_link_stub then
+      cecho_link_stub:revert()
+      cecho_link_stub = nil
     end
     if echo_stub then
       echo_stub:revert()

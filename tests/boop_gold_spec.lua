@@ -694,4 +694,24 @@ describe("boop staged gold handling", function()
       true
     ) ~= nil)
   end)
+
+  it("packages the autogold status alias", function()
+    local root = os.getenv("TESTS_DIRECTORY") .. "/.."
+    local manifestHandle = assert(io.open(
+      root .. "/src/aliases/boop/Loot/aliases.json",
+      "r"
+    ))
+    local manifest = manifestHandle:read("*a")
+    manifestHandle:close()
+    local scriptHandle = assert(io.open(
+      root .. "/src/aliases/boop/Loot/Boop_Auto_Gold_Status.lua",
+      "r"
+    ))
+    local script = scriptHandle:read("*a")
+    scriptHandle:close()
+
+    assert.is_true(manifest:find("Boop Auto Gold Status", 1, true) ~= nil)
+    assert.is_true(manifest:find("autogold\\\\s+status", 1, true) ~= nil)
+    assert.is_true(script:find("boop.ui.autoGoldStatus", 1, true) ~= nil)
+  end)
 end)

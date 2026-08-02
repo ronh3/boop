@@ -1,4 +1,5 @@
 local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper.lua")
+dofile(os.getenv("BOOP_REPO_ROOT") .. "/src/scripts/boop/attacks/apostate.lua")
 
 describe("boop skill-gated attack selection", function()
   before_each(function()
