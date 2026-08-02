@@ -10,7 +10,7 @@ Gold tests cover room-owned pickup, variable direct-to-inventory sovereign lines
 Room observation tests require current Room.Info plus a complete current room item list, reconcile newer generation-bound Add/Remove deltas before application, trace both response orders and their outstanding half, correlate short-lived outbound movement intent with combat-only early lists, let a natural tick claim the exact pending application ahead of its timer, compute readiness without release owners, and reject stale authority.
 Walker tests cover computed automatic/manual gating, one move per room generation, stale-target reconciliation, owned stop, attached detach, explicit install, and package loss.
 SAFE-02 tests cover disabled and manual-targeting holds plus existing release actions.
-Attack profile tests cover Magi Scintilla and Staff-gated Dissolution preference selection while preserving Horripilation as the default, plus class-agnostic session shield modes for normal and shield-response planning.
+Attack profile tests cover Magi Scintilla and Staff-gated Dissolution preference selection while preserving Horripilation as the default, class/spec-scoped temporary preference precedence and reset, class-agnostic session shield modes, and configurable rage-pool threshold behavior including shieldbreak and free-rage exemptions.
 Standard GSD SUMMARY/STATE/ROADMAP/REQUIREMENTS/phase-completion commits are planning-only and version-exempt when every staged path is under .planning; plan task commits touching tests, docs, or source are package-affecting and synchronize all four version checkpoints.
 Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: after upstream GSD execution and every repository mutation finish, the parent pushes immutable FINAL_SHA and runs tools/wait_for_exact_ci.sh "$FINAL_SHA"; CI evidence remains uncommitted, and any later mutation requires a rerun.
 
@@ -21,7 +21,7 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
 - `boop_target_call_spec.lua`
   Confirms leader target-call gating waits for a designated party leader to call a room target ID before attacking it.
 - `boop_attacks_spec.lua`
-  Confirms opener and shieldbreak attack selection, plus preferred standard attack overrides and fallback when a preferred option is unavailable.
+  Confirms opener and shieldbreak attack selection, saved and temporary standard attack preference precedence, and fallback when a preferred option is unavailable.
 - `boop_assist_spec.lua`
   Confirms assist-mode leader configuration and attack prefixing for direct, queued, and rage actions.
 - `boop_openers_contract_spec.lua`

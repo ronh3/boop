@@ -1,15 +1,24 @@
 local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper.lua")
 
 describe("boop attack selection", function()
-  local function loadMagiProfile()
+  local function loadProfile(name)
     dofile(
       os.getenv("TESTS_DIRECTORY")
-        .. "/../src/scripts/boop/attacks/magi.lua"
+        .. "/../src/scripts/boop/attacks/"
+        .. name
+        .. ".lua"
     )
+  end
+
+  local function loadMagiProfile()
+    loadProfile("magi")
   end
 
   before_each(function()
     helper.reset()
+    loadProfile("infernal")
+    loadProfile("blue_dragon")
+    loadProfile("psion")
     helper.setClass("Occultist")
     helper.setTarget("42", "a test denizen", "100%")
     helper.learnSkills({
@@ -45,6 +54,7 @@ describe("boop attack selection", function()
   it("chooses a rage shieldbreak when the target is shielded", function()
     helper.setTargetHp("80%")
     helper.setRage(17)
+    boop.config.ragePoolThreshold = 100
     boop.state.targeting.targetShield = { gained = os.clock(), attempted = false }
 
     local actions = boop.attacks.choose()
@@ -72,6 +82,47 @@ describe("boop attack selection", function()
 
     local actions = boop.attacks.choose()
 
+    assert.are.equal("warp 42", actions.standard)
+  end)
+
+  it("layers a temporary preference over the saved preference", function()
+    helper.setTargetHp("80%")
+    local key = boop.attacks.preferenceConfigKey("occultist", "dam", "")
+    boop.config[key] = "warp"
+    boop.state.queue.aliasDirty = false
+
+    assert.is_true(boop.attacks.setTemporaryStandardPreference(
+      "occultist",
+      "dam",
+      "",
+      "lycantha"
+    ))
+    local details = boop.attacks.getStandardPreferenceDetails(
+      "occultist",
+      "dam"
+    )
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("lycantha", details.value)
+    assert.are.equal("temporary", details.source)
+    assert.are.equal("warp", details.saved)
+    assert.are.equal("warp", boop.config[key])
+    assert.are.equal("command hound at 42", actions.standard)
+    assert.is_true(boop.state.queue.aliasDirty)
+
+    assert.is_true(boop.attacks.clearTemporaryStandardPreference(
+      "occultist",
+      "dam",
+      ""
+    ))
+    details = boop.attacks.getStandardPreferenceDetails(
+      "occultist",
+      "dam"
+    )
+    actions = boop.attacks.choose()
+
+    assert.are.equal("warp", details.value)
+    assert.are.equal("saved", details.source)
     assert.are.equal("warp 42", actions.standard)
   end)
 

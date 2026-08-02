@@ -131,7 +131,9 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Dragon profiles include `blast &tar` as a standard damage option exposed through `boop prefer`; rage and pull-rage dragon actions are not blast-prefixed.
 - Infernal profiles include `quash &tar/arc` as the `quarc` standard damage option exposed through `boop prefer`.
 - The Magi profile keeps Horripilation as its default staffcast and exposes Scintilla and Dissolution as standard damage preferences; Dissolution availability follows the Artificing `Staff` ability.
+- Saved standard preferences remain class/spec scoped. A session-only preference layer can override damage or shield selection without writing to config storage; clearing it reveals the saved value, and reload/reconnect clears all temporary overrides.
 - Standard attacks and rage actions are independent; standard builds rage and there is no mode toggle.
+- `ragePoolThreshold` is a persisted 0-100 reach-before-spend gate for ordinary rage actions. It composes with existing rage modes and pull reserve, while rage shieldbreaks and Triumph free-rage actions bypass the threshold.
 - Triumph's free-rage line sets a one-shot flag consumed by hybrid rage selection; that path ignores current rage amount but still respects cooldown and conditional state.
 - Skill gating issues `Char.Skills.Get` requests per skill (group-aware).
 - `boop preset solo|party|leader|leader-call` applies recommended baseline config bundles; `leader-call` requires an assist leader to already be configured.

@@ -154,20 +154,55 @@ local function bySpecEntry(entry, spec)
   return entry.default or entry.bySpec.default
 end
 
-local function standardPreferenceValue(classKey, section)
+local function preferenceValueFrom(source, classKey, section)
+  source = type(source) == "table" and source or {}
   local spec = planningSpec()
   local specKey = standardPreferenceKey(classKey, section, spec)
-  local config = planningConfig()
-  if specKey ~= "" and config[specKey] and config[specKey] ~= "" then
-    return config[specKey], specKey
+  if specKey ~= "" and source[specKey] and source[specKey] ~= "" then
+    return source[specKey], specKey
   end
 
   local fallbackKey = standardPreferenceKey(classKey, section, "")
-  if fallbackKey ~= "" and config[fallbackKey] and config[fallbackKey] ~= "" then
-    return config[fallbackKey], fallbackKey
+  if fallbackKey ~= "" and source[fallbackKey] and source[fallbackKey] ~= "" then
+    return source[fallbackKey], fallbackKey
   end
 
   return "", specKey ~= "" and specKey or fallbackKey
+end
+
+local function temporaryPreferenceTable()
+  local state = planningState()
+  local combat = state and state.combat or nil
+  if type(combat) ~= "table" then
+    return {}
+  end
+  return type(combat.temporaryAttackPreferences) == "table"
+    and combat.temporaryAttackPreferences
+    or {}
+end
+
+local function savedStandardPreferenceValue(classKey, section)
+  return preferenceValueFrom(planningConfig(), classKey, section)
+end
+
+local function temporaryStandardPreferenceValue(classKey, section)
+  return preferenceValueFrom(
+    temporaryPreferenceTable(),
+    classKey,
+    section
+  )
+end
+
+local function standardPreferenceValue(classKey, section)
+  local temporaryValue, temporaryKey =
+    temporaryStandardPreferenceValue(classKey, section)
+  if temporaryValue ~= "" then
+    return temporaryValue, temporaryKey, "temporary"
+  end
+
+  local savedValue, savedKey =
+    savedStandardPreferenceValue(classKey, section)
+  return savedValue, savedKey, savedValue ~= "" and "saved" or "default"
 end
 
 function boop.attacks.preferenceConfigKey(classKey, section, spec)
@@ -177,6 +212,96 @@ end
 function boop.attacks.getStandardPreference(classKey, section)
   local value = standardPreferenceValue(classKey, section)
   return value
+end
+
+function boop.attacks.getStandardPreferenceDetails(classKey, section)
+  local value, key, source = standardPreferenceValue(classKey, section)
+  local saved = savedStandardPreferenceValue(classKey, section)
+  return {
+    value = value,
+    key = key,
+    source = source,
+    saved = saved,
+  }
+end
+
+function boop.attacks.setTemporaryStandardPreference(
+  classKey,
+  section,
+  spec,
+  value
+)
+  local key = standardPreferenceKey(classKey, section, spec)
+  local choice = boop.util.trim(value or "")
+  if key == "" or choice == "" then
+    return false
+  end
+
+  local state = boop.runtime and boop.runtime.ensureState
+    and boop.runtime.ensureState()
+    or boop.state
+  if not state or type(state.combat) ~= "table" then
+    return false
+  end
+  state.combat.temporaryAttackPreferences =
+    type(state.combat.temporaryAttackPreferences) == "table"
+      and state.combat.temporaryAttackPreferences
+      or {}
+  state.combat.temporaryAttackPreferences[key] = choice
+  if state.queue then
+    state.queue.aliasDirty = true
+  end
+  return true
+end
+
+function boop.attacks.clearTemporaryStandardPreference(
+  classKey,
+  section,
+  spec
+)
+  local key = standardPreferenceKey(classKey, section, spec)
+  local state = boop.runtime and boop.runtime.ensureState
+    and boop.runtime.ensureState()
+    or boop.state
+  local preferences = state
+    and state.combat
+    and state.combat.temporaryAttackPreferences
+  if key == "" or type(preferences) ~= "table" then
+    return false
+  end
+
+  local existed = preferences[key] ~= nil
+  preferences[key] = nil
+  if existed and state.queue then
+    state.queue.aliasDirty = true
+  end
+  return existed
+end
+
+function boop.attacks.clearTemporaryPreferences(reason)
+  local state = boop.runtime and boop.runtime.ensureState
+    and boop.runtime.ensureState()
+    or boop.state
+  if not state or type(state.combat) ~= "table" then
+    return 0
+  end
+
+  local count = 0
+  for _ in pairs(state.combat.temporaryAttackPreferences or {}) do
+    count = count + 1
+  end
+  state.combat.temporaryAttackPreferences = {}
+  if count > 0 and state.queue then
+    state.queue.aliasDirty = true
+  end
+  if count > 0 and reason and boop.trace and boop.trace.log then
+    boop.trace.log(string.format(
+      "temporary preferences cleared: count=%d | reason=%s",
+      count,
+      tostring(reason)
+    ))
+  end
+  return count
 end
 
 function boop.attacks.weaponConfigKey(classKey, role)
@@ -703,6 +828,12 @@ local function finalizeRageDecisionWithPullReserve(profile, mode, outcome, abili
   return finalizeRageDecision(mode, result, chosen)
 end
 
+local function configuredRagePoolThreshold()
+  local value = tonumber(planningConfig().ragePoolThreshold) or 0
+  value = math.floor(value)
+  return math.max(0, math.min(100, value))
+end
+
 local function conditionalMissingNeeds(ability)
   local missing = {}
   if not ability or type(ability.needs) ~= "table" then
@@ -1064,6 +1195,17 @@ function boop.attacks.selectRage(profile, rage, classKey, standardShieldbreak)
 
   if mode == "none" then
     return finalizeRageDecision(mode, "suppressed", nil)
+  end
+
+  local poolThreshold = configuredRagePoolThreshold()
+  local freeHybridRage = mode == "hybrid"
+    and boop.rage
+    and boop.rage.hasFreeNext
+    and boop.rage.hasFreeNext()
+  if poolThreshold > 0
+      and (tonumber(rage) or 0) < poolThreshold
+      and not freeHybridRage then
+    return finalizeRageDecision(mode, "pool_hold", nil)
   end
 
   if mode == "simple" then

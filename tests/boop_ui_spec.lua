@@ -366,7 +366,62 @@ describe("boop ui home", function()
     assert.is_true(joined:find("[1] Hunting                  [ ON ] [toggle]", 1, true) ~= nil)
     assert.is_true(joined:find("[13] Shield mode             [ BREAK ] [toggle]", 1, true) ~= nil)
     assert.is_true(joined:find("[17] Game separator          [ | ] [set]", 1, true) ~= nil)
+    assert.is_true(joined:find("[18] Rage pool               [ off ] [set]", 1, true) ~= nil)
     assert.is_true(joined:find("Type: boop config home | boop config combat <number> | boop config back", 1, true) ~= nil)
+  end)
+
+  it("sets, reports, and clears temporary attack preferences", function()
+    helper.setClass("Occultist")
+    local key = boop.attacks.preferenceConfigKey("occultist", "dam", "")
+    boop.config[key] = "warp"
+
+    boop.ui.attackPreferenceCommand("temp dam lycantha")
+
+    local details = boop.attacks.getStandardPreferenceDetails(
+      "occultist",
+      "dam"
+    )
+    assert.are.equal("temporary", details.source)
+    assert.are.equal("lycantha", details.value)
+    assert.are.equal("warp", boop.config[key])
+    assert.are.equal(
+      "[OK] temporary dam preference: lycantha (default, session only)",
+      echoes[#echoes]
+    )
+
+    echoes = {}
+    boop.ui.attackPreferenceCommand("")
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find(
+      "damage: lycantha (temporary; saved: warp)",
+      1,
+      true
+    ) ~= nil)
+
+    boop.ui.attackPreferenceCommand("temp clear dam")
+    details = boop.attacks.getStandardPreferenceDetails(
+      "occultist",
+      "dam"
+    )
+    assert.are.equal("saved", details.source)
+    assert.are.equal("warp", details.value)
+  end)
+
+  it("validates and updates the rage pool threshold", function()
+    assert.is_true(boop.ui.ragePoolCommand("40"))
+    assert.are.equal(40, boop.config.ragePoolThreshold)
+    assert.are.equal("[OK] rage pool threshold: 40", echoes[#echoes])
+
+    assert.is_false(boop.ui.ragePoolCommand("40.5"))
+    assert.are.equal(40, boop.config.ragePoolThreshold)
+    assert.are.equal(
+      "[WARN] Usage: boop ragepool <0-100|off>",
+      echoes[#echoes]
+    )
+
+    assert.is_true(boop.ui.ragePoolCommand("off"))
+    assert.are.equal(0, boop.config.ragePoolThreshold)
+    assert.are.equal("[OK] rage pool threshold: off", echoes[#echoes])
   end)
 
   it("shows a targeting subsection with live target context", function()
@@ -427,6 +482,25 @@ describe("boop ui home", function()
 
     local joined = table.concat(echoes, "\n")
     assert.is_true(joined:find("%[OK%] ragemode: tempo") ~= nil)
+    assert.is_true(joined:find("CONFIGURATION > Combat", 1, true) ~= nil)
+    assert.are.equal("combat", boop.ui.configScreen)
+  end)
+
+  it("seeds rage pool edits and returns to combat config", function()
+    local seeded = ""
+    clear_cmd_stub = stub(_G, "clearCmdLine", function() end)
+    append_cmd_stub = stub(_G, "appendCmdLine", function(text)
+      seeded = text
+    end)
+
+    boop.ui.config("combat 18")
+    assert.are.equal("boop ragepool ", seeded)
+
+    echoes = {}
+    boop.ui.ragePoolCommand("50")
+
+    local joined = table.concat(echoes, "\n")
+    assert.is_true(joined:find("%[OK%] rage pool threshold: 50") ~= nil)
     assert.is_true(joined:find("CONFIGURATION > Combat", 1, true) ~= nil)
     assert.are.equal("combat", boop.ui.configScreen)
   end)

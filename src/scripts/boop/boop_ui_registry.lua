@@ -17,6 +17,7 @@ boop.registry.config.schema = boop.registry.config.schema or {
     "retargetOnPriority",
     "targetOrder",
     "attackMode",
+    "ragePoolThreshold",
     "pullRageReserve",
     "breakShields",
     "fleeEnabled",
@@ -80,6 +81,8 @@ boop.registry.config.schema = boop.registry.config.schema or {
     targetorder = "targetOrder",
     ragemode = "attackMode",
     attackmode = "attackMode",
+    ragepool = "ragePoolThreshold",
+    ragepoolthreshold = "ragePoolThreshold",
     trace = "traceEnabled",
     traceenabled = "traceEnabled",
     gag = "gagOwnAttacks",
@@ -157,6 +160,33 @@ boop.registry.config.schema = boop.registry.config.schema or {
     focusverb = "focusVerb",
   },
 }
+
+do
+  local schema = boop.registry.config.schema
+  local found = false
+  for _, key in ipairs(schema.order or {}) do
+    if key == "ragePoolThreshold" then
+      found = true
+      break
+    end
+  end
+  if not found then
+    local inserted = false
+    for index, key in ipairs(schema.order or {}) do
+      if key == "attackMode" then
+        table.insert(schema.order, index + 1, "ragePoolThreshold")
+        inserted = true
+        break
+      end
+    end
+    if not inserted then
+      schema.order[#schema.order + 1] = "ragePoolThreshold"
+    end
+  end
+  schema.aliases = schema.aliases or {}
+  schema.aliases.ragepool = "ragePoolThreshold"
+  schema.aliases.ragepoolthreshold = "ragePoolThreshold"
+end
 
 boop.registry.ui.modes = boop.registry.ui.modes or {
   solo = {
@@ -362,6 +392,10 @@ local shieldModeConfigSetter = configBoolSetter({
   end,
 })
 
+local function ragePoolConfigSetter(raw)
+  boop.ui.ragePoolCommand(raw)
+end
+
 boop.registry.config.setters = boop.registry.config.setters or {
   enabled = configBoolSetter({
     key = "enabled",
@@ -418,6 +452,7 @@ boop.registry.config.setters = boop.registry.config.setters or {
   attackMode = function(raw)
     boop.ui.setRageMode(raw)
   end,
+  ragePoolThreshold = ragePoolConfigSetter,
   pullRageReserve = configBoolSetter({
     key = "pullRageReserve",
     warn = "pullRageReserve expects on/off",
@@ -597,6 +632,7 @@ boop.registry.config.setters = boop.registry.config.setters or {
 
 -- Refresh changed command behavior when a package update reuses the live registry.
 boop.registry.config.setters.breakShields = shieldModeConfigSetter
+boop.registry.config.setters.ragePoolThreshold = ragePoolConfigSetter
 
 local function helpCommand(command, description)
   return {
@@ -743,7 +779,7 @@ boop.registry.ui.helpTopics = {
     key = "combat",
     title = "Combat, Rage & Queueing",
     summary = "How boop chooses standard attacks, rage actions, prequeue timing, and combat safety settings.",
-    aliases = { "combat", "rage", "ragemode", "attackmode", "queue", "queueing", "prequeue", "flee", "pull", "focus", "prefer", "weapon", "aff" },
+    aliases = { "combat", "rage", "ragemode", "attackmode", "ragepool", "queue", "queueing", "prequeue", "flee", "pull", "focus", "prefer", "weapon", "aff" },
     steps = {
       helpCommand("boop config combat", "Open guided hunting, rage, queueing, interrupt, pull, focus, and flee controls."),
       helpCommand("boop ragemode", "Open the rage-mode chooser; numbered rows can be clicked or typed as `boop ragemode 1`."),
@@ -753,11 +789,14 @@ boop.registry.ui.helpTopics = {
     },
     commands = {
       helpCommand("boop ragemode <number|simple|big|small|aff|tempo|combo|hybrid|none>", "Set how boop chooses battlerage actions."),
+      helpCommand("boop ragepool <0-100|off>", "Hold ordinary battlerage actions until current rage reaches this threshold."),
       helpCommand("boop prequeue [on|off]", "Show, enable, or disable early standard-attack queueing."),
       helpCommand("boop lead [seconds]", "Show or set how early boop should prequeue before balance returns."),
       helpCommand("boop prefer", "Show standard attack preference options for your current class/spec."),
       helpCommand("boop prefer <dam|shield> <option>", "Prefer one valid standard damage or shield attack over another."),
       helpCommand("boop prefer clear <dam|shield>", "Return one standard attack preference to the profile default."),
+      helpCommand("boop prefer temp <dam|shield> <option>", "Override the current class/spec preference for this session only."),
+      helpCommand("boop prefer temp clear [dam|shield]", "Clear temporary preference overrides and reveal saved preferences."),
       helpCommand("boop shieldmode break|bypass|toggle", "Use shieldbreaks or keep the current class/spec's normal attacks for this session."),
       helpCommand("boop aff", "Show manually tracked target afflictions used by aff/combo/hybrid rage logic."),
       helpCommand("boop aff add|remove <a/b>", "Manually add or remove one or more slash-separated target afflictions."),
@@ -772,6 +811,7 @@ boop.registry.ui.helpTopics = {
       helpCommand("boop separator <text>", "Set the game-side separator used by pull, such as `|`."),
       helpCommand("pull <mobname> <direction>", "Move in, use a ready damage battlerage attack on the typed mob name, then leap back."),
       helpCommand("boop set pullRageReserve on|off", "Reserve enough rage for a pull-capable damage hit."),
+      helpCommand("boop set ragePoolThreshold <0-100>", "Compatibility form of `boop ragepool`; zero disables the threshold."),
       helpCommand("boop set breakShields on|off", "Compatibility form of session-only `boop shieldmode break|bypass`."),
       helpCommand("boop set tempoRageWindowSeconds <seconds>", "Tune tempo mode's rage recovery prediction window."),
       helpCommand("boop set tempoSqueezeEtaSeconds <seconds>", "Tune when tempo mode may spend damage while preserving affliction tempo."),
@@ -780,6 +820,8 @@ boop.registry.ui.helpTopics = {
       "Standard attacks and rage actions are independent; boop may use both when balance/rage/state allow.",
       "`simple` is the default rage mode. `combo` and `hybrid` are party-aware and depend on roster/profile affliction data.",
       "`none` disables rage attacks only; it does not disable standard attacks.",
+      "A rage-pool threshold holds normal damage, affliction, and conditional rage actions below the configured amount; shieldbreaks and Triumph free rage remain immediate.",
+      "Temporary attack preferences reset on package reload or reconnect and never replace the saved class/spec preference.",
       "Shield mode resets to `break` on package reload or reconnect; `bypass` applies to every class profile.",
       "Bypass mode only keeps normal attack selection; it does not make those attacks pierce shields.",
       "Queueing and prequeue are different: queueing changes how actions are sent; prequeue controls when the next standard attack is prepared.",
@@ -1063,6 +1105,10 @@ boop.registry.ui.screens.configActions = boop.registry.ui.screens.configActions 
         ctx.seed("combat", "boop separator ")
         return "seed"
       end,
+      [18] = function(ctx)
+        ctx.seed("combat", "boop ragepool ")
+        return "seed"
+      end,
     },
     targeting = {
       [1] = function()
@@ -1172,6 +1218,10 @@ boop.registry.ui.screens.configActions = boop.registry.ui.screens.configActions 
 }
 
 boop.registry.ui.screens.configActions.combat[13] = toggleShieldModeAction
+boop.registry.ui.screens.configActions.combat[18] = function(ctx)
+  ctx.seed("combat", "boop ragepool ")
+  return "seed"
+end
 
 local function attachRegistryFallback(target, public)
   if type(target) ~= "table" or type(public) ~= "table" then

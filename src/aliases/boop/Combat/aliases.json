@@ -42,6 +42,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Ragepool",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+ragepool(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Shieldmode",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+shieldmode(?:\\s+(.+))?$",

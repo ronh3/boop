@@ -673,6 +673,20 @@ describe("boop stats", function()
     assert.are.equal("session rage abilities: fluctuate 1 | harry 1", messages[4])
   end)
 
+  it("counts configured rage pool decisions as holds", function()
+    boop.ui.setEnabled(true, true)
+
+    boop.stats.onRageDecision({
+      mode = "simple",
+      outcome = "pool_hold",
+      ability = nil,
+      targetId = "42",
+    })
+
+    assert.are.equal(1, boop.stats.session.rage.holds)
+    assert.are.equal(1, boop.stats.session.rage.byOutcome.pool_hold)
+  end)
+
   it("compares the current trip against the last trip snapshot", function()
     boop.stats.trip.meta = { attackMode = "combo", class = "occultist", partySize = 1, area = "Mhaldor" }
     boop.stats.trip.kills = 10

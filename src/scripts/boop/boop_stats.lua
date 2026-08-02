@@ -1524,7 +1524,9 @@ function boop.stats.onRageDecision(info)
     if outcome == "suppressed" then
       rage.suppressed = rage.suppressed + 1
     end
-    if outcome == "combo_hold" or outcome == "big_hold" then
+    if outcome == "combo_hold"
+        or outcome == "big_hold"
+        or outcome == "pool_hold" then
       rage.holds = rage.holds + 1
     end
   end)

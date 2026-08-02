@@ -1,8 +1,20 @@
 local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper.lua")
 
 describe("boop rage modes", function()
+  local function loadProfile(name)
+    dofile(
+      os.getenv("TESTS_DIRECTORY")
+        .. "/../src/scripts/boop/attacks/"
+        .. name
+        .. ".lua"
+    )
+  end
+
   before_each(function()
     helper.reset()
+    loadProfile("psion")
+    loadProfile("sentinel")
+    loadProfile("unnamable")
     helper.setTarget("42", "a test denizen", "80%")
   end)
 
@@ -193,6 +205,29 @@ describe("boop rage modes", function()
     assert.are.equal("", actions.rage)
   end)
 
+  it("holds ordinary rage below the configured pool threshold", function()
+    helper.setClass("Sentinel")
+    helper.setRage(19)
+    helper.learnSkills({
+      { name = "Claw", group = "Metamorphosis" },
+      { name = "pester", group = "Attainment" },
+    })
+    boop.config.attackMode = "small"
+    boop.config.ragePoolThreshold = 20
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("claw 42", actions.standard)
+    assert.are.equal("", actions.rage)
+    assert.are.equal("pool_hold", actions.rageDecision.outcome)
+
+    helper.setRage(20)
+    actions = boop.attacks.choose()
+
+    assert.are.equal("pester 42", actions.rage)
+    assert.are.equal("small_damage", actions.rageDecision.outcome)
+  end)
+
   it("uses the affliction attack in aff mode", function()
     helper.setClass("Sentinel")
     helper.setRage(32)
@@ -354,6 +389,7 @@ describe("boop rage modes", function()
       { name = "whirlwind", group = "Attainment" },
     })
     boop.config.attackMode = "hybrid"
+    boop.config.ragePoolThreshold = 100
     boop.rage.onTriumphFreeRage()
 
     local actions = boop.attacks.choose()
@@ -427,5 +463,25 @@ describe("boop rage modes", function()
 
     assert.are.equal("claw 42", actions.standard)
     assert.are.equal("", actions.rage)
+  end)
+
+  it("packages the ragepool alias", function()
+    local root = os.getenv("TESTS_DIRECTORY") .. "/.."
+    local manifestHandle = assert(io.open(
+      root .. "/src/aliases/boop/Combat/aliases.json",
+      "r"
+    ))
+    local manifest = manifestHandle:read("*a")
+    manifestHandle:close()
+    local scriptHandle = assert(io.open(
+      root .. "/src/aliases/boop/Combat/Boop_Ragepool.lua",
+      "r"
+    ))
+    local script = scriptHandle:read("*a")
+    scriptHandle:close()
+
+    assert.is_true(manifest:find("Boop Ragepool", 1, true) ~= nil)
+    assert.is_true(manifest:find("boop\\\\s+ragepool", 1, true) ~= nil)
+    assert.is_true(script:find("boop.ui.ragePoolCommand", 1, true) ~= nil)
   end)
 end)

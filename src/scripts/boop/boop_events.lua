@@ -1781,6 +1781,9 @@ end
 
 function boop.onConnectionEvent()
   boop.resetShieldMode("connection")
+  if boop.attacks and boop.attacks.clearTemporaryPreferences then
+    boop.attacks.clearTemporaryPreferences("connection")
+  end
   if boop.requestCoreSupports then
     boop.requestCoreSupports({
       force = true,

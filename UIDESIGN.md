@@ -127,6 +127,8 @@ Current visual language expectations
 - Help topics should not be flat command dumps. Use the common shape: what this covers, first steps, common commands, advanced commands, then notes.
 - Help syntax should match the parser exactly. If a command only accepts either no args or two args, avoid optional-looking placeholders like `[left] [right]`.
 - Internal review helpers such as `boop help audit` should stay discoverable from advanced/troubleshooting help, not the normal help footer.
+- The combat settings screen exposes `Rage pool` as `off` or an integer threshold and seeds `boop ragepool` for edits.
+- Attack preference status labels temporary overrides and shows the saved value underneath so session-only choices cannot be mistaken for persisted configuration.
 
 Trace diagnostics contract
 

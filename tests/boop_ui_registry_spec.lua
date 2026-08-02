@@ -7,7 +7,12 @@ describe("boop ui registries", function()
 
   it("exposes shared config, screen, mode, preset, and help registries", function()
     assert.are.equal("targetingMode", boop.config.schema.aliases.targeting)
+    assert.are.equal(
+      "ragePoolThreshold",
+      boop.config.schema.aliases.ragepool
+    )
     assert.is_function(boop.config.setters.partySize)
+    assert.is_function(boop.config.setters.ragePoolThreshold)
     assert.are.equal("combat", boop.ui.screens.configSections[1].key)
     assert.is_function(boop.ui.screens.configActions.combat[1])
     assert.is_not_nil(boop.ui.modes["leader-call"])
@@ -36,8 +41,10 @@ describe("boop ui registries", function()
 
   it("drives raw config updates from the shared setter registry", function()
     boop.ui.setConfigValue("partysize", "3")
+    boop.ui.setConfigValue("ragepool", "35")
 
     assert.are.equal(3, boop.config.partySize)
+    assert.are.equal(35, boop.config.ragePoolThreshold)
   end)
 
   it("refreshes stale config registries on package reload", function()
@@ -48,8 +55,14 @@ describe("boop ui registries", function()
     boop.registry.attachUiConfigRegistries()
 
     assert.are.equal("breakShields", boop.config.schema.aliases.breakshields)
+    assert.are.equal(
+      "ragePoolThreshold",
+      boop.config.schema.aliases.ragepool
+    )
     assert.is_function(boop.config.setters.breakShields)
+    assert.is_function(boop.config.setters.ragePoolThreshold)
     assert.is_function(boop.ui.screens.configActions.combat[13])
+    assert.is_function(boop.ui.screens.configActions.combat[18])
   end)
 
   it("replaces retained shield-mode handlers on package reload", function()

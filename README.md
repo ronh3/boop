@@ -27,7 +27,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop walk install` (installs the required `demonnicAutoWalker` Mudlet package)
 - `boop roster` / `boop roster <class...>` / `boop roster clear` (save party class roster; your own class is auto-included)
 - `boop combos` / `boop combos <class...>` / `boop combos list` (party combo inference from rage afflictions + conditional needs)
-- `boop prefer` / `boop prefer <dam|shield> <option>` / `boop prefer clear <dam|shield>` (bias standard attack choice within a profile)
+- `boop prefer` / `boop prefer <dam|shield> <option>` / `boop prefer clear <dam|shield>` (save a standard attack preference within the current class/spec profile)
+- `boop prefer temp <dam|shield> <option>` / `boop prefer temp clear [dam|shield]` (apply or clear session-only overrides without replacing saved preferences)
 - `boop shieldmode [break|bypass|toggle]` (session-only shield policy for every class/spec; defaults and resets to `break`)
 - `boop weapon` / `boop weapon <role> <item-id>` / `boop weapon clear <role>` (save class-scoped weapon designations such as `scythe` or `dagger`; prefer raw GMCP item ids)
 - `boop theme <name|auto|list>` (`list` opens an ADB-style sample browser with boop themes plus the built-in ADB city/class themes)
@@ -41,6 +42,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop gag` / `boop gag on|off|own|others|mobs|all|<scope> on|off|colors [own|others|mobs]|color [own|others|mobs] <who|ability|target|meta|separator|bg> [<color|off>]|color [own|others|mobs] reset`
 - `boop targeting <manual|whitelist|blacklist|auto>`
 - `boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>` (default: `simple`)
+- `boop ragepool <0-100|off>` (hold ordinary battlerage actions until current rage reaches the configured threshold)
 - `diag` (queue-clear + diagnose; temporarily pauses boop attacks until the diagnose GMCP snapshot or visible result plus prompt)
 - `matic` (queues `ldeck draw matic` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
 - `catarin` (queues `ldeck draw catarin` on the attack queue; temporarily pauses boop attacks until the next prompt or timeout)
@@ -72,6 +74,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - Standard attacks and rage actions are independent and can fire together.
 - When hunting is off, boop disables its trigger/text-replacement folder; aliases remain available so `boop on` and configuration commands still work.
 - `boop ragemode big` pools rage until a `Big Damage` rage attack is usable; it only uses `Small Damage` while big is on cooldown.
+- `boop ragepool 50` waits until current rage reaches 50 before selecting an ordinary rage action; it is a reach-before-spend threshold, not a permanent 50-rage reserve. Shieldbreaks and Triumph free rage remain immediate. Use `boop ragepool off` to disable it.
+- Temporary attack preferences take precedence over the saved value for the current class/spec, are visibly labeled by `boop prefer`, and reset on package reload or reconnect.
 - Denizens come from `gmcp.Char.Items.List` with attrib `m` and exclude `x`/`d`.
 - Denizen name matching for whitelist/blacklist is case-insensitive and normalizes straight/curly apostrophes.
 - Whitelist areas can have multiple tags (for example `continent-a`, `newbie`, `high-end`) for browse/filter workflows.

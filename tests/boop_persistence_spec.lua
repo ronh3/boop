@@ -146,6 +146,72 @@ describe("boop config and list persistence paths", function()
     assert.are.equal("break", boop.getShieldMode())
   end)
 
+  it("persists the configured rage pool threshold", function()
+    assert.is_true(boop.ui.ragePoolCommand("45"))
+
+    assert.are.equal(45, boop.config.ragePoolThreshold)
+    assert.are.same(
+      { key = "ragePoolThreshold", value = 45 },
+      saved_configs[1]
+    )
+  end)
+
+  it("never persists temporary attack preferences", function()
+    helper.setClass("Occultist")
+
+    boop.ui.attackPreferenceCommand("temp dam warp")
+
+    local details = boop.attacks.getStandardPreferenceDetails(
+      "occultist",
+      "dam"
+    )
+    assert.are.equal("temporary", details.source)
+    assert.are.equal("warp", details.value)
+    assert.are.equal(0, #saved_configs)
+
+    boop.ui.attackPreferenceCommand("temp clear dam")
+    assert.are.equal(0, #saved_configs)
+  end)
+
+  it("resets temporary attack preferences on reload and reconnect", function()
+    local root = os.getenv("BOOP_REPO_ROOT")
+      or (os.getenv("TESTS_DIRECTORY") .. "/..")
+    local priorBootstrapped = boop.bootstrapped
+    helper.setClass("Occultist")
+
+    assert.is_true(boop.attacks.setTemporaryStandardPreference(
+      "occultist",
+      "dam",
+      "",
+      "warp"
+    ))
+    boop.bootstrapped = true
+    dofile(root .. "/src/scripts/boop/boop_bootstrap.lua")
+    boop.bootstrapped = priorBootstrapped
+    assert.are.equal(
+      "default",
+      boop.attacks.getStandardPreferenceDetails(
+        "occultist",
+        "dam"
+      ).source
+    )
+
+    assert.is_true(boop.attacks.setTemporaryStandardPreference(
+      "occultist",
+      "dam",
+      "",
+      "warp"
+    ))
+    boop.onConnectionEvent()
+    assert.are.equal(
+      "default",
+      boop.attacks.getStandardPreferenceDetails(
+        "occultist",
+        "dam"
+      ).source
+    )
+  end)
+
   it("persists disabling boop and clears the outstanding prequeue timer", function()
     boop.state.queue.prequeueTimer = 41
     boop.state.queue.prequeuedStandard = true

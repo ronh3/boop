@@ -1304,6 +1304,46 @@ function boop.ui.setRageMode(mode)
   boop.ui.setAttackMode(mode)
 end
 
+function boop.ui.ragePoolCommand(raw)
+  local text = boop.util.safeLower(boop.util.trim(raw or ""))
+  local usage = "Usage: boop ragepool <0-100|off>"
+  if text == "" or text == "status" or text == "show" then
+    local current = tonumber(boop.config.ragePoolThreshold) or 0
+    local shown = current > 0 and tostring(math.floor(current)) or "off"
+    boop.util.info("rage pool threshold: " .. shown)
+    boop.util.info(usage)
+    return true
+  end
+
+  local value = nil
+  if text == "off" or text == "none" or text == "clear" then
+    value = 0
+  else
+    value = tonumber(text)
+  end
+  if not value
+      or value ~= math.floor(value)
+      or value < 0
+      or value > 100 then
+    boop.util.warn(usage)
+    return false
+  end
+
+  saveConfigValue("ragePoolThreshold", value)
+  if value > 0 then
+    boop.util.ok("rage pool threshold: " .. tostring(value))
+  else
+    boop.util.ok("rage pool threshold: off")
+  end
+  local returnScreen = boop.ui.consumeConfigReturnScreen
+    and boop.ui.consumeConfigReturnScreen("combat", "boop ragepool ")
+    or ""
+  if returnScreen == "combat" and boop.ui and boop.ui.config then
+    boop.ui.config("combat")
+  end
+  return true
+end
+
 function boop.ui.setAutoGrabGold(value)
   saveConfigValue("autoGrabGold", value and true or false)
   boop.util.ok("auto grab sovereigns: " .. (boop.config.autoGrabGold and "on" or "off"))
@@ -2711,6 +2751,40 @@ function boop.ui.weaponCommand(raw)
   boop.util.ok(string.format("weapon %s: %s (%s)", role, value, classKey))
 end
 
+local function standardPreferenceKnown(classKey, section, choice)
+  local wanted = boop.util.safeLower(boop.util.trim(choice or ""))
+  if wanted == "" then
+    return false
+  end
+  for _, option in ipairs(boop.attacks.standardOptions(classKey, section)) do
+    local label = boop.util.safeLower(option.label)
+    local skill = boop.util.safeLower(option.skill)
+    local command = boop.util.safeLower(option.command)
+    if label:find(wanted, 1, true)
+        or skill == wanted
+        or command:find(wanted, 1, true) then
+      return true
+    end
+  end
+  return false
+end
+
+local function attackPreferenceStatus(details)
+  details = type(details) == "table" and details or {}
+  local value = details.value ~= "" and details.value or "(default)"
+  if details.source ~= "temporary" then
+    return value
+  end
+  local saved = details.saved ~= "" and details.saved or "default"
+  return string.format("%s (temporary; saved: %s)", value, saved)
+end
+
+local function markAttackAliasDirty()
+  if boop.state and boop.state.queue then
+    boop.state.queue.aliasDirty = true
+  end
+end
+
 function boop.ui.attackPreferenceCommand(raw)
   local text = boop.util.trim(raw or "")
   local textLower = boop.util.safeLower(text)
@@ -2724,22 +2798,112 @@ function boop.ui.attackPreferenceCommand(raw)
 
   local function showStatus()
     local specShown = spec ~= "" and spec or "(default)"
-    local damPref = boop.attacks.getStandardPreference(classKey, "dam")
-    local shieldPref = boop.attacks.getStandardPreference(classKey, "shield")
+    local damPref = boop.attacks.getStandardPreferenceDetails(classKey, "dam")
+    local shieldPref = boop.attacks.getStandardPreferenceDetails(classKey, "shield")
     boop.util.info(string.format("attack preferences: %s | spec: %s", classKey, specShown))
-    boop.util.echo("  damage: " .. (damPref ~= "" and damPref or "(default)"))
+    boop.util.echo("  damage: " .. attackPreferenceStatus(damPref))
     for _, option in ipairs(boop.attacks.standardOptions(classKey, "dam")) do
       boop.util.echo("    - " .. option.label)
     end
-    boop.util.echo("  shield: " .. (shieldPref ~= "" and shieldPref or "(default)"))
+    boop.util.echo("  shield: " .. attackPreferenceStatus(shieldPref))
     for _, option in ipairs(boop.attacks.standardOptions(classKey, "shield")) do
       boop.util.echo("    - " .. option.label)
     end
     boop.util.info("Usage: boop prefer <dam|shield> <option> | boop prefer clear <dam|shield>")
+    boop.util.info("Temporary: boop prefer temp <dam|shield> <option> | boop prefer temp clear [dam|shield]")
   end
 
   if text == "" or textLower == "status" or textLower == "show" then
     showStatus()
+    return
+  end
+
+  local first, remainder = text:match("^(%S+)%s*(.-)$")
+  first = boop.util.safeLower(first or "")
+  if first == "temp" or first == "temporary" or first == "session" then
+    local tempText = boop.util.trim(remainder or "")
+    local tempLower = boop.util.safeLower(tempText)
+    if tempText == "" then
+      showStatus()
+      return
+    end
+
+    if tempLower == "clear" then
+      local count = boop.attacks.clearTemporaryPreferences("operator")
+      if count > 0 then
+        boop.util.ok("temporary preferences cleared: " .. tostring(count))
+      else
+        boop.util.info("temporary preferences: none to clear")
+      end
+      return
+    end
+
+    local clearTemporarySection = tempLower:match("^clear%s+(%S+)$")
+    if clearTemporarySection then
+      local section = boop.util.safeLower(clearTemporarySection)
+      if section ~= "dam" and section ~= "shield" then
+        boop.util.warn("temporary clear expects dam or shield")
+        return
+      end
+      local cleared = boop.attacks.clearTemporaryStandardPreference(
+        classKey,
+        section,
+        spec
+      )
+      local effective = boop.attacks.getStandardPreferenceDetails(
+        classKey,
+        section
+      )
+      if cleared then
+        boop.util.ok(string.format(
+          "temporary %s preference cleared; effective: %s",
+          section,
+          attackPreferenceStatus(effective)
+        ))
+      else
+        boop.util.info(string.format(
+          "temporary %s preference: none for %s (%s)",
+          section,
+          classKey,
+          spec ~= "" and spec or "default"
+        ))
+      end
+      return
+    end
+
+    local section, choice = tempText:match("^(%S+)%s+(.+)$")
+    section = boop.util.safeLower(boop.util.trim(section or ""))
+    choice = boop.util.trim(choice or "")
+    if (section ~= "dam" and section ~= "shield") or choice == "" then
+      boop.util.warn("Usage: boop prefer temp <dam|shield> <option>")
+      boop.util.info("Clear with: boop prefer temp clear [dam|shield]")
+      return
+    end
+    if not standardPreferenceKnown(classKey, section, choice) then
+      boop.util.warn(string.format(
+        "Unknown %s preference `%s` for %s",
+        section,
+        choice,
+        classKey
+      ))
+      showStatus()
+      return
+    end
+    if not boop.attacks.setTemporaryStandardPreference(
+      classKey,
+      section,
+      spec,
+      choice
+    ) then
+      boop.util.warn("Unable to set temporary attack preference")
+      return
+    end
+    boop.util.ok(string.format(
+      "temporary %s preference: %s (%s, session only)",
+      section,
+      choice,
+      spec ~= "" and spec or "default"
+    ))
     return
   end
 
@@ -2757,6 +2921,7 @@ function boop.ui.attackPreferenceCommand(raw)
         boop.db.deleteConfig(key)
       end
     end
+    markAttackAliasDirty()
     boop.util.ok(string.format("%s preference cleared for %s (%s)", section, classKey, spec ~= "" and spec or "default"))
     return
   end
@@ -2770,19 +2935,7 @@ function boop.ui.attackPreferenceCommand(raw)
     return
   end
 
-  local options = boop.attacks.standardOptions(classKey, section)
-  local known = false
-  for _, option in ipairs(options) do
-    local label = boop.util.safeLower(option.label)
-    local skill = boop.util.safeLower(option.skill)
-    local command = boop.util.safeLower(option.command)
-    local wanted = boop.util.safeLower(choice)
-    if label:find(wanted, 1, true) or skill == wanted or command:find(wanted, 1, true) then
-      known = true
-      break
-    end
-  end
-  if not known then
+  if not standardPreferenceKnown(classKey, section, choice) then
     boop.util.warn(string.format("Unknown %s preference `%s` for %s", section, choice, classKey))
     showStatus()
     return
@@ -2797,6 +2950,7 @@ function boop.ui.attackPreferenceCommand(raw)
   if boop.db and boop.db.saveConfig then
     boop.db.saveConfig(key, choice)
   end
+  markAttackAliasDirty()
   boop.util.ok(string.format("%s preference: %s (%s)", section, choice, spec ~= "" and spec or "default"))
 end
 
@@ -4528,6 +4682,8 @@ local function configRenderCombatSection()
   configSetScreen("combat")
   local tempoWindow = tonumber(boop.config.tempoRageWindowSeconds) or 10
   local tempoEta = tonumber(boop.config.tempoSqueezeEtaSeconds) or 2.5
+  local ragePool = tonumber(boop.config.ragePoolThreshold) or 0
+  local ragePoolShown = ragePool > 0 and tostring(math.floor(ragePool)) or "off"
   local lead = tonumber(boop.config.attackLeadSeconds) or 0
   local diagTimeout = tonumber(boop.config.diagTimeoutSeconds) or 0
   local fleeShown = boop.config.fleeEnabled and tostring(boop.config.fleeAt or "30%") or "off"
@@ -4602,6 +4758,9 @@ local function configRenderCombatSection()
     uiPrintActionControl(17, "Game separator", tostring(boop.config.gameSeparator or "|"), "yellow", "[set]", "info", function()
       boop.ui.config("combat 17")
     end, "Set the game-side command separator used by pull")
+    uiPrintActionControl(18, "Rage pool", ragePoolShown, "yellow", "[set]", "info", function()
+      boop.ui.config("combat 18")
+    end, "Set the rage threshold before ordinary battlerage spending")
     uiPrintFooter("Type: boop config home | boop config combat <number> | boop config back")
     return
   end
@@ -4627,6 +4786,7 @@ local function configRenderCombatSection()
   boop.util.echo("[15] Flee at                 [ " .. fleeShown .. " ] [set]")
   boop.util.echo("[16] Focus verb              [ " .. tostring(boop.config.focusVerb or "speed") .. " ] [set]")
   boop.util.echo("[17] Game separator          [ " .. tostring(boop.config.gameSeparator or "|") .. " ] [set]")
+  boop.util.echo("[18] Rage pool               [ " .. ragePoolShown .. " ] [set]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config home | boop config combat <number> | boop config back")
 end

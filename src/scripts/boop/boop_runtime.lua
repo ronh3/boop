@@ -54,6 +54,7 @@ local DOMAIN_DEFAULTS = {
     lastComboTraceKey = nil,
     lastOpenerTraceKey = nil,
     lastRageDecision = nil,
+    temporaryAttackPreferences = {},
   },
   lifecycle = {
     connectionGeneration = 0,
