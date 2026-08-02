@@ -713,12 +713,14 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(0, countRaised("demonwalker.move"))
   end)
 
-  it("G-03-20 recognizes only the supported outbound movement commands", function()
+  it("G-03-20 recognizes abbreviations and full outbound movement commands", function()
     boop.config.enabled = true
     boop.state.targeting.room = "1"
     local directions = {
-      "n", "s", "e", "w", "in", "out",
-      "u", "d", "nw", "ne", "se", "sw",
+      "n", "north", "s", "south", "e", "east", "w", "west",
+      "in", "out", "u", "up", "d", "down",
+      "nw", "northwest", "ne", "northeast",
+      "se", "southeast", "sw", "southwest",
     }
 
     for index, direction in ipairs(directions) do
@@ -736,7 +738,7 @@ describe("boop event-driven state transitions", function()
 
     assert.is_false(boop.onDataSendRequest(
       "sysDataSendRequest",
-      "north"
+      "northern"
     ))
     assert.is_false(boop.onDataSendRequest(
       "sysDataSendRequest",

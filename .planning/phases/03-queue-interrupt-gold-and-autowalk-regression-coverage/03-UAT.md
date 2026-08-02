@@ -730,4 +730,5 @@ blocked: 0
     - "Reject unsupported commands, overlapping movement sends, unchanged lists, orphan-first lists, expired candidates, failed movement, and movement from an unsettled origin."
   resolved_by:
     - "0.1.462 movement-correlated provisional combat wake"
-  verification: "The focused event-transition suite passes 66/66, including all 12 direction tokens, combat-only destination wake-up, no provisional gold/walker authority, and expiry rejection. Eleven adjacent lifecycle, runtime, tick, trace, gold, walk, target, prequeue, state-contract, and safety host suites pass 173/173; the 0.1.462 Muddler package and release gates pass. Exact-SHA Mudlet CI remains pending."
+    - "0.1.463 full-name movement direction aliases"
+  verification: "The focused event-transition suite passes 66/66, including all 22 supported direction commands, combat-only destination wake-up, no provisional gold/walker authority, and expiry rejection. Eleven adjacent lifecycle, runtime, tick, trace, gold, walk, target, prequeue, state-contract, and safety host suites pass 173/173; the 0.1.463 Muddler package and release gates pass. Exact-SHA Mudlet CI remains pending."

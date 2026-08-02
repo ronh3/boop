@@ -87,7 +87,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Manual targeting is an intentional automatic-walk hold; use `boop targeting auto` before expecting route movement.
 - `boop walk stop` ends a boop-owned run or detaches from an external run; when no boop walk is active it reports `walk stop: no active boop walk`.
 - demonnicAutoWalker installation is explicit; runtime paths never install or update it.
-- Room settlement requires current Room.Info plus a complete current room item list; prompts and timers never settle the room. After an exact outbound movement command (`n`, `s`, `e`, `w`, `in`, `out`, `u`, `d`, `nw`, `ne`, `se`, or `sw`), a changed early room list may wake combat once the moved `Room.Info` confirms the destination, but that provisional hint cannot settle the room, pick up gold, or advance the walker.
+- Room settlement requires current Room.Info plus a complete current room item list; prompts and timers never settle the room. After an exact outbound movement command (`n`/`north`, `s`/`south`, `e`/`east`, `w`/`west`, `in`, `out`, `u`/`up`, `d`/`down`, `nw`/`northwest`, `ne`/`northeast`, `se`/`southeast`, or `sw`/`southwest`), a changed early room list may wake combat once the moved `Room.Info` confirms the destination, but that provisional hint cannot settle the room, pick up gold, or advance the walker.
 - Auto gold pickup grabs newly dropped room items whose names contain `gold sovereign`.
 - Sovereign lines ending with `flying into your hands before they can reach the ground.` skip room pickup and start the configured pack stage immediately.
 - Gold uses get-confirm-put and never chains loot with an attack.
