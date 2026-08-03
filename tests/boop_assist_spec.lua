@@ -1,5 +1,5 @@
 local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper.lua")
-dofile(os.getenv("BOOP_REPO_ROOT") .. "/src/scripts/boop/attacks/infernal.lua")
+dofile(helper.repoRoot() .. "/src/scripts/boop/attacks/infernal.lua")
 
 describe("boop assist mode", function()
   local send_stub

@@ -4,6 +4,10 @@ local function root()
   return assert(os.getenv("TESTS_DIRECTORY"), "TESTS_DIRECTORY env var is required")
 end
 
+function M.repoRoot()
+  return os.getenv("BOOP_REPO_ROOT") or (root() .. "/..")
+end
+
 local function resetTableData(tbl)
   if type(tbl) ~= "table" then
     return
