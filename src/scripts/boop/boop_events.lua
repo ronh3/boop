@@ -2350,6 +2350,15 @@ function boop.onRoomInfo()
 
   targeting.room = info.num
   traceRoomInfo(info, movedRooms, previousRoom)
+  local interrupt = boop.state.diag and boop.state.diag.operation or nil
+  if movedRooms
+      and type(interrupt) == "table"
+      and not interrupt.terminal
+      and interrupt.completionMode == "room_change"
+      and (interrupt.originRoomId == ""
+        or tostring(interrupt.originRoomId) ~= currentRoomText) then
+    boop.runtime.completeInterrupt(interrupt.generation, "room_changed")
+  end
   if movedRooms and tostring(targeting.lastRoom or "") ~= ""
       and boop.stats and boop.stats.onRoomChange then
     boop.stats.onRoomChange()

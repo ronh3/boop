@@ -116,6 +116,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `diag` sends `clearqueue all`, replaces the full balance/equilibrium queue with `diagnose`, and temporarily blocks attacks until a `Char.Afflictions.List` snapshot plus prompt; visible diagnose result lines remain fallback evidence.
 - `diag` includes a timeout fallback, and unresolved evidence from a timed-out dispatch is bounded to that dispatch instead of consuming every later diagnose result.
 - Two `You are confused as to the effects of the venom.` observations force the same diagnose interrupt. Successful diagnose completion resets the capped counter; timeout leaves it armed for a later retry.
+- `leap <direction>` explicitly clears every server queue before queueing the leap and holds combat/queue dispatch until changed `Room.Info` confirms movement. Unrelated prompts cannot release the hold or let a later attack replace the leap; timeout remains the denial/failure fallback.
 - `pull <mobname> <direction>` uses an operation lock without changing saved enabled configuration, sends the configured separator-delimited move/ready-damage-rage/leap-back chain, and releases after origin-room confirmation or a timeout while already at origin; timeout away retains the hold until return.
 - Interrupt, pull, and gold operations plus room and walk transitions are generation-owned; callbacks from superseded generations cannot mutate current state.
 - `boop get/set` provides scriptable config access, and `boop trace` exposes a rolling decision/command buffer.

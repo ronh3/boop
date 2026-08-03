@@ -15,6 +15,7 @@ describe("boop queued interrupts", function()
   local ok_messages
   local warn_messages
   local tick_count
+  local native_queue
 
   local prompt_interrupts = {
     {
@@ -36,11 +37,6 @@ describe("boop queued interrupts", function()
       name = "ts",
       command = "touch shield",
       invoke = function() boop.ui.touchShield() end,
-    },
-    {
-      name = "leap",
-      command = "leap north",
-      invoke = function() boop.ui.leap("north") end,
     },
   }
 
@@ -66,6 +62,7 @@ describe("boop queued interrupts", function()
     ok_messages = {}
     warn_messages = {}
     tick_count = 0
+    native_queue = helper.newNativeQueue()
   end
 
   local function blockerFor(owner)
@@ -131,6 +128,7 @@ describe("boop queued interrupts", function()
         command = command,
         echoBack = echo_back,
       }
+      native_queue.send(command, echo_back)
     end)
     info_stub = stub(boop.util, "info", function(message)
       info_messages[#info_messages + 1] = message
@@ -258,5 +256,66 @@ describe("boop queued interrupts", function()
       assert.are.equal(1, #sent)
       assert.is_table(blockerFor("pull:unrelated"))
     end
+  end)
+
+  it("keeps leap ahead of hunting until a room change confirms movement", function()
+    native_queue.apply("queue addclearfull freestand BOOP_ATTACK")
+
+    boop.ui.leap("northeast")
+
+    assert.are.equal(2, #sent)
+    assert.are.same({
+      command = "clearqueue all",
+      echoBack = false,
+    }, sent[1])
+    assert.are.same({
+      command = "queue addclearfull freestand leap northeast",
+      echoBack = false,
+    }, sent[2])
+    assert.are.same({
+      freestand = { "leap northeast" },
+    }, native_queue.snapshot())
+
+    local operation = boop.state.diag.operation
+    assert.is_table(operation)
+    assert.are.equal("room_change", operation.completionMode)
+    assert.are.equal("1", operation.originRoomId)
+    assert.is_true(blockerFor("interrupt:1").waitsFor.room)
+
+    boop.onPrompt()
+
+    assert.is_true(operation == boop.state.diag.operation)
+    assert.are.equal(0, tick_count)
+    assert.are.same({
+      freestand = { "leap northeast" },
+    }, native_queue.snapshot())
+
+    gmcp.Room.Info = {
+      area = "Test Area",
+      num = 2,
+      exits = { southwest = 1 },
+    }
+    boop.onRoomInfo()
+
+    assert.is_false(boop.state.diag.operation)
+    assert.is_nil(blockerFor("interrupt:1"))
+    assert.are.same({ "leap complete; attacks resumed" }, ok_messages)
+    assert.are.same({
+      freestand = { "leap northeast" },
+    }, native_queue.snapshot())
+  end)
+
+  it("releases an unconfirmed leap only through its timeout", function()
+    boop.ui.leap("north")
+    local timeout_callback = scheduled[1].callback
+
+    boop.onPrompt()
+    assert.is_table(boop.state.diag.operation)
+
+    timeout_callback()
+
+    assert.is_false(boop.state.diag.operation)
+    assert.are.same({ "leap timeout; attacks resumed" }, warn_messages)
+    assert.are.equal(0, tick_count)
   end)
 end)

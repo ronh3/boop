@@ -59,7 +59,7 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
 - `boop_diag_timeout_spec.lua`
   Confirms diagnose timeout resumes attacks, cannot leave stale evidence that consumes every later diagnose result, and keeps the venom-confusion threshold armed for a later retry.
 - `boop_interrupt_spec.lua`
-  Confirms prompt-resume queued interrupt commands such as `matic` pause attacks, queue their action, and resume on prompt.
+  Confirms prompt-resume queued interrupt commands such as `matic` pause attacks and resume on prompt, while leap clears prior queue work and remains protected until room-change evidence or timeout.
 - `boop_pull_spec.lua`
   Confirms pull command construction, GMCP return completion, timeout cleanup for stuck pull state, and separator safety.
 - `boop_event_transitions_spec.lua`

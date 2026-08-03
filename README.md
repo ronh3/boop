@@ -48,7 +48,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `catarin` (replaces the full balance/equilibrium queue with `ldeck draw catarin`; pauses attacks until prompt or timeout)
 - `fly` (replaces the full balance/equilibrium queue with `fly`; pauses attacks until prompt or timeout)
 - `ts` (replaces the full balance/equilibrium queue with `touch shield`; pauses attacks until prompt or timeout)
-- `leap <direction>` (replaces the full balance/equilibrium queue with `leap <direction>`; pauses attacks until prompt or timeout)
+- `leap <direction>` (clears every server queue, queues `leap <direction>`, and pauses attacks until room-change GMCP or timeout)
 - `pull <mobname> <direction>` (places a runtime hold, sends `<direction><sep><damage rage on mobname><sep>leap <opposite direction>`, and releases after returning to the origin or timing out while already there)
 - `boop separator <text>` (sets the game-side command separator used by `pull`; for example `|`)
 - `boop focus <speed|precision>` (sets which battlefury focus verb two-handed standards use when `Focus` is known)
@@ -108,7 +108,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - `Triumph suffuses you with incredible rage.` sets a one-shot free-rage flag; hybrid rage spends it on the highest ready damage or satisfied conditional rage attack, then clears it when a rage action is used.
 - `diag` sends `clearqueue all`, then `queue addclearfull freestand diagnose`, and pauses attacks until the `Char.Afflictions.List` snapshot and following prompt; `You are: ...` and `You are in perfect health.` remain text fallbacks. A timeout releases the current hold, and a later explicit `diag` supersedes unresolved evidence from that dispatch.
 - Seeing `You are confused as to the effects of the venom.` twice since the last successful diagnosis automatically invokes the same diagnose interrupt. Its counter resets after diagnose evidence plus prompt; a timeout keeps the threshold armed so a later matching line retries.
-- `matic`, `catarin`, `fly`, `ts`, and `leap` always use `queue addclearfull freestand` regardless of normal attack queueing and pause attacks until the next prompt, with the same timeout fallback via `diagTimeoutSeconds`.
+- `matic`, `catarin`, `fly`, and `ts` always use `queue addclearfull freestand` regardless of normal attack queueing and pause attacks until the next prompt, with the same timeout fallback via `diagTimeoutSeconds`.
+- `leap` first sends `clearqueue all`, queues the leap with `queue addclearfull freestand`, and keeps attacks paused across unrelated prompts until changed `Room.Info` confirms movement. Its timeout releases the hold if the leap is denied or never executes.
 - `pull <mobname> <direction>` uses the configured `boop separator` to send one chained game command: move in, use the highest available damage battlerage attack against the typed mob name, then `leap` back using the opposite direction.
 - Pull uses an owner-keyed operation lock and never changes saved enabled configuration.
 - Return-room GMCP releases the pull operation. A timeout at the origin also releases it; a timeout away keeps the same hold until matching return-room GMCP arrives, and stale callbacks from older generations are ignored.

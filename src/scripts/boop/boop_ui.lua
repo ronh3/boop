@@ -1622,12 +1622,22 @@ local function queueInterrupt(label, command, opts)
   local generation = (tonumber(state.diag.generation) or 0) + 1
   local name = tostring(label or "interrupt")
   local completionMode = tostring(opts.completionMode or "prompt")
+  local waitsFor = type(opts.waitsFor) == "table" and opts.waitsFor or {}
   local blockerOwner = "interrupt:" .. tostring(generation)
+  local originRoomId = boop.util.trim(tostring(
+    state.targeting and state.targeting.room or ""
+  ))
+  if originRoomId == "" then
+    originRoomId = boop.util.trim(tostring(
+      gmcp and gmcp.Room and gmcp.Room.Info and gmcp.Room.Info.num or ""
+    ))
+  end
   local operation = {
     generation = generation,
     name = name,
     command = tostring(command or ""),
     completionMode = completionMode,
+    originRoomId = originRoomId,
     resultSeen = false,
     terminal = false,
     blockerOwner = blockerOwner,
@@ -1646,7 +1656,7 @@ local function queueInterrupt(label, command, opts)
     "interrupt_pending",
     name .. " pending",
     { combat = true, queue = true },
-    {},
+    waitsFor,
     {
       source = "interrupt",
       observed = {
@@ -1679,7 +1689,7 @@ local function queueInterrupt(label, command, opts)
     if boop.displaceGoldQueueIntent then
       boop.displaceGoldQueueIntent(
         blockerOwner,
-        "diag native queue replacement"
+        name .. " native queue replacement"
       )
     end
     send("clearqueue all", false)
@@ -1687,10 +1697,12 @@ local function queueInterrupt(label, command, opts)
   send("queue addclearfull freestand " .. command, false)
   boop.util.info(opts.infoMessage or (tostring(label) .. " queued; attacks paused"))
   boop.trace.log(string.format(
-    "%s queued | owner=%s | generation=%s",
+    "%s queued | owner=%s | generation=%s | completion=%s | clearQueue=%s",
     opts.traceLabel or name,
     blockerOwner,
-    tostring(generation)
+    tostring(generation),
+    completionMode,
+    opts.clearQueue and "yes" or "no"
   ))
   return true
 end
@@ -1744,9 +1756,10 @@ function boop.ui.leap(direction)
   end
 
   queueInterrupt("leap", "leap " .. dir, {
-    clearQueue = false,
-    completionMode = "prompt",
-    infoMessage = "leap queued; attacks paused until next prompt",
+    clearQueue = true,
+    completionMode = "room_change",
+    waitsFor = { room = true },
+    infoMessage = "leap queued; attacks paused until room change",
   })
 end
 

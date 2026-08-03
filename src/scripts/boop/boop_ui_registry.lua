@@ -861,6 +861,7 @@ boop.registry.ui.helpTopics = {
       helpCommand("diag", "Send `clearqueue all`, replace the full balance/equilibrium queue with diagnose, and pause attacks until diagnose evidence plus prompt."),
       helpCommand("matic", "Replace the full balance/equilibrium queue with `ldeck draw matic` and resume on prompt or timeout."),
       helpCommand("fly", "Replace the full balance/equilibrium queue with `fly` and pause attacks until prompt or timeout."),
+      helpCommand("leap <direction>", "Clear every server queue, queue the leap, and pause attacks until room change or timeout."),
       helpCommand("boop config combat", "Use the combat config screen if you need to tune the interrupt timeout."),
     },
     commands = {
@@ -869,7 +870,7 @@ boop.registry.ui.helpTopics = {
       helpCommand("catarin", "Replace the full balance/equilibrium queue with `ldeck draw catarin`."),
       helpCommand("fly", "Replace the full balance/equilibrium queue with `fly` and pause attacks until prompt or timeout."),
       helpCommand("ts", "Replace the full balance/equilibrium queue with `touch shield` and pause attacks until prompt or timeout."),
-      helpCommand("leap <direction>", "Replace the full balance/equilibrium queue with a leap command and pause attacks until prompt or timeout."),
+      helpCommand("leap <direction>", "Clear every server queue, queue the leap, and pause attacks until changed Room.Info or timeout."),
     },
     advanced = {
       helpCommand("boop set diagtimeout <seconds>", "Set the timeout used by diag and queued interrupt holds."),
@@ -877,7 +878,8 @@ boop.registry.ui.helpTopics = {
     notes = {
       "These commands are meant for quick intervention while boop is otherwise managing attacks.",
       "Pending interrupts are operation-owned; repeats do not resend or restart the timer.",
-      "`diag` sends `clearqueue all`; every interrupt then uses `queue addclearfull freestand` regardless of boop's normal queue setting.",
+      "`diag` and `leap` send `clearqueue all`; every interrupt then uses `queue addclearfull freestand` regardless of boop's normal queue setting.",
+      "`leap` ignores unrelated prompts and resumes only after room-change GMCP or timeout, so hunting cannot replace a pending escape.",
       "`diag` prefers the GMCP affliction snapshot and retains visible diagnose lines as fallback evidence.",
       "Two `You are confused as to the effects of the venom.` lines automatically force `diag`; successful completion resets that counter.",
     },

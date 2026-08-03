@@ -121,6 +121,7 @@ Current visual language expectations
 
 - Sectioned dashboards should use the shared themed row renderer where available.
 - Status rows should compute lifecycle, room, target, attack-profile, and walker readiness from canonical state. Profile problems are diagnostic state rather than operation holds. Active operation rows should present the same code, label, affected systems, and waits-for state across status, dashboard, config, party, and debug surfaces.
+- A queued leap reports `interrupt_pending -- leap pending` with `waits: room`; unrelated prompts must not make that operation disappear before changed room GMCP or timeout.
 - Rich Mudlet screens should prefer concise rows with hover hints over long visible prose.
 - Plain-text fallback should remain readable and deterministic for tests.
 - Older raw/debug-dump output should be treated as technical debt and cleaned up when touched.
