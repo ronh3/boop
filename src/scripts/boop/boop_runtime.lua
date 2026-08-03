@@ -160,6 +160,7 @@ local DOMAIN_DEFAULTS = {
     generation = 0,
     operation = false,
     evidenceQueue = {},
+    venomConfusionCount = 0,
   },
   trace = {
     buffer = {},
@@ -1813,6 +1814,20 @@ function boop.runtime.enqueueDiagEvidence(generation)
   return record
 end
 
+function boop.runtime.resetVenomConfusionCount(reason)
+  local state = boop.runtime.ensureState()
+  local previous = tonumber(state.diag.venomConfusionCount) or 0
+  state.diag.venomConfusionCount = 0
+  if previous > 0 then
+    trace(string.format(
+      "venom confusion reset: %d -> 0 | reason=%s",
+      previous,
+      tostring(reason or "reset")
+    ))
+  end
+  return previous
+end
+
 function boop.runtime.completeInterrupt(generation, terminalReason)
   local state = boop.runtime.ensureState()
   local operation = state.diag.operation
@@ -1865,6 +1880,13 @@ function boop.runtime.completeInterrupt(generation, terminalReason)
     name,
     reason
   ))
+  if name == "diag" and reason == "diagnose_result_prompt" then
+    boop.runtime.resetVenomConfusionCount("diagnose complete")
+  elseif name ~= "diag"
+      and boop.tryVenomConfusionDiag
+      and (tonumber(state.diag.venomConfusionCount) or 0) >= 2 then
+    boop.tryVenomConfusionDiag("interrupt complete")
+  end
   return true
 end
 
@@ -2297,6 +2319,8 @@ function boop.runtime.context(sourceAuthority, options)
       hold = not not state.diag.hold,
       awaitPrompt = not not state.diag.awaitPrompt,
       label = tostring(state.diag.label or ""),
+      venomConfusionCount =
+        tonumber(state.diag.venomConfusionCount) or 0,
     },
     assist = {
       enabled = not not ((boop.config and boop.config.assistEnabled) and assistLeader ~= ""),

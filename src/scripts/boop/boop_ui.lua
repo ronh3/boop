@@ -1696,7 +1696,7 @@ local function queueInterrupt(label, command, opts)
 end
 
 function boop.ui.diag()
-  queueInterrupt("diag", "diagnose", {
+  return queueInterrupt("diag", "diagnose", {
     clearQueue = true,
     completionMode = "result_then_prompt",
     infoMessage = "diag queued; attacks paused until diagnose line + prompt",

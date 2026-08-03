@@ -879,6 +879,7 @@ boop.registry.ui.helpTopics = {
       "Pending interrupts are operation-owned; repeats do not resend or restart the timer.",
       "`diag` sends `clearqueue all`; every interrupt then uses `queue addclearfull freestand` regardless of boop's normal queue setting.",
       "`diag` prefers the GMCP affliction snapshot and retains visible diagnose lines as fallback evidence.",
+      "Two `You are confused as to the effects of the venom.` lines automatically force `diag`; successful completion resets that counter.",
     },
   },
   {

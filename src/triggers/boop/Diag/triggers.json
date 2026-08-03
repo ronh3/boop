@@ -38,5 +38,25 @@
       }
     ],
     "script": ""
+  },
+  {
+    "name": "Venom Confusion",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {
+        "pattern": "You are confused as to the effects of the venom.",
+        "type": "exactMatch"
+      }
+    ],
+    "script": ""
   }
 ]

@@ -1716,6 +1716,56 @@ function boop.onDiagAfflictionsList()
   return boop.runtime.markOldestDiagEvidenceResult("gmcp")
 end
 
+function boop.tryVenomConfusionDiag(source)
+  local state = boop.runtime.state()
+  local count = tonumber(state.diag.venomConfusionCount) or 0
+  if count < 2 then
+    return false
+  end
+
+  local operation = state.diag.operation
+  if type(operation) == "table" and not operation.terminal then
+    boop.trace.log(string.format(
+      "venom confusion diagnose deferred: active=%s | count=%d | source=%s",
+      tostring(operation.name or "interrupt"),
+      count,
+      tostring(source or "line")
+    ))
+    return false
+  end
+
+  if not (boop.ui and boop.ui.diag) then
+    boop.trace.log("venom confusion diagnose unavailable")
+    return false
+  end
+
+  local queued = boop.ui.diag() == true
+  boop.trace.log(string.format(
+    "venom confusion diagnose: %s | count=%d | source=%s",
+    queued and "queued" or "not queued",
+    count,
+    tostring(source or "line")
+  ))
+  return queued
+end
+
+function boop.onVenomConfusionLine()
+  local state = boop.runtime.state()
+  local count = math.min(
+    2,
+    (tonumber(state.diag.venomConfusionCount) or 0) + 1
+  )
+  state.diag.venomConfusionCount = count
+  boop.trace.log(string.format(
+    "venom confusion observed: count=%d/2",
+    count
+  ))
+  if count < 2 then
+    return false
+  end
+  return boop.tryVenomConfusionDiag("line")
+end
+
 function boop.events.register()
   if boop.handlers then
     for _, id in ipairs(boop.handlers) do
@@ -1781,6 +1831,9 @@ end
 
 function boop.onConnectionEvent()
   boop.resetShieldMode("connection")
+  if boop.runtime and boop.runtime.resetVenomConfusionCount then
+    boop.runtime.resetVenomConfusionCount("connection")
+  end
   if boop.attacks and boop.attacks.clearTemporaryPreferences then
     boop.attacks.clearTemporaryPreferences("connection")
   end

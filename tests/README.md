@@ -55,9 +55,9 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
 - `boop_profile_matrix_spec.lua`
   Confirms every shipped class/form/spec profile is registered, reports a usable standard attack through the profile-readiness contract, and preserves expected spec-based standard and shield commands.
 - `boop_diag_spec.lua`
-  Confirms diagnose pauses attacks and resumes after the GMCP affliction snapshot or visible result fallback plus prompt.
+  Confirms diagnose pauses attacks and resumes after the GMCP affliction snapshot or visible result fallback plus prompt, and that two venom-confusion lines force diagnose before the counter resets on successful completion.
 - `boop_diag_timeout_spec.lua`
-  Confirms diagnose timeout resumes attacks and cannot leave stale evidence that consumes every later diagnose result.
+  Confirms diagnose timeout resumes attacks, cannot leave stale evidence that consumes every later diagnose result, and keeps the venom-confusion threshold armed for a later retry.
 - `boop_interrupt_spec.lua`
   Confirms prompt-resume queued interrupt commands such as `matic` pause attacks, queue their action, and resume on prompt.
 - `boop_pull_spec.lua`

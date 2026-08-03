@@ -20,6 +20,13 @@ describe("boop diagnose timeout", function()
     dofile(os.getenv("TESTS_DIRECTORY") .. "/../src/triggers/boop/Diag/Diag_Result_Detail.lua")
   end
 
+  local function runVenomConfusionTrigger()
+    return dofile(
+      os.getenv("TESTS_DIRECTORY")
+        .. "/../src/triggers/boop/Diag/Venom_Confusion.lua"
+    )
+  end
+
   local function blockerFor(owner)
     for _, blocker in ipairs(boop.runtime.blockersSnapshot()) do
       if blocker.owner == owner then
@@ -120,6 +127,25 @@ describe("boop diagnose timeout", function()
       freestand = { "diagnose" },
     }, native_queue.snapshot())
     assert.are.same({}, native_queue.errorsSnapshot())
+  end)
+
+  it("keeps the venom-confusion threshold armed after diagnose timeout", function()
+    runVenomConfusionTrigger()
+    runVenomConfusionTrigger()
+    assert.are.equal(2, boop.state.diag.venomConfusionCount)
+
+    scheduled[1].callback()
+
+    assert.is_false(boop.state.diag.operation)
+    assert.are.equal(2, boop.state.diag.venomConfusionCount)
+    runVenomConfusionTrigger()
+    assert.are.equal("diag", boop.state.diag.operation.name)
+    assert.are.equal(2, boop.state.diag.venomConfusionCount)
+    assert.are.equal("clearqueue all", sent[3].command)
+    assert.are.equal(
+      "queue addclearfull freestand diagnose",
+      sent[4].command
+    )
   end)
 
   it("does not let N's missing result consume diagnose N+1 forever", function()

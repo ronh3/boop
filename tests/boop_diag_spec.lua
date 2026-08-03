@@ -105,6 +105,7 @@ describe("boop diagnose pause and resume", function()
     assert.are.equal(0, first.diag.generation)
     assert.is_false(first.diag.operation)
     assert.are.same({}, first.diag.evidenceQueue)
+    assert.are.equal(0, first.diag.venomConfusionCount)
 
     local first_queue = first.diag.evidenceQueue
     first.diag.generation = 9
@@ -125,7 +126,51 @@ describe("boop diagnose pause and resume", function()
     assert.are.equal(0, fresh.diag.generation)
     assert.is_false(fresh.diag.operation)
     assert.are.same({}, fresh.diag.evidenceQueue)
+    assert.are.equal(0, fresh.diag.venomConfusionCount)
     assert.is_false(first_queue == fresh.diag.evidenceQueue)
+  end)
+
+  it("forces diagnose after two venom-confusion lines and resets after completion", function()
+    runTrigger("Venom_Confusion.lua")
+    assert.are.equal(1, boop.state.diag.venomConfusionCount)
+    assert.are.equal(0, #sent)
+    assert.is_false(boop.state.diag.operation)
+
+    runTrigger("Venom_Confusion.lua")
+    assert.are.equal(2, boop.state.diag.venomConfusionCount)
+    assert.are.equal("diag", boop.state.diag.operation.name)
+    assert.are.equal("clearqueue all", sent[1].command)
+    assert.are.equal(
+      "queue addclearfull freestand diagnose",
+      sent[2].command
+    )
+
+    runTrigger("Diag_Result_Detail.lua")
+    assert.are.equal(2, boop.state.diag.venomConfusionCount)
+    boop.onPrompt()
+
+    assert.is_false(boop.state.diag.operation)
+    assert.are.equal(0, boop.state.diag.venomConfusionCount)
+    assert.are.same({ "diag complete; attacks resumed" }, ok_messages)
+  end)
+
+  it("defers threshold diagnose until an existing interrupt completes", function()
+    boop.ui.matic()
+    assert.are.equal("matic", boop.state.diag.operation.name)
+
+    runTrigger("Venom_Confusion.lua")
+    runTrigger("Venom_Confusion.lua")
+    assert.are.equal(2, boop.state.diag.venomConfusionCount)
+    assert.are.equal(1, #sent)
+
+    boop.onPrompt()
+
+    assert.are.equal("diag", boop.state.diag.operation.name)
+    assert.are.equal("clearqueue all", sent[2].command)
+    assert.are.equal(
+      "queue addclearfull freestand diagnose",
+      sent[3].command
+    )
   end)
 
   it("requires a real zero-argument result trigger before diagnose can complete on prompt", function()

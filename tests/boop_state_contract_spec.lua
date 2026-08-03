@@ -41,6 +41,7 @@ describe("boop owned state contracts", function()
     assert.is_false(state.queue.prequeuedStandard)
     assert.is_false(state.walk.active)
     assert.is_false(state.diag.hold)
+    assert.are.equal(0, state.diag.venomConfusionCount)
     assert.is_false(state.inventory.wieldedLeft)
     assert.is_nil(state.gag.pendingAttack)
   end)
@@ -62,6 +63,7 @@ describe("boop owned state contracts", function()
     state.gold.packTarget = "pack123"
     state.diag.hold = true
     state.diag.label = "matic"
+    state.diag.venomConfusionCount = 1
     state.inventory.wieldedLeft = left
     state.inventory.wieldedRight = right
     state.rage.ready = ready
@@ -78,6 +80,7 @@ describe("boop owned state contracts", function()
     assert.are.equal("pack123", context.gold.packTarget)
     assert.is_true(context.diag.hold)
     assert.are.equal("matic", context.diag.label)
+    assert.are.equal(1, context.diag.venomConfusionCount)
     assert.are.equal(left, context.inventory.wieldedLeft)
     assert.are.equal(right, context.inventory.wieldedRight)
     assert.are.equal(ready, context.rage.ready)
