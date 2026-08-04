@@ -533,6 +533,257 @@ describe("boop prequeue", function()
       return standard
     end
 
+    local function traceCount(fragment)
+      local count = 0
+      for _, line in ipairs(boop.state.trace.buffer or {}) do
+        if tostring(line):find(fragment, 1, true) then
+          count = count + 1
+        end
+      end
+      return count
+    end
+
+    local function currentRoomAuthority()
+      local authority = boop.runtime.currentRoomSourceAuthority()
+      assert.is_table(authority)
+      return authority
+    end
+
+    local function acceptSameRoomApplication(authorityA)
+      local observation = boop.runtime.roomObservationSnapshot()
+      assert.are.same(authorityA, observation.acceptedSourceAuthority)
+      local fence = boop.runtime.beginRoomResponseFence(
+        "standard chronology same-room refresh",
+        {
+          roomOnly = true,
+          roomId = authorityA.roomId,
+          generation = authorityA.observationGeneration,
+        }
+      )
+      assert.is_table(fence)
+
+      local timersBeforeApplication = #scheduled
+      gmcp.Char.Items.List = {
+        location = "room",
+        items = observation.acceptedItems,
+      }
+      boop.onRoomItemsList()
+
+      assert.are.equal(timersBeforeApplication + 1, #scheduled)
+      local applicationB = boop.runtime.roomApplicationSnapshot()
+      assert.is_table(applicationB)
+      assert.are.equal(
+        authorityA.applicationId + 1,
+        applicationB.applicationId
+      )
+      assert.are.equal(
+        scheduled[#scheduled].id,
+        applicationB.pendingTimer
+      )
+      scheduled[#scheduled].callback()
+
+      local authorityB = currentRoomAuthority()
+      assert.are.same({
+        applicationId = applicationB.applicationId,
+        roomId = authorityA.roomId,
+        observationGeneration = authorityA.observationGeneration,
+      }, authorityB)
+      assert.is_false(
+        boop.runtime.validateRoomSourceAuthority(authorityA)
+      )
+      return authorityB
+    end
+
+    local function configureMagiChronology()
+      dofile(
+        os.getenv("TESTS_DIRECTORY")
+          .. "/../src/scripts/boop/attacks/magi.lua"
+      )
+      helper.setClass("Magi")
+      helper.learnSkill("Horripilation", "Artificing")
+      helper.learnSkill("Erode", "Elementalism")
+      helper.setTarget("42", "a test denizen", "80%")
+      boop.config.useQueueing = true
+      boop.config.traceEnabled = true
+      gmcp.Char.Vitals.bal = "0"
+      gmcp.Char.Vitals.eq = "0"
+      observe_outbound = true
+    end
+
+    local function runCleanMagiChronology(
+      action,
+      expectedAlias,
+      authorityA,
+      expectedGeneration
+    )
+      local outboundBefore = boop.runtime.outboundSnapshot().sequence
+      local sentBefore = #sent
+      assert.is_true(boop.executeAction(action, true, {
+        roomOwned = true,
+        sourceAuthority = authorityA,
+      }))
+
+      local owner = "standard:" .. tostring(expectedGeneration)
+      local standard = boop.runtime.standardSnapshot()
+      assert.are.equal(owner, standard.owner)
+      assert.are.equal(expectedGeneration, standard.generation)
+      assert.are.equal(owner, standard.dispatchId)
+      assert.are.equal("42", standard.targetId)
+      assert.are.same(authorityA, standard.sourceAuthority)
+      assert.are.same({
+        { command = "setalias BOOP_ATTACK " .. expectedAlias },
+        { command = "queue addclearfull freestand BOOP_ATTACK" },
+      }, standard.expectedWireCommands)
+      assert.are.same({
+        {
+          command = "setalias BOOP_ATTACK " .. expectedAlias,
+          sequence = outboundBefore + 1,
+        },
+        {
+          command = "queue addclearfull freestand BOOP_ATTACK",
+          sequence = outboundBefore + 2,
+        },
+      }, standard.observedWireCommands)
+      assert.are.same({
+        command = "queue addclearfull freestand BOOP_ATTACK",
+        sequence = outboundBefore + 2,
+        owner = owner,
+        generation = expectedGeneration,
+        dispatchId = owner,
+      }, standard.baseline)
+      assert.are.same({
+        "setalias BOOP_ATTACK " .. expectedAlias,
+        "queue addclearfull freestand BOOP_ATTACK",
+      }, {
+        sent[sentBefore + 1].command,
+        sent[sentBefore + 2].command,
+      })
+      assert.are.equal(sentBefore + 2, #sent)
+
+      local authorityB = acceptSameRoomApplication(authorityA)
+      assert.is_true(boop.onBalanceUsed("equilibrium", 1.56))
+      local candidate = boop.runtime.standardSnapshot().candidate
+      assert.are.equal("success", candidate.kind)
+      assert.are.equal("Equilibrium used: 1.56s", candidate.line)
+      assert.are.equal(owner, candidate.owner)
+      assert.are.equal(expectedGeneration, candidate.generation)
+      assert.are.equal(owner, candidate.dispatchId)
+      assert.are.equal("42", candidate.targetId)
+      assert.are.same(authorityA, candidate.sourceAuthority)
+      assert.are.equal(outboundBefore + 2, candidate.baselineSequence)
+      assert.are.equal(outboundBefore + 2, candidate.outboundSequence)
+
+      local terminalTrace = string.format(
+        "standard terminal: executed | generation=%s | reason=Equilibrium used: 1.56s",
+        tostring(expectedGeneration)
+      )
+      assert.are.equal(0, traceCount(terminalTrace))
+      boop.onPrompt()
+
+      local terminal = boop.runtime.standardSnapshot()
+      assert.are.equal(owner, terminal.owner)
+      assert.are.equal(expectedGeneration, terminal.generation)
+      assert.are.equal(owner, terminal.dispatchId)
+      assert.are.equal("executed", terminal.status)
+      assert.is_true(terminal.terminal)
+      assert.are.equal(1, terminal.promptCount)
+      assert.are.same({ sequence = 1, ready = false }, terminal.resultPrompt)
+      assert.are.equal(1, terminal.resultCandidate.promptSequence)
+      assert.is_false(terminal.resultCandidate.promptReady)
+      assert.are.equal(1, traceCount(terminalTrace))
+
+      boop.onPrompt()
+      assert.are.equal(1, traceCount(terminalTrace))
+      assert.are.equal(expectedGeneration, (
+        boop.runtime.standardSnapshot()
+      ).generation)
+      return authorityB, terminal
+    end
+
+    local function assertAmbiguousStandard(standard, reason)
+      boop.runtime.reconcileStandardPrompt(false)
+      local retained = boop.runtime.standardSnapshot()
+      assert.are.equal(standard.owner, retained.owner)
+      assert.are.equal(standard.generation, retained.generation)
+      assert.are.equal(standard.dispatchId, retained.dispatchId)
+      assert.are.equal("queued", retained.status)
+      assert.is_false(retained.terminal)
+      assert.is_nil(retained.candidate)
+      assert.is_table(retained.lastAmbiguousCandidate)
+      assert.are.same({ sequence = 1, ready = false }, (
+        retained.lastAmbiguousPrompt
+      ))
+      assert.is_false(retained.graceStarted)
+      assert.are.equal(1, traceCount(
+        "standard candidate ambiguous: reason=" .. reason
+      ))
+      return retained
+    end
+
+    it("reconciles the captured normal Magi Staffcast chronology across same-room applications A and B", function()
+      configureMagiChronology()
+      local authorityA = currentRoomAuthority()
+      assert.are.same({
+        applicationId = 1,
+        roomId = "1",
+        observationGeneration = 1,
+      }, authorityA)
+      local actions = boop.attacks.choose(
+        boop.runtime.context(authorityA)
+      )
+      assert.are.equal(
+        "staffcast horripilation at 42",
+        actions.standard
+      )
+
+      local authorityB = runCleanMagiChronology(
+        actions.standard,
+        "staffcast horripilation at 42",
+        authorityA,
+        1
+      )
+      assert.are.equal(2, authorityB.applicationId)
+    end)
+
+    it("reconciles captured assist Magi Staffcast and shield-selected Erode chronologies", function()
+      configureMagiChronology()
+      boop.config.assistEnabled = true
+      boop.config.assistLeader = "Ada"
+
+      local authorityA = currentRoomAuthority()
+      local staffcast = boop.attacks.choose(
+        boop.runtime.context(authorityA)
+      )
+      assert.are.equal(
+        "staffcast horripilation at 42",
+        staffcast.standard
+      )
+      local authorityB = runCleanMagiChronology(
+        staffcast.standard,
+        "assist Ada/staffcast horripilation at 42",
+        authorityA,
+        1
+      )
+
+      boop.state.targeting.targetShield = { attempted = false }
+      local erode = boop.attacks.choose(
+        boop.runtime.context(authorityB)
+      )
+      assert.are.equal("cast erode at 42", erode.standard)
+      assert.is_true(erode.standardShieldbreak)
+      local authorityC = runCleanMagiChronology(
+        erode.standard,
+        "assist Ada/cast erode at 42",
+        authorityB,
+        2
+      )
+      assert.are.same({ 1, 2, 3 }, {
+        authorityA.applicationId,
+        authorityB.applicationId,
+        authorityC.applicationId,
+      })
+    end)
+
     local denialCases = {
       {
         name = "paralysis",
@@ -761,25 +1012,213 @@ describe("boop prequeue", function()
       ))
     end)
 
-    it("rejects a generic success candidate contaminated by later manual outbound traffic", function()
+    it("keeps non-whitespace manual contamination across a same-room application refresh", function()
+      boop.config.traceEnabled = true
       local standard = queueOwnedStandard()
       boop.onDataSendRequest(
         "sysDataSendRequest",
         "say unrelated manual command"
       )
+      local manual = boop.runtime.outboundSnapshot().observed[#(
+        boop.runtime.outboundSnapshot().observed
+      )]
+      assert.are.equal("say unrelated manual command", manual.command)
+      assert.is_false(manual.owned)
+      assert.are.equal("manual", manual.owner)
+
+      local authorityB = acceptSameRoomApplication(
+        standard.sourceAuthority
+      )
+      assert.are.equal(
+        standard.sourceAuthority.applicationId + 1,
+        authorityB.applicationId
+      )
 
       assert.is_true(boop.onStandardCommandOutcome(
         "Balance used: 3.0s"
       ))
-      boop.onPrompt()
-
-      local retained = boop.runtime.standardSnapshot()
-      assert.are.equal(standard.generation, retained.generation)
-      assert.are.equal("queued", retained.status)
-      assert.is_false(retained.terminal)
-      assert.is_nil(retained.candidate)
-      assert.is_false(retained.graceStarted)
+      local candidate = boop.runtime.standardSnapshot().candidate
+      assert.are.equal(manual.sequence, candidate.outboundSequence)
+      local retained = assertAmbiguousStandard(
+        standard,
+        "outbound contamination"
+      )
+      assert.are.equal(manual.sequence, retained.contaminatedAt)
+      assert.are.equal(
+        "say unrelated manual command",
+        retained.contaminatedCommand
+      )
     end)
+
+    it("keeps differently owned rage/direct contamination across a same-room application refresh", function()
+      boop.config.traceEnabled = true
+      local standard = queueOwnedStandard()
+      local rage = boop.runtime.newOutboundRegistration("rage")
+      assert.are.same({
+        owner = "rage:1",
+        generation = 1,
+        dispatchId = "rage:1",
+        kind = "rage",
+      }, rage)
+      boop.runtime.registerOutboundExpectation(
+        rage,
+        "harry 42",
+        "final"
+      )
+      local observed = boop.onDataSendRequest(
+        "sysDataSendRequest",
+        "harry 42"
+      )
+      assert.is_false(observed)
+      local outbound = boop.runtime.outboundSnapshot()
+      local foreign = outbound.observed[#outbound.observed]
+      assert.are.equal("harry 42", foreign.command)
+      assert.is_true(foreign.owned)
+      assert.are.equal("rage:1", foreign.owner)
+      assert.are.equal("rage", foreign.kind)
+
+      acceptSameRoomApplication(standard.sourceAuthority)
+      assert.is_true(boop.onStandardCommandOutcome(
+        "Balance used: 3.0s"
+      ))
+      local retained = assertAmbiguousStandard(
+        standard,
+        "outbound contamination"
+      )
+      assert.are.equal(foreign.sequence, retained.contaminatedAt)
+      assert.are.equal("harry 42", retained.contaminatedCommand)
+    end)
+
+    it("rejects a success candidate after the canonical room changes", function()
+      boop.config.traceEnabled = true
+      local standard = queueOwnedStandard()
+      local observation = boop.runtime.roomObservationSnapshot()
+      helper.seedRoomObservation("2", {
+        generation = standard.sourceAuthority.observationGeneration,
+        itemsSeen = true,
+        items = observation.acceptedItems,
+        applicationId = standard.sourceAuthority.applicationId + 1,
+      })
+
+      assert.is_true(boop.onStandardCommandOutcome(
+        "Balance used: 3.0s"
+      ))
+      local retained = assertAmbiguousStandard(
+        standard,
+        "room changed"
+      )
+      assert.are.equal("42", retained.targetId)
+    end)
+
+    it("rejects a success candidate after the room observation generation changes", function()
+      boop.config.traceEnabled = true
+      local standard = queueOwnedStandard()
+      local observation = boop.runtime.roomObservationSnapshot()
+      helper.seedRoomObservation(standard.sourceAuthority.roomId, {
+        generation = standard.sourceAuthority.observationGeneration + 1,
+        itemsSeen = true,
+        items = observation.acceptedItems,
+        applicationId = standard.sourceAuthority.applicationId + 1,
+      })
+
+      assert.is_true(boop.onStandardCommandOutcome(
+        "Balance used: 3.0s"
+      ))
+      assertAmbiguousStandard(
+        standard,
+        "observation generation changed"
+      )
+    end)
+
+    it("rejects a success candidate when accepted room evidence disappears", function()
+      boop.config.traceEnabled = true
+      local standard = queueOwnedStandard()
+      boop.runtime.state().targeting.roomObservation
+        .acceptedSourceAuthority = false
+
+      assert.is_true(boop.onStandardCommandOutcome(
+        "Balance used: 3.0s"
+      ))
+      assertAmbiguousStandard(
+        standard,
+        "accepted room evidence missing"
+      )
+    end)
+
+    local dispositionCases = {
+      {
+        name = "owner identity",
+        reason = "owner mismatch",
+        mutate = function(operation)
+          operation.candidate.owner = "standard:foreign"
+        end,
+      },
+      {
+        name = "generation identity",
+        reason = "generation mismatch",
+        mutate = function(operation)
+          operation.candidate.generation = operation.generation + 1
+        end,
+      },
+      {
+        name = "dispatch identity",
+        reason = "dispatch mismatch",
+        mutate = function(operation)
+          operation.candidate.dispatchId = "standard:foreign"
+        end,
+      },
+      {
+        name = "candidate target",
+        reason = "candidate target mismatch",
+        mutate = function(operation)
+          operation.candidate.targetId = "43"
+        end,
+      },
+      {
+        name = "current target",
+        reason = "current target changed",
+        mutate = function(_)
+          boop.state.targeting.currentTargetId = "43"
+        end,
+      },
+      {
+        name = "missing baseline",
+        reason = "baseline missing",
+        mutate = function(operation)
+          operation.baseline = false
+        end,
+      },
+      {
+        name = "candidate baseline",
+        reason = "baseline mismatch",
+        mutate = function(operation)
+          operation.candidate.baselineSequence =
+            operation.baseline.sequence + 1
+        end,
+      },
+      {
+        name = "candidate outbound chronology",
+        reason = "outbound sequence before baseline",
+        mutate = function(operation)
+          operation.candidate.outboundSequence =
+            operation.baseline.sequence - 1
+        end,
+      },
+    }
+
+    for _, dispositionCase in ipairs(dispositionCases) do
+      local case = dispositionCase
+      it("rejects a success candidate with changed " .. case.name, function()
+        boop.config.traceEnabled = true
+        local standard = queueOwnedStandard()
+        assert.is_true(boop.onStandardCommandOutcome(
+          "Balance used: 3.0s"
+        ))
+        case.mutate(boop.runtime.state().queue.standardOperation)
+
+        assertAmbiguousStandard(standard, case.reason)
+      end)
+    end
   end)
 
 end)

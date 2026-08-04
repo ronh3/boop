@@ -2357,31 +2357,105 @@ function boop.runtime.bufferStandardCandidate(candidate)
   return true
 end
 
-local function candidateIsCurrent(operation, candidate)
-  if not sameStandardIdentity(operation, candidate)
-      or tostring(candidate.targetId or "")
-        ~= tostring(operation.targetId or "")
-      or type(operation.baseline) ~= "table"
-      or tonumber(candidate.baselineSequence)
-        ~= tonumber(operation.baseline.sequence)
-      or tonumber(candidate.outboundSequence or 0)
-        < tonumber(operation.baseline.sequence or 0) then
-    return false
+local function standardCandidateDisposition(operation, candidate)
+  if type(operation) ~= "table" or type(candidate) ~= "table" then
+    return false, "identity missing"
+  end
+  if tostring(candidate.owner or "") ~= tostring(operation.owner or "") then
+    return false, "owner mismatch"
+  end
+  if tonumber(candidate.generation) ~= tonumber(operation.generation) then
+    return false, "generation mismatch"
+  end
+  if tostring(candidate.dispatchId or "")
+      ~= tostring(operation.dispatchId or "") then
+    return false, "dispatch mismatch"
+  end
+  if tostring(candidate.targetId or "")
+      ~= tostring(operation.targetId or "") then
+    return false, "candidate target mismatch"
+  end
+
+  local state = boop.runtime.ensureState()
+  if tostring(state.targeting.currentTargetId or "")
+      ~= tostring(operation.targetId or "") then
+    return false, "current target changed"
+  end
+
+  local baseline = operation.baseline
+  local baselineSequence = type(baseline) == "table"
+      and tonumber(baseline.sequence)
+    or nil
+  if baselineSequence == nil then
+    return false, "baseline missing"
+  end
+  if tostring(baseline.owner or "") ~= tostring(operation.owner or "")
+      or tonumber(baseline.generation) ~= tonumber(operation.generation)
+      or tostring(baseline.dispatchId or "")
+        ~= tostring(operation.dispatchId or "") then
+    return false, "baseline ownership mismatch"
+  end
+  if tonumber(candidate.baselineSequence) ~= baselineSequence then
+    return false, "baseline mismatch"
+  end
+  local candidateOutboundSequence = tonumber(candidate.outboundSequence)
+  if candidateOutboundSequence == nil
+      or candidateOutboundSequence < baselineSequence then
+    return false, "outbound sequence before baseline"
   end
   if operation.contaminatedAt
       and tonumber(operation.contaminatedAt)
-        <= tonumber(candidate.outboundSequence or 0) then
-    return false
+        <= candidateOutboundSequence then
+    return false, "outbound contamination"
   end
-  if operation.quarantined then
-    return true
+
+  if not operation.sourceAuthority then
+    return true, "accepted"
   end
-  if operation.sourceAuthority then
-    return boop.runtime.validateRoomSourceAuthority(
-      operation.sourceAuthority
-    )
+  local captured = copySourceAuthority(operation.sourceAuthority)
+  if not captured
+      or captured.applicationId == nil
+      or captured.roomId == ""
+      or captured.observationGeneration == nil then
+    return false, "captured room authority missing"
   end
-  return true
+  if not sourceAuthorityMatches(candidate.sourceAuthority, captured) then
+    return false, "candidate room authority mismatch"
+  end
+
+  local observation = roomObservationState()
+  local accepted = copySourceAuthority(
+    observation.acceptedSourceAuthority
+  )
+  if not observation.infoSeen
+      or not observation.itemsSeen
+      or not accepted
+      or accepted.applicationId == nil
+      or accepted.roomId == ""
+      or accepted.observationGeneration == nil then
+    return false, "accepted room evidence missing"
+  end
+  if observation.roomId ~= captured.roomId
+      or currentRoomId() ~= captured.roomId
+      or accepted.roomId ~= captured.roomId then
+    return false, "room changed"
+  end
+  if tonumber(observation.generation)
+        ~= tonumber(captured.observationGeneration)
+      or accepted.observationGeneration
+        ~= captured.observationGeneration then
+    return false, "observation generation changed"
+  end
+  if accepted.applicationId < captured.applicationId then
+    return false, "application authority regressed"
+  end
+  if not boop.runtime.validateRoomSourceAuthority(accepted) then
+    return false, "accepted room evidence missing"
+  end
+  if accepted.applicationId > captured.applicationId then
+    return true, "same-room application superseded"
+  end
+  return true, "accepted"
 end
 
 local function retryStandard(operation, reason)
@@ -2446,8 +2520,9 @@ function boop.runtime.reconcileStandardPrompt(ready)
     operation.promptCount = (tonumber(operation.promptCount) or 0) + 1
     local candidate = operation.candidate
     operation.candidate = nil
-    if type(candidate) == "table"
-        and candidateIsCurrent(operation, candidate) then
+    local candidateAccepted, candidateDisposition =
+      standardCandidateDisposition(operation, candidate)
+    if type(candidate) == "table" and candidateAccepted then
       candidate.promptSequence = operation.promptCount
       candidate.promptReady = ready == true
       operation.resultCandidate = deepCopy(candidate)
@@ -2476,10 +2551,16 @@ function boop.runtime.reconcileStandardPrompt(ready)
         ready = ready == true,
       }
       trace(string.format(
-        "standard candidate ambiguous: generation=%s | kind=%s | line=%s",
+        "standard candidate ambiguous: reason=%s | owner=%s | generation=%s | dispatch=%s | kind=%s | line=%s | baseline=%s | outbound=%s | contamination=%s",
+        tostring(candidateDisposition or "unknown"),
+        tostring(operation.owner or ""),
         tostring(operation.generation),
+        tostring(operation.dispatchId or ""),
         tostring(candidate.kind or ""),
-        tostring(candidate.line or "")
+        tostring(candidate.line or ""),
+        tostring(candidate.baselineSequence or ""),
+        tostring(candidate.outboundSequence or ""),
+        tostring(operation.contaminatedAt or "")
       ))
     end
     if ready == true then
