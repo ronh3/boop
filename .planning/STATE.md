@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
 status: executing
-stopped_at: Completed 03-31-PLAN.md
-last_updated: "2026-08-04T21:43:09.796Z"
+stopped_at: Completed 03-32-PLAN.md
+last_updated: "2026-08-04T22:10:10.091Z"
 last_activity: 2026-08-04
-last_activity_desc: Completed Plan 03-31 same-observation standard candidate authority repair
+last_activity_desc: Completed Plan 03-32 autonomous GMCP refresh and execution-aware gold pickup repair
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 52
-  completed_plans: 45
-  percent: 87
+  completed_plans: 46
+  percent: 88
 ---
 
 # Project State
@@ -29,19 +29,19 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
-Plan: 32 of 38
+Plan: 33 of 38
 Status: Ready to execute
-Last activity: 2026-08-04 — Completed Plan 03-31 same-observation standard candidate authority repair
+Last activity: 2026-08-04 — Completed Plan 03-32 autonomous GMCP refresh and execution-aware gold pickup repair
 
-Progress: [█████████░] 87%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 45
+- Total plans completed: 46
 - Average duration: 14 min
-- Total execution time: 8.1 hours
+- Total execution time: 8.5 hours
 
 **By Phase:**
 
@@ -49,12 +49,12 @@ Progress: [█████████░] 87%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 31/38 | ~357m | ~12 min |
+| 03 | 32/38 | ~379m | ~12 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 03 P27 (9m), Phase 03 P28 (14m), Phase 03 P29 (12m), Phase 03 P30 (0m), Phase 03 P31 (14m)
-- Trend: Plan 03-31 closed the deterministic G-03-21 implementation seam; Plans 03-32 through 03-38 cover the remaining implementation and live-verification gaps
+- Last 5 plans: Phase 03 P28 (14m), Phase 03 P29 (12m), Phase 03 P30 (0m), Phase 03 P31 (14m), Phase 03 P32 (22m)
+- Trend: Plan 03-32 closed deterministic G-03-23 request and gold-completion coverage; Plans 03-33 through 03-38 cover the remaining implementation and live-verification gaps
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -90,6 +90,7 @@ Progress: [█████████░] 87%
 | Phase 03 P29 | 12m | 1 tasks | 8 files |
 | Phase 03 P30 | 0m | 3 tasks | 2 files |
 | Phase 03 P31 | 14m | 1 tasks | 5 files |
+| Phase 03 P32 | 22m | 1 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -192,6 +193,10 @@ Recent decisions affecting current work:
 - [Phase 03]: Plan 03-29: Defer six starting-HEAD boop_tick_spec expectation failures rather than weaken exact queued-standard ownership or edit an unrelated suite.
 - [Phase 03]: Plan 03-31 keeps dispatch authority application-exact and permits newer application ids only during result reconciliation in the same current room observation.
 - [Phase 03]: Plan 03-31 keeps manual and differently owned post-baseline outbound traffic ambiguous across same-room evidence refreshes and traces the exact rejection reason.
+- [Phase 03]: Plan 03-32 emits each autonomous item refresh with the documented empty-string body and one immediate whitespace transport flush.
+- [Phase 03]: Plan 03-32 excludes only trimmed-empty transport sends before command causality; every real manual or differently owned command remains observable.
+- [Phase 03]: Plan 03-32 starts full-pickup result timing once at the first full-ready execution opportunity for initial, retry, and replay dispatches; packing timing remains independent.
+- [Phase 03]: Plan 03-32 reuses exact room-fence, gold generation/dispatch, and pack-quarantine authority without adding a coordinator or public API.
 
 ### Pending Todos
 
@@ -225,6 +230,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T21:43:09.790Z
-Stopped at: Completed 03-31-PLAN.md
+Last session: 2026-08-04T22:10:10.085Z
+Stopped at: Completed 03-32-PLAN.md
 Resume file: None
