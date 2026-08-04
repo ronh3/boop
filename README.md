@@ -72,6 +72,9 @@ Standalone Mudlet package for Achaea auto hunting.
 
 ## Notes
 - Standard attacks and rage actions are independent and can fire together.
+- In queueing mode, every standard uses `queue addclearfull freestand BOOP_ATTACK`, so it replaces the whole balance/equilibrium queue rather than appending beside older work.
+- An observed queued standard owns an exact generation until the prompt after matching success/denial evidence. Candidate-free ready evidence starts one bounded grace and recovery retry instead of guessing completion immediately.
+- While that queued generation is pending, target changes, alias rebinding, another standard, Rage, and direct dispatch are serialized behind it.
 - When hunting is off, boop disables its trigger/text-replacement folder; aliases remain available so `boop on` and configuration commands still work.
 - `boop ragemode big` pools rage until a `Big Damage` rage attack is usable; it only uses `Small Damage` while big is on cooldown.
 - `boop ragemode aff` is rejected when the active class has no affliction rage ability; a stale cross-class `aff` setting uses `simple` damage selection until changed.
@@ -88,6 +91,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - `ih` shows all valid object rows, but only GMCP-recognized denizens get whitelist/blacklist action labels.
 - Denizens on the global blacklist do not show `ih` whitelist/blacklist action labels.
 - The global blacklist overrides every targeting mode, including manual targeting and leader target calls.
+- Ordinary target departure or movement quarantines the old fixed-alias standard without clearing or rebinding the native queue; old result evidence or its bounded grace must terminalize before replacement targeting resumes.
+- Explicit blacklist/forbidden-target revocation sends one traced `clearqueue all` before replacement, whether the forbidden target is proven present or current-room presence is unknown.
 - `boop walk` integrates with `demonnicAutoWalker`; if it is missing, use `boop walk install`.
 - Manual targeting is an intentional automatic-walk hold; use `boop targeting auto` before expecting route movement.
 - `boop walk stop` ends a boop-owned run or detaches from an external run; when no boop walk is active it reports `walk stop: no active boop walk`.
@@ -106,11 +111,12 @@ Standalone Mudlet package for Achaea auto hunting.
 - Psion includes `weave flurry &tar` as a standard damage option, so it can be selected with `boop prefer dam flurry`.
 - Magi includes `staffcast scintilla at &tar` and `staffcast dissolution at &tar` as standard damage options, selectable with `boop prefer dam scintilla` or `boop prefer dam dissolution`.
 - Hybrid rage skips fear-affliction primers; Psion hybrid treats `weave whirlwind &tar` as conditional on target `inhibit` or `stun`, uses `enact regrowth &tar` to prime inhibit, and otherwise falls back to simple damage with `psi devastate &tar` as the high-damage hit.
-- `Triumph suffuses you with incredible rage.` sets a one-shot free-rage flag; hybrid rage spends it on the highest ready damage or satisfied conditional rage attack, then clears it when a rage action is used.
+- A causally owned generic Battlerage cooldown closes a global Rage gate independently of per-ability timers; only exact `Available`-list recovery (or reconnect reset) reopens it, while ambiguous manual output is diagnostic only.
+- `Triumph suffuses you with incredible rage.` creates a bounded generation-owned free-rage credit. Hybrid rage spends it on the highest ready damage or satisfied conditional action, while matching use, expiry, causal insufficient-rage output, timeout, movement, replacement, or reconnect terminalizes it exactly once.
 - `diag` sends `clearqueue all`, then `queue addclearfull freestand diagnose`, and pauses attacks until the `Char.Afflictions.List` snapshot and following prompt; `You are: ...` and `You are in perfect health.` remain text fallbacks. A timeout releases the current hold, and a later explicit `diag` supersedes unresolved evidence from that dispatch.
 - Seeing `You are confused as to the effects of the venom.` twice since the last successful diagnosis automatically invokes the same diagnose interrupt. Its counter resets after diagnose evidence plus prompt; a timeout keeps the threshold armed so a later matching line retries.
 - `matic`, `catarin`, `fly`, and `ts` always use `queue addclearfull freestand` regardless of normal attack queueing and pause attacks until the next prompt, with the same timeout fallback via `diagTimeoutSeconds`.
-- `leap` first sends `clearqueue all`, queues the leap with `queue addclearfull freestand`, and keeps attacks paused across unrelated prompts until changed `Room.Info` confirms movement. Its timeout releases the hold if the leap is denied or never executes.
+- `leap` first sends `clearqueue all`, queues the leap with `queue addclearfull freestand`, and keeps attacks paused across unrelated prompts until changed `Room.Info` confirms movement. The exact owned hindered-legs denial immediately releases that leap as `command_failed`; ambiguous or unrelated denial remains diagnostic and retains the timeout fallback.
 - `pull <mobname> <direction>` uses the configured `boop separator` to send one chained game command: move in, use the highest available damage battlerage attack against the typed mob name, then `leap` back using the opposite direction.
 - Pull uses an owner-keyed operation lock and never changes saved enabled configuration.
 - Return-room GMCP releases the pull operation. A timeout at the origin also releases it; a timeout away keeps the same hold until matching return-room GMCP arrives, and stale callbacks from older generations are ignored.
@@ -128,7 +134,8 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop theme list` exposes boop's built-in themes plus the built-in ADB city/class palette names, so themes like `ashtan`, `depthswalker`, and `targossas` work directly in boop.
 - `boop trace on|off` controls persisted collection into the bounded trace buffer; `show` reads retained entries and `clear` empties them.
 - `boop trace live on|off` controls session-only streaming, starts off on package initialization, is not persisted, and does not enable collection.
-- Live trace output requires collection and live streaming to both be on; each newly accepted entry prints once as `trace live: HH:MM:SS | ...`.
+- Live trace output requires collection and live streaming to both be on. Operation enter/exit and exact interrupt success, failure, or timeout terminals render once per accepted producer event as `trace live: HH:MM:SS | ...`, before prompt gag summaries flush.
+- The retained 100-entry trace buffer keeps every accepted entry. Live output alone collapses unchanged expected target-removal, `room_partial`, and no-target fingerprints; a changed fingerprint, terminal lifecycle, denial, timeout, or authority failure remains visible.
 - Fenced item-list trace entries expose each GMCP response's `location`, `status`, `seen`, and `waits` fields. A `waits=inv` line means room contents arrived first but remain safety-held; `waits=room` means the requested room snapshot has not arrived yet.
 - After a fenced pair is accepted, the next natural tick may claim that exact pending room application ahead of its zero-delay fallback timer. The claim still requires the same application, room, and observation generation, so moved-room evidence remains fail closed.
 - Status surfaces compute lifecycle, room, target, attack-profile, and walker readiness directly. A missing or unusable attack profile is diagnostic state, not a new operation hold. Trace/debug list only active interrupt, pull, and gold operations.
@@ -148,7 +155,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Unnamable battlerage `Destroy` line is included in gag replacement coverage.
 - Unnamable/Infernal pet maul command lines (`hound maul`/`hyena maul`) are included in gag replacement coverage so their damage/crit can fold into a compact summary.
 - Common chaos hound follow-through flavor lines are also suppressed when a matching maul summary is pending.
-- If your current target disappears from room items (for example a party kill), boop now clears queued stale attack state in queueing mode and immediately retargets/ticks.
+- If your current target disappears from room items (for example a party kill), boop quarantines any exact queued standard until its old result/grace terminal; only then may retargeting replace it, without clearing the native queue for ordinary departure.
 - Standard profiles can define `openerAt100`; it fires once per target id when target HP is explicitly known as 100%.
 - Standard profiles can also define `opener`; it fires once per target id regardless of current HP when its required skills are available.
 - With `boop trace on`, opener decisions are logged with deduped reasons (for example selected, hp unknown, hp not full, already used).

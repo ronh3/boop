@@ -105,6 +105,42 @@ end
 
 boop.trace = boop.trace or {}
 
+local function routineLiveFingerprint(message)
+  local text = tostring(message or "")
+  if text == "tick: no target" then
+    return "tick_no_target", text
+  end
+  if text:find("room_partial", 1, true) then
+    return "room_partial", text
+  end
+  if boop.util.starts(text, "target lost:")
+      or text:find("target_lost", 1, true) then
+    return "target_removal", text
+  end
+  return nil, nil
+end
+
+local function shouldRenderLiveTrace(message)
+  local text = tostring(message or "")
+  if boop.util.starts(text, "operation enter:")
+      or boop.util.starts(text, "operation exit:")
+      or boop.util.starts(text, "interrupt terminal:") then
+    return true
+  end
+
+  local category, fingerprint = routineLiveFingerprint(text)
+  if not category then
+    return true
+  end
+
+  boop.state.trace.liveRoutine = boop.state.trace.liveRoutine or {}
+  if boop.state.trace.liveRoutine[category] == fingerprint then
+    return false
+  end
+  boop.state.trace.liveRoutine[category] = fingerprint
+  return true
+end
+
 function boop.trace.log(msg)
   if not msg or msg == "" then return end
   if not boop.config or not boop.config.traceEnabled then return end
@@ -122,7 +158,7 @@ function boop.trace.log(msg)
     table.remove(buf, 1)
   end
 
-  if boop.state.trace.live then
+  if boop.state.trace.live and shouldRenderLiveTrace(msg) then
     boop.util.info("trace live: " .. line)
   end
 end
@@ -149,6 +185,7 @@ end
 function boop.trace.clear()
   boop.state = boop.state or {}
   boop.state.trace.buffer = {}
+  boop.state.trace.liveRoutine = {}
   boop.util.ok("trace: cleared")
 end
 

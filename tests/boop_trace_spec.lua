@@ -697,3 +697,271 @@ describe("boop trace live session semantics", function()
     )
   end)
 end)
+
+describe("boop trace interrupt terminal visibility", function()
+  local feedback
+  local originalFeedback
+  local originalTraceLog
+  local producerCount
+  local scheduled
+  local sent
+  local timerStub
+  local killTimerStub
+  local sendStub
+  local tickStub
+  local gagPromptStub
+
+  local function countRetained(fragment)
+    local count = 0
+    for _, entry in ipairs(boop.state.trace.buffer or {}) do
+      if tostring(entry):find(fragment, 1, true) then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
+  local function countLive(fragment)
+    local count = 0
+    for _, entry in ipairs(feedback or {}) do
+      if entry.kind == "INFO"
+          and entry.message:find(fragment, 1, true) then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
+  before_each(function()
+    helper.reset()
+    boop.config.enabled = true
+    boop.config.traceEnabled = true
+    boop.config.diagTimeoutSeconds = 8
+    boop.state.trace.live = true
+
+    feedback = {}
+    producerCount = 0
+    scheduled = {}
+    sent = {}
+    originalFeedback = boop.util.feedback
+    originalTraceLog = boop.trace.log
+    boop.util.feedback = function(kind, message)
+      feedback[#feedback + 1] = {
+        kind = tostring(kind or ""),
+        message = tostring(message or ""),
+      }
+    end
+    boop.trace.log = function(message)
+      if tostring(message):find("interrupt terminal:", 1, true) then
+        producerCount = producerCount + 1
+      end
+      return originalTraceLog(message)
+    end
+
+    timerStub = stub(_G, "tempTimer", function(delay, callback)
+      scheduled[#scheduled + 1] = {
+        delay = delay,
+        callback = callback,
+      }
+      return #scheduled
+    end)
+    killTimerStub = stub(_G, "killTimer", function() end)
+    sendStub = stub(_G, "send", function(command)
+      sent[#sent + 1] = tostring(command or "")
+    end)
+    tickStub = stub(boop, "tick", function() end)
+  end)
+
+  after_each(function()
+    if gagPromptStub then
+      gagPromptStub:revert()
+      gagPromptStub = nil
+    end
+    if tickStub then tickStub:revert() tickStub = nil end
+    if sendStub then sendStub:revert() sendStub = nil end
+    if killTimerStub then killTimerStub:revert() killTimerStub = nil end
+    if timerStub then timerStub:revert() timerStub = nil end
+    boop.trace.log = originalTraceLog
+    boop.util.feedback = originalFeedback
+  end)
+
+  it("G-03-26 keeps a successful diag terminal exact once while bounding routine live noise", function()
+    gagPromptStub = stub(boop.gag, "onPrompt", function()
+      feedback[#feedback + 1] = {
+        kind = "GAG",
+        message = "prompt flush",
+      }
+    end)
+    assert.is_true(boop.ui.diag())
+    local staleTimeout = scheduled[1].callback
+    boop.trace.log("tick: no target")
+    boop.trace.log("tick: no target")
+    boop.trace.log("tick: no target")
+
+    assert.is_true(
+      boop.runtime.markOldestDiagEvidenceResult("trace regression")
+    )
+    boop.onPrompt()
+
+    local terminal = "interrupt terminal: interrupt:1 | generation=1 | name=diag | reason=diagnose_result_prompt"
+    assert.are.equal(1, countRetained("operation enter: interrupt:1"))
+    assert.are.equal(1, countLive("operation enter: interrupt:1"))
+    assert.are.equal(1, producerCount)
+    assert.are.equal(1, countRetained(terminal))
+    assert.are.equal(1, countLive(terminal))
+    assert.are.equal(3, countRetained("tick: no target"))
+    assert.are.equal(1, countLive("tick: no target"))
+
+    local terminalIndex
+    local gagIndex
+    for index, entry in ipairs(feedback) do
+      if entry.message:find(terminal, 1, true) then
+        terminalIndex = index
+      elseif entry.kind == "GAG" then
+        gagIndex = index
+      end
+    end
+    assert.is_number(terminalIndex)
+    assert.is_number(gagIndex)
+    assert.is_true(terminalIndex < gagIndex)
+
+    staleTimeout()
+    assert.are.equal(1, producerCount)
+    assert.are.equal(1, countRetained(terminal))
+    assert.are.equal(1, countLive(terminal))
+  end)
+
+  it("G-03-26 renders a prompt-only touch-shield terminal once and ignores its stale timeout", function()
+    boop.ui.touchShield()
+    local staleTimeout = scheduled[1].callback
+    assert.is_false(boop.runtime.completeInterrupt(0, "timeout"))
+    assert.are.equal(0, producerCount)
+
+    boop.onPrompt()
+
+    local terminal = table.concat({
+      "interrupt terminal: interrupt:1",
+      "generation=1",
+      "name=ts",
+      "reason=prompt_complete",
+    }, " | ")
+    assert.are.equal(1, countRetained("operation enter: interrupt:1"))
+    assert.are.equal(1, countLive("operation enter: interrupt:1"))
+    assert.are.equal(1, producerCount)
+    assert.are.equal(1, countRetained(terminal))
+    assert.are.equal(1, countLive(terminal))
+
+    staleTimeout()
+    boop.onPrompt()
+    assert.are.equal(1, producerCount)
+    assert.are.equal(1, countRetained(terminal))
+    assert.are.equal(1, countLive(terminal))
+  end)
+
+  it("G-03-26 renders a causally owned leap denial once and rejects later evidence", function()
+    local denial = "Both of your legs must be free and unhindered to do that."
+    boop.ui.leap("north")
+    local staleTimeout = scheduled[1].callback
+    assert.are.equal(2, #sent)
+    boop.onDataSendRequest("sysDataSendRequest", sent[1])
+    boop.onDataSendRequest("sysDataSendRequest", sent[2])
+
+    assert.is_true(boop.runtime.onLeapCommandDenied(denial))
+
+    local terminal = table.concat({
+      "interrupt terminal: interrupt:1",
+      "generation=1",
+      "name=leap",
+      "reason=command_failed",
+    }, " | ")
+    assert.are.equal(1, countRetained("operation enter: interrupt:1"))
+    assert.are.equal(1, countLive("operation enter: interrupt:1"))
+    assert.are.equal(1, producerCount)
+    assert.are.equal(1, countRetained(terminal))
+    assert.are.equal(1, countLive(terminal))
+
+    assert.is_false(boop.runtime.onLeapCommandDenied(denial))
+    staleTimeout()
+    gmcp.Room.Info.num = 2
+    boop.onRoomInfo()
+    assert.are.equal(1, producerCount)
+    assert.are.equal(1, countRetained(terminal))
+    assert.are.equal(1, countLive(terminal))
+  end)
+
+  it("G-03-26 renders timeout terminal evidence once and keeps stale prompt completion inert", function()
+    boop.ui.matic()
+    local timeout = scheduled[1].callback
+
+    timeout()
+
+    local terminal = table.concat({
+      "interrupt terminal: interrupt:1",
+      "generation=1",
+      "name=matic",
+      "reason=timeout",
+    }, " | ")
+    assert.are.equal(1, countRetained("operation enter: interrupt:1"))
+    assert.are.equal(1, countLive("operation enter: interrupt:1"))
+    assert.are.equal(1, producerCount)
+    assert.are.equal(1, countRetained(terminal))
+    assert.are.equal(1, countLive(terminal))
+
+    boop.onPrompt()
+    timeout()
+    assert.are.equal(1, producerCount)
+    assert.are.equal(1, countRetained(terminal))
+    assert.are.equal(1, countLive(terminal))
+  end)
+
+  it("G-03-26 collapses only unchanged routine live fingerprints", function()
+    boop.trace.log("tick: no target")
+    boop.trace.log("tick: no target")
+    boop.trace.log("tick: no target")
+    boop.trace.log("tick held: room_partial -- waits=inv")
+    boop.trace.log("tick held: room_partial -- waits=inv")
+    boop.trace.log("tick held: room_partial -- waits=room")
+    boop.trace.log("target lost: 42 -- first target")
+    boop.trace.log("target lost: 42 -- first target")
+    boop.trace.log("target lost: 43 -- changed target")
+    boop.trace.log("room effect rejected: attack | authority changed")
+    boop.trace.log("room effect rejected: attack | authority changed")
+    boop.trace.log("interrupt terminal: test | reason=timeout")
+    boop.trace.log("interrupt terminal: test | reason=timeout")
+
+    assert.are.equal(13, #boop.state.trace.buffer)
+    assert.are.equal(1, countLive("tick: no target"))
+    assert.are.equal(2, countLive("tick held: room_partial"))
+    assert.are.equal(2, countLive("target lost:"))
+    assert.are.equal(2, countLive("room effect rejected:"))
+    assert.are.equal(2, countLive("reason=timeout"))
+  end)
+
+  it("G-03-26 exposes the retained-versus-live terminal contract in installed help", function()
+    local diagnostics
+    for _, topic in ipairs(boop.ui.helpTopics or {}) do
+      if topic.key == "diagnostics" then
+        diagnostics = topic
+        break
+      end
+    end
+
+    assert.is_table(diagnostics)
+    local notes = table.concat(diagnostics.notes or {}, " ")
+    assert.is_truthy(notes:find(
+      "success, failure, and timeout terminals always render live",
+      1,
+      true
+    ))
+    assert.is_truthy(notes:find(
+      "retained 100-entry buffer keeps every accepted routine event",
+      1,
+      true
+    ))
+    assert.is_truthy(notes:find(
+      "only unchanged `target_lost`, `room_partial`, and no-target fingerprints collapse",
+      1,
+      true
+    ))
+  end)
+end)
