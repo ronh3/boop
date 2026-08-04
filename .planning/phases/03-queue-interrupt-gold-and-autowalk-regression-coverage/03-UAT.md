@@ -4,7 +4,7 @@ phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-07-31T22:23:42-07:00
+updated: 2026-08-03T23:14:14-07:00
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -14,11 +14,37 @@ updated: 2026-07-31T22:23:42-07:00
 number: 2
 name: Simplified runtime and stale-target recovery
 expected: |
-  With boop 0.1.459 installed, lifecycle, room, target, and walker status are
+  With boop 0.1.468 installed, lifecycle, room, target, and walker status are
   computed directly. Only interrupt, pull, and gold operations may hold
   automation. Movement, accepted room evidence, or a global-blacklist edit
   clears an ineligible target without stopping the walker.
-awaiting: exact-SHA CI, package installation, then user response
+
+  Step-by-step:
+  1. Install 0.1.468 and reconnect or reload. In an empty room on a configured
+     route, run `boop off`, `boop trace clear`, `boop trace on`,
+     `boop trace live on`, `boop targeting manual`, `boop on`,
+     `boop walk start`, `boop status`, and `boop debug`.
+     Confirm the version is 0.1.468, status is `manual_targeting` rather than
+     `room_clear`, `ACTIVE OPERATIONS` is empty, and no movement occurs.
+  2. Run `boop targeting auto` without issuing `ql`, `ih`, or another refresh.
+     In a clear room, the walker should advance once naturally.
+  3. Let the walker enter a room containing a wanted denizen. Do not issue
+     `ql`, `ih`, `boop status`, or another refresh. Boop should select and
+     attack from the natural GMCP sequence. After the target dies or is
+     removed, the walker should leave without retaining `engaged_target`.
+  4. In another wanted-denizen room, switch to `boop targeting manual`, select
+     that denizen, then run `boop blacklist global add <exact mob name>`.
+     Confirm the current target and queued attack intent clear immediately.
+     The walk remains active but is held by `manual_targeting`; run
+     `boop targeting auto` and confirm it resumes. Clean up with
+     `boop blacklist global remove <exact mob name>`.
+  5. Run `boop trace show 100`. Normal transitions may mention
+     `room_partial`, `room_clear`, or `ready`, but only interrupt, pull, and
+     gold should appear as operation enter/exit records. If a response shows
+     `status=accepted`, the next natural tick may claim that exact room
+     application and should not require a manual refresh.
+  6. Clean up with `boop walk stop` and `boop trace live off`.
+awaiting: package installation, then user response
 
 ## Tests
 
@@ -53,35 +79,38 @@ observed: "Clean reconnect, prompt-first, and enable-before-prompt checks passed
 ### 2. Cross-owner attack, loot, and walk release
 
 expected: |
-  With boop 0.1.459 installed, manual targeting remains an intentional
+  With boop 0.1.468 installed, manual targeting remains an intentional
   automatic-walk status and is reported as `manual_targeting`, not
   `room_clear`. Lifecycle, room readiness, target eligibility, and walker state
   are computed directly; only interrupt, pull, and gold appear as active
   operations. Movement, accepted room evidence, and blacklist edits clear stale
   target intent without stopping the walker.
 
-  Easy check:
-  1. Install 0.1.459, reconnect or reload, then run `boop status`. Confirm it
-     prints `version: 0.1.459`. In `boop debug`, `ACTIVE OPERATIONS` should be
-     empty unless an interrupt, pull, or gold action is actually in progress.
-  2. Run `boop on`, `boop targeting auto`, and `boop walk start`. Engage a
-     wanted denizen without issuing `ql`, `ih`, `boop status`, or another
-     refresh after entering the room. Combat must begin from the natural GMCP
-     sequence. Stop combat if necessary, then leave the room. `boop status`
-     must not retain that old target as `engaged_target`; the walker must remain
-     active and proceed when the destination room is clear.
-  3. In a safe room, target a denizen and add that exact name to the global
-     blacklist. The target id/name and queued attack intent must clear
-     immediately, even in manual mode, while the walker state remains intact.
-  4. Run `boop trace show 100`. Normal room and target transitions may report
-     computed `room_partial`, `room_clear`, or `ready` status, but must not
-     produce room, target, GMCP, or walker operation enter/exit records.
-  5. For any delayed room, inspect `gmcp item list response` trace entries.
-     `waits=inv` means the room contents arrived first but were held for the
-     inventory barrier; `waits=room` means the requested room snapshot itself
-     had not arrived. After `status=accepted`, the next natural tick should log
-     `room application claimed: source=tick` and queue the attack without
-     another `room_partial` hold.
+  Step-by-step:
+  1. Install 0.1.468 and reconnect or reload. In an empty room on a configured
+     route, run `boop off`, `boop trace clear`, `boop trace on`,
+     `boop trace live on`, `boop targeting manual`, `boop on`,
+     `boop walk start`, `boop status`, and `boop debug`.
+     Confirm the version is 0.1.468, status is `manual_targeting` rather than
+     `room_clear`, `ACTIVE OPERATIONS` is empty, and no movement occurs.
+  2. Run `boop targeting auto` without issuing `ql`, `ih`, or another refresh.
+     In a clear room, the walker should advance once naturally.
+  3. Let the walker enter a room containing a wanted denizen. Do not issue
+     `ql`, `ih`, `boop status`, or another refresh. Boop should select and
+     attack from the natural GMCP sequence. After the target dies or is
+     removed, the walker should leave without retaining `engaged_target`.
+  4. In another wanted-denizen room, switch to `boop targeting manual`, select
+     that denizen, then run `boop blacklist global add <exact mob name>`.
+     Confirm the current target and queued attack intent clear immediately.
+     The walk remains active but is held by `manual_targeting`; run
+     `boop targeting auto` and confirm it resumes. Clean up with
+     `boop blacklist global remove <exact mob name>`.
+  5. Run `boop trace show 100`. Normal transitions may mention
+     `room_partial`, `room_clear`, or `ready`, but only interrupt, pull, and
+     gold should appear as operation enter/exit records. If a response shows
+     `status=accepted`, the next natural tick may claim that exact room
+     application and should not require a manual refresh.
+  6. Clean up with `boop walk stop` and `boop trace live off`.
 result: [pending]
 reported: |
   Take a look at the log trace from output.md. Am still seeing delay between
@@ -110,7 +139,7 @@ oldest_result: "Before Plans 03-11/03-12, List-before-Info followed by same-room
 ### 3. Wrong-room gold and pack transfer
 
 expected: |
-  With boop 0.1.459 installed, a gold Item.Add in an already settled room
+  With boop 0.1.468 installed, a gold Item.Add in an already settled room
   requests one current-room revalidation but cannot authorize pickup by itself.
   Only the matching fenced room List may queue one
   `queue add full get sovereigns`. Confirmed pickup may queue one freestand put,
@@ -177,7 +206,7 @@ expected: |
   The immutable final commit is present on origin and `main.yml` succeeds for
   that exact `headSha`. The complete packaged real-Mudlet Busted suite,
   including Psion and Dragon pull-profile cases, reports no failures or errors
-  while building synchronized package 0.1.459.
+  while building synchronized package 0.1.468.
 result: [pending]
 source: automated
 previous_result: pass
@@ -214,12 +243,152 @@ observed: "Collection-off isolation, exact-once live streaming, show/clear buffe
 previous_reported: "Could we introduce a debug mode that will essentially show the trace log events/actions in real time? I feel that might be handy here, to help correlate what's on the screen with boop's logs."
 previous_severity: minor
 
+### 7. Standard command outcome recovery
+
+expected: |
+  Every boop-owned standard command reaches one exact terminal outcome:
+  executed, denied, expired, or cancelled. A denial while paralysed, stunned,
+  prone, webbed, impaled, or unable to use the required limbs must neither
+  leave `prequeuedStandard` stuck nor produce a retry storm. Boop waits for the
+  relevant recovery evidence, then retries once if the same target and room
+  authority remain valid. A silently lost native queue entry expires after a
+  bounded grace period and is replaced once.
+
+  Post-fix easy check:
+  1. Run `boop trace clear`, `boop trace on`, and `boop trace live on` while
+     hunting with prequeue enabled.
+  2. Capture one standard attack rejected by paralysis or prone state. After
+     the condition clears and a ready prompt arrives, confirm one replacement
+     attack is queued without running `diag`, `ql`, or `boop status`.
+  3. Capture one web, impale, or unavailable-arms period. Confirm boop does not
+     repeatedly send the same impossible attack, then queues one attack after
+     the restraint clears.
+  4. Run `boop trace show 100`. Confirm each standard dispatch has target,
+     generation, and terminal reason, with no unbounded pending intent.
+result: issue
+reported: "During the hour-long 0.1.468 trace, boop repeatedly stopped attacking after rejected or silently lost standard commands and resumed only after unrelated manual commands or balance/equilibrium events."
+severity: blocker
+observed: "Paralysis rejection at output.md:7093 cleared at 7104 but no retry occurred until diag caused a new queue at 7229. A prone rejection at 9233 remained idle until 9307. A command queued at 30974 silently disappeared and was not replaced until 31090. Conversely, impale/web sequences beginning at 20880, 38747, and 41049 produced repeated denial storms until external curing succeeded."
+
+### 8. Leap command denial recovery
+
+expected: |
+  An explicit server denial for the active leap terminates only that leap
+  generation immediately, cancels its timeout, and releases its combat and
+  queue ownership. The next `diag` or eligible attack may proceed normally;
+  stale room-change and timeout callbacks from the denied generation are
+  harmless.
+
+  Post-fix easy check:
+  1. With boop and live trace enabled, arrange for a queued `leap <direction>`
+     to be rejected because a leg becomes hindered before it executes.
+  2. Confirm the denial produces one `operation exit` and one terminal trace
+     with a command-failed reason immediately rather than after eight seconds.
+  3. Run `diag` after the denial and confirm it queues normally. Verify the old
+     leap timeout produces no later state change or duplicate output.
+result: issue
+reported: "A leap rejected by newly broken legs prevented diagnose and all boop attacks until the complete eight-second fallback timer expired."
+severity: major
+observed: "Leap generation 32 entered at output.md:10755. Achaea definitively rejected it at 10783, but boop refused diag at 10803 and held combat/queue until timeout released the owner at 10824."
+
+### 9. Inventory-owned gold packing recovery
+
+expected: |
+  Confirmed inventory gold may retry one displaced or failed pack command, but
+  exhausted packing recovery cannot own combat, queue, or walk indefinitely.
+  After a bounded terminal warning, hunting resumes, no duplicate put command
+  is emitted, and the retained inventory gold may be packed by a later safe
+  retry. Late evidence from the old dispatch is harmless.
+
+  Post-fix easy check:
+  1. Configure a pack container and enable live trace. Trigger direct-to-hands
+     gold or complete a normal pickup so packing owns inventory gold.
+  2. Displace the pending put with `diag`, then allow the single replay to
+     receive no explicit success evidence.
+  3. Confirm boop warns once, releases combat and walk after the bounded retry,
+     and does not emit another put from prompts, status commands, or stale
+     callbacks.
+  4. Confirm a later safe packing opportunity can still put the sovereigns
+     without requiring `boop off` to recover hunting.
+result: issue
+reported: "Gold packing entered an explicit-evidence state after diag displacement and prevented automated combat for roughly thirty seconds until boop was manually disabled."
+severity: blocker
+observed: "Gold owner 221 entered at output.md:12397, was displaced at 12443, and entered the nonterminal explicit-evidence timeout at 12494-12499. Manual attacks succeeded after hindrances cleared, but automation remained held until `bh` disabled boop at 12805. Four other pack owners remained held for the full four-second pending timeout."
+
+### 10. Target invalidation reconciles native attack intent
+
+expected: |
+  When movement, room evidence, death, blacklist changes, or target removal
+  invalidates a target, boop cancels or neutralizes only its own queued attack
+  intent. The stale `BOOP_ATTACK` payload cannot execute against the departed
+  target or a later replacement target, and unrelated user/native queue work
+  is never cleared.
+
+  Post-fix easy check:
+  1. Enable prequeue and live trace, then let boop stage an attack against a
+     valid denizen while balance or equilibrium is unavailable.
+  2. Remove or globally blacklist that exact target before the queued command
+     executes.
+  3. Confirm target and local intent clear immediately, the old command never
+     fires, and no broad `clearqueue all` removes unrelated commands.
+  4. Confirm a newly selected target receives only its own newly generated
+     attack.
+result: issue
+reported: "Target removal cleared boop's local attack state but left an old BOOP_ATTACK invocation in Achaea's native queue."
+severity: major
+observed: "A giant bat left and local intent cleared at output.md:29998, but the old alias still executed and failed at 30018. The same race appears at 3567-3590."
+
+### 11. Battlerage cooldown and Triumph expiry
+
+expected: |
+  Boop treats Achaea's global battlerage cooldown as shared readiness, consumes
+  the observed global recovery line, and never repeatedly sends an ability
+  during that cooldown. Triumph free rage is one-shot and bounded: use,
+  explicit expiry, insufficient-rage denial, reconnect, or timeout clears it
+  without suppressing later ordinary battlerage readiness.
+
+  Post-fix easy check:
+  1. Enable live trace and use battlerage until Achaea reports the global
+     cooldown. Confirm no second boop rage command is sent before the global
+     `Available abilities:` recovery line.
+  2. Confirm that recovery line restores the listed abilities without waiting
+     for an unrelated prompt or fallback.
+  3. Gain Triumph free rage, then allow it to expire without spending it.
+     Confirm boop does not attempt a free action afterward and ordinary rage
+     remains usable when available.
+result: issue
+reported: "The trace contained repeated global battlerage cooldown denials and one stale Triumph free-rage attempt after the server-side benefit expired."
+severity: major
+observed: "Nine boop-generated rage attempts hit the global cooldown, including output.md:159-165. Triumph was set at 23339, remained across rooms, expired server-side at 23772, and caused an insufficient-rage failure at 23788."
+
+### 12. Complete and useful live operation trace
+
+expected: |
+  Every operation enter displayed by live trace has one corresponding terminal
+  exit with owner, generation, and reason. Successful interrupt completion is
+  as visible as timeout completion. Expected target removal, repeated
+  `room_partial`, and repeated no-target ticks remain available in the retained
+  buffer but do not flood the live stream or masquerade as leaked operations.
+
+  Post-fix easy check:
+  1. Clear trace, enable collection and live streaming, then run one successful
+     `diag`, one successful `ts`, and one denied leap.
+  2. Confirm each interrupt prints exactly one enter and one terminal exit with
+     the correct generation and reason.
+  3. Hunt through several clear rooms and kills. Confirm normal target death
+     and repeated room/no-target state do not obscure operation transitions in
+     live output; `boop trace show 100` must retain enough detail for audit.
+result: issue
+reported: "The hour trace showed interrupt owners entering but omitted successful terminal exits, making healthy completion indistinguishable from a leaked blocker during forensic review."
+severity: minor
+observed: "Forty-three interrupt owners entered; only the timed-out leap displayed an exit. Combat resumed after the other forty-two, proving the owners completed even though their terminal trace records were absent from live output. The capture also contained 169 target_lost warnings, 505 room_partial holds, and 1362 no-target ticks."
+
 ## Summary
 
-total: 6
+total: 12
 passed: 3
-issues: 1
-pending: 2
+issues: 6
+pending: 3
 skipped: 0
 blocked: 0
 
@@ -732,3 +901,148 @@ blocked: 0
     - "0.1.462 movement-correlated provisional combat wake"
     - "0.1.463 full-name movement direction aliases"
   verification: "The focused event-transition suite passes 66/66, including all 22 supported direction commands, combat-only destination wake-up, no provisional gold/walker authority, and expiry rejection. Eleven adjacent lifecycle, runtime, tick, trace, gold, walk, target, prequeue, state-contract, and safety host suites pass 173/173; the 0.1.463 Muddler package and release gates pass. Exact-SHA Mudlet CI remains pending."
+
+- gap_id: G-03-21
+  truth: "Every boop-owned standard command reaches executed, denied, expired, or cancelled exactly once; explicit inability waits for relevant recovery and retries once, while silent native-queue loss expires once without leaving hunting stuck or producing a denial storm."
+  status: pending
+  reason: "The live 0.1.468 trace contains repeated post-denial stalls that recover only after unrelated balance/equilibrium use or manual diag, one silent native-queue disappearance, and repeated impossible-command storms under restraint."
+  severity: blocker
+  test: 7
+  root_cause: "Standard dispatch is represented chiefly by the `prequeuedStandard` boolean. It is set after send and normally cleared by later balance/equilibrium-use evidence, but has no exact generation, target, timestamp, acceptance, denial, or expiry lifecycle. Rejected commands may therefore remain marked queued forever; unrelated balance events may instead clear the flag repeatedly and resend while the same inability still exists."
+  evidence:
+    - "output.md:7093-7229 - paralysis denial, cure, then approximately twelve seconds idle until diag indirectly resets the queue state."
+    - "output.md:9233-9307 - prone denial remains stuck after standing and ready prompt until diag."
+    - "output.md:30974-31098 - staged command silently disappears with no denial or retry until diag."
+    - "output.md:20880-20950, 38747-38814, 41049-41101 - impale/web/limb denials repeat until external recovery."
+  artifacts:
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "Prequeue state has no exact terminal failure or bounded-expiry transition."
+    - path: "src/scripts/boop/boop_attacks.lua"
+      issue: "A true prequeuedStandard flag suppresses normal standard execution without proving the server still owns the command."
+    - path: "src/scripts/boop/boop_util.lua"
+      issue: "Native standard queue emission records no generation, target, send time, or expected outcome."
+    - path: "src/triggers/boop/Core/triggers.json"
+      issue: "No guarded standard-command denial adapters cover observed paralysis, stun, prone, web, impale, or unavailable-limb outcomes."
+    - path: "tests/boop_prequeue_spec.lua"
+      issue: "Coverage omits denial-to-recovery and silent native-queue loss chronologies."
+  missing:
+    - "Represent each boop-owned standard dispatch with exact generation, room/target authority, send time, and first-terminal outcome."
+    - "Classify observed inability denials only while a matching standard dispatch is pending; do not react to unrelated manual commands."
+    - "Hold retries while the relevant inability remains, then permit exactly one retry after trustworthy recovery evidence."
+    - "Expire a silent pending standard after a short ready-prompt grace period and replace it at most once when room and target authority are unchanged."
+    - "Add deterministic regressions for paralysis, prone, stun, impale, web, unavailable arms, stale callbacks, target changes, and silent queue loss."
+
+- gap_id: G-03-22
+  truth: "A definitive denial for the active leap terminalizes only that leap generation immediately, releases combat and queue ownership, permits the next interrupt or attack, and makes its later timeout or room callback a no-op."
+  status: pending
+  reason: "Achaea rejected a queued leap because a leg became hindered after queueing, but boop ignored the definitive outcome and blocked diagnose and combat until its eight-second timeout."
+  severity: major
+  test: 8
+  root_cause: "Leap uses the shared room-change interrupt lifecycle, whose normal terminal evidence is moved Room.Info and whose fallback is the generic interrupt timer. There is no leap-specific command-failure trigger or generation-guarded adapter, so explicit negative evidence cannot call completeInterrupt."
+  evidence:
+    - "output.md:10755-10829 - leap generation 32 enters, receives the exact leg denial at 10783, rejects diag at 10803, and resumes only after timeout at 10824."
+  artifacts:
+    - path: "src/scripts/boop/boop_ui.lua"
+      issue: "Leap establishes a room-change interrupt but has no immediate command-failure path."
+    - path: "src/scripts/boop/boop_runtime.lua"
+      issue: "Existing exact completeInterrupt authority is not reached by leap denial evidence."
+    - path: "src/triggers/boop/Diag/triggers.json"
+      issue: "Interrupt trigger coverage omits the observed leap leg-denial sentence."
+    - path: "tests/boop_interrupt_spec.lua"
+      issue: "Tests cover room-change and no-evidence timeout, not definitive denial before timeout."
+  missing:
+    - "Add an exact observed leap-denial trigger that only acts when the active nonterminal operation is the matching leap generation."
+    - "Complete that operation once with a command-failed reason, cancel its timer, and resume through the normal tick path without clearing unrelated owners."
+    - "Regress denial with no active leap, denial during another interrupt, late timeout, late room change, and immediate follow-up diag/attack."
+
+- gap_id: G-03-23
+  truth: "Confirmed inventory gold may receive bounded packing recovery, but exhausted or ambiguous put evidence cannot indefinitely own combat, queue, or walk; hunting resumes without duplicate put commands and the retained gold may be packed later."
+  status: pending
+  reason: "After diag displaced a gold put, the replay's fresh timeout deliberately entered an indefinite explicit-evidence state. Hunting remained held for roughly thirty seconds and recovered only when the operator disabled boop."
+  severity: blocker
+  test: 9
+  root_cause: "The displacement-replay timeout sets awaitingExplicitEvidence and returns without terminalizing or narrowing the gold owner's systems. The inventory-owned pack blocker therefore continues holding combat, gold, queue, and walk even though the sovereigns are already safe in inventory and no further automatic replay is allowed. This is the contract previously encoded by Plans 03-23/03-24 and is superseded by this live UAT decision."
+  evidence:
+    - "output.md:12397-12830 - gold:221 enters, diag displaces it, replay times out into explicit-evidence hold, manual attacks work, and only boop disable releases automation."
+    - "output.md:3109-3181, 15974-16070, 25360-25404, 32441-32480 - four additional pack owners consume their full pending timeout without explicit completion."
+  artifacts:
+    - path: "src/scripts/boop/boop_events.lua"
+      issue: "Fresh displacement-replay timeout is intentionally nonterminal and retains every pack blocker subsystem indefinitely."
+    - path: "src/scripts/boop/boop_runtime.lua"
+      issue: "Runtime correctly enforces the overly broad pack owner, so combat cannot recover independently."
+    - path: "tests/boop_gold_retry_spec.lua"
+      issue: "Existing tests explicitly require indefinite explicit-evidence ownership after replay timeout."
+  missing:
+    - "Preserve at-most-once put semantics and late-evidence safety while releasing combat, queue, and walk after bounded pack recovery is exhausted."
+    - "Retain enough inventory-owned state for one later safe packing opportunity without leaving an active automation owner or automatically replaying on every prompt."
+    - "Update the prior indefinite-hold regression contract and cover diag displacement, silent put loss, explicit success/failure, late evidence, disable, reconnect, and no duplicate sends."
+
+- gap_id: G-03-24
+  truth: "Invalidating a target reconciles boop's exact queued native attack so stale BOOP_ATTACK work cannot execute against the departed or replacement target, while unrelated user and native queue work remains untouched."
+  status: pending
+  reason: "The live trace showed target intent clear locally after room removal, followed by the previously queued server alias executing anyway and failing against the absent denizen."
+  severity: major
+  test: 10
+  root_cause: "clearAttackIntent invalidates Lua plans, flags, and alias metadata but deliberately performs no native queue reconciliation. Existing regression coverage codifies that behavior, so a BOOP_ATTACK invocation already owned by Achaea may survive target loss and execute after local authority is gone."
+  evidence:
+    - "output.md:29998-30018 - giant bat removal clears local intent, then the stale alias executes and receives a cannot-see-target rejection."
+    - "output.md:3567-3590 - the same stale queued invocation race occurs after target removal."
+  artifacts:
+    - path: "src/scripts/boop/boop_runtime.lua"
+      issue: "Local attack invalidation has no exact native queue cancellation or neutralization boundary."
+    - path: "tests/boop_event_transitions_spec.lua"
+      issue: "The target-loss test currently requires local cleanup without native queue reconciliation."
+  missing:
+    - "Cancel, neutralize, or generation-guard only boop-owned queued attack work when target/room authority is invalidated."
+    - "Do not use broad clearqueue all for ordinary target loss and do not erase unrelated user queue entries."
+    - "Prove an old invocation cannot execute either its departed-target payload or a replacement target's newly installed payload."
+    - "Regress target death, Item.Remove, room movement, blacklist edits, retargeting, and late native execution."
+
+- gap_id: G-03-25
+  truth: "Global battlerage cooldown and recovery evidence governs rage dispatch exactly once, and Triumph free rage expires on use or definitive expiry without leaking across rooms or suppressing later ordinary rage."
+  status: pending
+  reason: "The live trace contains nine boop-generated commands rejected by the global battlerage cooldown and one free-rage attempt after Triumph had expired server-side."
+  severity: major
+  test: 11
+  root_cause: "Rage readiness is tracked primarily per ability and marked unavailable optimistically after send. Trigger coverage does not consume the observed global `Available abilities:` recovery sentence or cooldown denial. Triumph is an untimed boolean cleared on use but not on the observed expiry/insufficient-rage lifecycle."
+  evidence:
+    - "output.md:159-165 - Windlash is sent during global cooldown, rejected, then the global available-abilities line announces recovery."
+    - "output.md:23339-23788 - Triumph remains set across rooms, expires server-side, then produces an insufficient-rage attempt."
+  artifacts:
+    - path: "src/scripts/boop/boop_rage.lua"
+      issue: "No canonical global rage cooldown lifecycle exists and Triumph has no bounded expiry evidence."
+    - path: "src/scripts/boop/boop_attacks.lua"
+      issue: "Rage dispatch consumes optimistic per-ability state without shared cooldown outcome reconciliation."
+    - path: "src/triggers/boop/Rage/triggers.json"
+      issue: "The observed global recovery and denial/expiry forms are not wired."
+    - path: "tests/boop_rage_spec.lua"
+      issue: "Coverage omits global cooldown denial/recovery and stale Triumph chronologies."
+  missing:
+    - "Track the shared battlerage cooldown independently from listed per-ability readiness and parse the exact observed global recovery line."
+    - "Guard cooldown denial handling to a pending boop rage dispatch and prevent repeated sends before recovery."
+    - "Clear Triumph on use, explicit expiry, definitive insufficient-rage evidence, reconnect, or a bounded timeout without corrupting ordinary rage readiness."
+    - "Add deterministic trigger-manifest and behavior regressions for cooldown, recovery lists, free use, expiry, and late evidence."
+
+- gap_id: G-03-26
+  truth: "Live trace displays one exact terminal exit for every displayed operation enter, including successful interrupts, while routine room/no-target/expected-removal repetition remains auditable without obscuring lifecycle transitions."
+  status: pending
+  reason: "The hour capture showed forty-three interrupt entries but only the timed-out leap printed an exit; later attacks prove the other owners completed, so the live forensic surface is incomplete rather than the operation table leaking."
+  severity: minor
+  test: 12
+  root_cause: "completeInterrupt clears the exact owner and records terminal trace entries in source, but successful completion lines do not reach the captured live stream. The loss mechanism may be trigger/gag rendering order or installed/source wiring and requires a focused reproduction. Separately, expected target removal and repeated room/no-target state are emitted at warning/live frequency high enough to obscure uncommon transitions."
+  evidence:
+    - "output.md:6989-7032 - interrupt:23 enters, receives result, releases, and combat resumes without a visible terminal exit."
+    - "output.md:44762-44808 - interrupt:61 likewise completes and combat resumes before live trace is disabled."
+    - "The capture contains 169 target_lost warnings, 505 room_partial holds, and 1362 no-target ticks."
+  artifacts:
+    - path: "src/scripts/boop/boop_runtime.lua"
+      issue: "Successful interrupt terminal records exist in source but are absent from live captured output."
+    - path: "src/scripts/boop/boop_util.lua"
+      issue: "Live-stream acceptance/rendering must be checked for terminal records emitted during prompt-trigger processing."
+    - path: "tests/boop_trace_spec.lua"
+      issue: "Coverage proves collection/live isolation but not exact enter-to-terminal visibility through successful interrupt completion."
+  missing:
+    - "Reproduce and identify whether successful terminal loss occurs before trace acceptance, during live rendering, or from installed/source drift."
+    - "Guarantee one visible owner/generation/reason terminal for successful, failed, and timed-out operations without tracing the trace output itself."
+    - "Downgrade or deduplicate expected target death/removal and repeated unchanged room/no-target live events while retaining bounded-buffer forensic detail."
+    - "Add exact-once trace regressions for successful diag, prompt-only interrupt, denied leap, timeout, and repeated-state suppression."
