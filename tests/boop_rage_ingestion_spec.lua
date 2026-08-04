@@ -1,5 +1,175 @@
 local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper.lua")
 
+local NO_ABILITIES_RECOVERY =
+  "You can use another Battlerage ability again, but none of your abilities are currently available."
+
+local function deepCopy(value)
+  if type(value) ~= "table" then
+    return value
+  end
+  local out = {}
+  for key, entry in pairs(value) do
+    out[deepCopy(key)] = deepCopy(entry)
+  end
+  return out
+end
+
+local function readRepoFile(relativePath)
+  local root = assert(os.getenv("BOOP_REPO_ROOT"))
+  local handle = assert(io.open(root .. "/" .. relativePath, "r"))
+  local contents = handle:read("*a")
+  handle:close()
+  return contents
+end
+
+local function rageOutcomePatterns()
+  local manifestText = readRepoFile(
+    "src/triggers/boop/Rage/triggers.json"
+  )
+  local startAt = assert(manifestText:find(
+    '"name": "Rage Command Outcome"',
+    1,
+    true
+  ))
+  local endAt = assert(manifestText:find(
+    '"name": "Triumph Free Rage"',
+    startAt,
+    true
+  ))
+  local triggerText = manifestText:sub(startAt, endAt - 1)
+  local patterns = {}
+  for encoded in triggerText:gmatch('"pattern"%s*:%s*"(.-)"') do
+    patterns[#patterns + 1] = encoded:gsub("\\\\", "\\")
+  end
+  return patterns
+end
+
+local REGEX_META = {
+  ["."] = true,
+  ["["] = true,
+  ["]"] = true,
+  ["("] = true,
+  [")"] = true,
+  ["{"] = true,
+  ["}"] = true,
+  ["*"] = true,
+  ["+"] = true,
+  ["?"] = true,
+  ["|"] = true,
+  ["^"] = true,
+  ["$"] = true,
+}
+
+local function anchoredLiteralRegexMatches(pattern, value)
+  if pattern:sub(1, 1) ~= "^" or pattern:sub(-1) ~= "$" then
+    return false
+  end
+  local body = pattern:sub(2, -2)
+  local literal = {}
+  local index = 1
+  while index <= #body do
+    local char = body:sub(index, index)
+    if char == "\\" then
+      if index == #body then
+        return false
+      end
+      literal[#literal + 1] = body:sub(index + 1, index + 1)
+      index = index + 2
+    elseif REGEX_META[char] then
+      return false
+    else
+      literal[#literal + 1] = char
+      index = index + 1
+    end
+  end
+  return table.concat(literal) == tostring(value or "")
+end
+
+local function matchingOutcomePatterns(rawLine)
+  local matches = {}
+  for _, pattern in ipairs(rageOutcomePatterns()) do
+    if anchoredLiteralRegexMatches(pattern, rawLine) then
+      matches[#matches + 1] = pattern
+    end
+  end
+  return matches
+end
+
+local function seedNoAbilitiesRecoveryState()
+  boop.state.rage = {
+    ready = {
+      harry = false,
+      squeeze = true,
+      firefall = false,
+    },
+    timers = { harry = 701 },
+    timerGenerations = { harry = 4 },
+    samples = {
+      { t = 10, r = 12 },
+      { t = 15, r = 18 },
+    },
+    dispatchGeneration = 19,
+    pending = {
+      owner = "rage:19",
+      generation = 19,
+      dispatchId = "rage:19:1",
+      status = "pending",
+      terminal = false,
+      responseTimer = 702,
+    },
+    lastTerminal = {
+      owner = "rage:18",
+      generation = 18,
+      status = "executed",
+      terminal = true,
+    },
+    globalCooldownOpen = false,
+    triumphGeneration = 8,
+    triumph = {
+      generation = 8,
+      active = true,
+      timer = 703,
+      reason = "awaiting_expiry",
+    },
+    freeNext = true,
+  }
+  boop.state.combat.limiters.rage = 704
+end
+
+local function assertOnlyGlobalCooldownOpened(beforeRage, beforeLimiters)
+  local expectedRage = deepCopy(beforeRage)
+  expectedRage.globalCooldownOpen = true
+  assert.are.same(expectedRage, boop.state.rage)
+  assert.are.same(beforeLimiters, boop.state.combat.limiters)
+end
+
+local function runActualOutcomeAdapter(rawLine)
+  local root = assert(os.getenv("BOOP_REPO_ROOT"))
+  local adapterPath =
+    root .. "/src/triggers/boop/Rage/Rage_Command_Outcome.lua"
+  local priorLine = rawget(_G, "line")
+  local priorMatches = rawget(_G, "matches")
+  local parser = boop.rage.onCommandOutcome
+  local calls = 0
+
+  boop.rage.onCommandOutcome = function(candidate)
+    calls = calls + 1
+    return parser(candidate)
+  end
+  _G.line = rawLine
+  _G.matches = { rawLine }
+
+  local ok, err = pcall(dofile, adapterPath)
+
+  boop.rage.onCommandOutcome = parser
+  _G.line = priorLine
+  _G.matches = priorMatches
+  if not ok then
+    error(err, 0)
+  end
+  return calls
+end
+
 describe("boop rage ingestion", function()
   local send_stub
   local timer_stub
@@ -170,6 +340,59 @@ describe("boop rage ingestion", function()
     ))
     assert.is_false(boop.state.rage.globalCooldownOpen)
     assert.is_false(boop.state.rage.ready.harry)
+  end)
+
+  it("opens only the global gate for the exact no-abilities recovery sentence", function()
+    seedNoAbilitiesRecoveryState()
+    local beforeRage = deepCopy(boop.state.rage)
+    local beforeLimiters = deepCopy(boop.state.combat.limiters)
+
+    assert.are.equal(
+      NO_ABILITIES_RECOVERY,
+      boop.rage.NO_ABILITIES_RECOVERY
+    )
+    assert.is_true(boop.rage.onCommandOutcome(NO_ABILITIES_RECOVERY))
+    assertOnlyGlobalCooldownOpened(beforeRage, beforeLimiters)
+    assert.stub(kill_timer_stub).was_not_called()
+  end)
+
+  it("routes one exact manifest match through the existing adapter once", function()
+    seedNoAbilitiesRecoveryState()
+    local beforeRage = deepCopy(boop.state.rage)
+    local beforeLimiters = deepCopy(boop.state.combat.limiters)
+    local manifestMatches = matchingOutcomePatterns(NO_ABILITIES_RECOVERY)
+
+    assert.are.equal(1, #manifestMatches)
+    local adapterCalls = 0
+    for _ = 1, #manifestMatches do
+      adapterCalls = adapterCalls + runActualOutcomeAdapter(
+        NO_ABILITIES_RECOVERY
+      )
+    end
+
+    assert.are.equal(1, adapterCalls)
+    assertOnlyGlobalCooldownOpened(beforeRage, beforeLimiters)
+    assert.stub(kill_timer_stub).was_not_called()
+  end)
+
+  it("rejects no-abilities near matches at both manifest and parser boundaries", function()
+    seedNoAbilitiesRecoveryState()
+    local nearMatches = {
+      "You can use another Battlerage ability again, but none of your abilities are currently available",
+      "Notice: " .. NO_ABILITIES_RECOVERY,
+      NO_ABILITIES_RECOVERY .. " Now.",
+      "You can use another Battlerage ability again, but no abilities are currently available.",
+    }
+
+    for _, nearMatch in ipairs(nearMatches) do
+      local beforeRage = deepCopy(boop.state.rage)
+      local beforeLimiters = deepCopy(boop.state.combat.limiters)
+      assert.are.equal(0, #matchingOutcomePatterns(nearMatch))
+      assert.is_false(boop.rage.onCommandOutcome(nearMatch))
+      assert.are.same(beforeRage, boop.state.rage)
+      assert.are.same(beforeLimiters, boop.state.combat.limiters)
+    end
+    assert.stub(kill_timer_stub).was_not_called()
   end)
 
   it("bounds Triumph by generation and ignores a stale replaced timer", function()

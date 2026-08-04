@@ -147,6 +147,10 @@
         "type": "regex"
       },
       {
+        "pattern": "^You can use another Battlerage ability again, but none of your abilities are currently available\\.$",
+        "type": "regex"
+      },
+      {
         "pattern": "^Your rage fades away\\.$",
         "type": "regex"
       },

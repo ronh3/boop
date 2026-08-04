@@ -4,7 +4,11 @@ local COOLDOWN_DENIAL =
   "You must wait a short time before you can use a battlerage ability again."
 local AVAILABLE_PREFIX =
   "You can use another Battlerage ability again. Available abilities: "
+local NO_ABILITIES_RECOVERY =
+  "You can use another Battlerage ability again, but none of your abilities are currently available."
 local RAGE_EXPIRED = "Your rage fades away."
+
+boop.rage.NO_ABILITIES_RECOVERY = NO_ABILITIES_RECOVERY
 
 local function deepCopy(value, seen)
   if type(value) ~= "table" then
@@ -572,6 +576,11 @@ end
 
 function boop.rage.onCommandOutcome(rawLine)
   local line = tostring(rawLine or "")
+  if line == NO_ABILITIES_RECOVERY then
+    rageState().globalCooldownOpen = true
+    return true
+  end
+
   if boop.util.starts(line, AVAILABLE_PREFIX) then
     local rawList = line:sub(#AVAILABLE_PREFIX + 1)
     if rawList == "" then
