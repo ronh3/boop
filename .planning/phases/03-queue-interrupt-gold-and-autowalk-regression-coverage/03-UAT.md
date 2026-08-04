@@ -4,10 +4,17 @@ phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-08-03T23:14:14-07:00
+updated: 2026-08-04T20:10:32Z
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
+
+## Plan 03-30 Live Preflight
+
+preflight:
+  installed_version: 0.1.473
+  status: confirmed
+  observed: "Exact installed boop 0.1.473 was confirmed before testing."
 
 ## Current Test
 
@@ -299,9 +306,21 @@ expected: |
      generation, outbound owner sequences, candidate/prompt decision, and one
      terminal reason, with no unbounded pending intent.
 result: issue
-reported: "During the hour-long 0.1.468 trace, boop repeatedly stopped attacking after rejected or silently lost standard commands and resumed only after unrelated manual commands or balance/equilibrium events."
+installed_version: 0.1.473
+reported: "Clean live standard success was fundamentally broken, so the denial, silent-loss, and contamination variants could not establish the full truth."
 severity: blocker
-observed: "Paralysis rejection at output.md:7093 cleared at 7104 but no retry occurred until diag caused a new queue at 7229. A prone rejection at 9233 remained idle until 9307. A command queued at 30974 silently disappeared and was not replaced until 31090. Conversely, impale/web sequences beginning at 20880, 38747, and 41049 produced repeated denial storms until external curing succeeded."
+observed: |
+  Successful Magi Staffcast/Erode results such as "Equilibrium used: 1.56s"
+  were repeatedly buffered as success candidates and then traced as "standard
+  candidate ambiguous". Generations 19-25 and later 155-161 and 198-225
+  expired with reason "ready prompt grace expired" rather than producing one
+  executed terminal. The behavior repeated across normal and assist hunting.
+  Because foundational clean success did not pass, the denial, silent-loss,
+  and contamination variants could not establish the full truth.
+previous_result: issue
+previous_reported: "During the hour-long 0.1.468 trace, boop repeatedly stopped attacking after rejected or silently lost standard commands and resumed only after unrelated manual commands or balance/equilibrium events."
+previous_severity: blocker
+previous_observed: "Paralysis rejection at output.md:7093 cleared at 7104 but no retry occurred until diag caused a new queue at 7229. A prone rejection at 9233 remained idle until 9307. A command queued at 30974 silently disappeared and was not replaced until 31090. Conversely, impale/web sequences beginning at 20880, 38747, and 41049 produced repeated denial storms until external curing succeeded."
 
 ### 8. Leap command denial recovery
 
@@ -319,10 +338,18 @@ expected: |
      with a command-failed reason immediately rather than after eight seconds.
   3. Run `diag` after the denial and confirm it queues normally. Verify the old
      leap timeout produces no later state change or duplicate output.
-result: issue
-reported: "A leap rejected by newly broken legs prevented diagnose and all boop attacks until the complete eight-second fallback timer expired."
-severity: major
-observed: "Leap generation 32 entered at output.md:10755. Achaea definitively rejected it at 10783, but boop refused diag at 10803 and held combat/queue until timeout released the owner at 10824."
+result: skipped
+installed_version: 0.1.473
+reason: |
+  NOT RUN — installed code recognizes only the exact leg denial "Both of your
+  legs must be free and unhindered to do that." The user cannot safely hinder
+  their legs. Sitting produced "You must be standing first.", while native
+  freestand normally waited instead of emitting the required line. Automated
+  authority remains, but the exact live denial was unavailable.
+previous_result: issue
+previous_reported: "A leap rejected by newly broken legs prevented diagnose and all boop attacks until the complete eight-second fallback timer expired."
+previous_severity: major
+previous_observed: "Leap generation 32 entered at output.md:10755. Achaea definitively rejected it at 10783, but boop refused diag at 10803 and held combat/queue until timeout released the owner at 10824."
 
 ### 9. Inventory-owned gold packing recovery
 
@@ -344,9 +371,27 @@ expected: |
   4. Confirm a later safe packing opportunity can still put the sovereigns
      without requiring `boop off` to recover hunting.
 result: issue
-reported: "Gold packing entered an explicit-evidence state after diag displacement and prevented automated combat for roughly thirty seconds until boop was manually disabled."
+installed_version: 0.1.473
+reported: "Autonomous room refresh and queued pickup completion both failed during the controlled post-quarantine gold flow."
 severity: blocker
-observed: "Gold owner 221 entered at output.md:12397, was displaced at 12443, and entered the nonterminal explicit-evidence timeout at 12494-12499. Manual attacks succeeded after hindrances cleared, but automation remained held until `bh` disabled boop at 12805. Four other pack owners remained held for the full four-second pending timeout."
+observed: |
+  Gold generation 14 owned an inventory put to a missing pack. Diag displaced
+  it, exactly one replay occurred, the replay timed out into one quarantine,
+  and the operation released with `pack_replay_quarantined`. A correct live
+  refresh required `sendGMCP([[Char.Items.Inv ""]]); send(" ")`; bare requests
+  did not yield the needed response. A late old put invocation was diagnosed
+  as old activity, and newer inventory evidence requalified the quarantine. A
+  direct corpse gold line arrived while a standard generation was pending and
+  did not consume quarantine. Controlled dropped gold entered generation 15
+  in `gold_deferred_room`. Boop's own room refresh fence timed out
+  `room_partial`. Manual framed and flushed Inv/Room requests recovered
+  evidence and queued `get sovereigns`, but that queued get timed out after
+  four seconds; no replacement put consumed the old quarantine. Autonomous
+  room refresh and queued pickup completion both failed.
+previous_result: issue
+previous_reported: "Gold packing entered an explicit-evidence state after diag displacement and prevented automated combat for roughly thirty seconds until boop was manually disabled."
+previous_severity: blocker
+previous_observed: "Gold owner 221 entered at output.md:12397, was displaced at 12443, and entered the nonterminal explicit-evidence timeout at 12494-12499. Manual attacks succeeded after hindrances cleared, but automation remained held until `bh` disabled boop at 12805. Four other pack owners remained held for the full four-second pending timeout."
 
 ### 10. Target invalidation reconciles native attack intent
 
@@ -392,10 +437,19 @@ expected: |
   5. Confirm a newly selected target proceeds only through normal gates with
      its own generation after the old terminal, never through a rebound old
      invocation.
-result: issue
-reported: "Target removal cleared boop's local attack state but left an old BOOP_ATTACK invocation in Achaea's native queue."
-severity: major
-observed: "A giant bat left and local intent cleared at output.md:29998, but the old alias still executed and failed at 30018. The same race appears at 3567-3590."
+result: skipped
+installed_version: 0.1.473
+reason: |
+  NOT RUN — the prerequisite standard lifecycle was broken. In the attempted
+  seated forbidden-target branch, generation 142 expired and retry 143
+  expired before the blacklist update, leaving no active standard for
+  intentional clear or revocation evidence. No valid departure-versus-
+  forbidden policy comparison could be established. Automated authority
+  remains.
+previous_result: issue
+previous_reported: "Target removal cleared boop's local attack state but left an old BOOP_ATTACK invocation in Achaea's native queue."
+previous_severity: major
+previous_observed: "A giant bat left and local intent cleared at output.md:29998, but the old alias still executed and failed at 30018. The same race appears at 3567-3590."
 
 ### 11. Battlerage cooldown and Triumph expiry
 
@@ -416,9 +470,32 @@ expected: |
      Confirm boop does not attempt a free action afterward and ordinary rage
      remains usable when available.
 result: issue
-reported: "The trace contained repeated global battlerage cooldown denials and one stale Triumph free-rage attempt after the server-side benefit expired."
+installed_version: 0.1.473
+reported: "Ordinary and assist transformed-wire evidence passed, but the live server emitted a different exact Battlerage recovery line that the installed handler did not trace."
 severity: major
-observed: "Nine boop-generated rage attempts hit the global cooldown, including output.md:159-165. Triumph was set at 23339, remained across rooms, expired server-side at 23772, and caused an insufficient-rage failure at 23788."
+observed: |
+  The ordinary live wire subcase passed: `rage:3`, generation 3, logical
+  `cast windlash at 460963`, expected and observed exactly one wire at sequence
+  573 after baseline 572, uncontaminated, final owned sequence 573, and
+  executed once by prompt. The assist transformed-wire subcase passed as wire
+  evidence: `rage:5`, generation 5, logical `cast windlash at 448348`, expected
+  and observed ordered wires `assist Veya` at sequence 910 followed by
+  `cast windlash at 448348` at sequence 911, baseline 909, final owned sequence
+  911, uncontaminated, and executed once by prompt. No unsplit logical
+  expansion was treated as wire evidence. Functional server assist itself was
+  unavailable because the leader was not being followed. A natural big-mode
+  attempt sent Squeeze and then Windlash, but exact Available recovery arrived
+  before the server processed Windlash; Windlash succeeded, so no cooldown
+  denial occurred. Clean and contaminated live denial subcases were NOT RUN;
+  Psion and Triumph live variants were NOT RUN. The server instead emitted the
+  exact recovery line "You can use another Battlerage ability again, but none
+  of your abilities are currently available." The installed source/trigger
+  handles only the `Available abilities: ...` form, and no handler trace
+  occurred for the observed line. This mismatch keeps Test 11 at ISSUE.
+previous_result: issue
+previous_reported: "The trace contained repeated global battlerage cooldown denials and one stale Triumph free-rage attempt after the server-side benefit expired."
+previous_severity: major
+previous_observed: "Nine boop-generated rage attempts hit the global cooldown, including output.md:159-165. Triumph was set at 23339, remained across rooms, expired server-side at 23772, and caused an insufficient-rage failure at 23788."
 
 ### 12. Complete and useful live operation trace
 
@@ -437,18 +514,45 @@ expected: |
   3. Hunt through several clear rooms and kills. Confirm normal target death
      and repeated room/no-target state do not obscure operation transitions in
      live output; `boop trace show 100` must retain enough detail for audit.
-result: issue
-reported: "The hour trace showed interrupt owners entering but omitted successful terminal exits, making healthy completion indistinguishable from a leaked blocker during forensic review."
-severity: minor
-observed: "Forty-three interrupt owners entered; only the timed-out leap displayed an exit. Combat resumed after the other forty-two, proving the owners completed even though their terminal trace records were absent from live output. The capture also contained 169 target_lost warnings, 505 room_partial holds, and 1362 no-target ticks."
+result: skipped
+installed_version: 0.1.473
+reason: |
+  NOT RUN overall — successful diag, ts, and timeout subcases were observed,
+  but the exact causally denied leg-line leap remained unavailable, so the
+  complete test could not run.
+observed: |
+  Diag `interrupt:11`, generation 11, had one operation enter, GMCP result,
+  prompt, one operation exit with reason `diagnose_result_prompt`, and one
+  matching interrupt terminal; no duplicate occurred. Ts `interrupt:12`,
+  generation 12, had one enter, one exit, and one terminal with `name=ts` and
+  `reason=prompt_complete`; no duplicate occurred. Timeout `interrupt:13`,
+  generation 13, sent `leap south` toward a nonexistent exit, registered its
+  causal outbound/window, received the server's no-exit response, and then
+  produced exactly one operation exit and terminal with `name=leap` and
+  `reason=timeout` after eight seconds; a trace query added no duplicate.
+  Repeated no-target records in `trace show` are retained forensic entries by
+  design. Live-only deduplication is distinct, so no regression is inferred
+  from retained output.
+previous_result: issue
+previous_reported: "The hour trace showed interrupt owners entering but omitted successful terminal exits, making healthy completion indistinguishable from a leaked blocker during forensic review."
+previous_severity: minor
+previous_observed: "Forty-three interrupt owners entered; only the timed-out leap displayed an exit. Combat resumed after the other forty-two, proving the owners completed even though their terminal trace records were absent from live output. The capture also contained 169 target_lost warnings, 505 room_partial holds, and 1362 no-target ticks."
+
+## Non-Gating Queued-Alias Protocol Observation
+
+protocol_observation:
+  installed_version: 0.1.473
+  result: skipped
+  reason: "NOT RUN — the user did not execute this observation."
+  affects_gap_status: false
 
 ## Summary
 
 total: 12
 passed: 3
-issues: 6
+issues: 3
 pending: 3
-skipped: 0
+skipped: 3
 blocked: 0
 
 ## Gaps
@@ -964,11 +1068,16 @@ blocked: 0
 - gap_id: G-03-21
   truth: "Every boop-owned standard command reaches executed, denied, expired, or cancelled exactly once; preserved ADDCLEARFULL semantics intentionally remove pre-existing native queue work before boop becomes pending; exact success/denial candidates reconcile only at their immediately following prompt for the matching generation when no later outbound came from outside that exact owner; and a first-ready prompt with no valid candidate starts bounded silent-loss recovery without leaving hunting stuck or producing a denial storm."
   status: pending
-  reason: "The live 0.1.468 trace contains repeated post-denial stalls that recover only after unrelated balance/equilibrium use or manual diag, one silent native-queue disappearance, and repeated impossible-command storms under restraint."
+  latest_result: issue
+  installed_version: 0.1.473
+  reason: "Clean live standard success was fundamentally broken: successful Magi Staffcast/Erode candidates repeatedly became ambiguous and generations expired by ready-prompt grace instead of reaching one executed terminal, so denial, silent-loss, and contamination variants could not establish the full truth."
+  previous_reason: "The live 0.1.468 trace contains repeated post-denial stalls that recover only after unrelated balance/equilibrium use or manual diag, one silent native-queue disappearance, and repeated impossible-command storms under restraint."
   severity: blocker
   test: 7
   root_cause: "Standard dispatch is represented chiefly by the `prequeuedStandard` boolean. It is set after send and cleared directly by later balance/equilibrium-use evidence, but has no exact generation, candidate-to-following-prompt reconciliation, all-owner outbound causality, denial, or bounded expiry lifecycle. Rejected commands may therefore remain marked queued forever; unrelated output or balance events may instead clear the flag and resend while the same inability still exists."
   evidence:
+    - "0.1.473 live - successful Magi Staffcast/Erode results such as `Equilibrium used: 1.56s` were repeatedly buffered as success candidates and then traced `standard candidate ambiguous`."
+    - "0.1.473 live - generations 19-25, 155-161, and 198-225 expired with reason `ready prompt grace expired` instead of one executed terminal; this repeated in normal and assist hunting."
     - "output.md:7093-7229 - paralysis denial, cure, then approximately twelve seconds idle until diag indirectly resets the queue state."
     - "output.md:9233-9307 - prone denial remains stuck after standing and ready prompt until diag."
     - "output.md:30974-31098 - staged command silently disappears with no denial or retry until diag."
@@ -998,11 +1107,15 @@ blocked: 0
 - gap_id: G-03-22
   truth: "A definitive denial for the active leap terminalizes only that leap generation immediately, releases combat and queue ownership, permits the next interrupt or attack, and makes its later timeout or room callback a no-op."
   status: pending
-  reason: "Achaea rejected a queued leap because a leg became hindered after queueing, but boop ignored the definitive outcome and blocked diagnose and combat until its eight-second timeout."
+  latest_result: not_run
+  installed_version: 0.1.473
+  reason: "Live exact-denial authority was unavailable: the user could not safely hinder their legs, sitting produced `You must be standing first.`, and native freestand waited instead of emitting the one recognized leg-denial line."
+  previous_reason: "Achaea rejected a queued leap because a leg became hindered after queueing, but boop ignored the definitive outcome and blocked diagnose and combat until its eight-second timeout."
   severity: major
   test: 8
   root_cause: "Leap uses the shared room-change interrupt lifecycle, whose normal terminal evidence is moved Room.Info and whose fallback is the generic interrupt timer. There is no leap-specific command-failure trigger or generation-guarded adapter, so explicit negative evidence cannot call completeInterrupt."
   evidence:
+    - "0.1.473 live - installed code recognizes only `Both of your legs must be free and unhindered to do that.`; that exact line could not be produced safely, so automated authority remains and Test 8 was NOT RUN."
     - "output.md:10755-10829 - leap generation 32 enters, receives the exact leg denial at 10783, rejects diag at 10803, and resumes only after timeout at 10824."
   artifacts:
     - path: "src/scripts/boop/boop_ui.lua"
@@ -1021,11 +1134,18 @@ blocked: 0
 - gap_id: G-03-23
   truth: "Confirmed inventory gold may receive bounded packing recovery, but exhausted or ambiguous put evidence cannot indefinitely own combat, queue, or walk; hunting resumes without duplicate put commands and the retained gold may be packed later."
   status: pending
-  reason: "After diag displaced a gold put, the replay's fresh timeout deliberately entered an indefinite explicit-evidence state. Hunting remained held for roughly thirty seconds and recovered only when the operator disabled boop."
+  latest_result: issue
+  installed_version: 0.1.473
+  reason: "The displaced pack replay released into one quarantine as intended, but boop's autonomous room refresh timed out `room_partial` and the manually recovered queued pickup timed out after four seconds, so autonomous refresh and queued pickup completion both failed."
+  previous_reason: "After diag displaced a gold put, the replay's fresh timeout deliberately entered an indefinite explicit-evidence state. Hunting remained held for roughly thirty seconds and recovered only when the operator disabled boop."
   severity: blocker
   test: 9
   root_cause: "The displacement-replay timeout sets awaitingExplicitEvidence and returns without terminalizing or narrowing the gold owner's systems. The inventory-owned pack blocker therefore continues holding combat, gold, queue, and walk even though the sovereigns are already safe in inventory and no further automatic replay is allowed. This is the contract previously encoded by Plans 03-23/03-24 and is superseded by this live UAT decision."
   evidence:
+    - "0.1.473 live - gold generation 14's inventory-owned put to a missing pack was displaced by diag, replayed exactly once, timed out into one quarantine, and released with `pack_replay_quarantined`."
+    - "0.1.473 live - a usable inventory refresh required `sendGMCP([[Char.Items.Inv \"\"]]); send(\" \")`; bare requests did not produce the needed response. A late old put invocation was diagnosed as old activity, and newer inventory evidence requalified quarantine."
+    - "0.1.473 live - a direct corpse gold line while a standard generation was pending did not consume the old quarantine."
+    - "0.1.473 live - controlled dropped gold entered generation 15 `gold_deferred_room`; boop's own room fence timed out `room_partial`. Manual framed and flushed Inv/Room requests recovered evidence and queued `get sovereigns`, but that get timed out after four seconds and no replacement put consumed the old quarantine."
     - "output.md:12397-12830 - gold:221 enters, diag displaces it, replay times out into explicit-evidence hold, manual attacks work, and only boop disable releases automation."
     - "output.md:3109-3181, 15974-16070, 25360-25404, 32441-32480 - four additional pack owners consume their full pending timeout without explicit completion."
   artifacts:
@@ -1043,11 +1163,15 @@ blocked: 0
 - gap_id: G-03-24
   truth: "Proven target death, departure, Item.Remove, or room movement enters a no-clear local retarget quarantine that keeps fixed BOOP_ATTACK and every boop target/alias/standard/rage/direct replacement unchanged until the old generation reaches result/prompt or ready-grace terminal; blacklist, target replacement, or eligibility revocation with old-target presence true or unknown sends one intentional clearqueue all before exact terminal; neither path may execute a forbidden target or redirect old work to a replacement target."
   status: pending
-  reason: "The live trace showed target intent clear locally after room removal, followed by the previously queued server alias executing anyway and failing against the absent denizen."
+  latest_result: not_run
+  installed_version: 0.1.473
+  reason: "The prerequisite standard lifecycle was broken: attempted seated forbidden-target generations 142 and 143 expired before the blacklist update, leaving no active standard for intentional clear or revocation evidence and no valid departure-versus-forbidden comparison."
+  previous_reason: "The live trace showed target intent clear locally after room removal, followed by the previously queued server alias executing anyway and failing against the absent denizen."
   severity: major
   test: 10
   root_cause: "clearAttackIntent invalidates Lua plans, flags, and alias metadata while an unresolved native BOOP_ATTACK may still exist. Immediate replacement can rebind the fixed alias before that old invocation resolves. Existing coverage neither serializes replacement targeting through old terminal nor distinguishes harmless proven absence from a still-present/unknown forbidden target that requires an explicit safety clear."
   evidence:
+    - "0.1.473 live - generation 142 expired and retry 143 expired before the blacklist update, so no active standard existed for intentional clear/revocation evidence; automated authority remains and Test 10 was NOT RUN."
     - "output.md:29998-30018 - giant bat removal clears local intent, then the stale alias executes and receives a cannot-see-target rejection."
     - "output.md:3567-3590 - the same stale queued invocation race occurs after target removal."
   artifacts:
@@ -1066,11 +1190,18 @@ blocked: 0
 - gap_id: G-03-25
   truth: "Global battlerage cooldown and recovery evidence governs rage dispatch exactly once, and Triumph free rage expires on use or definitive expiry without leaking across rooms or suppressing later ordinary rage."
   status: pending
-  reason: "The live trace contains nine boop-generated commands rejected by the global battlerage cooldown and one free-rage attempt after Triumph had expired server-side."
+  latest_result: issue
+  installed_version: 0.1.473
+  reason: "Ordinary and assist transformed-wire chronology passed, but Achaea emitted the exact recovery line `You can use another Battlerage ability again, but none of your abilities are currently available.` and the installed handler, which recognizes only `Available abilities: ...`, produced no handler trace."
+  previous_reason: "The live trace contains nine boop-generated commands rejected by the global battlerage cooldown and one free-rage attempt after Triumph had expired server-side."
   severity: major
   test: 11
   root_cause: "Rage readiness is tracked primarily per ability and marked unavailable optimistically after send. Trigger coverage does not consume the observed global `Available abilities:` recovery sentence or cooldown denial. Triumph is an untimed boolean cleared on use but not on the observed expiry/insufficient-rage lifecycle."
   evidence:
+    - "0.1.473 live - `rage:3` generation 3, logical `cast windlash at 460963`, had one expected/observed wire at sequence 573 after baseline 572, final owned sequence 573, uncontaminated, and executed once by prompt."
+    - "0.1.473 live - `rage:5` generation 5, logical `cast windlash at 448348`, had expected/observed ordered wires `assist Veya` at sequence 910 then `cast windlash at 448348` at sequence 911 after baseline 909, final owned sequence 911, uncontaminated, and executed once by prompt; no unsplit logical expansion was treated as wire evidence. Functional server assist was unavailable because the leader was not being followed."
+    - "0.1.473 live - a natural big-mode Squeeze-then-Windlash attempt received exact Available recovery before Windlash was processed, so Windlash succeeded and no cooldown denial occurred. Clean/contaminated denial, Psion, and Triumph variants were NOT RUN."
+    - "0.1.473 live - the server emitted `You can use another Battlerage ability again, but none of your abilities are currently available.` and no handler trace occurred for that form."
     - "output.md:159-165 - Windlash is sent during global cooldown, rejected, then the global available-abilities line announces recovery."
     - "output.md:23339-23788 - Triumph remains set across rooms, expires server-side, then produces an insufficient-rage attempt."
   artifacts:
@@ -1093,11 +1224,18 @@ blocked: 0
 - gap_id: G-03-26
   truth: "Live trace displays one exact terminal exit for every displayed operation enter, including successful interrupts, while routine room/no-target/expected-removal repetition remains auditable without obscuring lifecycle transitions."
   status: pending
-  reason: "The hour capture showed forty-three interrupt entries but only the timed-out leap printed an exit; later attacks prove the other owners completed, so the live forensic surface is incomplete rather than the operation table leaking."
+  latest_result: not_run
+  installed_version: 0.1.473
+  reason: "Diag, ts, and timeout enter/terminal subcases succeeded without duplicates, but the exact causally denied leg-line leap remained unavailable, so the complete Test 12 trace matrix was NOT RUN."
+  previous_reason: "The hour capture showed forty-three interrupt entries but only the timed-out leap printed an exit; later attacks prove the other owners completed, so the live forensic surface is incomplete rather than the operation table leaking."
   severity: minor
   test: 12
   root_cause: "completeInterrupt clears the exact owner and records terminal trace entries in source, but successful completion lines do not reach the captured live stream. The loss mechanism may be trigger/gag rendering order or installed/source wiring and requires a focused reproduction. Separately, expected target removal and repeated room/no-target state are emitted at warning/live frequency high enough to obscure uncommon transitions."
   evidence:
+    - "0.1.473 live - diag `interrupt:11` generation 11 had one operation enter, GMCP result, prompt, one exit reason `diagnose_result_prompt`, and one matching terminal with no duplicate."
+    - "0.1.473 live - ts `interrupt:12` generation 12 had one enter, one exit, and one terminal `name=ts reason=prompt_complete` with no duplicate."
+    - "0.1.473 live - timeout `interrupt:13` generation 13 registered the causal `leap south` outbound/window, received the no-exit response, then produced exactly one exit and terminal `name=leap reason=timeout` after eight seconds; a trace query added no duplicate."
+    - "0.1.473 live - repeated no-target entries in `trace show` are retained forensics by design; live-only deduplication is separate, and no regression was inferred from retained output."
     - "output.md:6989-7032 - interrupt:23 enters, receives result, releases, and combat resumes without a visible terminal exit."
     - "output.md:44762-44808 - interrupt:61 likewise completes and combat resumes before live trace is disabled."
     - "The capture contains 169 target_lost warnings, 505 room_partial holds, and 1362 no-target ticks."
