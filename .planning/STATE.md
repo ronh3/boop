@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
 status: executing
-stopped_at: Completed 03-26-PLAN.md
-last_updated: "2026-08-04T10:22:01.679Z"
+stopped_at: Completed 03-27-PLAN.md
+last_updated: "2026-08-04T10:34:07.652Z"
 last_activity: 2026-08-04
-last_activity_desc: Completed Plan 03-26 bounded gold-pack quarantine
+last_activity_desc: Completed Plan 03-27 immediate causal leap denial
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 44
-  completed_plans: 40
-  percent: 91
+  completed_plans: 41
+  percent: 93
 ---
 
 # Project State
@@ -29,19 +29,19 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
-Plan: 26 of 30
+Plan: 27 of 30
 Status: Ready to execute
-Last activity: 2026-08-04 — Completed Plan 03-26 bounded gold-pack quarantine
+Last activity: 2026-08-04 — Completed Plan 03-27 immediate causal leap denial
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 35
+- Total plans completed: 41
 - Average duration: 14 min
-- Total execution time: 7.4 hours
+- Total execution time: 7.5 hours
 
 **By Phase:**
 
@@ -49,12 +49,12 @@ Progress: [█████████░] 91%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 26/30 | ~308m | ~12 min |
+| 03 | 27/30 | ~317m | ~12 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 03 P22 (8m), Phase 03 P23 (31m), Phase 03 P24 (5m), Phase 03 P25 (19m), Phase 03 P26 (19m)
-- Trend: Plan 03-26 replaced indefinite displaced-pack ownership with bounded quarantine; Plans 03-27 through 03-30, parent CI, and live UAT remain
+- Last 5 plans: Phase 03 P23 (31m), Phase 03 P24 (5m), Phase 03 P25 (19m), Phase 03 P26 (19m), Phase 03 P27 (9m)
+- Trend: Plan 03-27 added immediate causal leap-denial completion; Plans 03-28 through 03-30, parent CI, and live UAT remain
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -85,6 +85,7 @@ Progress: [█████████░] 91%
 | Phase 03 P24 | 5m | 1 tasks | 7 files |
 | Phase 03 P25 | 19m | 1 tasks | 10 files |
 | Phase 03 P26 | 19m | 1 tasks | 9 files |
+| Phase 03 P27 | 9m | 1 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Retain exhausted pack provenance only in nonblocking gold.packQuarantine, outside all operation and compatibility ownership.
 - [Phase 03]: Invalidate qualifying inventory on late old put activity and require another causally newer complete List.
 - [Phase 03]: Consume quarantine eligibility before one fresh put and recheck configuration, inventory, standard lifecycle, and all aggregate subsystem gates.
+- [Phase 03]: Use interrupt:<generation> as the leap outbound owner so denial attribution and completeInterrupt release share one exact identity.
+- [Phase 03]: Open the leap denial window only on the observed owned ADDCLEARFULL wire; later unowned outbound traffic leaves the operation for bounded timeout.
+- [Phase 03]: Preserve clearqueue all plus ADDCLEARFULL leap policy and schedule one ordinary zero-delay tick after command_failed completion.
 
 ### Pending Todos
 
@@ -185,7 +189,7 @@ Recent decisions affecting current work:
 
 - Plan 03-16 closed G-03-5 with one exact-operation room-only revalidation while preserving copied List authority and aggregate blockers.
 - Plan 03-17 closed G-03-4 while preserving manual-targeting movement safety and owned-stop versus attached-detach semantics.
-- Plan 03-26 closed G-03-23 with bounded gold-pack quarantine; Plans 03-27 through 03-30 remain.
+- Plan 03-27 closed G-03-22 with immediate causal leap-denial completion; Plans 03-28 through 03-30 remain.
 - Local real-Mudlet execution remains unavailable; the focused host helper cannot authoritatively run the entire unrelated profile/DB/rich-output test tree.
 - Parent exact-final-HEAD CI and live Achaea UAT remain blocking external gates before Phase 03 can be marked complete.
 
@@ -205,6 +209,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T10:22:01.673Z
-Stopped at: Completed 03-26-PLAN.md
+Last session: 2026-08-04T10:34:07.647Z
+Stopped at: Completed 03-27-PLAN.md
 Resume file: None
