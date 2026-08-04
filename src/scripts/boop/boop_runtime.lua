@@ -1500,6 +1500,8 @@ local STANDARD_GRACE_SECONDS = 0.35
 local PACK_QUARANTINE_GRACE_SECONDS = 0.35
 local OUTBOUND_HISTORY_LIMIT = 64
 local OUTBOUND_EXPECTATION_LIMIT = 16
+local LEAP_DENIAL_LINE =
+  "Both of your legs must be free and unhindered to do that."
 
 local function packQuarantineState()
   local state = boop.runtime.ensureState()
@@ -1933,6 +1935,61 @@ function boop.runtime.newOutboundRegistration(kind)
   }
 end
 
+function boop.runtime.prepareLeapCausality(generation)
+  local state = boop.runtime.ensureState()
+  local operation = state.diag.operation
+  local expectedGeneration = tonumber(generation)
+  if type(operation) ~= "table"
+      or operation.terminal
+      or operation.name ~= "leap"
+      or operation.completionMode ~= "room_change"
+      or operation.generation ~= expectedGeneration then
+    return false
+  end
+
+  local queue = standardQueueState()
+  local observation = state.targeting.roomObservation or {}
+  local owner = tostring(operation.blockerOwner or "")
+  local command = tostring(operation.command or "")
+  local registration = {
+    owner = owner,
+    generation = expectedGeneration,
+    dispatchId = owner,
+    kind = "leap",
+  }
+  operation.causal = {
+    owner = registration.owner,
+    generation = registration.generation,
+    dispatchId = registration.dispatchId,
+    kind = registration.kind,
+    command = command,
+    clearCommand = "clearqueue all",
+    nativeCommand = "queue addclearfull freestand " .. command,
+    roomId = tostring(operation.originRoomId or ""),
+    roomGeneration = tonumber(observation.generation) or 0,
+    registeredAfterSequence = queue.outboundSequence,
+    timeoutToken = operation.timeoutTimer,
+    observedWireCommands = {},
+    baseline = false,
+    windowOpen = false,
+    contaminatedAt = false,
+    contaminatedCommand = "",
+    ambiguityTraced = false,
+    terminal = false,
+    terminalReason = nil,
+  }
+  trace(string.format(
+    "leap causal registered: owner=%s | generation=%s | room=%s | roomGeneration=%s | outbound=%s | timeout=%s",
+    owner,
+    tostring(expectedGeneration or ""),
+    tostring(operation.causal.roomId),
+    tostring(operation.causal.roomGeneration),
+    tostring(operation.causal.registeredAfterSequence),
+    tostring(operation.causal.timeoutToken or "")
+  ))
+  return deepCopy(registration)
+end
+
 function boop.runtime.beginStandardDispatch(options)
   options = type(options) == "table" and options or {}
   if activeStandard() then
@@ -2164,6 +2221,51 @@ function boop.runtime.observeOutbound(command)
         and not operation.contaminatedAt then
       operation.contaminatedAt = observed.sequence
       operation.contaminatedCommand = wire
+    end
+  end
+
+  local interrupt = boop.runtime.ensureState().diag.operation
+  local causal = type(interrupt) == "table" and interrupt.causal or false
+  if type(interrupt) == "table"
+      and not interrupt.terminal
+      and interrupt.name == "leap"
+      and type(causal) == "table"
+      and not causal.terminal then
+    if owned and sameStandardIdentity(causal, expectation) then
+      causal.observedWireCommands[#causal.observedWireCommands + 1] = {
+        command = wire,
+        sequence = observed.sequence,
+        role = observed.role,
+      }
+      if expectation.role == "leap_baseline"
+          and wire == causal.nativeCommand then
+        causal.baseline = {
+          command = wire,
+          sequence = observed.sequence,
+          owner = observed.owner,
+          generation = observed.generation,
+          dispatchId = observed.dispatchId,
+        }
+        causal.windowOpen = true
+        trace(string.format(
+          "leap causal window open: owner=%s | generation=%s | outbound=%s | room=%s | roomGeneration=%s",
+          tostring(causal.owner or ""),
+          tostring(causal.generation or ""),
+          tostring(observed.sequence),
+          tostring(causal.roomId or ""),
+          tostring(causal.roomGeneration or "")
+        ))
+      end
+    elseif causal.windowOpen
+        and not observed.owned
+        and observed.sequence > tonumber(
+          type(causal.baseline) == "table"
+            and causal.baseline.sequence
+            or 0
+        )
+        and not causal.contaminatedAt then
+      causal.contaminatedAt = observed.sequence
+      causal.contaminatedCommand = wire
     end
   end
   return deepCopy(observed)
@@ -2818,8 +2920,16 @@ function boop.runtime.completeInterrupt(generation, terminalReason)
     return false
   end
 
-  operation.terminal = true
   local reason = tostring(terminalReason or "")
+  operation.terminal = true
+  local causal = operation.causal
+  if type(causal) == "table" then
+    causal.windowOpen = false
+    causal.terminal = true
+    causal.terminalReason = reason
+    causal.terminalOutboundSequence = standardQueueState().outboundSequence
+    clearStandardExpectations(causal)
+  end
   if reason == "timeout" and operation.completionMode == "result_then_prompt" then
     for _, record in ipairs(state.diag.evidenceQueue or {}) do
       if type(record) == "table" and record.generation == expectedGeneration then
@@ -2850,6 +2960,10 @@ function boop.runtime.completeInterrupt(generation, terminalReason)
     if boop.util and boop.util.warn then
       boop.util.warn(name .. " timeout; attacks resumed")
     end
+  elseif reason == "command_failed" then
+    if boop.util and boop.util.warn then
+      boop.util.warn(name .. " command failed; attacks resumed")
+    end
   elseif boop.util and boop.util.ok then
     boop.util.ok(name .. " complete; attacks resumed")
   end
@@ -2866,6 +2980,123 @@ function boop.runtime.completeInterrupt(generation, terminalReason)
       and boop.tryVenomConfusionDiag
       and (tonumber(state.diag.venomConfusionCount) or 0) >= 2 then
     boop.tryVenomConfusionDiag("interrupt complete")
+  end
+  return true
+end
+
+local function traceLeapDenialDiagnostic(operation, causal, reason)
+  if type(causal) == "table" and causal.ambiguityTraced then
+    return false
+  end
+  if type(causal) == "table" then
+    causal.ambiguityTraced = true
+  end
+  trace(string.format(
+    "leap denial ambiguous: reason=%s | active=%s | owner=%s | generation=%s | baseline=%s | outbound=%s | contamination=%s",
+    tostring(reason or "unknown"),
+    tostring(type(operation) == "table" and operation.name or "none"),
+    tostring(type(causal) == "table" and causal.owner or ""),
+    tostring(type(causal) == "table" and causal.generation or ""),
+    tostring(
+      type(causal) == "table"
+        and type(causal.baseline) == "table"
+        and causal.baseline.sequence
+        or ""
+    ),
+    tostring(standardQueueState().outboundSequence),
+    tostring(type(causal) == "table" and causal.contaminatedAt or "")
+  ))
+  return true
+end
+
+function boop.runtime.onLeapCommandDenied(line, capturedGeneration)
+  if tostring(line or "") ~= LEAP_DENIAL_LINE then
+    return false
+  end
+
+  local state = boop.runtime.ensureState()
+  local operation = state.diag.operation
+  local causal = type(operation) == "table" and operation.causal or false
+  if type(operation) ~= "table"
+      or operation.terminal
+      or operation.name ~= "leap"
+      or operation.completionMode ~= "room_change" then
+    traceLeapDenialDiagnostic(operation, causal, "no active leap")
+    return false
+  end
+
+  local expectedGeneration = operation.generation
+  if capturedGeneration ~= nil
+      and tonumber(capturedGeneration) ~= tonumber(expectedGeneration) then
+    traceLeapDenialDiagnostic(operation, causal, "stale generation")
+    return false
+  end
+  if type(causal) ~= "table"
+      or causal.terminal
+      or tostring(causal.owner or "")
+        ~= tostring(operation.blockerOwner or "")
+      or tonumber(causal.generation) ~= tonumber(expectedGeneration)
+      or tostring(causal.dispatchId or "")
+        ~= tostring(operation.blockerOwner or "")
+      or tostring(causal.command or "") ~= tostring(operation.command or "")
+      or causal.timeoutToken ~= operation.timeoutTimer then
+    traceLeapDenialDiagnostic(operation, causal, "identity mismatch")
+    return false
+  end
+
+  local observation = state.targeting.roomObservation or {}
+  local currentRoom = tostring(state.targeting.room or "")
+  if currentRoom == "" then
+    currentRoom = tostring(
+      gmcp
+        and gmcp.Room
+        and gmcp.Room.Info
+        and gmcp.Room.Info.num
+        or ""
+    )
+  end
+  if tostring(causal.roomId or "") == ""
+      or currentRoom ~= tostring(causal.roomId or "")
+      or tostring(observation.roomId or "")
+        ~= tostring(causal.roomId or "")
+      or tonumber(observation.generation)
+        ~= tonumber(causal.roomGeneration) then
+    traceLeapDenialDiagnostic(operation, causal, "room authority changed")
+    return false
+  end
+
+  if not causal.windowOpen
+      or type(causal.baseline) ~= "table"
+      or tostring(causal.baseline.owner or "") ~= tostring(causal.owner or "")
+      or tonumber(causal.baseline.generation)
+        ~= tonumber(causal.generation)
+      or tostring(causal.baseline.command or "")
+        ~= tostring(causal.nativeCommand or "") then
+    traceLeapDenialDiagnostic(operation, causal, "window not open")
+    return false
+  end
+  if causal.contaminatedAt
+      and tonumber(causal.contaminatedAt)
+        > tonumber(causal.baseline.sequence or 0) then
+    traceLeapDenialDiagnostic(operation, causal, "unowned outbound")
+    return false
+  end
+
+  local completed = boop.runtime.completeInterrupt(
+    expectedGeneration,
+    "command_failed"
+  )
+  if not completed then
+    return false
+  end
+  if tempTimer then
+    tempTimer(0, function()
+      if boop and boop.tick then
+        boop.tick()
+      end
+    end)
+  elseif boop and boop.tick then
+    boop.tick()
   end
   return true
 end

@@ -1,6 +1,7 @@
 local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper.lua")
 
 describe("boop queued interrupts", function()
+  local LEAP_DENIAL = "Both of your legs must be free and unhindered to do that."
   local send_stub
   local timer_stub
   local kill_timer_stub
@@ -82,6 +83,43 @@ describe("boop queued interrupts", function()
       systems = { combat = true, queue = true },
       waitsFor = { room = true },
     })
+  end
+
+  local function readRepoFile(path)
+    local handle = io.open(helper.repoRoot() .. "/" .. path, "r")
+    if not handle then
+      return nil
+    end
+    local content = handle:read("*a")
+    handle:close()
+    return content
+  end
+
+  local function observeLatestLeapDispatch()
+    assert.is_true(#sent >= 2)
+    boop.onDataSendRequest(
+      "sysDataSendRequest",
+      sent[#sent - 1].command
+    )
+    boop.onDataSendRequest(
+      "sysDataSendRequest",
+      sent[#sent].command
+    )
+  end
+
+  local function countTrace(fragment)
+    local count = 0
+    for _, entry in ipairs(boop.state.trace.buffer or {}) do
+      if tostring(entry):find(fragment, 1, true) then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
+  local function leapDenialHandler()
+    assert.is_function(boop.runtime.onLeapCommandDenied)
+    return boop.runtime.onLeapCommandDenied
   end
 
   local function assertActiveOperation(row, timer_id)
@@ -282,6 +320,16 @@ describe("boop queued interrupts", function()
     assert.are.equal("1", operation.originRoomId)
     assert.is_true(blockerFor("interrupt:1").waitsFor.room)
 
+    local outbound = boop.runtime.outboundSnapshot()
+    assert.are.equal(0, outbound.sequence)
+    assert.are.equal(2, #outbound.expectations)
+    assert.are.equal("interrupt:1", outbound.expectations[1].owner)
+    assert.are.equal("clearqueue all", outbound.expectations[1].command)
+    assert.are.equal(
+      "queue addclearfull freestand leap northeast",
+      outbound.expectations[2].command
+    )
+
     boop.onPrompt()
 
     assert.is_true(operation == boop.state.diag.operation)
@@ -317,5 +365,202 @@ describe("boop queued interrupts", function()
     assert.is_false(boop.state.diag.operation)
     assert.are.same({ "leap timeout; attacks resumed" }, warn_messages)
     assert.are.equal(0, tick_count)
+  end)
+
+  it("terminalizes one causally owned leap denial and makes later evidence inert", function()
+    local denyLeap = leapDenialHandler()
+    seedUnrelatedOwner()
+    boop.ui.leap("north")
+
+    local operation = boop.state.diag.operation
+    local generation = operation.generation
+    local timeout_callback = scheduled[1].callback
+    assert.is_table(operation.causal)
+    assert.are.equal("interrupt:1", operation.causal.owner)
+    assert.are.equal(generation, operation.causal.generation)
+    assert.are.equal("leap north", operation.causal.command)
+    assert.are.equal("1", operation.causal.roomId)
+    assert.are.equal(
+      boop.state.targeting.roomObservation.generation,
+      operation.causal.roomGeneration
+    )
+    assert.are.equal(1, operation.causal.timeoutToken)
+    assert.is_false(operation.causal.windowOpen)
+
+    observeLatestLeapDispatch()
+
+    assert.is_true(operation.causal.windowOpen)
+    assert.are.equal(2, operation.causal.baseline.sequence)
+    assert.are.equal(
+      "queue addclearfull freestand leap north",
+      operation.causal.baseline.command
+    )
+    assert.is_true(denyLeap(LEAP_DENIAL))
+
+    assert.is_false(boop.state.diag.operation)
+    assert.is_true(operation.terminal)
+    assert.is_true(operation.causal.terminal)
+    assert.is_false(operation.causal.windowOpen)
+    assert.are.equal("command_failed", operation.causal.terminalReason)
+    assert.is_nil(blockerFor("interrupt:" .. generation))
+    assert.is_table(blockerFor("pull:unrelated"))
+    assert.are.same({ 1 }, killed)
+    assert.are.same({ "leap command failed; attacks resumed" }, warn_messages)
+    assert.are.equal(2, #scheduled)
+    assert.are.equal(0, scheduled[2].delay)
+    assert.are.equal(1, countTrace("interrupt terminal:"))
+
+    scheduled[2].callback()
+    assert.are.equal(1, tick_count)
+
+    assert.is_false(denyLeap(LEAP_DENIAL))
+    timeout_callback()
+    gmcp.Room.Info = {
+      area = "Test Area",
+      num = 2,
+      exits = { south = 1 },
+    }
+    boop.onRoomInfo()
+
+    assert.are.equal(1, countTrace("interrupt terminal:"))
+    assert.are.equal(1, #warn_messages)
+    assert.are.equal(1, #killed)
+    assert.are.equal(1, tick_count)
+    assert.is_table(blockerFor("pull:unrelated"))
+  end)
+
+  it("keeps an outbound-contaminated denial diagnostic until bounded timeout", function()
+    local denyLeap = leapDenialHandler()
+    boop.ui.leap("north")
+    local operation = boop.state.diag.operation
+    local timeout_callback = scheduled[1].callback
+    observeLatestLeapDispatch()
+    boop.onDataSendRequest("sysDataSendRequest", "look")
+
+    assert.is_false(denyLeap(LEAP_DENIAL))
+    assert.is_false(denyLeap(LEAP_DENIAL))
+    assert.is_true(operation == boop.state.diag.operation)
+    assert.is_nil(operation.causal.terminalReason)
+    assert.are.equal(3, operation.causal.contaminatedAt)
+    assert.are.equal("look", operation.causal.contaminatedCommand)
+    assert.are.equal(1, countTrace("leap denial ambiguous:"))
+    assert.are.equal(0, #killed)
+    assert.are.equal(1, #scheduled)
+
+    timeout_callback()
+
+    assert.is_false(boop.state.diag.operation)
+    assert.are.same({ "leap timeout; attacks resumed" }, warn_messages)
+    assert.are.equal(1, countTrace("interrupt terminal:"))
+    assert.are.equal(0, tick_count)
+  end)
+
+  it("keeps a denial arriving after timeout diagnostic-only", function()
+    local denyLeap = leapDenialHandler()
+    boop.ui.leap("north")
+    observeLatestLeapDispatch()
+
+    scheduled[1].callback()
+    assert.is_false(boop.state.diag.operation)
+    assert.are.equal(1, countTrace("interrupt terminal:"))
+    assert.are.same({ "leap timeout; attacks resumed" }, warn_messages)
+
+    assert.is_false(denyLeap(LEAP_DENIAL))
+    assert.is_false(boop.state.diag.operation)
+    assert.are.equal(1, countTrace("interrupt terminal:"))
+    assert.are.equal(1, #warn_messages)
+    assert.are.equal(1, #scheduled)
+    assert.are.equal(0, tick_count)
+  end)
+
+  it("ignores denial without an open current leap window", function()
+    local denyLeap = leapDenialHandler()
+    assert.is_false(denyLeap(LEAP_DENIAL))
+
+    boop.ui.matic()
+    local matic = boop.state.diag.operation
+    assert.is_false(denyLeap(LEAP_DENIAL))
+    assert.is_true(matic == boop.state.diag.operation)
+    scheduled[1].callback()
+
+    configureScenario()
+    boop.ui.leap("north")
+    local leap = boop.state.diag.operation
+    assert.is_false(denyLeap(LEAP_DENIAL))
+    assert.is_true(leap == boop.state.diag.operation)
+    assert.is_false(leap.causal.windowOpen)
+    assert.are.equal(0, #killed)
+  end)
+
+  it("permits an immediate next diag while stale generation callbacks stay inert", function()
+    local denyLeap = leapDenialHandler()
+    boop.ui.leap("north")
+    local old_generation = boop.state.diag.operation.generation
+    local old_timeout = scheduled[1].callback
+    observeLatestLeapDispatch()
+    assert.is_true(denyLeap(LEAP_DENIAL))
+
+    assert.is_true(boop.ui.diag())
+    local current = boop.state.diag.operation
+    assert.are.equal(old_generation + 1, current.generation)
+    assert.are.equal("diag", current.name)
+
+    assert.is_false(
+      denyLeap(LEAP_DENIAL, old_generation)
+    )
+    old_timeout()
+    assert.is_false(
+      boop.runtime.completeInterrupt(old_generation, "room_changed")
+    )
+    assert.is_true(current == boop.state.diag.operation)
+    assert.are.equal(1, countTrace("interrupt terminal:"))
+    assert.are.equal(1, #warn_messages)
+  end)
+
+  it("keeps a newer leap safe from denial and callbacks captured by the prior generation", function()
+    local denyLeap = leapDenialHandler()
+    boop.ui.leap("north")
+    local old_generation = boop.state.diag.operation.generation
+    local old_timeout = scheduled[1].callback
+    observeLatestLeapDispatch()
+    assert.is_true(denyLeap(LEAP_DENIAL))
+
+    boop.ui.leap("east")
+    local current = boop.state.diag.operation
+    observeLatestLeapDispatch()
+
+    assert.is_false(
+      denyLeap(LEAP_DENIAL, old_generation)
+    )
+    old_timeout()
+    assert.is_false(
+      boop.runtime.completeInterrupt(old_generation, "room_changed")
+    )
+    assert.is_true(current == boop.state.diag.operation)
+    assert.is_true(current.causal.windowOpen)
+    assert.are.equal(1, countTrace("interrupt terminal:"))
+
+    assert.is_true(
+      denyLeap(LEAP_DENIAL, current.generation)
+    )
+    assert.is_false(boop.state.diag.operation)
+    assert.are.equal(2, countTrace("interrupt terminal:"))
+  end)
+
+  it("pairs the exact leap denial manifest stem with a thin runtime adapter", function()
+    local manifest = readRepoFile("src/triggers/boop/Diag/triggers.json")
+    local adapter = readRepoFile(
+      "src/triggers/boop/Diag/Leap_Command_Denied.lua"
+    )
+
+    assert.is_string(manifest)
+    assert.is_truthy(manifest:find('"name": "Leap Command Denied"', 1, true))
+    assert.is_truthy(manifest:find(LEAP_DENIAL, 1, true))
+    assert.is_string(adapter)
+    assert.is_truthy(
+      adapter:find("boop.runtime.onLeapCommandDenied", 1, true)
+    )
+    assert.is_falsy(adapter:find("completeInterrupt", 1, true))
+    assert.is_falsy(adapter:find("clearqueue", 1, true))
   end)
 end)

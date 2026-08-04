@@ -1692,9 +1692,36 @@ local function queueInterrupt(label, command, opts)
         name .. " native queue replacement"
       )
     end
+  end
+
+  local outboundRegistration = false
+  if name == "leap"
+      and boop.runtime
+      and boop.runtime.prepareLeapCausality then
+    outboundRegistration = boop.runtime.prepareLeapCausality(generation)
+  end
+
+  if opts.clearQueue then
+    if outboundRegistration
+        and boop.runtime.registerOutboundExpectation then
+      boop.runtime.registerOutboundExpectation(
+        outboundRegistration,
+        "clearqueue all",
+        "leap_clear"
+      )
+    end
     send("clearqueue all", false)
   end
-  send("queue addclearfull freestand " .. command, false)
+  local queueCommand = "queue addclearfull freestand " .. command
+  if outboundRegistration
+      and boop.runtime.registerOutboundExpectation then
+    boop.runtime.registerOutboundExpectation(
+      outboundRegistration,
+      queueCommand,
+      "leap_baseline"
+    )
+  end
+  send(queueCommand, false)
   boop.util.info(opts.infoMessage or (tostring(label) .. " queued; attacks paused"))
   boop.trace.log(string.format(
     "%s queued | owner=%s | generation=%s | completion=%s | clearQueue=%s",
