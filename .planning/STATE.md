@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
 status: executing
-stopped_at: Completed 03-32-PLAN.md
-last_updated: "2026-08-04T22:10:10.091Z"
+stopped_at: Completed 03-33-PLAN.md
+last_updated: "2026-08-04T22:24:56.716Z"
 last_activity: 2026-08-04
-last_activity_desc: Completed Plan 03-32 autonomous GMCP refresh and execution-aware gold pickup repair
+last_activity_desc: Completed Plan 03-33 alternate no-abilities Rage recovery repair
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 52
-  completed_plans: 46
-  percent: 88
+  completed_plans: 47
+  percent: 90
 ---
 
 # Project State
@@ -29,19 +29,19 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
-Plan: 33 of 38
+Plan: 34 of 38
 Status: Ready to execute
-Last activity: 2026-08-04 — Completed Plan 03-32 autonomous GMCP refresh and execution-aware gold pickup repair
+Last activity: 2026-08-04 — Completed Plan 03-33 alternate no-abilities Rage recovery repair
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 46
+- Total plans completed: 47
 - Average duration: 14 min
-- Total execution time: 8.5 hours
+- Total execution time: 8.6 hours
 
 **By Phase:**
 
@@ -49,12 +49,12 @@ Progress: [█████████░] 88%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 32/38 | ~379m | ~12 min |
+| 03 | 33/38 | ~387m | ~12 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 03 P28 (14m), Phase 03 P29 (12m), Phase 03 P30 (0m), Phase 03 P31 (14m), Phase 03 P32 (22m)
-- Trend: Plan 03-32 closed deterministic G-03-23 request and gold-completion coverage; Plans 03-33 through 03-38 cover the remaining implementation and live-verification gaps
+- Last 5 plans: Phase 03 P29 (12m), Phase 03 P30 (0m), Phase 03 P31 (14m), Phase 03 P32 (22m), Phase 03 P33 (8m)
+- Trend: Plan 03-33 closed deterministic G-03-25 parser/manifest coverage; Plans 03-34 through 03-38 are the remaining live-verification checkpoints
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -91,6 +91,7 @@ Progress: [█████████░] 88%
 | Phase 03 P30 | 0m | 3 tasks | 2 files |
 | Phase 03 P31 | 14m | 1 tasks | 5 files |
 | Phase 03 P32 | 22m | 1 tasks | 11 files |
+| Phase 03 P33 | 8m | 1 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -197,6 +198,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Plan 03-32 excludes only trimmed-empty transport sends before command causality; every real manual or differently owned command remains observable.
 - [Phase 03]: Plan 03-32 starts full-pickup result timing once at the first full-ready execution opportunity for initial, retry, and replay dispatches; packing timing remains independent.
 - [Phase 03]: Plan 03-32 reuses exact room-fence, gold generation/dispatch, and pack-quarantine authority without adding a coordinator or public API.
+- [Phase 03]: Treat the alternate no-abilities sentence as global cooldown recovery only; preserve all per-ability readiness and neighboring Rage lifecycle state.
+- [Phase 03]: Keep Rage_Command_Outcome.lua unchanged and route one exact anchored manifest alternative into boop.rage.onCommandOutcome.
+- [Phase 03]: Reject punctuation, prefix, suffix, and similar-prose near matches at both trigger and parser boundaries.
 
 ### Pending Todos
 
@@ -230,6 +234,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T22:10:10.085Z
-Stopped at: Completed 03-32-PLAN.md
+Last session: 2026-08-04T22:24:56.710Z
+Stopped at: Completed 03-33-PLAN.md
 Resume file: None
