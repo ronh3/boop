@@ -251,20 +251,53 @@ expected: |
   prone, webbed, impaled, or unable to use the required limbs must neither
   leave `prequeuedStandard` stuck nor produce a retry storm. Boop waits for the
   relevant recovery evidence, then retries once if the same target and room
-  authority remain valid. A silently lost native queue entry expires after a
-  bounded grace period and is replaced once.
+  authority remain valid. Standard queueing remains
+  `queue addclearfull freestand BOOP_ATTACK`, whose whole-queue replacement
+  intentionally removes pre-existing manual native work before boop becomes
+  pending. Exact denial and success lines are buffered as candidates until the
+  immediately following prompt; authoritative success candidates include
+  matching Balance Used or Equilibrium Used evidence and existing standard
+  attack-success/result adapters. That prompt may reconcile one candidate only
+  for the exact owner/generation when it follows the owned ADDCLEARFULL and no
+  later outbound command came from outside that exact owner. Manual traffic and
+  differently owned boop rage/direct traffic both contaminate generic
+  attribution. If the first authoritative ready prompt has no valid candidate,
+  silent-loss grace starts there, expires boundedly, and replaces at most once.
 
   Post-fix easy check:
   1. Run `boop trace clear`, `boop trace on`, and `boop trace live on` while
      hunting with prequeue enabled.
-  2. Capture one standard attack rejected by paralysis or prone state. After
-     the condition clears and a ready prompt arrives, confirm one replacement
-     attack is queued without running `diag`, `ql`, or `boop status`.
-  3. Capture one web, impale, or unavailable-arms period. Confirm boop does not
-     repeatedly send the same impossible attack, then queues one attack after
-     the restraint clears.
-  4. Run `boop trace show 100`. Confirm each standard dispatch has target,
-     generation, and terminal reason, with no unbounded pending intent.
+  2. While not authoritative-ready, queue one harmless manual command using
+     locally confirmed `HELP QUEUE` syntax, then let boop stage a standard.
+     Confirm exact `queue addclearfull freestand BOOP_ATTACK` replaces the
+     whole native queue and the earlier manual entry is absent. This collateral
+     clearing is expected. If a manual queue-list command is needed to inspect
+     it, use a separate clean dispatch for outcome attribution.
+  3. On a clean dispatch, capture a matching Balance Used, Equilibrium Used, or
+     existing standard attack-success/result line before its immediately
+     following prompt. Confirm the line only buffers a candidate and that the
+     prompt produces one `executed` terminal for the exact generation.
+  4. On another clean dispatch, capture a paralysis, prone, web, impale, or
+     unavailable-arms denial before its immediately following prompt. Confirm
+     the line only buffers a candidate, the prompt produces one `denied`
+     terminal, and one replacement is queued only after matching recovery and
+     later readiness without `diag`, `ql`, or `boop status`.
+  5. On separate dispatches, put a manual outbound command after ADDCLEARFULL,
+     and exercise a path that would normally send boop rage/direct target work
+     while the standard remains pending. Confirm the boop path is held. If any
+     differently owned boop outbound is nevertheless observed from an armed
+     race, it and the manual send must each make a following generic candidate
+     ambiguous and nonmutating. Ready-started grace still ends on its original
+     schedule.
+  6. Capture a genuine clean queued standard whose first authoritative ready
+     prompt has neither valid execution nor denial evidence. Confirm grace
+     starts at that prompt, never during prolonged not-ready state, expires
+     once, and emits at most one ADDCLEARFULL replacement. If genuine silent
+     loss cannot be produced, this test remains NOT RUN/pending even when all
+     denial and replacement cases pass.
+  7. Run `boop trace show 100`. Confirm each standard dispatch records target,
+     generation, outbound owner sequences, candidate/prompt decision, and one
+     terminal reason, with no unbounded pending intent.
 result: issue
 reported: "During the hour-long 0.1.468 trace, boop repeatedly stopped attacking after rejected or silently lost standard commands and resumed only after unrelated manual commands or balance/equilibrium events."
 severity: blocker
@@ -318,21 +351,47 @@ observed: "Gold owner 221 entered at output.md:12397, was displaced at 12443, an
 ### 10. Target invalidation reconciles native attack intent
 
 expected: |
-  When movement, room evidence, death, blacklist changes, or target removal
-  invalidates a target, boop cancels or neutralizes only its own queued attack
-  intent. The stale `BOOP_ATTACK` payload cannot execute against the departed
-  target or a later replacement target, and unrelated user/native queue work
-  is never cleared.
+  Target invalidation is split by evidence. Proven death, Item.Remove
+  departure, or room movement marks the exact old generation target-invalid and
+  enters a short local retarget quarantine without broad clearing. Fixed
+  BOOP_ATTACK remains bound to the old action/target, and boop emits no
+  replacement SETTARGET, SETALIAS, standard, rage, or direct target-changing
+  command until the old invocation reaches its result/prompt terminal or
+  ready-only grace expires. The old invocation may produce at most one harmless
+  absent-target failure and unrelated queue work survives. Blacklist, target
+  replacement, or eligibility revocation while the old target remains present
+  or its presence is unknown sends exactly one documented `clearqueue all`
+  before terminalizing the exact dispatch and traces that unrelated native work
+  was intentionally cleared. Neither path may execute a forbidden target or
+  redirect old work to a replacement target.
 
   Post-fix easy check:
   1. Enable prequeue and live trace, then let boop stage an attack against a
-     valid denizen while balance or equilibrium is unavailable.
-  2. Remove or globally blacklist that exact target before the queued command
-     executes.
-  3. Confirm target and local intent clear immediately, the old command never
-     fires, and no broad `clearqueue all` removes unrelated commands.
-  4. Confirm a newly selected target receives only its own newly generated
-     attack.
+     valid denizen while balance or equilibrium is unavailable. After its
+     ADDCLEARFULL standard dispatch is observed, seed a benign unrelated native
+     queue entry; normal standard queueing itself is intentionally destructive.
+  2. For the departure branch, prove target death, Item.Remove departure, or
+     movement away before execution, then let a replacement be discovered.
+     Confirm no `clearqueue all` is sent, unrelated native work survives, and
+     attempted replacement SETTARGET, SETALIAS, new standard, rage, and direct
+     target-changing sends are held while the old generation is nonterminal.
+     The fixed alias must remain on the old target. Let the old invocation
+     reach ready/result and fail harmlessly at most once against the departed
+     target, or let ready-only grace expire. Confirm only after that old
+     terminal may normal gates emit replacement SETTARGET, SETALIAS, and
+     ADDCLEARFULL; no new-target attack may occur in the race.
+  3. Stage a fresh attack, observe its ADDCLEARFULL, and then add another
+     unrelated queue entry. For the present/unknown forbidden branch,
+     blacklist, replace, or revoke eligibility while the old target is still
+     present or its presence is unknown.
+  4. Confirm exactly one `clearqueue all` is sent, exact local intent
+     terminalizes after the clear, and live/retained trace states that unrelated
+     queued work was intentionally cleared. Loss of the seeded unrelated entry
+     is expected in this branch. Confirm zero attacks execute against the
+     forbidden target.
+  5. Confirm a newly selected target proceeds only through normal gates with
+     its own generation after the old terminal, never through a rebound old
+     invocation.
 result: issue
 reported: "Target removal cleared boop's local attack state but left an old BOOP_ATTACK invocation in Achaea's native queue."
 severity: major
@@ -903,12 +962,12 @@ blocked: 0
   verification: "The focused event-transition suite passes 66/66, including all 22 supported direction commands, combat-only destination wake-up, no provisional gold/walker authority, and expiry rejection. Eleven adjacent lifecycle, runtime, tick, trace, gold, walk, target, prequeue, state-contract, and safety host suites pass 173/173; the 0.1.463 Muddler package and release gates pass. Exact-SHA Mudlet CI remains pending."
 
 - gap_id: G-03-21
-  truth: "Every boop-owned standard command reaches executed, denied, expired, or cancelled exactly once; explicit inability waits for relevant recovery and retries once, while silent native-queue loss expires once without leaving hunting stuck or producing a denial storm."
+  truth: "Every boop-owned standard command reaches executed, denied, expired, or cancelled exactly once; preserved ADDCLEARFULL semantics intentionally remove pre-existing native queue work before boop becomes pending; exact success/denial candidates reconcile only at their immediately following prompt for the matching generation when no later outbound came from outside that exact owner; and a first-ready prompt with no valid candidate starts bounded silent-loss recovery without leaving hunting stuck or producing a denial storm."
   status: pending
   reason: "The live 0.1.468 trace contains repeated post-denial stalls that recover only after unrelated balance/equilibrium use or manual diag, one silent native-queue disappearance, and repeated impossible-command storms under restraint."
   severity: blocker
   test: 7
-  root_cause: "Standard dispatch is represented chiefly by the `prequeuedStandard` boolean. It is set after send and normally cleared by later balance/equilibrium-use evidence, but has no exact generation, target, timestamp, acceptance, denial, or expiry lifecycle. Rejected commands may therefore remain marked queued forever; unrelated balance events may instead clear the flag repeatedly and resend while the same inability still exists."
+  root_cause: "Standard dispatch is represented chiefly by the `prequeuedStandard` boolean. It is set after send and cleared directly by later balance/equilibrium-use evidence, but has no exact generation, candidate-to-following-prompt reconciliation, all-owner outbound causality, denial, or bounded expiry lifecycle. Rejected commands may therefore remain marked queued forever; unrelated output or balance events may instead clear the flag and resend while the same inability still exists."
   evidence:
     - "output.md:7093-7229 - paralysis denial, cure, then approximately twelve seconds idle until diag indirectly resets the queue state."
     - "output.md:9233-9307 - prone denial remains stuck after standing and ready prompt until diag."
@@ -926,11 +985,15 @@ blocked: 0
     - path: "tests/boop_prequeue_spec.lua"
       issue: "Coverage omits denial-to-recovery and silent native-queue loss chronologies."
   missing:
-    - "Represent each boop-owned standard dispatch with exact generation, room/target authority, send time, and first-terminal outcome."
-    - "Classify observed inability denials only while a matching standard dispatch is pending; do not react to unrelated manual commands."
+    - "Represent each boop-owned standard dispatch with exact owner/generation, room/target authority, outbound baseline, candidate/prompt chronology, and first-terminal outcome."
+    - "Preserve exact queue addclearfull freestand BOOP_ATTACK dispatch and treat its documented whole-queue replacement as removing pre-existing manual work before standard ownership; do not switch to QUEUE ADD."
+    - "Use a monotonic sysDataSendRequest ledger to identify exact boop owners and treat every later outbound outside the pending standard owner—including manual/unowned and differently owned boop rage/direct traffic—as generic-outcome contamination."
+    - "Regress manual queue-add -> boop ADDCLEARFULL -> manual entry absent -> first authoritative ready -> boop outcome or bounded silence."
+    - "Buffer exact inability denials and authoritative success evidence—matching Balance Used or Equilibrium Used plus existing standard attack-success/result adapters—until the immediately following prompt; that prompt alone may reconcile an uncontaminated matching generation."
+    - "While a queued standard is nonterminal, hold boop SETTARGET replacement, SETALIAS rebinding, another standard, rage, and direct target-changing sends; defensively reject generic attribution if any differently owned send is nevertheless observed."
     - "Hold retries while the relevant inability remains, then permit exactly one retry after trustworthy recovery evidence."
-    - "Expire a silent pending standard after a short ready-prompt grace period and replace it at most once when room and target authority are unchanged."
-    - "Add deterministic regressions for paralysis, prone, stun, impale, web, unavailable arms, stale callbacks, target changes, and silent queue loss."
+    - "At the first authoritative ready prompt, start silent-loss grace only when no valid success or denial candidate exists; always end it boundedly and replace at most once when room and target authority remain valid."
+    - "Add deterministic regressions for ADDCLEARFULL collateral, pre-prompt success/denial, manual and other-boop-owner contamination, paralysis, prone, stun, impale, web, unavailable arms, stale callbacks, target changes, and genuine silent queue loss."
 
 - gap_id: G-03-22
   truth: "A definitive denial for the active leap terminalizes only that leap generation immediately, releases combat and queue ownership, permits the next interrupt or attack, and makes its later timeout or room callback a no-op."
@@ -978,25 +1041,27 @@ blocked: 0
     - "Update the prior indefinite-hold regression contract and cover diag displacement, silent put loss, explicit success/failure, late evidence, disable, reconnect, and no duplicate sends."
 
 - gap_id: G-03-24
-  truth: "Invalidating a target reconciles boop's exact queued native attack so stale BOOP_ATTACK work cannot execute against the departed or replacement target, while unrelated user and native queue work remains untouched."
+  truth: "Proven target death, departure, Item.Remove, or room movement enters a no-clear local retarget quarantine that keeps fixed BOOP_ATTACK and every boop target/alias/standard/rage/direct replacement unchanged until the old generation reaches result/prompt or ready-grace terminal; blacklist, target replacement, or eligibility revocation with old-target presence true or unknown sends one intentional clearqueue all before exact terminal; neither path may execute a forbidden target or redirect old work to a replacement target."
   status: pending
   reason: "The live trace showed target intent clear locally after room removal, followed by the previously queued server alias executing anyway and failing against the absent denizen."
   severity: major
   test: 10
-  root_cause: "clearAttackIntent invalidates Lua plans, flags, and alias metadata but deliberately performs no native queue reconciliation. Existing regression coverage codifies that behavior, so a BOOP_ATTACK invocation already owned by Achaea may survive target loss and execute after local authority is gone."
+  root_cause: "clearAttackIntent invalidates Lua plans, flags, and alias metadata while an unresolved native BOOP_ATTACK may still exist. Immediate replacement can rebind the fixed alias before that old invocation resolves. Existing coverage neither serializes replacement targeting through old terminal nor distinguishes harmless proven absence from a still-present/unknown forbidden target that requires an explicit safety clear."
   evidence:
     - "output.md:29998-30018 - giant bat removal clears local intent, then the stale alias executes and receives a cannot-see-target rejection."
     - "output.md:3567-3590 - the same stale queued invocation race occurs after target removal."
   artifacts:
     - path: "src/scripts/boop/boop_runtime.lua"
-      issue: "Local attack invalidation has no exact native queue cancellation or neutralization boundary."
+      issue: "Local attack invalidation has no exact departure quarantine/mutation barrier versus present-or-unknown forbidden-target clear boundary."
     - path: "tests/boop_event_transitions_spec.lua"
       issue: "The target-loss test currently requires local cleanup without native queue reconciliation."
   missing:
-    - "Cancel, neutralize, or generation-guard only boop-owned queued attack work when target/room authority is invalidated."
-    - "Do not use broad clearqueue all for ordinary target loss and do not erase unrelated user queue entries."
-    - "Prove an old invocation cannot execute either its departed-target payload or a replacement target's newly installed payload."
-    - "Regress target death, Item.Remove, room movement, blacklist edits, retargeting, and late native execution."
+    - "Keep the fixed BOOP_ATTACK alias and current ADDCLEARFULL semantics; do not add unique aliases, immutable queued-command assumptions, alias clearing, or append queueing."
+    - "While a standard generation is queued, hold boop SETTARGET replacement, SETALIAS rebinding, new standard, rage, and direct target-changing sends until that generation is executed, denied, expired, or cancelled."
+    - "For proven death, Item.Remove departure, or room movement, send no clearqueue all; enter a short local retarget quarantine, preserve unrelated work added after the original ADDCLEARFULL, and permit at most one harmless old-target failure before result/prompt or ready-grace terminal."
+    - "Regress old invocation pending -> departure -> replacement discovered -> attempted alias/target/send held -> old result or grace terminal -> replacement SETTARGET/SETALIAS/ADDCLEARFULL, with zero new-target attack in the race."
+    - "For blacklist, target replacement, or eligibility revocation while old-target presence is true or unknown, send exactly one documented clearqueue all before exact terminal, trace intentional clearing of unrelated work added after standard ADDCLEARFULL, and permit replacement only through normal gates."
+    - "Regress both evidence classes, including target death, Item.Remove, room movement, blacklist edits, retargeting, late native execution, exact clear count, fixed-alias value, and unrelated queue outcomes."
 
 - gap_id: G-03-25
   truth: "Global battlerage cooldown and recovery evidence governs rage dispatch exactly once, and Triumph free rage expires on use or definitive expiry without leaking across rooms or suppressing later ordinary rage."
@@ -1015,8 +1080,10 @@ blocked: 0
       issue: "Rage dispatch consumes optimistic per-ability state without shared cooldown outcome reconciliation."
     - path: "src/triggers/boop/Rage/triggers.json"
       issue: "The observed global recovery and denial/expiry forms are not wired."
-    - path: "tests/boop_rage_spec.lua"
-      issue: "Coverage omits global cooldown denial/recovery and stale Triumph chronologies."
+    - path: "tests/boop_rage_ingestion_spec.lua"
+      issue: "Exact trigger ingestion coverage omits global cooldown denial/recovery and bounded Triumph outcome lines."
+    - path: "tests/boop_rage_contract_spec.lua"
+      issue: "Behavior coverage omits global send gating, manual causal isolation, and stale Triumph chronologies."
   missing:
     - "Track the shared battlerage cooldown independently from listed per-ability readiness and parse the exact observed global recovery line."
     - "Guard cooldown denial handling to a pending boop rage dispatch and prevent repeated sends before recovery."
