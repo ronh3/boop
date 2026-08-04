@@ -193,6 +193,8 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 - [Add temporary prefixes and custom attacks](./todos/pending/2026-07-19-add-temporary-prefixes-and-custom-attacks.md) after Phase 4 command trust boundaries.
+- [Add safe threshold-based AOE attacks](./todos/pending/2026-08-04-add-safe-threshold-based-aoe-attacks.md) after Phase 3 repair and Phase 4 command validation.
+- [Add class heal interrupt](./todos/pending/2026-08-04-add-class-heal-interrupt.md) after Phase 3 lifecycle repair and exact live result-line capture.
 - [Verify Infernal hyena maul summary](./todos/pending/2026-07-24-verify-infernal-hyena-maul-summary.md) during Phase 5 fixture expansion after capturing a successful ungagged live sequence.
 
 ### Blockers/Concerns
