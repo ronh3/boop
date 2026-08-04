@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
 status: executing
-stopped_at: Ready to execute 03-31-PLAN.md
-last_updated: "2026-08-04T21:23:46.039Z"
+stopped_at: Completed 03-31-PLAN.md
+last_updated: "2026-08-04T21:43:09.796Z"
 last_activity: 2026-08-04
-last_activity_desc: Planned Phase 03 verification-gap closure through live UAT
+last_activity_desc: Completed Plan 03-31 same-observation standard candidate authority repair
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 52
-  completed_plans: 44
-  percent: 85
+  completed_plans: 45
+  percent: 87
 ---
 
 # Project State
@@ -29,19 +29,19 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
-Plan: 30 of 38
+Plan: 32 of 38
 Status: Ready to execute
-Last activity: 2026-08-04 — Planned Phase 03 verification-gap closure through live UAT
+Last activity: 2026-08-04 — Completed Plan 03-31 same-observation standard candidate authority repair
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 87%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 44
+- Total plans completed: 45
 - Average duration: 14 min
-- Total execution time: 7.9 hours
+- Total execution time: 8.1 hours
 
 **By Phase:**
 
@@ -49,12 +49,12 @@ Progress: [█████████░] 85%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 30/38 | ~343m | ~11 min |
+| 03 | 31/38 | ~357m | ~12 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 03 P26 (19m), Phase 03 P27 (9m), Phase 03 P28 (14m), Phase 03 P29 (12m), Phase 03 P30 (0m)
-- Trend: Plan 03-30 recorded live UAT evidence; Plans 03-31 through 03-38 now cover the remaining implementation and live-verification gaps
+- Last 5 plans: Phase 03 P27 (9m), Phase 03 P28 (14m), Phase 03 P29 (12m), Phase 03 P30 (0m), Phase 03 P31 (14m)
+- Trend: Plan 03-31 closed the deterministic G-03-21 implementation seam; Plans 03-32 through 03-38 cover the remaining implementation and live-verification gaps
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -89,6 +89,7 @@ Progress: [█████████░] 85%
 | Phase 03 P28 | 14m | 1 tasks | 10 files |
 | Phase 03 P29 | 12m | 1 tasks | 8 files |
 | Phase 03 P30 | 0m | 3 tasks | 2 files |
+| Phase 03 P31 | 14m | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -189,6 +190,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Plan 03-29: Leave completeInterrupt and scripts.json unchanged because focused seam counts proved terminal producer, retained acceptance, and live rendering were already exact.
 - [Phase 03]: Plan 03-29: Collapse only unchanged target-removal, room_partial, and no-target fingerprints at live admission while retaining every accepted record and prioritizing lifecycle terminals.
 - [Phase 03]: Plan 03-29: Defer six starting-HEAD boop_tick_spec expectation failures rather than weaken exact queued-standard ownership or edit an unrelated suite.
+- [Phase 03]: Plan 03-31 keeps dispatch authority application-exact and permits newer application ids only during result reconciliation in the same current room observation.
+- [Phase 03]: Plan 03-31 keeps manual and differently owned post-baseline outbound traffic ambiguous across same-room evidence refreshes and traces the exact rejection reason.
 
 ### Pending Todos
 
@@ -222,6 +225,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T20:19:29.140Z
-Stopped at: Completed 03-30-PLAN.md; live UAT gaps remain pending
+Last session: 2026-08-04T21:43:09.790Z
+Stopped at: Completed 03-31-PLAN.md
 Resume file: None
