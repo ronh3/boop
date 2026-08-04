@@ -90,4 +90,19 @@ describe("boop ui registries", function()
     end
     assert.is_true(foundCombat)
   end)
+
+  it("documents bounded replay timeout recovery in gold help", function()
+    local loot
+    for _, topic in ipairs(boop.ui.helpTopics) do
+      if topic.key == "loot" then
+        loot = topic
+        break
+      end
+    end
+    assert.is_table(loot)
+    local notes = table.concat(loot.notes or {}, " ")
+    assert.is_truthy(notes:find("replayed pack", 1, true))
+    assert.is_truthy(notes:find("releases", 1, true))
+    assert.is_truthy(notes:find("later safe gold opportunity", 1, true))
+  end)
 end)

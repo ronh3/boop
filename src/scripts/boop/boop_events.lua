@@ -131,8 +131,9 @@ local GOLD_PHASE = {
 }
 
 local function queueGoldCommand(queueName, command)
-  send("queue add " .. queueName .. " " .. command, false)
-  return true
+  local wireCommand = "queue add " .. queueName .. " " .. command
+  send(wireCommand, false)
+  return true, wireCommand
 end
 
 local function traceRoomInfo(info, moved, previousRoom)
@@ -831,6 +832,9 @@ end
 
 function boop.clearGoldQueueIntent()
   local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
+  if runtime() and boop.runtime.resolvePackQuarantine then
+    boop.runtime.resolvePackQuarantine("disabled")
+  end
   local operation = state and state.gold and state.gold.operation or nil
   if type(operation) == "table" and not operation.terminal then
     return completeGoldOperation(operation.generation, "disabled")
@@ -1009,29 +1013,43 @@ local function armGoldPendingTimeout(
     active.timeoutTimer = false
     boop.markGoldQueueIntent(active.packTarget)
     if dispatchProvenance == "displacement_replay" then
+      if active.phase == GOLD_PHASE.PACK_PENDING then
+        local quarantine = false
+        if runtime() and boop.runtime.createPackQuarantine then
+          quarantine = boop.runtime.createPackQuarantine(active)
+        end
+        if not quarantine then
+          active.awaitingExplicitEvidence = true
+          setGoldEvidenceWaitBlocker(active)
+          return
+        end
+        if tonumber(active.replayWarningDispatchId) ~= tonumber(expectedDispatchId) then
+          active.replayWarningDispatchId = expectedDispatchId
+          boop.trace.log(string.format(
+            "gold replay timeout: pack released to quarantine | generation=%s | dispatch=%s",
+            tostring(generation),
+            tostring(expectedDispatchId)
+          ))
+          boop.util.warn(
+            "auto gold: replayed pack timed out; releases now and will retry only after later safe gold evidence"
+          )
+        end
+        completeGoldOperation(generation, "pack_replay_quarantined")
+        return
+      end
+
       active.awaitingExplicitEvidence = true
       setGoldEvidenceWaitBlocker(active)
       if tonumber(active.replayWarningDispatchId) ~= tonumber(expectedDispatchId) then
         active.replayWarningDispatchId = expectedDispatchId
-        if active.phase == GOLD_PHASE.PICKUP_PENDING then
-          boop.trace.log(string.format(
-            "gold replay timeout: pickup awaiting explicit evidence | generation=%s | dispatch=%s",
-            tostring(generation),
-            tostring(expectedDispatchId)
-          ))
-          boop.util.warn(
-            "auto gold: replayed pickup timed out; move or disable/flee to cancel"
-          )
-        else
-          boop.trace.log(string.format(
-            "gold replay timeout: pack awaiting explicit evidence | generation=%s | dispatch=%s",
-            tostring(generation),
-            tostring(expectedDispatchId)
-          ))
-          boop.util.warn(
-            "auto gold: replayed pack timed out; provide result/failure evidence or disable/flee to cancel"
-          )
-        end
+        boop.trace.log(string.format(
+          "gold replay timeout: pickup awaiting explicit evidence | generation=%s | dispatch=%s",
+          tostring(generation),
+          tostring(expectedDispatchId)
+        ))
+        boop.util.warn(
+          "auto gold: replayed pickup timed out; move or disable/flee to cancel"
+        )
       end
       boop.markGoldQueueIntent(active.packTarget)
       return
@@ -1096,8 +1114,15 @@ local function queueGoldCommands()
   operation.dispatchId = (tonumber(operation.dispatchId) or 0) + 1
   operation.dispatchProvenance = provenance
   operation.awaitingExplicitEvidence = false
+  local nativeCommand = ""
+  local wireCommand = ""
+  local queued = false
   if operation.phase == GOLD_PHASE.PICKUP_PENDING then
-    queueGoldCommand(GOLD_PICKUP_QUEUE, "get sovereigns")
+    nativeCommand = "get sovereigns"
+    queued, wireCommand = queueGoldCommand(
+      GOLD_PICKUP_QUEUE,
+      nativeCommand
+    )
     boop.trace.log(string.format(
       "gold queue: get sovereigns | generation=%s | room=%s",
       tostring(operation.generation),
@@ -1106,7 +1131,11 @@ local function queueGoldCommands()
   elseif operation.phase == GOLD_PHASE.PACK_PENDING then
     local pack = boop.util.trim(operation.packTarget or "")
     if pack == "" then return false end
-    queueGoldCommand(GOLD_PACK_QUEUE, "put sovereigns in " .. pack)
+    nativeCommand = "put sovereigns in " .. pack
+    queued, wireCommand = queueGoldCommand(
+      GOLD_PACK_QUEUE,
+      nativeCommand
+    )
     boop.trace.log(string.format(
       "gold queue: put sovereigns in %s | generation=%s",
       pack,
@@ -1115,6 +1144,16 @@ local function queueGoldCommands()
   else
     return false
   end
+  if not queued then
+    return false
+  end
+  operation.nativeCommand = nativeCommand
+  operation.wireCommand = wireCommand
+  local outbound = runtime()
+    and boop.runtime.outboundSnapshot
+    and boop.runtime.outboundSnapshot()
+    or {}
+  operation.outboundSequence = tonumber(outbound.sequence) or 0
   if displacementReplay then
     operation.replayPending = false
     operation.displacedByOwner = nil
@@ -1258,6 +1297,9 @@ local function createGoldOperation(source, observation, packTarget, phase, goldI
     replayPending = false,
     awaitingExplicitEvidence = false,
     replayWarningDispatchId = false,
+    nativeCommand = "",
+    wireCommand = "",
+    outboundSequence = 0,
     revalidationAttempted = false,
     revalidationFenceId = false,
     sourceAuthority = copySourceAuthority(observation.sourceAuthority),
@@ -1441,6 +1483,9 @@ transferGoldToPacking = function(generation)
   operation.replayPending = false
   operation.awaitingExplicitEvidence = false
   operation.replayWarningDispatchId = false
+  operation.nativeCommand = ""
+  operation.wireCommand = ""
+  operation.outboundSequence = 0
   if boop.util.trim(operation.packTarget or "") == "" then
     return completeGoldOperation(generation, "get_success_no_pack")
   end
@@ -1463,6 +1508,89 @@ transferGoldToPacking = function(generation)
   boop.markGoldQueueIntent(operation.packTarget)
   queueGoldCommands()
   return true
+end
+
+local function inventoryContainsSovereigns(items)
+  if type(items) ~= "table" then
+    return false
+  end
+  for _, item in ipairs(items) do
+    if isGoldItem(item) then
+      return true
+    end
+  end
+  return false
+end
+
+function boop.tryPackQuarantinedGold(source)
+  if not (runtime()
+      and boop.runtime.packQuarantineSnapshot
+      and boop.runtime.consumePackQuarantine) then
+    return false
+  end
+  local quarantine = boop.runtime.packQuarantineSnapshot()
+  if type(quarantine) ~= "table"
+      or quarantine.resolved
+      or quarantine.consumed
+      or not quarantine.eligible then
+    return false
+  end
+  if not boop.config
+      or not boop.config.enabled
+      or not boop.config.autoGrabGold then
+    return false
+  end
+  local pack = boop.util.trim(boop.config.goldPack or "")
+  if pack == "" or currentGoldOperation() then
+    return false
+  end
+
+  local state = boop.runtime.state()
+  local inventory = state.inventory or {}
+  local inventoryGeneration = tonumber(inventory.generation) or 0
+  if inventoryGeneration
+        ~= tonumber(quarantine.qualifyingInventoryGeneration)
+      or not inventoryContainsSovereigns(inventory.completeItems) then
+    return false
+  end
+  if not readinessAllows(false)
+      or state.diag.hold
+      or state.gold.getPending
+      or state.gold.putPending
+      or (boop.runtime.standardPending
+        and boop.runtime.standardPending())
+      or (boop.runtime.standardRecoveryPending
+        and boop.runtime.standardRecoveryPending())
+      or (boop.runtime.shouldHold
+        and boop.runtime.shouldHold("combat"))
+      or (boop.runtime.shouldHold
+        and boop.runtime.shouldHold("queue"))
+      or (boop.runtime.shouldHold
+        and boop.runtime.shouldHold("gold"))
+      or (boop.runtime.shouldHold
+        and boop.runtime.shouldHold("walk")) then
+    return false
+  end
+
+  local consumed = boop.runtime.consumePackQuarantine(
+    quarantine.oldGeneration,
+    inventoryGeneration,
+    tostring(source or "safe gold opportunity")
+  )
+  if not consumed then
+    return false
+  end
+
+  local operation = createGoldOperation(
+    tostring(source or "quarantined gold repack"),
+    {},
+    pack,
+    GOLD_PHASE.PACK_PENDING,
+    ""
+  )
+  setGoldDispatchBlocker(operation)
+  boop.markGoldQueueIntent(operation.packTarget)
+  return queueGoldCommands()
 end
 
 local function clearPendingGoldDrop(reason)
@@ -1564,6 +1692,30 @@ function boop.onGoldDirectPickup(rawLine)
   if not line:find("sovereign", 1, true)
       or line:sub(-#GOLD_DIRECT_PICKUP_SUFFIX) ~= GOLD_DIRECT_PICKUP_SUFFIX then
     return false
+  end
+
+  local quarantine = runtime()
+    and boop.runtime.packQuarantineSnapshot
+    and boop.runtime.packQuarantineSnapshot()
+    or false
+  if type(quarantine) == "table"
+      and not quarantine.resolved
+      and not quarantine.consumed then
+    local active = currentGoldOperation()
+    if active and active.phase ~= GOLD_PHASE.PACK_PENDING then
+      completeGoldOperation(
+        active.generation,
+        "direct_pickup_quarantine_opportunity"
+      )
+      active = false
+    end
+    if not active and quarantine.eligible then
+      return boop.tryPackQuarantinedGold("direct sovereign pickup")
+    end
+    boop.trace.log(
+      "gold direct pickup observed while old pack quarantine awaits newer inventory"
+    )
+    return true
   end
 
   local operation = currentGoldOperation()
@@ -1679,19 +1831,45 @@ function boop.onGoldGetSuccess()
   local operation = currentGoldOperation(nil, GOLD_PHASE.PICKUP_PENDING)
   if not operation then return false end
   boop.trace.log("gold get success")
+  local quarantine = runtime()
+    and boop.runtime.packQuarantineSnapshot
+    and boop.runtime.packQuarantineSnapshot()
+    or false
+  if type(quarantine) == "table"
+      and not quarantine.resolved
+      and not quarantine.consumed then
+    local completed = completeGoldOperation(
+      operation.generation,
+      "get_success_quarantine_opportunity"
+    )
+    if quarantine.eligible then
+      boop.tryPackQuarantinedGold("confirmed sovereign pickup")
+    end
+    return completed
+  end
   return transferGoldToPacking(operation.generation)
 end
 
 function boop.onGoldPutSuccess()
   local operation = currentGoldOperation(nil, GOLD_PHASE.PACK_PENDING)
-  if not operation then return false end
+  if not operation then
+    if runtime() and boop.runtime.notePackQuarantineActivity then
+      boop.runtime.notePackQuarantineActivity("old put success")
+    end
+    return false
+  end
   boop.trace.log("gold put success")
   return completeGoldOperation(operation.generation, "put_success")
 end
 
 function boop.onGoldCommandFailure(line)
   local operation = currentGoldOperation()
-  if not operation then return false end
+  if not operation then
+    if runtime() and boop.runtime.notePackQuarantineActivity then
+      boop.runtime.notePackQuarantineActivity("old put failure")
+    end
+    return false
+  end
   local reason = boop.util.trim(line or "")
   if operation.phase == GOLD_PHASE.PICKUP_PENDING then
     return retryGoldGet(reason)
@@ -1813,6 +1991,23 @@ function boop.onDataSendRequest(_, command)
     and boop.runtime.observeOutbound
     and boop.runtime.observeOutbound(command)
     or false
+  local quarantine = runtime()
+    and boop.runtime.packQuarantineSnapshot
+    and boop.runtime.packQuarantineSnapshot()
+    or false
+  if type(quarantine) == "table"
+      and not quarantine.resolved
+      and not quarantine.consumed
+      and tostring(command or "") == tostring(quarantine.nativePut or "")
+      and runtime()
+      and boop.runtime.notePackQuarantineActivity then
+    boop.runtime.notePackQuarantineActivity(
+      "old put invocation",
+      type(outboundObserved) == "table"
+        and outboundObserved.sequence
+        or false
+    )
+  end
   local direction = movementDirection(command)
   if not direction
       or not (runtime() and boop.runtime.noteMovementIntent) then
@@ -1834,6 +2029,9 @@ function boop.onDataSendRequest(_, command)
 end
 
 function boop.onConnectionEvent()
+  if boop.runtime and boop.runtime.resolvePackQuarantine then
+    boop.runtime.resolvePackQuarantine("connection")
+  end
   boop.resetShieldMode("connection")
   if boop.runtime and boop.runtime.resetVenomConfusionCount then
     boop.runtime.resetVenomConfusionCount("connection")
@@ -2049,13 +2247,33 @@ function boop.onRoomItemsList()
       ))
     end
   end
-  if transition.inventoryItems then
-    rebuildWieldedFromInventory(
-      transition.inventoryItems,
-      "inventory list"
-    )
-  elseif transition.status == "inventory" then
-    rebuildWieldedFromInventory(transition.items, "inventory list")
+  local inventoryItems = transition.inventoryItems
+  if type(inventoryItems) ~= "table"
+      and transition.status == "inventory" then
+    inventoryItems = transition.items
+  end
+  if type(inventoryItems) == "table" then
+    rebuildWieldedFromInventory(inventoryItems, "inventory list")
+  end
+  local quarantineInventoryItems = inventoryItems
+  if type(quarantineInventoryItems) ~= "table"
+      and transition.status == "duplicate"
+      and tostring(list.location or ""):lower() == "inv"
+      and type(list.items) == "table" then
+    quarantineInventoryItems = list.items
+  end
+  if type(quarantineInventoryItems) == "table" then
+    if runtime() and boop.runtime.observeInventorySnapshot then
+      local snapshot = boop.runtime.observeInventorySnapshot(
+        quarantineInventoryItems
+      )
+      if boop.runtime.observePackQuarantineInventory then
+        boop.runtime.observePackQuarantineInventory(
+          snapshot.generation,
+          inventoryContainsSovereigns(snapshot.items)
+        )
+      end
+    end
   end
   if transition.status == "inventory" then
     return
@@ -3061,15 +3279,19 @@ function boop.onPrompt()
   if not boop.config or not boop.config.enabled then
     return false
   end
+  local freestandReady = gmcp
+    and gmcp.Char
+    and gmcp.Char.Vitals
+    and gmcp.Char.Vitals.bal == "1"
+    and gmcp.Char.Vitals.eq == "1"
+    or false
+  if boop.runtime and boop.runtime.observePackQuarantinePrompt then
+    boop.runtime.observePackQuarantinePrompt(freestandReady)
+  end
   local standardResult = boop.runtime
     and boop.runtime.reconcileStandardPrompt
     and boop.runtime.reconcileStandardPrompt(
-      gmcp
-        and gmcp.Char
-        and gmcp.Char.Vitals
-        and gmcp.Char.Vitals.bal == "1"
-        and gmcp.Char.Vitals.eq == "1"
-        or false
+      freestandReady
     )
     or false
   if boop.runtime and boop.runtime.step and boop.runtime.applyEffects then

@@ -19,6 +19,8 @@ describe("boop generation-owned gold retry handling", function()
   local tick_count
   local native_queue
   local timer_queue
+  local startPickup
+  local addGoldBlocker
 
   local function goldItem(id)
     return {
@@ -103,6 +105,62 @@ describe("boop generation-owned gold retry handling", function()
     return count
   end
 
+  local function inventoryList(items)
+    gmcp.Char.Items.List = {
+      location = "inv",
+      items = items or {},
+    }
+    boop.onRoomItemsList()
+  end
+
+  local function releaseDisplacedPack(unrelatedOwner)
+    startPickup("pack")
+    assert.is_true(boop.onGoldGetSuccess())
+    local operation = currentOperation()
+    local originalTimer = operation.timeoutTimer
+    local oldTimeout = timer_queue.callback(originalTimer)
+    local interruptOwner = "interrupt:pack-quarantine"
+    assert.is_function(oldTimeout)
+
+    addGoldBlocker(interruptOwner)
+    assert.is_true(boop.displaceGoldQueueIntent(
+      interruptOwner,
+      "synthetic native queue replacement"
+    ))
+    native_queue.apply("clearqueue all")
+    assert.is_true(boop.runtime.clearBlocker(
+      interruptOwner,
+      "synthetic interrupt released"
+    ))
+    boop.tick()
+
+    operation = currentOperation()
+    if unrelatedOwner then
+      addGoldBlocker(unrelatedOwner)
+    end
+    local replayTimer = operation.timeoutTimer
+    local replayTimeout = timer_queue.callback(replayTimer)
+    assert.is_function(replayTimeout)
+    replayTimeout()
+    return {
+      operation = operation,
+      oldTimeout = oldTimeout,
+      replayTimeout = replayTimeout,
+    }
+  end
+
+  local function maturePackQuarantine()
+    local quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_table(quarantine)
+    assert.is_true(boop.runtime.observePackQuarantinePrompt(true))
+    assert.is_true(boop.runtime.observePackQuarantinePrompt(false))
+    quarantine = boop.runtime.packQuarantineSnapshot()
+    local graceCallback = timer_queue.callback(quarantine.graceTimer)
+    assert.is_function(graceCallback)
+    graceCallback()
+    return boop.runtime.packQuarantineSnapshot()
+  end
+
   local function runDiagResultTrigger()
     dofile(
       os.getenv("TESTS_DIRECTORY")
@@ -110,7 +168,7 @@ describe("boop generation-owned gold retry handling", function()
     )
   end
 
-  local function startPickup(pack, roomId, roomGeneration)
+  startPickup = function(pack, roomId, roomGeneration)
     local room = tostring(roomId or "1")
     local items = { goldItem("9001") }
     gmcp.Room.Info.num = room
@@ -129,7 +187,7 @@ describe("boop generation-owned gold retry handling", function()
     return currentOperation()
   end
 
-  local function addGoldBlocker(owner)
+  addGoldBlocker = function(owner)
     helper.setRuntimeBlocker({
       owner = owner,
       code = owner == "flee:active" and "flee_active" or "test_gold_hold",
@@ -481,28 +539,6 @@ describe("boop generation-owned gold retry handling", function()
           exits = {},
         }
         boop.onRoomInfo()
-      end,
-    },
-    {
-      name = "pack",
-      command = "queue add freestand put sovereigns in pack",
-      queueName = "freestand",
-      queueCommand = "put sovereigns in pack",
-      warning = "auto gold: replayed pack timed out; provide result/failure evidence or disable/flee to cancel",
-      start = function()
-        startPickup("pack")
-        assert.is_true(boop.onGoldGetSuccess())
-        return currentOperation()
-      end,
-      assertEvidence = function(operation)
-        assert.are.equal("", operation.roomId)
-        assert.are.equal(0, operation.roomGeneration)
-        assert.are.equal("", operation.goldItemId)
-        assert.are.equal("pack", operation.packTarget)
-        assert.are.equal(0, operation.putRetries)
-      end,
-      invalidate = function()
-        boop.ui.setEnabled(false)
       end,
     },
   }
@@ -1002,5 +1038,342 @@ describe("boop generation-owned gold retry handling", function()
     assert.is_false(boop.state.gold.operation)
     assert.is_nil(boop.state.combat.blockersByOwner[operation.blockerOwner])
     assert.stub(warn_stub).was_called_with("auto gold: clearing stale pending state")
+  end)
+
+  it("releases a replay-timed-out pack into one non-owning quarantine", function()
+    assert.is_function(boop.runtime.packQuarantineSnapshot)
+    local clearCount = 0
+    local originalClearBlocker = boop.runtime.clearBlocker
+    clear_blocker_stub = stub(boop.runtime, "clearBlocker", function(owner, reason)
+      local cleared = originalClearBlocker(owner, reason)
+      if owner:find("^gold:") and cleared then
+        clearCount = clearCount + 1
+      end
+      return cleared
+    end)
+    local released = releaseDisplacedPack("pull:quarantine-neighbor")
+    local old = released.operation
+    local quarantine = boop.runtime.packQuarantineSnapshot()
+
+    assert.is_false(boop.state.gold.operation)
+    assert.is_nil(boop.state.combat.blockersByOwner[old.blockerOwner])
+    assert.is_table(boop.state.combat.blockersByOwner["pull:quarantine-neighbor"])
+    assert.are.equal(1, clearCount)
+    assert.are.equal(old.blockerOwner, quarantine.oldOwner)
+    assert.are.equal(old.generation, quarantine.oldGeneration)
+    assert.are.equal(old.dispatchId, quarantine.oldDispatchId)
+    assert.are.equal(old.dispatchProvenance, quarantine.oldDispatchProvenance)
+    assert.are.equal(old.nativeCommand, quarantine.nativePut)
+    assert.are.equal("pack", quarantine.packTarget)
+    assert.are.equal(old.outboundSequence, quarantine.outboundSequence)
+    assert.is_false(quarantine.consumed)
+    assert.is_false(quarantine.resolved)
+    assert.is_false(boop.state.gold.getPending)
+    assert.is_false(boop.state.gold.putPending)
+    assert.is_nil(boop.state.gold.pendingTimer)
+    assert.is_false(boop.state.walk.owned)
+    assert.are.equal(1, countWarning("replayed pack timed out"))
+    assert.are.equal(1, countTrace("gold pack quarantine created"))
+
+    local snapshot = boop.runtime.packQuarantineSnapshot()
+    released.replayTimeout()
+    released.oldTimeout()
+    boop.tick()
+    assert.are.same(snapshot, boop.runtime.packQuarantineSnapshot())
+    assert.are.equal(1, countWarning("replayed pack timed out"))
+  end)
+
+  for _, orderingEntry in ipairs(oldGoldTimeoutOrderings) do
+    local ordering = orderingEntry
+    it("real diag releases replay-timed-out pack with " .. ordering.name, function()
+      startPickup("pack")
+      assert.is_true(boop.onGoldGetSuccess())
+      local operation = currentOperation()
+      local oldGoldTimeout = timer_queue.callback(operation.timeoutTimer)
+      assert.is_function(oldGoldTimeout)
+
+      boop.ui.diag()
+      local diagOperation = boop.state.diag.operation
+      local diagTimeout = timer_queue.callback(diagOperation.timeoutTimer)
+      assert.is_function(diagTimeout)
+      assert.are.equal(diagOperation.blockerOwner, operation.displacedByOwner)
+
+      if ordering.beforeRelease then
+        oldGoldTimeout()
+      end
+      runDiagResultTrigger()
+      boop.onPrompt()
+      operation = currentOperation()
+      assert.are.equal("displacement_replay", operation.dispatchProvenance)
+      if not ordering.beforeRelease then
+        oldGoldTimeout()
+      end
+
+      local replayTimeout = timer_queue.callback(operation.timeoutTimer)
+      assert.is_function(replayTimeout)
+      replayTimeout()
+
+      local quarantine = boop.runtime.packQuarantineSnapshot()
+      assert.is_false(boop.state.gold.operation)
+      assert.are.equal(operation.blockerOwner, quarantine.oldOwner)
+      assert.are.equal(operation.generation, quarantine.oldGeneration)
+      assert.are.equal(operation.dispatchId, quarantine.oldDispatchId)
+      assert.are.equal("displacement_replay", quarantine.oldDispatchProvenance)
+      assert.are.equal(1, countWarning("replayed pack timed out"))
+      assert.is_nil(boop.state.combat.blockersByOwner[operation.blockerOwner])
+
+      local snapshot = boop.runtime.packQuarantineSnapshot()
+      oldGoldTimeout()
+      replayTimeout()
+      diagTimeout()
+      assert.are.same(snapshot, boop.runtime.packQuarantineSnapshot())
+      assert.are.equal(2, countSent(
+        "queue add freestand put sovereigns in pack"
+      ))
+    end)
+  end
+
+  it("keeps prolonged not-ready prompts nonblocking and immature", function()
+    releaseDisplacedPack()
+    local sendsAfterRelease = #sent
+    gmcp.Char.Vitals.bal = "0"
+    gmcp.Char.Vitals.eq = "0"
+
+    for _ = 1, 4 do
+      boop.onPrompt()
+      boop.tick()
+    end
+
+    local quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_false(quarantine.windowOpenPromptSequence)
+    assert.is_false(quarantine.windowClosed)
+    assert.is_false(quarantine.graceExpired)
+    assert.is_false(boop.runtime.operationHolds("combat"))
+    assert.is_false(boop.runtime.operationHolds("queue"))
+    assert.is_false(boop.runtime.operationHolds("gold"))
+    assert.is_false(boop.runtime.operationHolds("walk"))
+    assert.are.equal(sendsAfterRelease, #sent)
+
+    gmcp.Char.Vitals.bal = "1"
+    gmcp.Char.Vitals.eq = "1"
+    boop.onPrompt()
+    quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_number(quarantine.windowOpenPromptSequence)
+    assert.is_false(quarantine.windowClosed)
+  end)
+
+  it("treats raw old results during overlap as diagnostic-only", function()
+    releaseDisplacedPack()
+    local snapshot = boop.runtime.packQuarantineSnapshot()
+
+    assert.is_false(boop.onGoldPutSuccess())
+    assert.is_false(boop.onGoldCommandFailure("old pack failure"))
+    boop.onDataSendRequest(nil, "put sovereigns in pack")
+
+    assert.are.same(snapshot, boop.runtime.packQuarantineSnapshot())
+    assert.are.equal(3, countTrace("gold pack quarantine old activity"))
+  end)
+
+  it("qualifies only post-window post-grace inventory evidence without sending", function()
+    assert.is_function(boop.runtime.observePackQuarantinePrompt)
+    releaseDisplacedPack()
+    local sendsAfterRelease = #sent
+
+    assert.is_false(boop.runtime.observePackQuarantinePrompt(false))
+    assert.is_false(boop.runtime.observePackQuarantinePrompt(false))
+    inventoryList({ goldItem("9100") })
+    local quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_false(quarantine.eligible)
+    assert.is_false(quarantine.windowClosed)
+
+    assert.is_true(boop.runtime.observePackQuarantinePrompt(true))
+    inventoryList({ goldItem("9101") })
+    quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_false(quarantine.eligible)
+    assert.is_false(quarantine.windowClosed)
+
+    assert.is_true(boop.runtime.observePackQuarantinePrompt(false))
+    inventoryList({ goldItem("9102") })
+    quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_false(quarantine.eligible)
+    assert.is_false(quarantine.graceExpired)
+    assert.is_number(quarantine.windowOpenPromptSequence)
+    assert.is_number(quarantine.windowClosePromptSequence)
+    assert.is_true(
+      quarantine.windowClosePromptSequence
+        > quarantine.windowOpenPromptSequence
+    )
+    assert.are.equal(1, quarantine.graceToken)
+
+    local graceCallback = timer_queue.callback(quarantine.graceTimer)
+    assert.is_function(graceCallback)
+    graceCallback()
+    inventoryList({ goldItem("9103") })
+    quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_true(quarantine.eligible)
+    assert.is_false(quarantine.resolved)
+    assert.are.equal(
+      boop.state.inventory.generation,
+      quarantine.qualifyingInventoryGeneration
+    )
+    assert.are.equal(sendsAfterRelease, #sent)
+    assert.is_false(boop.state.gold.operation)
+  end)
+
+  it("resolves a mature quarantine when complete inventory has no sovereigns", function()
+    assert.is_function(boop.runtime.packQuarantineSnapshot)
+    releaseDisplacedPack()
+    local sendsAfterRelease = #sent
+    maturePackQuarantine()
+
+    inventoryList({ {
+      id = "123",
+      name = "a plain leather pack",
+      attrib = "t",
+    } })
+
+    local quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_true(quarantine.resolved)
+    assert.is_false(quarantine.eligible)
+    assert.are.equal("inventory_without_sovereigns", quarantine.resolutionReason)
+    assert.are.equal(sendsAfterRelease, #sent)
+  end)
+
+  it("invalidates qualified inventory after late old pack activity", function()
+    assert.is_function(boop.runtime.packQuarantineSnapshot)
+    releaseDisplacedPack()
+    maturePackQuarantine()
+    inventoryList({ goldItem("9200") })
+    local firstGeneration = boop.state.inventory.generation
+    assert.is_true(boop.runtime.packQuarantineSnapshot().eligible)
+
+    assert.is_false(boop.onGoldPutSuccess())
+    local quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_false(quarantine.eligible)
+    assert.is_true(quarantine.requiredInventoryGeneration > firstGeneration)
+
+    inventoryList({ goldItem("9201") })
+    assert.is_true(boop.runtime.packQuarantineSnapshot().eligible)
+    boop.onDataSendRequest(nil, "put sovereigns in pack")
+    quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_false(quarantine.eligible)
+    assert.is_true(
+      quarantine.requiredInventoryGeneration
+        > quarantine.qualifyingInventoryGeneration
+    )
+
+    inventoryList({ goldItem("9202") })
+    assert.is_true(boop.runtime.packQuarantineSnapshot().eligible)
+  end)
+
+  it("consumes eligible packing only after every runtime gate releases", function()
+    assert.is_function(boop.tryPackQuarantinedGold)
+    releaseDisplacedPack()
+    maturePackQuarantine()
+    inventoryList({ goldItem("9300") })
+    local sendsBeforeAttempt = #sent
+
+    boop.config.autoGrabGold = false
+    assert.is_false(boop.tryPackQuarantinedGold("autogold held"))
+    boop.config.autoGrabGold = true
+    boop.config.goldPack = ""
+    assert.is_false(boop.tryPackQuarantinedGold("pack unset"))
+    boop.config.goldPack = "pack"
+
+    for _, system in ipairs({ "combat", "queue", "gold", "walk" }) do
+      local owner = "interrupt:pack-quarantine-" .. system
+      helper.setRuntimeBlocker({
+        owner = owner,
+        code = "test_" .. system .. "_gate",
+        systems = { [system] = true },
+      })
+      assert.is_false(boop.tryPackQuarantinedGold(
+        "test held " .. system .. " opportunity"
+      ))
+      assert.is_false(boop.runtime.packQuarantineSnapshot().consumed)
+      assert.are.equal(sendsBeforeAttempt, #sent)
+      assert.is_true(boop.runtime.clearBlocker(
+        owner,
+        "test gate released"
+      ))
+    end
+
+    helper.setRuntimeBlocker({
+      owner = "readiness:pack-quarantine",
+      code = "test_compatibility_gate",
+      systems = { queue = true },
+    })
+    assert.is_false(boop.tryPackQuarantinedGold(
+      "test compatibility-held opportunity"
+    ))
+    assert.is_false(boop.runtime.packQuarantineSnapshot().consumed)
+    assert.are.equal(sendsBeforeAttempt, #sent)
+    assert.is_true(boop.runtime.clearBlocker(
+      "readiness:pack-quarantine",
+      "test compatibility gate released"
+    ))
+
+    assert.is_true(boop.onGoldDirectPickup(
+      "Numerous golden sovereigns spill from the corpse, flying into your hands before they can reach the ground."
+    ))
+    local quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_true(quarantine.consumed)
+    assert.is_true(quarantine.resolved)
+    assert.are.equal("pack_pending", currentOperation().phase)
+    assert.is_true(currentOperation().generation > quarantine.oldGeneration)
+    assert.are.equal(
+      sendsBeforeAttempt + 1,
+      #sent
+    )
+    assert.are.equal(
+      "queue add freestand put sovereigns in pack",
+      sent[#sent].command
+    )
+
+    assert.is_false(boop.tryPackQuarantinedGold("duplicate opportunity"))
+    assert.are.equal(sendsBeforeAttempt + 1, #sent)
+  end)
+
+  it("cancels quarantine grace on disable and ignores stale callbacks", function()
+    assert.is_function(boop.runtime.packQuarantineSnapshot)
+    releaseDisplacedPack()
+    assert.is_true(boop.runtime.observePackQuarantinePrompt(true))
+    assert.is_true(boop.runtime.observePackQuarantinePrompt(true))
+    local quarantine = boop.runtime.packQuarantineSnapshot()
+    local staleGrace = timer_queue.callback(quarantine.graceTimer)
+    assert.is_function(staleGrace)
+    local sendsBeforeDisable = #sent
+
+    boop.ui.setEnabled(false)
+    quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_true(quarantine.resolved)
+    assert.are.equal("disabled", quarantine.resolutionReason)
+    staleGrace()
+    inventoryList({ goldItem("9400") })
+
+    quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_false(quarantine.eligible)
+    assert.are.equal(sendsBeforeDisable, #sent)
+  end)
+
+  it("cancels quarantine grace on reconnect and ignores stale callbacks", function()
+    releaseDisplacedPack()
+    assert.is_true(boop.runtime.observePackQuarantinePrompt(true))
+    assert.is_true(boop.runtime.observePackQuarantinePrompt(true))
+    local quarantine = boop.runtime.packQuarantineSnapshot()
+    local staleGrace = timer_queue.callback(quarantine.graceTimer)
+    assert.is_function(staleGrace)
+    local sendsBeforeReconnect = #sent
+
+    boop.onConnectionEvent()
+    quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_true(quarantine.resolved)
+    assert.are.equal("connection", quarantine.resolutionReason)
+    staleGrace()
+    inventoryList({ goldItem("9500") })
+
+    quarantine = boop.runtime.packQuarantineSnapshot()
+    assert.is_false(quarantine.eligible)
+    assert.are.equal(sendsBeforeReconnect, #sent)
   end)
 end)

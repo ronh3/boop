@@ -97,6 +97,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Sovereign lines ending with `flying into your hands before they can reach the ground.` skip room pickup and start the configured pack stage immediately.
 - Gold uses get-confirm-put and never chains loot with an attack.
 - If `boop pack <container>` is set, confirmed inventory pickup starts the separate `put sovereigns in <container>` stage.
+- If an interrupt-displaced pack replay times out, boop releases the old operation into a nonblocking quarantine. Prompts never auto-replay it: the old command's first ready prompt, following result prompt, bounded grace, and then a newer complete inventory list must prove sovereigns remain. Even then, a put waits for a later safe gold opportunity that passes every combat, queue, gold, and walk gate.
 - Gold get/put has trigger-based success/failure tracking, including Achaea's `pick up` and `scoop up` pickup confirmations, with limited retries and warning output when retries are exhausted.
 - For `Two Handed` spec with `Focus` known in `Weaponmastery`, boop prepends `battlefury focus <speed|precision>/` to standard damage attacks (never shieldbreakers); configure it with `boop focus`.
 - For `Unnamable` with `Maul` known in `Dominion`, boop prepends `hound maul &tar/`; for `Infernal` with `Maul` known in `Malignity`, it prepends `hyena maul &tar/`. Queued Maul remains in the attack alias until Achaea confirms it was used or unavailable, then boop waits for the cooldown-ready line before prepending it again.

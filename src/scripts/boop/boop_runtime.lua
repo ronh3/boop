@@ -117,6 +117,8 @@ local DOMAIN_DEFAULTS = {
   gold = {
     generation = 0,
     operation = false,
+    packQuarantineGeneration = 0,
+    packQuarantine = false,
     dropped = false,
     shardsDropped = false,
     autoGrabPending = false,
@@ -147,6 +149,7 @@ local DOMAIN_DEFAULTS = {
     standardOperation = false,
     lastStandardTerminal = false,
     standardRecovery = false,
+    promptSequence = 0,
   },
   walk = {
     active = false,
@@ -188,6 +191,8 @@ local DOMAIN_DEFAULTS = {
     freeNext = false,
   },
   inventory = {
+    generation = 0,
+    completeItems = {},
     itemsById = {},
     wieldedLeft = false,
     wieldedRight = false,
@@ -278,6 +283,9 @@ local function lifecycleState()
 end
 
 function boop.runtime.beginConnectionLifecycle(source)
+  if boop.runtime.resolvePackQuarantine then
+    boop.runtime.resolvePackQuarantine("connection")
+  end
   local state = boop.runtime.ensureState()
   state.targeting.movementIntent =
     deepCopy(DOMAIN_DEFAULTS.targeting.movementIntent)
@@ -1489,8 +1497,331 @@ local function trace(message)
 end
 
 local STANDARD_GRACE_SECONDS = 0.35
+local PACK_QUARANTINE_GRACE_SECONDS = 0.35
 local OUTBOUND_HISTORY_LIMIT = 64
 local OUTBOUND_EXPECTATION_LIMIT = 16
+
+local function packQuarantineState()
+  local state = boop.runtime.ensureState()
+  local quarantine = state.gold.packQuarantine
+  if type(quarantine) ~= "table" then
+    return false
+  end
+  quarantine.quarantineId = tonumber(quarantine.quarantineId) or 0
+  quarantine.oldGeneration = tonumber(quarantine.oldGeneration) or 0
+  quarantine.oldDispatchId = tonumber(quarantine.oldDispatchId) or 0
+  quarantine.outboundSequence = tonumber(quarantine.outboundSequence) or 0
+  quarantine.releaseInventoryGeneration =
+    tonumber(quarantine.releaseInventoryGeneration) or 0
+  quarantine.releasePromptSequence =
+    tonumber(quarantine.releasePromptSequence) or 0
+  quarantine.windowOpenPromptSequence =
+    tonumber(quarantine.windowOpenPromptSequence) or false
+  quarantine.windowClosePromptSequence =
+    tonumber(quarantine.windowClosePromptSequence) or false
+  quarantine.graceToken = tonumber(quarantine.graceToken) or 0
+  quarantine.graceInventoryGeneration =
+    tonumber(quarantine.graceInventoryGeneration) or false
+  quarantine.requiredInventoryGeneration = math.max(
+    1,
+    tonumber(quarantine.requiredInventoryGeneration) or 1
+  )
+  quarantine.qualifyingInventoryGeneration =
+    tonumber(quarantine.qualifyingInventoryGeneration) or false
+  quarantine.windowClosed = not not quarantine.windowClosed
+  quarantine.graceExpired = not not quarantine.graceExpired
+  quarantine.inventoryHasSovereigns =
+    not not quarantine.inventoryHasSovereigns
+  quarantine.eligible = not not quarantine.eligible
+  quarantine.consumed = not not quarantine.consumed
+  quarantine.resolved = not not quarantine.resolved
+  quarantine.resolutionReason = tostring(
+    quarantine.resolutionReason or ""
+  )
+  quarantine.lateActivityCount =
+    tonumber(quarantine.lateActivityCount) or 0
+  return quarantine
+end
+
+local function activePackQuarantine()
+  local quarantine = packQuarantineState()
+  if not quarantine or quarantine.resolved or quarantine.consumed then
+    return false
+  end
+  return quarantine
+end
+
+local function inventoryState()
+  local inventory = boop.runtime.ensureState().inventory
+  inventory.generation = tonumber(inventory.generation) or 0
+  inventory.completeItems = type(inventory.completeItems) == "table"
+      and inventory.completeItems
+    or {}
+  return inventory
+end
+
+function boop.runtime.packQuarantineSnapshot()
+  local quarantine = packQuarantineState()
+  return quarantine and deepCopy(quarantine) or false
+end
+
+function boop.runtime.createPackQuarantine(operation)
+  if type(operation) ~= "table"
+      or tostring(operation.phase or "") ~= "pack_pending"
+      or operation.terminal then
+    return false
+  end
+  local state = boop.runtime.ensureState()
+  local previous = activePackQuarantine()
+  if previous then
+    if previous.graceTimer and killTimer then
+      killTimer(previous.graceTimer)
+    end
+    previous.graceTimer = false
+    previous.eligible = false
+    previous.resolved = true
+    previous.resolutionReason = "superseded"
+  end
+  state.gold.packQuarantineGeneration =
+    (tonumber(state.gold.packQuarantineGeneration) or 0) + 1
+  state.queue.promptSequence = tonumber(state.queue.promptSequence) or 0
+  local inventory = inventoryState()
+  local quarantine = {
+    quarantineId = state.gold.packQuarantineGeneration,
+    oldOwner = tostring(operation.blockerOwner or ""),
+    oldGeneration = tonumber(operation.generation) or 0,
+    oldDispatchId = tonumber(operation.dispatchId) or 0,
+    oldDispatchProvenance = tostring(
+      operation.dispatchProvenance or ""
+    ),
+    nativePut = tostring(operation.nativeCommand or ""),
+    wireCommand = tostring(operation.wireCommand or ""),
+    packTarget = tostring(operation.packTarget or ""),
+    outboundSequence = tonumber(operation.outboundSequence) or 0,
+    releaseInventoryGeneration = inventory.generation,
+    releasePromptSequence = state.queue.promptSequence,
+    windowOpenPromptSequence = false,
+    windowClosePromptSequence = false,
+    windowClosed = false,
+    graceToken = 0,
+    graceTimer = false,
+    graceExpired = false,
+    graceInventoryGeneration = false,
+    requiredInventoryGeneration = inventory.generation + 1,
+    qualifyingInventoryGeneration = false,
+    inventoryHasSovereigns = false,
+    eligible = false,
+    consumed = false,
+    resolved = false,
+    resolutionReason = "",
+    lateActivityCount = 0,
+    lastLateActivity = "",
+    lastLateOutboundSequence = false,
+  }
+  state.gold.packQuarantine = quarantine
+  trace(string.format(
+    "gold pack quarantine created: owner=%s | generation=%s | dispatch=%s | inventory=%s | outbound=%s",
+    quarantine.oldOwner,
+    tostring(quarantine.oldGeneration),
+    tostring(quarantine.oldDispatchId),
+    tostring(quarantine.releaseInventoryGeneration),
+    tostring(quarantine.outboundSequence)
+  ))
+  return deepCopy(quarantine)
+end
+
+function boop.runtime.resolvePackQuarantine(reason)
+  local quarantine = activePackQuarantine()
+  if not quarantine then
+    return false
+  end
+  if quarantine.graceTimer and killTimer then
+    killTimer(quarantine.graceTimer)
+  end
+  quarantine.graceTimer = false
+  quarantine.eligible = false
+  quarantine.inventoryHasSovereigns = false
+  quarantine.resolved = true
+  quarantine.resolutionReason = tostring(reason or "resolved")
+  trace(string.format(
+    "gold pack quarantine resolved: owner=%s | generation=%s | reason=%s",
+    quarantine.oldOwner,
+    tostring(quarantine.oldGeneration),
+    quarantine.resolutionReason
+  ))
+  return true
+end
+
+function boop.runtime.observePackQuarantinePrompt(ready)
+  local state = boop.runtime.ensureState()
+  state.queue.promptSequence =
+    (tonumber(state.queue.promptSequence) or 0) + 1
+  local sequence = state.queue.promptSequence
+  local quarantine = activePackQuarantine()
+  if not quarantine then
+    return false
+  end
+  if not quarantine.windowOpenPromptSequence then
+    if ready ~= true then
+      return false
+    end
+    quarantine.windowOpenPromptSequence = sequence
+    trace(string.format(
+      "gold pack quarantine window opened: generation=%s | prompt=%s",
+      tostring(quarantine.oldGeneration),
+      tostring(sequence)
+    ))
+    return true
+  end
+  if quarantine.windowClosed then
+    return false
+  end
+
+  quarantine.windowClosed = true
+  quarantine.windowClosePromptSequence = sequence
+  quarantine.graceToken = quarantine.graceToken + 1
+  local expectedId = quarantine.quarantineId
+  local expectedToken = quarantine.graceToken
+  local timerId = false
+  if tempTimer then
+    timerId = tempTimer(PACK_QUARANTINE_GRACE_SECONDS, function()
+      local active = activePackQuarantine()
+      if not active
+          or active.quarantineId ~= expectedId
+          or active.graceToken ~= expectedToken
+          or active.graceTimer ~= timerId then
+        return
+      end
+      active.graceTimer = false
+      active.graceExpired = true
+      active.graceInventoryGeneration = inventoryState().generation
+      active.requiredInventoryGeneration = math.max(
+        active.requiredInventoryGeneration,
+        active.graceInventoryGeneration + 1
+      )
+      trace(string.format(
+        "gold pack quarantine grace expired: generation=%s | inventory=%s",
+        tostring(active.oldGeneration),
+        tostring(active.graceInventoryGeneration)
+      ))
+    end)
+  end
+  quarantine.graceTimer = timerId or false
+  trace(string.format(
+    "gold pack quarantine window closed: generation=%s | prompt=%s | grace=%s",
+    tostring(quarantine.oldGeneration),
+    tostring(sequence),
+    tostring(quarantine.graceToken)
+  ))
+  return true
+end
+
+function boop.runtime.observeInventorySnapshot(items)
+  local inventory = inventoryState()
+  inventory.generation = inventory.generation + 1
+  inventory.completeItems = deepCopy(
+    type(items) == "table" and items or {}
+  )
+  return {
+    generation = inventory.generation,
+    items = deepCopy(inventory.completeItems),
+  }
+end
+
+function boop.runtime.observePackQuarantineInventory(
+  inventoryGeneration,
+  hasSovereigns
+)
+  local quarantine = activePackQuarantine()
+  local generation = tonumber(inventoryGeneration) or 0
+  if not quarantine
+      or not quarantine.windowClosed
+      or not quarantine.graceExpired
+      or generation <= quarantine.releaseInventoryGeneration
+      or generation < quarantine.requiredInventoryGeneration then
+    return false
+  end
+  quarantine.qualifyingInventoryGeneration = generation
+  quarantine.inventoryHasSovereigns = hasSovereigns == true
+  if not quarantine.inventoryHasSovereigns then
+    quarantine.eligible = false
+    quarantine.resolved = true
+    quarantine.resolutionReason = "inventory_without_sovereigns"
+    trace(string.format(
+      "gold pack quarantine cleared by inventory: generation=%s | inventory=%s | sovereigns=no",
+      tostring(quarantine.oldGeneration),
+      tostring(generation)
+    ))
+    return true
+  end
+  quarantine.eligible = true
+  trace(string.format(
+    "gold pack quarantine eligible: generation=%s | inventory=%s | sovereigns=yes",
+    tostring(quarantine.oldGeneration),
+    tostring(generation)
+  ))
+  return true
+end
+
+function boop.runtime.notePackQuarantineActivity(kind, outboundSequence)
+  local quarantine = activePackQuarantine()
+  if not quarantine then
+    return false
+  end
+  local activity = tostring(kind or "old pack activity")
+  local sequence = tonumber(outboundSequence) or false
+  trace(string.format(
+    "gold pack quarantine old activity: owner=%s | generation=%s | dispatch=%s | activity=%s | outbound=%s | eligible=%s",
+    quarantine.oldOwner,
+    tostring(quarantine.oldGeneration),
+    tostring(quarantine.oldDispatchId),
+    activity,
+    tostring(sequence or "none"),
+    tostring(quarantine.eligible)
+  ))
+  if not quarantine.eligible then
+    return false
+  end
+  quarantine.lateActivityCount = quarantine.lateActivityCount + 1
+  quarantine.lastLateActivity = activity
+  quarantine.lastLateOutboundSequence = sequence
+  local inventory = inventoryState()
+  quarantine.eligible = false
+  quarantine.inventoryHasSovereigns = false
+  quarantine.requiredInventoryGeneration = math.max(
+    quarantine.requiredInventoryGeneration,
+    inventory.generation + 1
+  )
+  return true
+end
+
+function boop.runtime.consumePackQuarantine(
+  oldGeneration,
+  inventoryGeneration,
+  reason
+)
+  local quarantine = activePackQuarantine()
+  if not quarantine
+      or not quarantine.eligible
+      or tonumber(oldGeneration) ~= quarantine.oldGeneration
+      or tonumber(inventoryGeneration)
+        ~= quarantine.qualifyingInventoryGeneration
+      or inventoryState().generation
+        ~= quarantine.qualifyingInventoryGeneration then
+    return false
+  end
+  quarantine.eligible = false
+  quarantine.consumed = true
+  quarantine.resolved = true
+  quarantine.resolutionReason = tostring(reason or "consumed")
+  trace(string.format(
+    "gold pack quarantine consumed: generation=%s | inventory=%s | reason=%s",
+    tostring(quarantine.oldGeneration),
+    tostring(quarantine.qualifyingInventoryGeneration),
+    quarantine.resolutionReason
+  ))
+  return deepCopy(quarantine)
+end
 
 local function standardQueueState()
   local queue = boop.runtime.ensureState().queue

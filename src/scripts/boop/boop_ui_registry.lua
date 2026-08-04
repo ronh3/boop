@@ -909,6 +909,7 @@ boop.registry.ui.helpTopics = {
     notes = {
       "Autogold reacts to room items whose names contain `gold sovereign` and sovereign lines ending with `flying into your hands before they can reach the ground.`",
       "Room gold is get-confirm-put; direct-to-hands gold skips get. Packing and attacks remain separate queued effects.",
+      "If a replayed pack command times out, boop releases its holds into a nonblocking quarantine. Prompts do not replay it: the first ready prompt, following result prompt, bounded grace, and a newer complete inventory list must finish before a later safe gold opportunity can pack once.",
       "`merge` is the normal Foxhunt import mode. Use `dryrun` first if you want counts without changing boop lists.",
     },
   },
