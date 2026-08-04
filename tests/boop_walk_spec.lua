@@ -75,10 +75,12 @@ describe("boop walk integration", function()
     _G.tempTimer = timers.tempTimer
     _G.killTimer = timers.killTimer
     _G.send = function(command, echoBack)
-      sent[#sent + 1] = {
-        command = command,
-        echoBack = echoBack,
-      }
+      if not tostring(command or ""):match("^%s*$") then
+        sent[#sent + 1] = {
+          command = command,
+          echoBack = echoBack,
+        }
+      end
     end
     _G.sendGMCP = function(command)
       sent_gmcp[#sent_gmcp + 1] = command
@@ -202,8 +204,8 @@ describe("boop walk integration", function()
     helper.setDenizens({})
     assert.is_true(boop.walk.start())
     assert.are.same({
-      "Char.Items.Inv",
-      "Char.Items.Room",
+      [[Char.Items.Inv ""]],
+      [[Char.Items.Room ""]],
     }, sent_gmcp)
     return boop.runtime.state()
   end
@@ -483,8 +485,8 @@ describe("boop walk integration", function()
     assert.is_false(state.walk.moveIssuedForRoomGeneration)
     assert.are.equal(0, state.walk.reservationId)
     assert.are.equal(2, #sent_gmcp)
-    assert.are.equal("Char.Items.Inv", sent_gmcp[1])
-    assert.are.equal("Char.Items.Room", sent_gmcp[2])
+    assert.are.equal([[Char.Items.Inv ""]], sent_gmcp[1])
+    assert.are.equal([[Char.Items.Room ""]], sent_gmcp[2])
     local readiness = boop.runtime.readinessSnapshot()
     assert.is_false(readiness.room.ready)
     assert.are.equal("room_partial", readiness.room.code)
@@ -637,6 +639,7 @@ describe("boop walk integration", function()
     )
 
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    boop.onPrompt()
     local operation = boop.state.gold.operation
     assert.is_table(operation)
     assert.are.equal("pickup_pending", operation.phase)
@@ -689,6 +692,7 @@ describe("boop walk integration", function()
       "timeout-under-owner released"
     ))
     boop.tick()
+    boop.onPrompt()
 
     operation = boop.state.gold.operation
     assert.is_table(operation)
@@ -1386,10 +1390,10 @@ describe("boop walk integration", function()
       runAdvanced = true,
       freshGeneration = true,
       requests = {
-        "Char.Items.Inv",
-        "Char.Items.Room",
-        "Char.Items.Inv",
-        "Char.Items.Room",
+        [[Char.Items.Inv ""]],
+        [[Char.Items.Room ""]],
+        [[Char.Items.Inv ""]],
+        [[Char.Items.Room ""]],
       },
       afterOldResponses = {
         itemsSeen = false,

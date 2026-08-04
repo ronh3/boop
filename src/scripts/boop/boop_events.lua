@@ -479,6 +479,15 @@ local function warnRoomResponseFence(fence, timerId)
   return true
 end
 
+local function sendGmcpRequestWithFlush(command)
+  if not sendGMCP or not send then
+    return false
+  end
+  sendGMCP(command)
+  send(" ")
+  return true
+end
+
 local function requestRoomItemsForFence(reason, opts)
   if not (runtime() and boop.runtime.beginRoomResponseFence) then
     return false
@@ -494,11 +503,11 @@ local function requestRoomItemsForFence(reason, opts)
     boop.runtime.setRoomResponseFenceTimer(fence.fenceId, timerId)
   end
 
-  if sendGMCP then
+  if sendGMCP and send then
     if not fence.roomOnly then
-      sendGMCP([[Char.Items.Inv]])
+      sendGmcpRequestWithFlush([[Char.Items.Inv ""]])
     end
-    sendGMCP([[Char.Items.Room]])
+    sendGmcpRequestWithFlush([[Char.Items.Room ""]])
   else
     if timerId and killTimer then killTimer(timerId) end
     boop.runtime.setRoomResponseFenceTimer(fence.fenceId, false)
@@ -992,6 +1001,10 @@ local function armGoldPendingTimeout(
   if not operation or not tempTimer then
     return false
   end
+  if expectedPhase == GOLD_PHASE.PICKUP_PENDING
+      and operation.awaitingQueueExecution then
+    return false
+  end
   expectedDispatchId = tonumber(expectedDispatchId)
     or tonumber(operation.dispatchId)
     or 0
@@ -1103,6 +1116,7 @@ local function queueGoldCommands()
   local operation = currentGoldOperation()
   if not operation
       or operation.timeoutTimer
+      or operation.awaitingQueueExecution
       or operation.awaitingExplicitEvidence
       or not goldDispatchAuthorized(operation) then
     return false
@@ -1128,6 +1142,8 @@ local function queueGoldCommands()
       tostring(operation.generation),
       tostring(operation.roomId)
     ))
+    operation.awaitingQueueExecution = true
+    operation.executionReadyPrompt = false
   elseif operation.phase == GOLD_PHASE.PACK_PENDING then
     local pack = boop.util.trim(operation.packTarget or "")
     if pack == "" then return false end
@@ -1141,6 +1157,8 @@ local function queueGoldCommands()
       pack,
       tostring(operation.generation)
     ))
+    operation.awaitingQueueExecution = false
+    operation.executionReadyPrompt = false
   else
     return false
   end
@@ -1160,23 +1178,30 @@ local function queueGoldCommands()
     operation.displacedPhase = nil
     operation.displacedDispatchId = nil
   end
-  armGoldPendingTimeout(
-    operation.generation,
-    operation.phase,
-    operation.dispatchId,
-    provenance
-  )
+  if operation.phase == GOLD_PHASE.PICKUP_PENDING then
+    boop.markGoldQueueIntent(operation.packTarget)
+  else
+    armGoldPendingTimeout(
+      operation.generation,
+      operation.phase,
+      operation.dispatchId,
+      provenance
+    )
+  end
   return true
 end
 
 function boop.displaceGoldQueueIntent(interruptOwner, reason)
   local operation = currentGoldOperation()
   local owner = tostring(interruptOwner or "")
+  local pickupAwaitingExecution = operation
+    and operation.phase == GOLD_PHASE.PICKUP_PENDING
+    and operation.awaitingQueueExecution == true
   if not operation
       or owner == ""
       or operation.awaitingExplicitEvidence
       or operation.replayPending
-      or not operation.timeoutTimer
+      or (not operation.timeoutTimer and not pickupAwaitingExecution)
       or (operation.phase ~= GOLD_PHASE.PICKUP_PENDING
         and operation.phase ~= GOLD_PHASE.PACK_PENDING) then
     return false
@@ -1202,6 +1227,8 @@ function boop.displaceGoldQueueIntent(interruptOwner, reason)
   operation.displacedDispatchId = operation.dispatchId
   operation.replayPending = true
   operation.awaitingExplicitEvidence = false
+  operation.awaitingQueueExecution = false
+  operation.executionReadyPrompt = false
   boop.markGoldQueueIntent(operation.packTarget)
   boop.trace.log(string.format(
     "gold dispatch displaced: %s | generation=%s | phase=%s | dispatch=%s | interrupt=%s | reason=%s",
@@ -1296,6 +1323,8 @@ local function createGoldOperation(source, observation, packTarget, phase, goldI
     displacedDispatchId = nil,
     replayPending = false,
     awaitingExplicitEvidence = false,
+    awaitingQueueExecution = false,
+    executionReadyPrompt = false,
     replayWarningDispatchId = false,
     nativeCommand = "",
     wireCommand = "",
@@ -1482,6 +1511,8 @@ transferGoldToPacking = function(generation)
   operation.displacedDispatchId = nil
   operation.replayPending = false
   operation.awaitingExplicitEvidence = false
+  operation.awaitingQueueExecution = false
+  operation.executionReadyPrompt = false
   operation.replayWarningDispatchId = false
   operation.nativeCommand = ""
   operation.wireCommand = ""
@@ -1620,6 +1651,9 @@ local function maybeFlushPendingGold(reason)
   if operation.timeoutTimer or operation.awaitingExplicitEvidence then
     return false
   end
+  if operation.awaitingQueueExecution then
+    return false
+  end
   return flushPendingGold(reason or "gold stage ready")
 end
 
@@ -1650,7 +1684,9 @@ flushPendingGold = function(reason)
   if operation.phase == GOLD_PHASE.DEFERRED_ROOM then
     return maybeFlushPendingGold(reason)
   end
-  if operation.timeoutTimer or operation.awaitingExplicitEvidence then
+  if operation.timeoutTimer
+      or operation.awaitingQueueExecution
+      or operation.awaitingExplicitEvidence then
     return false
   end
   if not goldDispatchAuthorized(operation) then
@@ -1776,13 +1812,9 @@ local function retryGoldGet(reason)
   setGoldDispatchBlocker(operation)
   queueGoldCommand(GOLD_PICKUP_QUEUE, "get sovereigns")
   operation.getRetries = retries + 1
+  operation.awaitingQueueExecution = true
+  operation.executionReadyPrompt = false
   boop.markGoldQueueIntent(operation.packTarget)
-  armGoldPendingTimeout(
-    operation.generation,
-    operation.phase,
-    operation.dispatchId,
-    operation.dispatchProvenance
-  )
   boop.trace.log("gold get retry " .. tostring(operation.getRetries) .. ": " .. tostring(reason))
   return true
 end
@@ -1878,6 +1910,36 @@ function boop.onGoldCommandFailure(line)
     return retryGoldPut(reason)
   end
   return false
+end
+
+local function reconcileGoldPickupPrompt(fullReady)
+  local operation = currentGoldOperation(nil, GOLD_PHASE.PICKUP_PENDING)
+  if not operation
+      or not operation.awaitingQueueExecution
+      or operation.replayPending
+      or operation.awaitingExplicitEvidence
+      or fullReady ~= true
+      or not goldDispatchAuthorized(operation) then
+    return false
+  end
+
+  operation.awaitingQueueExecution = false
+  operation.executionReadyPrompt = true
+  local timerId = armGoldPendingTimeout(
+    operation.generation,
+    operation.phase,
+    operation.dispatchId,
+    operation.dispatchProvenance
+  )
+  if boop.trace and boop.trace.log then
+    boop.trace.log(string.format(
+      "gold pickup execution ready: generation=%s | dispatch=%s | provenance=%s",
+      tostring(operation.generation),
+      tostring(operation.dispatchId),
+      tostring(operation.dispatchProvenance or "initial")
+    ))
+  end
+  return timerId and true or false
 end
 
 function boop.onDiagReadyLine()
@@ -1984,6 +2046,14 @@ function boop.events.register()
 end
 
 function boop.onDataSendRequest(_, command)
+  local wireCommand = tostring(command or "")
+  local trimmedCommand = boop.util
+    and boop.util.trim
+    and boop.util.trim(wireCommand)
+    or wireCommand:match("^%s*(.-)%s*$")
+  if trimmedCommand == "" then
+    return false
+  end
   if not (boop.config and boop.config.enabled) then
     return false
   end
@@ -3299,6 +3369,7 @@ function boop.onPrompt()
     and gmcp.Char.Vitals.bal == "1"
     and gmcp.Char.Vitals.eq == "1"
     or false
+  reconcileGoldPickupPrompt(freestandReady)
   if boop.runtime and boop.runtime.observePackQuarantinePrompt then
     boop.runtime.observePackQuarantinePrompt(freestandReady)
   end

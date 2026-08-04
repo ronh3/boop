@@ -167,10 +167,12 @@ describe("boop pull command", function()
       killed[#killed + 1] = timer_id
     end)
     send_stub = stub(_G, "send", function(command, echo_back)
-      sent[#sent + 1] = {
-        command = command,
-        echoBack = echo_back,
-      }
+      if not tostring(command or ""):match("^%s*$") then
+        sent[#sent + 1] = {
+          command = command,
+          echoBack = echo_back,
+        }
+      end
     end)
     set_enabled_stub = stub(boop.ui, "setEnabled", function(value, quiet, opts)
       enabled_calls[#enabled_calls + 1] = {

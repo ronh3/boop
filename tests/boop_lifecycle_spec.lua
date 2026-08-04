@@ -519,7 +519,9 @@ describe("boop lifecycle recovery", function()
       return true
     end)
     replaceGlobal("send", function(command, _)
-      sent[#sent + 1] = command
+      if not tostring(command or ""):match("^%s*$") then
+        sent[#sent + 1] = command
+      end
     end)
     replaceGlobal("sendGMCP", function(_) end)
     replaceFunction(boop.util, "warn", function(message)

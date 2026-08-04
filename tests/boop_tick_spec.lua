@@ -85,12 +85,16 @@ describe("boop tick", function()
       and ""
       or "pack"
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    boop.onPrompt()
 
     if stage == "put" or stage == "put_retry" then
       assert.is_true(boop.onGoldGetSuccess())
     end
     if stage == "get_retry" or stage == "put_retry" then
       assert.is_true(boop.onGoldCommandFailure("retry fixture"))
+      if stage == "get_retry" then
+        boop.onPrompt()
+      end
     end
     return currentOperation()
   end
@@ -150,10 +154,12 @@ describe("boop tick", function()
     end)
     kill_timer_stub = stub(_G, "killTimer", function(_) end)
     send_stub = stub(_G, "send", function(command, echoBack)
-      sent[#sent + 1] = {
-        command = command,
-        echoBack = echoBack,
-      }
+      if not tostring(command or ""):match("^%s*$") then
+        sent[#sent + 1] = {
+          command = command,
+          echoBack = echoBack,
+        }
+      end
     end)
     send_gmcp_stub = stub(_G, "sendGMCP", function(_) end)
     save_config_stub = stub(boop.db, "saveConfig", function(_, _) end)
@@ -505,6 +511,12 @@ describe("boop tick", function()
           "final owner released"
         )
         boop.tick()
+
+        if phase == "pickup_pending" then
+          assert.is_true(currentOperation().awaitingQueueExecution)
+          assert.is_false(currentOperation().timeoutTimer)
+          boop.onPrompt()
+        end
 
         assert.stub(flush_gold_stub).was_called(1)
         assert.stub(walk_advance_stub).was_not_called()

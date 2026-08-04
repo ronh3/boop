@@ -19,6 +19,8 @@ describe("boop generation-owned gold retry handling", function()
   local tick_count
   local native_queue
   local timer_queue
+  local protocol_log
+  local observe_transport
   local startPickup
   local addGoldBlocker
 
@@ -48,6 +50,8 @@ describe("boop generation-owned gold retry handling", function()
       putRetries = operation.putRetries,
       flushTimer = operation.flushTimer,
       timeoutTimer = operation.timeoutTimer,
+      awaitingQueueExecution = operation.awaitingQueueExecution,
+      executionReadyPrompt = operation.executionReadyPrompt,
     }
   end
 
@@ -113,6 +117,31 @@ describe("boop generation-owned gold retry handling", function()
     boop.onRoomItemsList()
   end
 
+  local function publishItemsList(location, items)
+    gmcp.Char.Items.List = {
+      location = location,
+      items = items or {},
+    }
+    return boop.onRoomItemsList()
+  end
+
+  local function latestScheduledWithDelay(delay)
+    for index = #scheduled, 1, -1 do
+      if scheduled[index].delay == delay then
+        return scheduled[index]
+      end
+    end
+    return nil
+  end
+
+  local function protocolValues()
+    local values = {}
+    for _, entry in ipairs(protocol_log) do
+      values[#values + 1] = entry.kind .. ":" .. entry.value
+    end
+    return values
+  end
+
   local function releaseDisplacedPack(unrelatedOwner)
     startPickup("pack")
     assert.is_true(boop.onGoldGetSuccess())
@@ -168,7 +197,8 @@ describe("boop generation-owned gold retry handling", function()
     )
   end
 
-  startPickup = function(pack, roomId, roomGeneration)
+  startPickup = function(pack, roomId, roomGeneration, opts)
+    opts = type(opts) == "table" and opts or {}
     local room = tostring(roomId or "1")
     local items = { goldItem("9001") }
     gmcp.Room.Info.num = room
@@ -184,6 +214,9 @@ describe("boop generation-owned gold retry handling", function()
     }
     boop.config.goldPack = pack or ""
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    if opts.openExecutionWindow ~= false then
+      boop.onPrompt()
+    end
     return currentOperation()
   end
 
@@ -210,18 +243,34 @@ describe("boop generation-owned gold retry handling", function()
     tick_count = 0
     native_queue = helper.newNativeQueue()
     timer_queue = helper.newTimerQueue()
+    protocol_log = {}
+    observe_transport = false
     boop.config.enabled = true
     boop.config.autoGrabGold = true
     boop.config.useQueueing = false
 
     send_stub = stub(_G, "send", function(command, echoBack)
-      sent[#sent + 1] = {
-        command = command,
-        echoBack = echoBack,
+      protocol_log[#protocol_log + 1] = {
+        kind = "send",
+        value = tostring(command or ""),
       }
-      native_queue.send(command, echoBack)
+      if not tostring(command or ""):match("^%s*$") then
+        sent[#sent + 1] = {
+          command = command,
+          echoBack = echoBack,
+        }
+        native_queue.send(command, echoBack)
+      end
+      if observe_transport then
+        boop.onDataSendRequest("sysDataSendRequest", command)
+      end
     end)
-    send_gmcp_stub = stub(_G, "sendGMCP", function(_) end)
+    send_gmcp_stub = stub(_G, "sendGMCP", function(command)
+      protocol_log[#protocol_log + 1] = {
+        kind = "gmcp",
+        value = tostring(command or ""),
+      }
+    end)
     err_stub = stub(boop.util, "err", function(_) end)
     warn_stub = stub(boop.util, "warn", function(message)
       warnings[#warnings + 1] = message
@@ -255,6 +304,7 @@ describe("boop generation-owned gold retry handling", function()
   end)
 
   after_each(function()
+    observe_transport = false
     if send_stub then send_stub:revert() send_stub = nil end
     if send_gmcp_stub then send_gmcp_stub:revert() send_gmcp_stub = nil end
     if err_stub then err_stub:revert() err_stub = nil end
@@ -290,6 +340,315 @@ describe("boop generation-owned gold retry handling", function()
         message = "queue name is required",
       },
     }, native_queue.errorsSnapshot())
+  end)
+
+  it("keeps whitespace transport outside standard causality while real commands contaminate", function()
+    local function beginStandardBaseline()
+      local identity = boop.runtime.beginStandardDispatch({
+        action = "command hound at 42",
+        aliasBinding = "command hound at 42",
+        mode = "queued",
+        targetId = "42",
+      })
+      assert.is_table(identity)
+      assert.is_truthy(boop.runtime.registerOutboundExpectation(
+        identity,
+        "queue addclearfull freestand BOOP_ATTACK",
+        "baseline"
+      ))
+      boop.onDataSendRequest(
+        "sysDataSendRequest",
+        "queue addclearfull freestand BOOP_ATTACK"
+      )
+      assert.is_table(boop.runtime.completeStandardDispatch(identity, {
+        mode = "queued",
+      }))
+      return identity
+    end
+
+    local first = beginStandardBaseline()
+    local beforeWhitespace = boop.runtime.outboundSnapshot()
+
+    assert.is_false(boop.onDataSendRequest(
+      "sysDataSendRequest",
+      " \t "
+    ))
+
+    local afterWhitespace = boop.runtime.outboundSnapshot()
+    assert.are.equal(beforeWhitespace.sequence, afterWhitespace.sequence)
+    assert.are.same(beforeWhitespace.observed, afterWhitespace.observed)
+    assert.is_false(boop.runtime.standardSnapshot().contaminatedAt)
+
+    assert.is_false(boop.onDataSendRequest(
+      "sysDataSendRequest",
+      "look"
+    ))
+    local manual = boop.runtime.outboundSnapshot().observed[#(
+      boop.runtime.outboundSnapshot().observed
+    )]
+    assert.are.equal(beforeWhitespace.sequence + 1, manual.sequence)
+    assert.are.equal("look", manual.command)
+    assert.is_false(manual.owned)
+    assert.are.equal(manual.sequence, boop.runtime.standardSnapshot().contaminatedAt)
+    assert.is_true(boop.runtime.abortStandardDispatch(first, "test reset"))
+
+    beginStandardBaseline()
+    local foreign = boop.runtime.newOutboundRegistration("rage")
+    assert.is_truthy(boop.runtime.registerOutboundExpectation(
+      foreign,
+      "harry 42",
+      "final"
+    ))
+    assert.is_false(boop.onDataSendRequest(
+      "sysDataSendRequest",
+      "harry 42"
+    ))
+    local observed = boop.runtime.outboundSnapshot().observed[#(
+      boop.runtime.outboundSnapshot().observed
+    )]
+    assert.is_true(observed.owned)
+    assert.are.equal(foreign.owner, observed.owner)
+    assert.are.equal(
+      observed.sequence,
+      boop.runtime.standardSnapshot().contaminatedAt
+    )
+  end)
+
+  it("frames and flushes one room-only gold revalidation request", function()
+    observe_transport = true
+    local outboundBefore = boop.runtime.outboundSnapshot().sequence
+    protocol_log = {}
+    gmcp.Char.Items.Add = {
+      location = "room",
+      item = goldItem("9050"),
+    }
+
+    boop.onRoomItemsAdd()
+
+    assert.are.same({
+      [[gmcp:Char.Items.Room ""]],
+      "send: ",
+    }, protocolValues())
+    assert.are.equal(
+      outboundBefore,
+      boop.runtime.outboundSnapshot().sequence
+    )
+    local observation = boop.runtime.roomObservationSnapshot()
+    assert.is_number(observation.activeFenceId)
+    assert.are.equal(1, #observation.fenceQueue)
+    assert.is_true(observation.fenceQueue[1].roomOnly)
+    assert.are.equal("1", observation.fenceQueue[1].roomId)
+    assert.are.equal(
+      observation.generation,
+      observation.fenceQueue[1].generation
+    )
+    assert.are.equal(0, countSent("queue add full get sovereigns"))
+  end)
+
+  it("runs framed refresh through one execution-aware get and quarantine-consuming put", function()
+    releaseDisplacedPack()
+    maturePackQuarantine()
+    inventoryList({ goldItem("9600") })
+    assert.is_true(boop.runtime.packQuarantineSnapshot().eligible)
+
+    sent = {}
+    scheduled = {}
+    native_queue = helper.newNativeQueue()
+    timer_queue = helper.newTimerQueue()
+    protocol_log = {}
+    observe_transport = true
+    gmcp.Char.Vitals.bal = "0"
+    gmcp.Char.Vitals.eq = "0"
+    boop.state.targeting.room = 1
+
+    gmcp.Room.Info = {
+      area = "TEST",
+      num = 2,
+      exits = { south = 1 },
+    }
+    boop.onRoomInfo()
+    local staleObservation = boop.runtime.roomObservationSnapshot()
+    assert.are.equal("2", staleObservation.roomId)
+    assert.is_number(staleObservation.activeFenceId)
+    assert.are.equal(1, #staleObservation.fenceQueue)
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    local staleOperation = currentOperation()
+    local staleGeneration = staleOperation.generation
+    assert.are.equal("2", staleOperation.roomId)
+    assert.are.equal(staleObservation.generation, staleOperation.roomGeneration)
+    assert.are.equal(0, countSent("queue add full get sovereigns"))
+
+    gmcp.Room.Info = {
+      area = "TEST",
+      num = 3,
+      exits = { north = 2 },
+    }
+    boop.onRoomInfo()
+    local currentObservation = boop.runtime.roomObservationSnapshot()
+    assert.are.equal("3", currentObservation.roomId)
+    assert.are.equal(staleObservation.generation + 1, currentObservation.generation)
+    assert.is_number(currentObservation.activeFenceId)
+    assert.are.equal(2, #currentObservation.fenceQueue)
+    assert.is_true(currentObservation.fenceQueue[1].valid == false)
+    assert.are.equal(
+      currentObservation.activeFenceId,
+      currentObservation.fenceQueue[2].fenceId
+    )
+    assert.is_nil(boop.state.combat.blockersByOwner[
+      staleOperation.blockerOwner
+    ])
+
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
+    local operation = currentOperation()
+    local generation = operation.generation
+    local deferredTimeout = timer_queue.callback(operation.timeoutTimer)
+    assert.is_true(generation > staleGeneration)
+    assert.are.equal("deferred_room", operation.phase)
+    assert.are.equal("3", operation.roomId)
+    assert.are.equal(currentObservation.generation, operation.roomGeneration)
+    assert.is_function(deferredTimeout)
+    assert.are.same({
+      [[gmcp:Char.Items.Inv ""]],
+      "send: ",
+      [[gmcp:Char.Items.Room ""]],
+      "send: ",
+      [[gmcp:Char.Items.Inv ""]],
+      "send: ",
+      [[gmcp:Char.Items.Room ""]],
+      "send: ",
+    }, protocolValues())
+    assert.are.equal(0, boop.runtime.outboundSnapshot().sequence)
+
+    publishItemsList("inv", { goldItem("9601") })
+    publishItemsList("room", { goldItem("stale-room-gold") })
+    currentObservation = boop.runtime.roomObservationSnapshot()
+    assert.is_false(currentObservation.itemsSeen)
+    assert.are.equal(1, #currentObservation.fenceQueue)
+    assert.are.equal(currentObservation.activeFenceId, currentObservation.fenceQueue[1].fenceId)
+    assert.is_false(boop.runtime.roomApplicationSnapshot())
+    assert.are.equal(0, countSent("queue add full get sovereigns"))
+
+    publishItemsList("room", { goldItem("9700") })
+    publishItemsList("room", { goldItem("9700") })
+    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.are.equal(0, countSent("queue add full get sovereigns"))
+    publishItemsList("inv", { goldItem("9701") })
+
+    local application = boop.runtime.roomApplicationSnapshot()
+    assert.is_table(application)
+    assert.are.equal("3", application.sourceAuthority.roomId)
+    assert.are.equal(
+      currentObservation.generation,
+      application.sourceAuthority.observationGeneration
+    )
+    local applicationTimer = latestScheduledWithDelay(0)
+    assert.is_table(applicationTimer)
+    applicationTimer.callback()
+
+    operation = currentOperation()
+    assert.are.equal(generation, operation.generation)
+    assert.are.equal("pickup_pending", operation.phase)
+    assert.are.equal("3", operation.roomId)
+    assert.are.equal(currentObservation.generation, operation.roomGeneration)
+    assert.are.equal("9700", operation.goldItemId)
+    assert.is_true(operation.awaitingQueueExecution)
+    assert.is_false(operation.executionReadyPrompt)
+    assert.is_false(operation.timeoutTimer)
+    assert.are.equal(0, operation.getRetries)
+    assert.are.equal(1, countSent("queue add full get sovereigns"))
+    local accepted = boop.runtime.roomObservationSnapshot()
+    assert.is_true(accepted.itemsSeen)
+    assert.is_false(accepted.activeFenceId)
+    assert.are.equal(application.applicationId, accepted.acceptedSourceAuthority.applicationId)
+    assert.are.equal("3", accepted.acceptedSourceAuthority.roomId)
+    assert.are.equal(currentObservation.generation, accepted.acceptedSourceAuthority.observationGeneration)
+
+    deferredTimeout()
+    boop.onPrompt()
+    boop.onPrompt()
+    operation = currentOperation()
+    assert.are.equal(generation, operation.generation)
+    assert.is_true(operation.awaitingQueueExecution)
+    assert.is_false(operation.executionReadyPrompt)
+    assert.is_false(operation.timeoutTimer)
+    assert.are.equal(0, operation.getRetries)
+    assert.are.equal(1, countSent("queue add full get sovereigns"))
+
+    gmcp.Char.Vitals.bal = "1"
+    gmcp.Char.Vitals.eq = "1"
+    boop.onPrompt()
+    operation = currentOperation()
+    local pickupTimer = operation.timeoutTimer
+    local pickupTimeout = timer_queue.callback(pickupTimer)
+    local timersAtReady = #scheduled
+    assert.is_false(operation.awaitingQueueExecution)
+    assert.is_true(operation.executionReadyPrompt)
+    assert.is_number(pickupTimer)
+    assert.is_function(pickupTimeout)
+
+    boop.onPrompt()
+    assert.are.equal(pickupTimer, currentOperation().timeoutTimer)
+    assert.are.equal(timersAtReady, #scheduled)
+    assert.are.equal(1, countSent("queue add full get sovereigns"))
+
+    helper.setRuntimeBlocker({
+      owner = "interrupt:unrelated-gold-owner",
+      code = "test_unrelated_owner",
+      systems = { target = true },
+    })
+    dofile(
+      os.getenv("TESTS_DIRECTORY")
+        .. "/../src/triggers/boop/Gold/Gold_Get_Success.lua"
+    )
+
+    local quarantine = boop.runtime.packQuarantineSnapshot()
+    operation = currentOperation()
+    assert.is_true(quarantine.consumed)
+    assert.is_true(quarantine.resolved)
+    assert.are.equal("pack_pending", operation.phase)
+    assert.is_true(operation.generation > generation)
+    assert.are.equal(1, countSent("queue add full get sovereigns"))
+    assert.are.equal(
+      1,
+      countSent("queue add freestand put sovereigns in pack")
+    )
+    assert.is_table(boop.state.combat.blockersByOwner[
+      "interrupt:unrelated-gold-owner"
+    ])
+
+    pickupTimeout()
+    dofile(
+      os.getenv("TESTS_DIRECTORY")
+        .. "/../src/triggers/boop/Gold/Gold_Get_Success.lua"
+    )
+    assert.are.equal("pack_pending", currentOperation().phase)
+    assert.are.equal(
+      1,
+      countSent("queue add freestand put sovereigns in pack")
+    )
+
+    local packOwner = currentOperation().blockerOwner
+    dofile(
+      os.getenv("TESTS_DIRECTORY")
+        .. "/../src/triggers/boop/Gold/Gold_Put_Success.lua"
+    )
+    dofile(
+      os.getenv("TESTS_DIRECTORY")
+        .. "/../src/triggers/boop/Gold/Gold_Put_Success.lua"
+    )
+    assert.is_false(boop.state.gold.operation)
+    assert.is_nil(boop.state.combat.blockersByOwner[packOwner])
+    assert.is_table(boop.state.combat.blockersByOwner[
+      "interrupt:unrelated-gold-owner"
+    ])
+    assert.are.equal(1, countTrace("gold terminal: " .. packOwner))
+    assert.are.equal(1, countSent("queue add full get sovereigns"))
+    assert.are.equal(
+      1,
+      countSent("queue add freestand put sovereigns in pack")
+    )
   end)
 
   it("retries get under its exact owner and exhausts at the existing limit", function()
@@ -414,6 +773,7 @@ describe("boop generation-owned gold retry handling", function()
       command = "queue add full get sovereigns",
       queueName = "full",
       queueCommand = "get sovereigns",
+      executionAware = true,
       start = function()
         return startPickup("")
       end,
@@ -493,6 +853,14 @@ describe("boop generation-owned gold retry handling", function()
       ))
       boop.tick()
 
+      if case.executionAware then
+        operation = currentOperation()
+        assert.is_true(operation.awaitingQueueExecution)
+        assert.is_false(operation.timeoutTimer)
+        assert.are.equal(scheduledBeforeTimeout, #scheduled)
+        boop.onPrompt()
+      end
+
       operation = currentOperation()
       assert.are.equal(sendsBeforeTimeout + 1, #sent)
       assert.are.equal(
@@ -519,6 +887,7 @@ describe("boop generation-owned gold retry handling", function()
       command = "queue add full get sovereigns",
       queueName = "full",
       queueCommand = "get sovereigns",
+      executionAware = true,
       warning = "auto gold: replayed pickup timed out; move or disable/flee to cancel",
       start = function()
         local operation = startPickup("pack")
@@ -618,6 +987,13 @@ describe("boop generation-owned gold retry handling", function()
         assert.are.same({
           [stage.queueName] = { stage.queueCommand },
         }, native_queue.snapshot())
+
+        if stage.executionAware then
+          assert.is_true(operation.awaitingQueueExecution)
+          assert.is_false(operation.timeoutTimer)
+          boop.onPrompt()
+          operation = currentOperation()
+        end
 
         local freshTimer = operation.timeoutTimer
         local freshTimeout = timer_queue.callback(freshTimer)
@@ -793,7 +1169,20 @@ describe("boop generation-owned gold retry handling", function()
             end
             terminal.late(diagTimeout)
 
-            assert.are.equal(ticksBeforeRelease + 1, tick_count)
+            operation = currentOperation()
+            local executionPromptTicks = 0
+            if stage.executionAware
+                and operation.awaitingQueueExecution then
+              assert.is_false(operation.timeoutTimer)
+              boop.onPrompt()
+              executionPromptTicks = 1
+              operation = currentOperation()
+            end
+
+            assert.are.equal(
+              ticksBeforeRelease + 1 + executionPromptTicks,
+              tick_count
+            )
             assert.are.equal(
               initialCommandCount + 1,
               countSent(stage.command)
@@ -922,6 +1311,12 @@ describe("boop generation-owned gold retry handling", function()
       boop.tick()
 
       operation = currentOperation()
+      if stage.executionAware then
+        assert.is_true(operation.awaitingQueueExecution)
+        assert.is_false(operation.timeoutTimer)
+        boop.onPrompt()
+        operation = currentOperation()
+      end
       local freshTimeout = timer_queue.callback(operation.timeoutTimer)
       local commandCountBeforeFailure = countSent(stage.command)
       assert.is_function(freshTimeout)
@@ -933,18 +1328,43 @@ describe("boop generation-owned gold retry handling", function()
       operation = currentOperation()
       assert.is_false(operation.awaitingExplicitEvidence)
       assert.are.equal("retry", operation.dispatchProvenance)
-      assert.is_number(operation.timeoutTimer)
       assert.are.equal(
         commandCountBeforeFailure + 1,
         countSent(stage.command)
       )
       if stage.name == "pickup" then
         assert.are.equal(2, operation.getRetries)
+        assert.is_true(operation.awaitingQueueExecution)
+        assert.is_false(operation.timeoutTimer)
+        boop.onPrompt()
+        operation = currentOperation()
       else
         assert.are.equal(1, operation.putRetries)
       end
+      assert.is_number(operation.timeoutTimer)
     end)
   end
+
+  it("accepts pickup success before the first full-ready prompt", function()
+    gmcp.Char.Vitals.bal = "0"
+    gmcp.Char.Vitals.eq = "0"
+    local operation = startPickup("pack", nil, nil, {
+      openExecutionWindow = false,
+    })
+
+    assert.is_true(operation.awaitingQueueExecution)
+    assert.is_false(operation.executionReadyPrompt)
+    assert.is_false(operation.timeoutTimer)
+    assert.are.equal(1, countSent("queue add full get sovereigns"))
+
+    assert.is_true(boop.onGoldGetSuccess())
+    operation = currentOperation()
+    assert.are.equal("pack_pending", operation.phase)
+    assert.are.equal(
+      1,
+      countSent("queue add freestand put sovereigns in pack")
+    )
+  end)
 
   it("advances replayed pickup through explicit get and put evidence", function()
     local operation = startPickup("pack")

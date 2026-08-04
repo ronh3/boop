@@ -139,13 +139,15 @@ describe("boop staged gold handling", function()
     boop.config.useQueueing = false
 
     send_stub = stub(_G, "send", function(command, echoBack)
-      sent[#sent + 1] = {
-        command = command,
-        echoBack = echoBack,
-        phase = type(boop.state.gold.operation) == "table"
-          and boop.state.gold.operation.phase
-          or false,
-      }
+      if not tostring(command or ""):match("^%s*$") then
+        sent[#sent + 1] = {
+          command = command,
+          echoBack = echoBack,
+          phase = type(boop.state.gold.operation) == "table"
+            and boop.state.gold.operation.phase
+            or false,
+        }
+      end
     end)
     send_gmcp_stub = stub(_G, "sendGMCP", function(command)
       sent_gmcp[#sent_gmcp + 1] = command
@@ -178,8 +180,8 @@ describe("boop staged gold handling", function()
 
     assert.are.equal(0, #sent)
     assert.are.equal(2, #sent_gmcp)
-    assert.are.equal("Char.Items.Inv", sent_gmcp[1])
-    assert.are.equal("Char.Items.Room", sent_gmcp[2])
+    assert.are.equal([[Char.Items.Inv ""]], sent_gmcp[1])
+    assert.are.equal([[Char.Items.Room ""]], sent_gmcp[2])
     local deferred = currentOperation()
     assert.are.equal(1, deferred.generation)
     assert.are.equal("deferred_room", deferred.phase)
@@ -428,8 +430,8 @@ describe("boop staged gold handling", function()
       boop.onRoomInfo()
 
       assert.are.same({
-        "Char.Items.Inv",
-        "Char.Items.Room",
+        [[Char.Items.Inv ""]],
+        [[Char.Items.Room ""]],
       }, sent_gmcp)
 
       gmcp.Char.Items.List = {
@@ -571,7 +573,7 @@ describe("boop staged gold handling", function()
       assert.are.equal("await_room", fence.phase)
       assert.is_true(fence.roomOnly)
       assert.are.same({ denizen }, observation.acceptedItems)
-      assert.are.same({ "Char.Items.Room" }, sent_gmcp)
+      assert.are.same({ [[Char.Items.Room ""]] }, sent_gmcp)
       assert.are.equal(0, countSent("queue add full get sovereigns"))
       assert.are.equal(3, #scheduled)
 
@@ -590,7 +592,7 @@ describe("boop staged gold handling", function()
       deferred = currentOperation()
       assert.are.equal(generation, deferred.generation)
       assert.are.equal(fenceId, deferred.revalidationFenceId)
-      assert.are.same({ "Char.Items.Room" }, sent_gmcp)
+      assert.are.same({ [[Char.Items.Room ""]] }, sent_gmcp)
       assert.are.equal(0, countSent("queue add full get sovereigns"))
 
       gmcp.Char.Items.List = {
@@ -644,8 +646,8 @@ describe("boop staged gold handling", function()
       assert.are.equal(generation + 1, later.generation)
       assert.is_true(later.revalidationAttempted)
       assert.are.same({
-        "Char.Items.Room",
-        "Char.Items.Room",
+        [[Char.Items.Room ""]],
+        [[Char.Items.Room ""]],
       }, sent_gmcp)
       assert.are.equal(1, countSent("queue add full get sovereigns"))
     end)
