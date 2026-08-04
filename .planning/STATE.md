@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
 status: executing
-stopped_at: Completed 03-27-PLAN.md
-last_updated: "2026-08-04T10:34:07.652Z"
+stopped_at: Completed 03-28-PLAN.md
+last_updated: "2026-08-04T10:51:39.539Z"
 last_activity: 2026-08-04
-last_activity_desc: Completed Plan 03-27 immediate causal leap denial
+last_activity_desc: Completed Plan 03-28 causal Battlerage cooldown and bounded Triumph
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 44
-  completed_plans: 41
-  percent: 93
+  completed_plans: 42
+  percent: 95
 ---
 
 # Project State
@@ -29,19 +29,19 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
-Plan: 27 of 30
+Plan: 28 of 30
 Status: Ready to execute
-Last activity: 2026-08-04 — Completed Plan 03-27 immediate causal leap denial
+Last activity: 2026-08-04 — Completed Plan 03-28 causal Battlerage cooldown and bounded Triumph
 
-Progress: [█████████░] 93%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 41
+- Total plans completed: 42
 - Average duration: 14 min
-- Total execution time: 7.5 hours
+- Total execution time: 7.7 hours
 
 **By Phase:**
 
@@ -49,12 +49,12 @@ Progress: [█████████░] 93%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 27/30 | ~317m | ~12 min |
+| 03 | 28/30 | ~331m | ~12 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 03 P23 (31m), Phase 03 P24 (5m), Phase 03 P25 (19m), Phase 03 P26 (19m), Phase 03 P27 (9m)
-- Trend: Plan 03-27 added immediate causal leap-denial completion; Plans 03-28 through 03-30, parent CI, and live UAT remain
+- Last 5 plans: Phase 03 P24 (5m), Phase 03 P25 (19m), Phase 03 P26 (19m), Phase 03 P27 (9m), Phase 03 P28 (14m)
+- Trend: Plan 03-28 added causal Battlerage cooldown and bounded Triumph; Plans 03-29 through 03-30, parent CI, and live UAT remain
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -86,6 +86,7 @@ Progress: [█████████░] 93%
 | Phase 03 P25 | 19m | 1 tasks | 10 files |
 | Phase 03 P26 | 19m | 1 tasks | 9 files |
 | Phase 03 P27 | 9m | 1 tasks | 8 files |
+| Phase 03 P28 | 14m | 1 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -179,6 +180,10 @@ Recent decisions affecting current work:
 - [Phase 03]: Use interrupt:<generation> as the leap outbound owner so denial attribution and completeInterrupt release share one exact identity.
 - [Phase 03]: Open the leap denial window only on the observed owned ADDCLEARFULL wire; later unowned outbound traffic leaves the operation for bounded timeout.
 - [Phase 03]: Preserve clearqueue all plus ADDCLEARFULL leap policy and schedule one ordinary zero-delay tick after command_failed completion.
+- [Phase 03]: Use the shared outbound ledger as the sole source of exact Rage wire order and final-owned-wire causality; never register the unsplit logical Rage action.
+- [Phase 03]: Keep global Battlerage cooldown independent from per-ability readiness and reopen it only on exact Available-list recovery or reconnect.
+- [Phase 03]: Bound Triumph with a replaceable generation timer and first-terminal clearing on matching use, expiry, causal insufficient-rage output, timeout, or reconnect.
+- [Phase 03]: Hold Rage only behind nonterminal queued standard generations so established direct standard-plus-Rage execution remains intact.
 
 ### Pending Todos
 
@@ -189,7 +194,7 @@ Recent decisions affecting current work:
 
 - Plan 03-16 closed G-03-5 with one exact-operation room-only revalidation while preserving copied List authority and aggregate blockers.
 - Plan 03-17 closed G-03-4 while preserving manual-targeting movement safety and owned-stop versus attached-detach semantics.
-- Plan 03-27 closed G-03-22 with immediate causal leap-denial completion; Plans 03-28 through 03-30 remain.
+- Plan 03-28 closed G-03-25 with causal Battlerage cooldown, exact Available recovery, and bounded Triumph; Plans 03-29 through 03-30 remain.
 - Local real-Mudlet execution remains unavailable; the focused host helper cannot authoritatively run the entire unrelated profile/DB/rich-output test tree.
 - Parent exact-final-HEAD CI and live Achaea UAT remain blocking external gates before Phase 03 can be marked complete.
 
@@ -209,6 +214,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T10:34:07.647Z
-Stopped at: Completed 03-27-PLAN.md
+Last session: 2026-08-04T10:51:39.534Z
+Stopped at: Completed 03-28-PLAN.md
 Resume file: None
