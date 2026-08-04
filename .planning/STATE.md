@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
 status: executing
-stopped_at: Ready to execute 03-25-PLAN.md
-last_updated: "2026-08-04T08:50:32.721Z"
+stopped_at: Completed 03-25-PLAN.md
+last_updated: "2026-08-04T10:01:20.321Z"
 last_activity: 2026-08-04
-last_activity_desc: Planned Phase 03 command-outcome gap closure through live UAT
+last_activity_desc: Completed Plan 03-25 prompt-reconciled ADDCLEARFULL standard lifecycle
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 2
   total_plans: 44
-  completed_plans: 38
-  percent: 86
+  completed_plans: 39
+  percent: 89
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
-Plan: 24 of 30
+Plan: 25 of 30
 Status: Ready to execute
-Last activity: 2026-08-04 — Planned Phase 03 command-outcome gap closure through live UAT
+Last activity: 2026-08-04 — Completed Plan 03-25 prompt-reconciled ADDCLEARFULL standard lifecycle
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -83,6 +83,7 @@ Progress: [█████████░] 86%
 | Phase 03 P22 | 8m | 1 tasks | 5 files |
 | Phase 03 P23 | 31m | 1 tasks | 11 files |
 | Phase 03 P24 | 5m | 1 tasks | 7 files |
+| Phase 03 P25 | 19m | 1 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -167,6 +168,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Transfer the exact sent gold dispatch after the diag blocker exists and immediately before clearqueue all.
 - [Phase 03]: Give only result-then-prompt diag timeouts the new exact-success replay tick, preserving existing prompt-only interrupt timeout behavior.
 - [Phase 03]: Keep Plan 03-23 gold replay, fresh-timeout, explicit-evidence, and target-loss production contracts unchanged.
+- [Phase 03]: Make the exact standard record authoritative while retaining prequeuedStandard as its compatibility projection.
+- [Phase 03]: Activate destructive mutation serialization only after an observed queued ADDCLEARFULL baseline; direct standard plus rage remains compatible and is attributed through the outbound ledger.
+- [Phase 03]: Quarantine proven departure without clearing native work, but send one traced clearqueue all for present or unknown forbidden-target revocation.
 
 ### Pending Todos
 
@@ -197,6 +201,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-29T07:16:17.566Z
-Stopped at: Completed 03-24-PLAN.md
+Last session: 2026-08-04T10:01:20.316Z
+Stopped at: Completed 03-25-PLAN.md
 Resume file: None
