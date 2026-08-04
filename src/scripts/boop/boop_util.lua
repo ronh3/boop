@@ -219,6 +219,9 @@ local function normalizeDispatchOptions(options)
     return {
       roomOwned = true,
       sourceAuthority = copySourceAuthority(options),
+      outcomeRegistration = false,
+      dispatchMode = "",
+      standardRetryBudget = nil,
     }
   end
   options = type(options) == "table" and options or {}
@@ -227,6 +230,11 @@ local function normalizeDispatchOptions(options)
     sourceAuthority = copySourceAuthority(
       options.sourceAuthority
     ),
+    outcomeRegistration = type(options.outcomeRegistration) == "table"
+        and options.outcomeRegistration
+      or false,
+    dispatchMode = tostring(options.dispatchMode or ""),
+    standardRetryBudget = tonumber(options.standardRetryBudget),
   }
 end
 
@@ -263,8 +271,75 @@ function boop.executeAction(action, forceQueue, options)
     return false
   end
   action = prependAssist(action)
+  local suppliedRegistration = options.outcomeRegistration
+  local kind = type(suppliedRegistration) == "table"
+      and tostring(suppliedRegistration.kind or "standard")
+    or "standard"
+  if kind == "" then kind = "standard" end
+  local standardKind = kind == "standard"
+  local standardTracked = standardKind
+    and boop.config
+    and boop.config.enabled ~= false
+  if boop.runtime
+      and boop.runtime.standardMutationBarrier
+      and boop.runtime.standardMutationBarrier() then
+    if boop.trace and boop.trace.log then
+      boop.trace.log("dispatch held: exact standard lifecycle pending")
+    end
+    return false
+  end
 
-  if boop.config.useQueueing or forceQueue then
+  local queued = boop.config.useQueueing or forceQueue
+  if options.dispatchMode == "direct" then
+    queued = false
+  elseif options.dispatchMode == "queued" then
+    queued = true
+  end
+
+  local registration = suppliedRegistration
+  if standardTracked
+      and boop.runtime
+      and boop.runtime.beginStandardDispatch then
+    registration = boop.runtime.beginStandardDispatch({
+      outcomeRegistration = suppliedRegistration,
+      mode = queued and "queued" or "direct",
+      action = action,
+      aliasBinding = action,
+      targetId = boop.state
+        and boop.state.targeting
+        and boop.state.targeting.currentTargetId
+        or "",
+      sourceAuthority = options.sourceAuthority,
+      retryBudget = options.standardRetryBudget,
+    })
+    if not registration then
+      return false
+    end
+  end
+
+  local function abortStandard(reason)
+    if standardTracked
+        and boop.runtime
+        and boop.runtime.abortStandardDispatch then
+      boop.runtime.abortStandardDispatch(registration, reason)
+    end
+    return false
+  end
+
+  local function sendOwned(command, role)
+    if registration
+        and boop.runtime
+        and boop.runtime.registerOutboundExpectation then
+      boop.runtime.registerOutboundExpectation(
+        registration,
+        command,
+        role
+      )
+    end
+    send(command, false)
+  end
+
+  if queued then
     boop.state = boop.state or {}
     local queuedAction = action
 
@@ -275,43 +350,80 @@ function boop.executeAction(action, forceQueue, options)
     local lastAction = boop.state.queue.aliasAction or ""
     if boop.state.queue.aliasDirty or lastAction ~= queuedAction then
       if not dispatchAuthorityCurrent(options, "standard alias") then
-        return false
+        return abortStandard("standard alias authority changed")
       end
-      send("setalias BOOP_ATTACK " .. queuedAction, false)
+      sendOwned("setalias BOOP_ATTACK " .. queuedAction, "control")
       boop.state.queue.aliasAction = queuedAction
       boop.state.queue.aliasDirty = false
     end
     if not dispatchAuthorityCurrent(options, "standard queue") then
-      return false
+      return abortStandard("standard queue authority changed")
     end
-    send("queue addclearfull freestand BOOP_ATTACK", false)
-    if boop.gag and boop.gag.noteStandardIntent then
+    sendOwned(
+      "queue addclearfull freestand BOOP_ATTACK",
+      "baseline"
+    )
+    if standardTracked
+        and boop.runtime
+        and boop.runtime.completeStandardDispatch then
+      boop.runtime.completeStandardDispatch(registration, {
+        mode = "queued",
+        aliasBinding = queuedAction,
+      })
+    end
+    if standardKind
+        and boop.gag
+        and boop.gag.noteStandardIntent then
       boop.gag.noteStandardIntent(action)
     end
-    boop.trace.log("std queue: " .. queuedAction)
+    boop.trace.log(
+      (standardKind and "std queue: " or "rage queue: ")
+        .. queuedAction
+    )
     return true
   else
     local parts = boop.util.split(action, boop.lists.separator or "/")
-    local sentAny = false
+    local wires = {}
     for _, part in ipairs(parts) do
       local trimmed = boop.util.trim(part)
       if trimmed ~= "" then
-        if not dispatchAuthorityCurrent(
-            options,
-            "standard direct"
-          ) then
-          return false
-        end
-        send(trimmed, false)
-        sentAny = true
-        boop.trace.log("std direct: " .. trimmed)
+        wires[#wires + 1] = trimmed
       end
     end
-    if sentAny then
+    local sentAny = false
+    for index, wire in ipairs(wires) do
+      if not dispatchAuthorityCurrent(
+          options,
+          standardKind and "standard direct" or "rage direct"
+        ) then
+        return abortStandard("direct authority changed")
+      end
+      sendOwned(
+        wire,
+        index == #wires and "final" or "wire"
+      )
+      sentAny = true
+      boop.trace.log(
+        (standardKind and "std direct: " or "rage direct: ")
+          .. wire
+      )
+    end
+    if sentAny
+        and standardTracked
+        and boop.runtime
+        and boop.runtime.completeStandardDispatch then
+      boop.runtime.completeStandardDispatch(registration, {
+        mode = "direct",
+        aliasBinding = action,
+      })
+    end
+    if sentAny and standardKind then
       if boop.gag and boop.gag.noteStandardIntent then
         boop.gag.noteStandardIntent(action)
       end
       markUnnamableMaulUsed(action)
+    elseif not sentAny and standardTracked then
+      abortStandard("standard produced no wire commands")
     end
     return sentAny
   end
@@ -319,23 +431,25 @@ end
 
 function boop.executeRageAction(action, options)
   if not action or action == "" then return false end
-  options = normalizeDispatchOptions(options)
-  if not dispatchAuthorityCurrent(options, "rage start") then
-    return false
-  end
-  action = prependAssist(action)
-  local parts = boop.util.split(action, boop.lists.separator or "/")
-  local sentAny = false
-  for _, part in ipairs(parts) do
-    local trimmed = boop.util.trim(part)
-    if trimmed ~= "" then
-      if not dispatchAuthorityCurrent(options, "rage direct") then
-        return false
-      end
-      send(trimmed, false)
-      sentAny = true
-      boop.trace.log("rage direct: " .. trimmed)
-    end
-  end
-  return sentAny
+  options = type(options) == "table" and options or {}
+  local registration = type(options.outcomeRegistration) == "table"
+      and options.outcomeRegistration
+    or (
+      boop.runtime
+      and boop.runtime.newOutboundRegistration
+      and boop.runtime.newOutboundRegistration("rage")
+      or {}
+    )
+  options = {
+    roomOwned = options.roomOwned == true,
+    sourceAuthority = options.sourceAuthority,
+    dispatchMode = "direct",
+    outcomeRegistration = {
+      owner = registration.owner,
+      generation = registration.generation,
+      dispatchId = registration.dispatchId,
+      kind = "rage",
+    },
+  }
+  return boop.executeAction(action, false, options)
 end

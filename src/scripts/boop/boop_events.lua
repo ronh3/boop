@@ -1809,6 +1809,10 @@ function boop.onDataSendRequest(_, command)
   if not (boop.config and boop.config.enabled) then
     return false
   end
+  local outboundObserved = runtime()
+    and boop.runtime.observeOutbound
+    and boop.runtime.observeOutbound(command)
+    or false
   local direction = movementDirection(command)
   if not direction
       or not (runtime() and boop.runtime.noteMovementIntent) then
@@ -2159,6 +2163,16 @@ function boop.onRoomItemsRemove()
       traceHeld("target", "target lost retarget")
       return false
     end
+    if boop.runtime
+        and boop.runtime.standardPending
+        and boop.runtime.standardPending() then
+      if boop.trace and boop.trace.log then
+        boop.trace.log(
+          "target held: exact standard lifecycle pending | target lost retarget"
+        )
+      end
+      return false
+    end
 
     local nextTarget = boop.targets
       and boop.targets.choose
@@ -2423,6 +2437,21 @@ function boop.onTargetSet()
     return true
   end
   local newId = tostring(gmcp.IRE.Target.Set or "")
+  local pending = boop.runtime
+    and boop.runtime.standardSnapshot
+    and boop.runtime.standardSnapshot()
+    or false
+  if type(pending) == "table"
+      and not pending.terminal
+      and newId ~= tostring(pending.targetId or "") then
+    if newId == "" then
+      boop.runtime.markStandardTargetInvalid("target gmcp cleared")
+      return true
+    end
+    boop.runtime.clearAttackIntent("explicit retarget", {
+      clearTarget = false,
+    })
+  end
   if boop.targets and boop.targets.applyTarget then
     boop.targets.applyTarget(newId, { reason = "target gmcp set changed" })
   else
@@ -2449,6 +2478,23 @@ function boop.onTargetInfo()
   end
   if info.id then
     local newId = tostring(info.id or "")
+    local pending = boop.runtime
+      and boop.runtime.standardSnapshot
+      and boop.runtime.standardSnapshot()
+      or false
+    if type(pending) == "table"
+        and not pending.terminal
+        and newId ~= tostring(pending.targetId or "") then
+      if newId == "" then
+        boop.runtime.markStandardTargetInvalid(
+          "target gmcp info cleared"
+        )
+        return true
+      end
+      boop.runtime.clearAttackIntent("explicit retarget", {
+        clearTarget = false,
+      })
+    end
     if boop.targets and boop.targets.applyTarget then
       boop.targets.applyTarget(newId, {
         name = targetInfoName(info),
@@ -2521,11 +2567,216 @@ function boop.onBalanceUsed(kind, seconds, sourceAuthority)
   else
     return
   end
+  if boop.runtime
+      and boop.runtime.standardPending
+      and boop.runtime.standardPending() then
+    boop.runtime.bufferStandardCandidate({
+      kind = "success",
+      line = string.format(
+        "%s used: %ss",
+        key == "balance" and "Balance" or "Equilibrium",
+        tostring(seconds)
+      ),
+    })
+    return true
+  end
   boop.state.queue.prequeuedStandard = false
   boop.state.queue.prequeueSourceAuthority = false
   boop.schedulePrequeue(authority, {
     roomOwned = authority and true or false,
   })
+end
+
+local function standardLineEvidence(line)
+  local raw = boop.util.trim(tostring(line or ""))
+  local normalized = boop.util.safeLower(raw)
+  if normalized == "" then
+    return false
+  end
+  if normalized:match("^balance used:%s*[0-9%.]+s%.?$")
+      or normalized:match("^equilibrium used:%s*[0-9%.]+s%.?$") then
+    return { kind = "success", line = raw }
+  end
+  if normalized:find("no longer paralysed", 1, true) then
+    return { recovery = "paralysis", line = raw }
+  end
+  if normalized:find("no longer stunned", 1, true) then
+    return { recovery = "stun", line = raw }
+  end
+  if normalized == "you stand up." then
+    return { recovery = "prone", line = raw }
+  end
+  if normalized:find("writhed free", 1, true)
+      and (
+        normalized:find("web", 1, true)
+        or normalized:find("entanglement", 1, true)
+      ) then
+    return { recovery = "web", line = raw }
+  end
+  if normalized:find("writhed free", 1, true)
+      and normalized:find("impal", 1, true) then
+    return { recovery = "impale", line = raw }
+  end
+  if normalized:find("arms are free", 1, true) then
+    return { recovery = "arms", line = raw }
+  end
+  if normalized:find("paralys", 1, true) then
+    return { kind = "denial", obstacle = "paralysis", line = raw }
+  end
+  if normalized:find("stunned", 1, true) then
+    return { kind = "denial", obstacle = "stun", line = raw }
+  end
+  if normalized:find("must be standing", 1, true)
+      or normalized:find("you are prone", 1, true) then
+    return { kind = "denial", obstacle = "prone", line = raw }
+  end
+  if normalized:find("webbed", 1, true)
+      or normalized:find("tangled in webs", 1, true) then
+    return { kind = "denial", obstacle = "web", line = raw }
+  end
+  if normalized:find("impaled", 1, true) then
+    return { kind = "denial", obstacle = "impale", line = raw }
+  end
+  if normalized:find("arm", 1, true)
+      and (
+        normalized:find("cannot", 1, true)
+        or normalized:find("required", 1, true)
+        or normalized:find("unable", 1, true)
+      ) then
+    return { kind = "denial", obstacle = "arms", line = raw }
+  end
+  if normalized:find("nothing here by that name", 1, true)
+      or normalized:find("nothing here to target", 1, true) then
+    return {
+      kind = "denial",
+      obstacle = "target_absent",
+      line = raw,
+    }
+  end
+  return false
+end
+
+function boop.onStandardCommandOutcome(line)
+  local evidence = standardLineEvidence(line)
+  if not evidence then
+    return false
+  end
+  if evidence.recovery then
+    return boop.runtime
+      and boop.runtime.noteStandardRecovery
+      and boop.runtime.noteStandardRecovery(evidence.recovery)
+      or false
+  end
+  return boop.runtime
+    and boop.runtime.bufferStandardCandidate
+    and boop.runtime.bufferStandardCandidate(evidence)
+    or false
+end
+
+function boop.onStandardCommandRecovery(line)
+  local evidence = standardLineEvidence(line)
+  if not evidence or not evidence.recovery then
+    return false
+  end
+  return boop.runtime
+    and boop.runtime.noteStandardRecovery
+    and boop.runtime.noteStandardRecovery(evidence.recovery)
+    or false
+end
+
+function boop.retryStandardDispatch(operation, reason)
+  if type(operation) ~= "table"
+      or not boop.config
+      or not boop.config.enabled
+      or operation.quarantined
+      or operationHolds("queue")
+      or operationHolds("target")
+      or operationHolds("combat")
+      or operationHolds("gold")
+      or boop.state.diag.hold
+      or boop.state.gold.getPending
+      or boop.state.gold.putPending then
+    return false
+  end
+  if gmcp and gmcp.Char and gmcp.Char.Vitals
+      and (
+        gmcp.Char.Vitals.bal ~= "1"
+        or gmcp.Char.Vitals.eq ~= "1"
+      ) then
+    return false
+  end
+  local targetId = tostring(operation.targetId or "")
+  if targetId == ""
+      or tostring(boop.state.targeting.currentTargetId or "")
+        ~= targetId
+      or not boop.targets
+      or not boop.targets.isCurrentTargetEligible
+      or not boop.targets.isCurrentTargetEligible() then
+    return false
+  end
+  local authority = copySourceAuthority(operation.sourceAuthority)
+  if authority
+      and not roomAuthorityCurrent(
+        authority,
+        "standard retry"
+      ) then
+    return false
+  end
+  if boop.safety
+      and boop.safety.shouldFlee
+      and boop.safety.shouldFlee() then
+    return false
+  end
+  local emitted = boop.executeAction(
+    operation.action,
+    operation.mode == "queued",
+    {
+      roomOwned = authority and true or false,
+      sourceAuthority = authority,
+      dispatchMode = operation.mode,
+      standardRetryBudget = tonumber(operation.retryBudget) or 0,
+    }
+  )
+  if emitted and boop.trace and boop.trace.log then
+    boop.trace.log("standard retry dispatched: " .. tostring(reason or "retry"))
+  end
+  return emitted
+end
+
+function boop.onStandardLifecycleTerminal(operation)
+  if type(operation) ~= "table" or not operation.quarantined then
+    return false
+  end
+  local targetId = tostring(operation.targetId or "")
+  if tostring(boop.state.targeting.currentTargetId or "") == targetId then
+    boop.state.targeting.currentTargetId = ""
+    boop.state.targeting.targetName = ""
+    if boop.targets and boop.targets.clearTargetShield then
+      boop.targets.clearTargetShield("standard target terminal")
+    else
+      boop.state.targeting.targetShield = false
+    end
+  end
+  boop.state.queue.aliasAction = ""
+  boop.state.queue.aliasDirty = true
+  if boop.afflictions and boop.afflictions.clearTarget then
+    boop.afflictions.clearTarget()
+  end
+  if not tempTimer then
+    return false
+  end
+  tempTimer(0, function()
+    if boop.runtime
+        and boop.runtime.standardPending
+        and boop.runtime.standardPending() then
+      return false
+    end
+    local authority = currentRoomSourceAuthority()
+    return boop.tick(authority or nil, {
+      roomOwned = authority and true or false,
+    })
+  end)
+  return true
 end
 
 function boop.schedulePrequeue(sourceAuthority, options)
@@ -2618,6 +2869,10 @@ function boop.prequeueStandard(sourceAuthority, options)
   end
   if not boop.config.enabled then return false end
   if not boop.config.prequeueEnabled then return false end
+  if boop.runtime.standardPending
+      and boop.runtime.standardPending() then
+    return false
+  end
   if operationHolds("queue")
       or operationHolds("target")
       or operationHolds("combat")
@@ -2702,6 +2957,10 @@ function boop.refreshPrequeuedStandard(reason, sourceAuthority, options)
   end
   if not boop.config.enabled then return false end
   if not boop.config.prequeueEnabled then return false end
+  if boop.runtime.standardPending
+      and boop.runtime.standardPending() then
+    return false
+  end
   if operationHolds("queue")
       or operationHolds("target")
       or operationHolds("combat")
@@ -2802,6 +3061,17 @@ function boop.onPrompt()
   if not boop.config or not boop.config.enabled then
     return false
   end
+  local standardResult = boop.runtime
+    and boop.runtime.reconcileStandardPrompt
+    and boop.runtime.reconcileStandardPrompt(
+      gmcp
+        and gmcp.Char
+        and gmcp.Char.Vitals
+        and gmcp.Char.Vitals.bal == "1"
+        and gmcp.Char.Vitals.eq == "1"
+        or false
+    )
+    or false
   if boop.runtime and boop.runtime.step and boop.runtime.applyEffects then
     local sourceAuthority = currentRoomSourceAuthority()
     local context = boop.runtime.context(sourceAuthority, {
@@ -2809,7 +3079,12 @@ function boop.onPrompt()
     })
     local result = boop.runtime.step({ type = "prompt", context = context })
     boop.runtime.applyEffects(result, context)
-    if result.runTick then
+    if result.runTick
+        and not (
+          type(standardResult) == "table"
+          and standardResult.terminal
+          and standardResult.quarantined
+        ) then
       boop.tick(sourceAuthority or nil)
     end
     return

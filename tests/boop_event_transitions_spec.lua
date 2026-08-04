@@ -33,6 +33,7 @@ describe("boop event-driven state transitions", function()
   local gmcp_requests
   local raised_events
   local saved_demonwalker
+  local observe_outbound
 
   before_each(function()
     helper.reset()
@@ -49,6 +50,9 @@ describe("boop event-driven state transitions", function()
 
     send_stub = stub(_G, "send", function(command, echo)
       sent_commands[#sent_commands + 1] = { command = command, echo = echo }
+      if observe_outbound then
+        boop.onDataSendRequest("sysDataSendRequest", command)
+      end
     end)
     send_gmcp_stub = stub(_G, "sendGMCP", function(command)
       gmcp_requests[#gmcp_requests + 1] = command
@@ -76,6 +80,7 @@ describe("boop event-driven state transitions", function()
   after_each(function()
     _G.getEpoch = saved_get_epoch
     _G.demonwalker = saved_demonwalker
+    observe_outbound = nil
     if send_stub then
       send_stub:revert()
       send_stub = nil
@@ -1513,7 +1518,7 @@ describe("boop event-driven state transitions", function()
       assert.are.equal(0, countSent("queue clear"))
     end)
 
-    it("keeps current generation-46 target, combat, prequeue, refresh, and retarget paths live", function()
+    it("keeps current generation-46 authority live while the exact standard owns dispatch barriers", function()
       helper.setClass("Occultist")
       helper.learnSkills({
         { name = "Lycantha", group = "Domination" },
@@ -1549,11 +1554,29 @@ describe("boop event-driven state transitions", function()
         1,
         countSent("queue addclearfull freestand BOOP_ATTACK")
       )
+      boop.onDataSendRequest(
+        "sysDataSendRequest",
+        "setalias BOOP_ATTACK command hound at 44901"
+      )
+      boop.onDataSendRequest(
+        "sysDataSendRequest",
+        "queue addclearfull freestand BOOP_ATTACK"
+      )
+      assert.is_false(boop.executeRageAction(
+        "harry 44901",
+        automaticOptions(authority)
+      ))
+      assert.are.equal(0, countSent("harry 44901"))
+
+      boop.onBalanceUsed("balance", 2)
+      boop.onPrompt()
+      assert.is_false(boop.runtime.standardPending())
+      assert.are.equal(1, countSent("harry 44901"))
       assert.is_true(boop.executeRageAction(
         "harry 44901",
         automaticOptions(authority)
       ))
-      assert.are.equal(1, countSent("harry 44901"))
+      assert.are.equal(2, countSent("harry 44901"))
 
       sent_commands = {}
       boop.onBalanceUsed("balance", 2)
@@ -1574,25 +1597,13 @@ describe("boop event-driven state transitions", function()
         gained = os.clock(),
         attempted = false,
       }
-      assert.is_true(boop.refreshPrequeuedStandard(
+      assert.is_false(boop.refreshPrequeuedStandard(
         "current shield refresh"
       ))
       assert.are.equal(
-        2,
+        1,
         countSent("queue addclearfull freestand BOOP_ATTACK")
       )
-
-      sent_commands = {}
-      gmcp.Char.Items.Remove = {
-        location = "room",
-        item = denizenItem("44901", "the generation 46 denizen"),
-      }
-      boop.onRoomItemsRemove()
-      assert.are.equal(0, countSent("settarget 44902"))
-      local retargetCallback = scheduled_callbacks[#scheduled_callbacks].callback
-      assert.is_function(retargetCallback)
-      retargetCallback()
-      assert.are.equal(1, countSent("settarget 44902"))
     end)
   end)
 
@@ -2396,18 +2407,25 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
 
     boop.config.useQueueing = true
-    boop.executeAction("warp 42")
-    boop.executeRageAction("harry 42")
+    assert.is_true(boop.executeAction("warp 42"))
+    boop.onDataSendRequest(
+      "sysDataSendRequest",
+      "setalias BOOP_ATTACK warp 42"
+    )
+    boop.onDataSendRequest(
+      "sysDataSendRequest",
+      "queue addclearfull freestand BOOP_ATTACK"
+    )
+    assert.is_false(boop.executeRageAction("harry 42"))
     assert.are.equal(
       "setalias BOOP_ATTACK warp 42",
-      sent_commands[#sent_commands - 2].command
+      sent_commands[#sent_commands - 1].command
     )
     assert.are.equal(
       "queue addclearfull freestand BOOP_ATTACK",
-      sent_commands[#sent_commands - 1].command
+      sent_commands[#sent_commands].command
     )
-    assert.are.equal("harry 42", sent_commands[#sent_commands].command)
-    for i = #sent_commands - 2, #sent_commands do
+    for i = #sent_commands - 1, #sent_commands do
       assert.is_nil(sent_commands[i].command:find("sovereigns", 1, true))
     end
 
@@ -3911,6 +3929,99 @@ describe("boop event-driven state transitions", function()
     assert.stub(send_gmcp_stub).was_called_with('Core.Supports.Add ["Char.Afflictions 1"]')
     assert.stub(send_gmcp_stub).was_called_with('Core.Supports.Add ["Char.Skills 1"]')
     assert.stub(send_gmcp_stub).was_called_with([[Char.Skills.Get]])
+  end)
+
+  describe("G-03-24 exact standard target invalidation", function()
+    local function seedOwnedStandard()
+      helper.setArea("Test Area")
+      helper.setClass("Occultist")
+      helper.learnSkill("Lycantha", "Domination")
+      helper.setDenizens({
+        { id = "42", name = "a departing denizen" },
+        { id = "43", name = "a replacement denizen" },
+      })
+      helper.setTarget("42", "a departing denizen", "80%")
+      boop.config.enabled = true
+      boop.config.targetingMode = "auto"
+      boop.config.useQueueing = true
+      gmcp.Char.Vitals.bal = "0"
+      gmcp.Char.Vitals.eq = "0"
+      observe_outbound = true
+
+      assert.is_true(boop.executeAction(
+        "command hound at 42",
+        true
+      ))
+      return boop.runtime.standardSnapshot()
+    end
+
+    it("quarantines a departed target without clearing or rebinding the native queue", function()
+      local standard = seedOwnedStandard()
+      gmcp.Char.Items.Remove = {
+        location = "room",
+        item = denizenItem("42", "a departing denizen"),
+      }
+
+      boop.onRoomItemsRemove()
+
+      local quarantined = boop.runtime.standardSnapshot()
+      assert.are.equal(standard.generation, quarantined.generation)
+      assert.are.equal("target-invalid", quarantined.status)
+      assert.is_true(quarantined.quarantined)
+      assert.are.equal("42", boop.state.targeting.currentTargetId)
+      assert.are.equal(0, countSent("clearqueue all"))
+
+      local retarget = scheduled_callbacks[#scheduled_callbacks].callback
+      retarget()
+      assert.are.equal(0, countSent("settarget 43"))
+      assert.are.equal(
+        "command hound at 42",
+        boop.state.queue.aliasAction
+      )
+
+      gmcp.Char.Vitals.bal = "1"
+      gmcp.Char.Vitals.eq = "1"
+      assert.is_true(boop.onStandardCommandOutcome(
+        "You detect nothing here by that name."
+      ))
+      boop.onPrompt()
+      local wake = scheduled_callbacks[#scheduled_callbacks].callback
+      wake()
+
+      assert.are.equal(1, countSent("settarget 43"))
+      assert.are.equal(0, countSent("clearqueue all"))
+      assert.are.equal(1, countSent(
+        "setalias BOOP_ATTACK command hound at 43"
+      ))
+      assert.are.equal(2, countSent(
+        "queue addclearfull freestand BOOP_ATTACK"
+      ))
+    end)
+
+    it("revokes a present blacklisted target with one explicit collateral clear before replacement", function()
+      seedOwnedStandard()
+      gmcp.Char.Vitals.bal = "1"
+      gmcp.Char.Vitals.eq = "1"
+
+      assert.is_true(boop.targets.addBlacklist(
+        "ALL",
+        "a departing denizen"
+      ))
+
+      assert.are.equal(1, countSent("clearqueue all"))
+      local terminal = boop.runtime.lastStandardTerminalSnapshot()
+      assert.are.equal("revoked", terminal.status)
+      assert.are.equal("42", terminal.targetId)
+      assert.are.equal("blacklist updated", terminal.terminalReason)
+      assert.are.equal(1, countSent("settarget 43"))
+      assert.are.equal(1, countSent(
+        "setalias BOOP_ATTACK command hound at 43"
+      ))
+      assert.are.equal(2, countSent(
+        "queue addclearfull freestand BOOP_ATTACK"
+      ))
+
+    end)
   end)
 
   it("retries core gmcp support negotiation when char status arrives before IRE gmcp is active", function()

@@ -10,6 +10,7 @@ describe("boop prequeue", function()
   local last_callback
   local sent
   local scheduled
+  local observe_outbound
 
   local function commandCount(command)
     local count = 0
@@ -19,6 +20,15 @@ describe("boop prequeue", function()
       end
     end
     return count
+  end
+
+  local function observeSent(firstIndex)
+    for index = firstIndex or 1, #(sent or {}) do
+      boop.onDataSendRequest(
+        "sysDataSendRequest",
+        sent[index].command
+      )
+    end
   end
 
   local function blockerFor(owner)
@@ -57,6 +67,9 @@ describe("boop prequeue", function()
         command = command,
         echoBack = echoBack,
       }
+      if observe_outbound then
+        boop.onDataSendRequest("sysDataSendRequest", command)
+      end
     end)
     send_gmcp_stub = stub(_G, "sendGMCP", function(_) end)
     timer_stub = stub(_G, "tempTimer", function(delay, callback)
@@ -81,6 +94,7 @@ describe("boop prequeue", function()
     last_callback = nil
     sent = nil
     scheduled = nil
+    observe_outbound = nil
     if send_stub then
       send_stub:revert()
       send_stub = nil
@@ -124,7 +138,7 @@ describe("boop prequeue", function()
     assert.is_true(boop.state.queue.prequeuedStandard)
   end)
 
-  it("rebuilds a queued standard as shieldbreak when the target shields after prequeue", function()
+  it("keeps a queued standard alias fixed when the target shields", function()
     helper.reset()
     helper.setArea("Test Area")
     helper.setClass("Occultist")
@@ -147,13 +161,14 @@ describe("boop prequeue", function()
     boop.targets.onShielded("a test denizen")
 
     assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK warp 42", false)
-    assert.stub(send_stub).was_called_with("setalias BOOP_ATTACK touch hammer 42", false)
+    assert.stub(send_stub).was_not_called_with("setalias BOOP_ATTACK touch hammer 42", false)
     assert.stub(send_stub).was_called_with("queue addclearfull freestand BOOP_ATTACK", false)
+    assert.are.equal("warp 42", boop.state.queue.aliasAction)
     assert.is_true(boop.state.queue.prequeuedStandard)
     assert.is_false(boop.state.targeting.targetShield.attempted)
   end)
 
-  it("rebuilds a queued class attack in both shield-mode directions", function()
+  it("keeps a queued class alias fixed across shield-mode changes", function()
     helper.reset()
     dofile(
       os.getenv("TESTS_DIRECTORY")
@@ -180,7 +195,7 @@ describe("boop prequeue", function()
 
     boop.ui.shieldModeCommand("break")
     assert.are.equal(
-      "combination 42 raze smash",
+      "combination 42 rend smash",
       boop.state.queue.aliasAction
     )
 
@@ -191,16 +206,16 @@ describe("boop prequeue", function()
     )
     assert.are.equal(trackedShield, boop.state.targeting.targetShield)
     assert.are.equal(
-      1,
+      0,
       commandCount("setalias BOOP_ATTACK combination 42 raze smash")
     )
     assert.are.equal(
-      2,
+      1,
       commandCount("setalias BOOP_ATTACK combination 42 rend smash")
     )
   end)
 
-  it("keeps a rebuilt shieldbreak after a damage prequeue rebounds", function()
+  it("does not rebound or rebind a pending damage prequeue", function()
     helper.reset()
     dofile(
       os.getenv("TESTS_DIRECTORY")
@@ -230,20 +245,17 @@ describe("boop prequeue", function()
     boop.prequeueStandard()
     boop.targets.onShielded("a test denizen")
     boop.targets.onShielded("a test denizen")
+    local timersBeforeOutcome = #scheduled
     boop.onBalanceUsed("equilibrium", 1.7)
 
-    local delayedPrequeue = scheduled[#scheduled]
-    assert.is_table(delayedPrequeue)
-    assert.is_true(math.abs(delayedPrequeue.delay - 0.7) < 0.001)
-    delayedPrequeue.callback()
-
-    assert.are.equal("hyena maul 42/raze 42", boop.state.queue.aliasAction)
+    assert.are.equal(timersBeforeOutcome, #scheduled)
+    assert.are.equal("hyena maul 42/dsl 42", boop.state.queue.aliasAction)
     assert.are.equal(
       1,
       commandCount("setalias BOOP_ATTACK hyena maul 42/dsl 42")
     )
     assert.are.equal(
-      1,
+      0,
       commandCount("setalias BOOP_ATTACK hyena maul 42/raze 42")
     )
     assert.is_false(boop.state.targeting.targetShield.attempted)
@@ -498,5 +510,276 @@ describe("boop prequeue", function()
       assert.are.equal("interrupt:2", boop.state.diag.operation.blockerOwner)
     end)
   end
+
+  describe("G-03-21 prompt-reconciled ADDCLEARFULL lifecycle", function()
+    local function queueOwnedStandard()
+      gmcp.Char.Vitals.bal = "0"
+      gmcp.Char.Vitals.eq = "0"
+      observe_outbound = true
+      assert.is_true(boop.prequeueStandard())
+      local standard = boop.runtime.standardSnapshot()
+      assert.is_table(standard)
+      assert.are.equal("queued", standard.status)
+      assert.are.equal("queued", standard.mode)
+      assert.are.equal("42", standard.targetId)
+      assert.are.equal(
+        "command hound at 42",
+        standard.aliasBinding
+      )
+      assert.are.equal(
+        "queue addclearfull freestand BOOP_ATTACK",
+        standard.baseline.command
+      )
+      return standard
+    end
+
+    local denialCases = {
+      {
+        name = "paralysis",
+        line = "You are paralysed and cannot do that.",
+      },
+      {
+        name = "stun",
+        line = "You are stunned and cannot do that.",
+      },
+      {
+        name = "prone",
+        line = "You must be standing first.",
+      },
+      {
+        name = "web",
+        line = "You are too tangled in webs to do that.",
+      },
+      {
+        name = "impale",
+        line = "You are impaled and cannot do that.",
+      },
+      {
+        name = "arms",
+        line = "You do not have the free arms required to do that.",
+      },
+    }
+
+    for _, denialCase in ipairs(denialCases) do
+      local case = denialCase
+      it("attributes the exact " .. case.name .. " denial candidate", function()
+        queueOwnedStandard()
+
+        assert.is_true(boop.onStandardCommandOutcome(case.line))
+        local candidate = boop.runtime.standardSnapshot().candidate
+        assert.is_table(candidate)
+        assert.are.equal("denial", candidate.kind)
+        assert.are.equal(case.name, candidate.obstacle)
+      end)
+    end
+
+    it("records transformed direct wire parts and keeps rage dispatch semantic", function()
+      helper.setTarget("42", "a test denizen", "80%")
+      boop.config.useQueueing = true
+      observe_outbound = true
+      sent = {}
+
+      assert.is_true(boop.executeAction(
+        " command hound at 42 / touch hammer 42 ",
+        nil,
+        {
+          dispatchMode = "direct",
+          outcomeRegistration = {
+            owner = "standard:test",
+            generation = 77,
+            dispatchId = "standard:test:77",
+            kind = "standard",
+          },
+        }
+      ))
+
+      assert.are.same({
+        "command hound at 42",
+        "touch hammer 42",
+      }, {
+        sent[1].command,
+        sent[2].command,
+      })
+      local standard = boop.runtime.standardSnapshot()
+      assert.are.equal("direct", standard.mode)
+      assert.are.same({
+        { command = "command hound at 42" },
+        { command = "touch hammer 42" },
+      }, standard.expectedWireCommands)
+      assert.are.equal(2, #standard.observedWireCommands)
+      assert.are.equal(
+        standard.observedWireCommands[2].sequence,
+        standard.finalOwnedWireSequence
+      )
+      assert.are.equal(
+        "touch hammer 42",
+        standard.baseline.command
+      )
+
+      assert.is_true(boop.onStandardCommandOutcome(
+        "Balance used: 3.0s"
+      ))
+      boop.runtime.reconcileStandardPrompt(false)
+      assert.are.equal(
+        "executed",
+        boop.runtime.standardSnapshot().status
+      )
+
+      sent = {}
+      assert.is_true(boop.executeAction(
+        " harry 42 / temper 42 ",
+        nil,
+        {
+          dispatchMode = "direct",
+          outcomeRegistration = {
+            owner = "rage:test",
+            generation = 78,
+            dispatchId = "rage:test:78",
+            kind = "rage",
+          },
+        }
+      ))
+      assert.are.same({ "harry 42", "temper 42" }, {
+        sent[1].command,
+        sent[2].command,
+      })
+      assert.are.equal(
+        77,
+        boop.runtime.standardSnapshot().generation
+      )
+
+      local dispatches = boop.runtime.outboundSnapshot().dispatches
+      local rageDispatch = dispatches[#dispatches]
+      assert.are.equal("rage", rageDispatch.kind)
+      assert.are.same({
+        { command = "harry 42" },
+        { command = "temper 42" },
+      }, rageDispatch.expectedWireCommands)
+      assert.are.equal(2, #rageDispatch.observedWireCommands)
+    end)
+
+    it("owns the exact wire baseline and blocks competing dispatch until the next prompt confirms success", function()
+      local standard = queueOwnedStandard()
+
+      assert.is_false(boop.executeAction("command hound at 42", true))
+      assert.is_false(boop.executeRageAction("harry 42"))
+      assert.are.equal(1, commandCount(
+        "queue addclearfull freestand BOOP_ATTACK"
+      ))
+
+      boop.onBalanceUsed("balance", 3)
+      assert.is_true(boop.state.queue.prequeuedStandard)
+      assert.are.equal("queued", boop.runtime.standardSnapshot().status)
+
+      boop.onPrompt()
+      local terminal = boop.runtime.standardSnapshot()
+      assert.are.equal(standard.generation, terminal.generation)
+      assert.are.equal("executed", terminal.status)
+      assert.is_true(terminal.terminal)
+      assert.is_false(boop.state.queue.prequeuedStandard)
+
+      boop.onPrompt()
+      assert.are.equal(
+        standard.generation,
+        boop.runtime.standardSnapshot().generation
+      )
+      assert.are.equal("executed", boop.runtime.standardSnapshot().status)
+    end)
+
+    it("commits a denial only at its following prompt and retries once after matching recovery", function()
+      local standard = queueOwnedStandard()
+
+      assert.is_true(boop.onStandardCommandOutcome(
+        "You are paralysed and cannot do that."
+      ))
+      assert.are.equal("queued", boop.runtime.standardSnapshot().status)
+      boop.onPrompt()
+
+      local denied = boop.runtime.standardSnapshot()
+      assert.are.equal(standard.generation, denied.generation)
+      assert.are.equal("denied", denied.status)
+      assert.are.equal("paralysis", denied.obstacle)
+      assert.is_false(boop.state.queue.prequeuedStandard)
+      assert.are.equal(1, commandCount(
+        "queue addclearfull freestand BOOP_ATTACK"
+      ))
+
+      gmcp.Char.Vitals.bal = "1"
+      gmcp.Char.Vitals.eq = "1"
+      boop.onPrompt()
+      assert.are.equal(1, commandCount(
+        "queue addclearfull freestand BOOP_ATTACK"
+      ))
+
+      assert.is_true(boop.onStandardCommandRecovery(
+        "You are no longer paralysed."
+      ))
+      boop.onPrompt()
+      assert.are.equal(2, commandCount(
+        "queue addclearfull freestand BOOP_ATTACK"
+      ))
+      local retry = boop.runtime.standardSnapshot()
+      assert.is_true(retry.generation > denied.generation)
+      assert.are.equal(0, retry.retryBudget)
+
+      boop.onStandardCommandRecovery(
+        "You are no longer paralysed."
+      )
+      boop.onPrompt()
+      assert.are.equal(2, commandCount(
+        "queue addclearfull freestand BOOP_ATTACK"
+      ))
+    end)
+
+    it("starts one grace only at the first ready prompt and lets its stale callback expire once", function()
+      queueOwnedStandard()
+      local timersBeforeGrace = #scheduled
+
+      boop.onPrompt()
+      assert.are.equal(timersBeforeGrace, #scheduled)
+
+      gmcp.Char.Vitals.bal = "1"
+      gmcp.Char.Vitals.eq = "1"
+      boop.onPrompt()
+      assert.are.equal(timersBeforeGrace + 1, #scheduled)
+      local grace = scheduled[#scheduled].callback
+
+      boop.onPrompt()
+      assert.are.equal(timersBeforeGrace + 1, #scheduled)
+      grace()
+
+      assert.are.equal(2, commandCount(
+        "queue addclearfull freestand BOOP_ATTACK"
+      ))
+      local retry = boop.runtime.standardSnapshot()
+      assert.are.equal("queued", retry.status)
+      assert.are.equal(0, retry.retryBudget)
+
+      grace()
+      assert.are.equal(2, commandCount(
+        "queue addclearfull freestand BOOP_ATTACK"
+      ))
+    end)
+
+    it("rejects a generic success candidate contaminated by later manual outbound traffic", function()
+      local standard = queueOwnedStandard()
+      boop.onDataSendRequest(
+        "sysDataSendRequest",
+        "say unrelated manual command"
+      )
+
+      assert.is_true(boop.onStandardCommandOutcome(
+        "Balance used: 3.0s"
+      ))
+      boop.onPrompt()
+
+      local retained = boop.runtime.standardSnapshot()
+      assert.are.equal(standard.generation, retained.generation)
+      assert.are.equal("queued", retained.status)
+      assert.is_false(retained.terminal)
+      assert.is_nil(retained.candidate)
+      assert.is_false(retained.graceStarted)
+    end)
+  end)
 
 end)

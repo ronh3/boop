@@ -137,6 +137,16 @@ local DOMAIN_DEFAULTS = {
     prequeueSourceAuthority = false,
     aliasAction = "",
     aliasDirty = true,
+    outboundSequence = 0,
+    outboundExpectations = {},
+    outboundObserved = {},
+    outboundDispatchGeneration = 0,
+    outboundDispatches = {},
+    standardGeneration = 0,
+    standardDispatchId = 0,
+    standardOperation = false,
+    lastStandardTerminal = false,
+    standardRecovery = false,
   },
   walk = {
     active = false,
@@ -1478,6 +1488,645 @@ local function trace(message)
   end
 end
 
+local STANDARD_GRACE_SECONDS = 0.35
+local OUTBOUND_HISTORY_LIMIT = 64
+local OUTBOUND_EXPECTATION_LIMIT = 16
+
+local function standardQueueState()
+  local queue = boop.runtime.ensureState().queue
+  queue.outboundSequence = tonumber(queue.outboundSequence) or 0
+  queue.outboundExpectations =
+    type(queue.outboundExpectations) == "table"
+      and queue.outboundExpectations
+      or {}
+  queue.outboundObserved = type(queue.outboundObserved) == "table"
+      and queue.outboundObserved
+    or {}
+  queue.outboundDispatchGeneration =
+    tonumber(queue.outboundDispatchGeneration) or 0
+  queue.outboundDispatches = type(queue.outboundDispatches) == "table"
+      and queue.outboundDispatches
+    or {}
+  queue.standardGeneration = tonumber(queue.standardGeneration) or 0
+  queue.standardDispatchId = tonumber(queue.standardDispatchId) or 0
+  queue.standardOperation = type(queue.standardOperation) == "table"
+      and queue.standardOperation
+    or false
+  queue.lastStandardTerminal =
+    type(queue.lastStandardTerminal) == "table"
+      and queue.lastStandardTerminal
+      or false
+  queue.standardRecovery = type(queue.standardRecovery) == "table"
+      and queue.standardRecovery
+    or false
+  return queue
+end
+
+local function activeStandard()
+  local operation = standardQueueState().standardOperation
+  if type(operation) ~= "table" or operation.terminal then
+    return false
+  end
+  return operation
+end
+
+local function standardClock()
+  if getEpoch then
+    return tonumber(getEpoch()) or os.clock()
+  end
+  return os.clock()
+end
+
+local function sameStandardIdentity(operation, identity)
+  return type(operation) == "table"
+    and type(identity) == "table"
+    and tostring(operation.owner or "") == tostring(identity.owner or "")
+    and tonumber(operation.generation) == tonumber(identity.generation)
+    and tostring(operation.dispatchId or "")
+      == tostring(identity.dispatchId or "")
+end
+
+local function trimOutboundHistory(entries, limit)
+  while #entries > limit do
+    table.remove(entries, 1)
+  end
+end
+
+function boop.runtime.standardPending()
+  return activeStandard() and true or false
+end
+
+function boop.runtime.standardMutationBarrier()
+  local operation = activeStandard()
+  return type(operation) == "table"
+    and operation.mode == "queued"
+    and type(operation.baseline) == "table"
+end
+
+function boop.runtime.standardRecoveryPending()
+  local recovery = standardQueueState().standardRecovery
+  return type(recovery) == "table" and not recovery.retried
+end
+
+function boop.runtime.standardSnapshot()
+  local operation = standardQueueState().standardOperation
+  return type(operation) == "table" and deepCopy(operation) or false
+end
+
+function boop.runtime.lastStandardTerminalSnapshot()
+  local terminal = standardQueueState().lastStandardTerminal
+  return type(terminal) == "table" and deepCopy(terminal) or false
+end
+
+function boop.runtime.outboundSnapshot()
+  local queue = standardQueueState()
+  return {
+    sequence = queue.outboundSequence,
+    expectations = deepCopy(queue.outboundExpectations),
+    observed = deepCopy(queue.outboundObserved),
+    dispatches = deepCopy(queue.outboundDispatches),
+  }
+end
+
+function boop.runtime.newOutboundRegistration(kind)
+  local queue = standardQueueState()
+  queue.outboundDispatchGeneration =
+    queue.outboundDispatchGeneration + 1
+  local generation = queue.outboundDispatchGeneration
+  local semanticKind = tostring(kind or "dispatch")
+  return {
+    owner = semanticKind .. ":" .. tostring(generation),
+    generation = generation,
+    dispatchId = semanticKind .. ":" .. tostring(generation),
+    kind = semanticKind,
+  }
+end
+
+function boop.runtime.beginStandardDispatch(options)
+  options = type(options) == "table" and options or {}
+  if activeStandard() then
+    return false
+  end
+
+  local queue = standardQueueState()
+  local registration = type(options.outcomeRegistration) == "table"
+      and options.outcomeRegistration
+    or {}
+  queue.standardGeneration = queue.standardGeneration + 1
+  queue.standardDispatchId = queue.standardDispatchId + 1
+  local generation = tonumber(registration.generation)
+    or queue.standardGeneration
+  if generation > queue.standardGeneration then
+    queue.standardGeneration = generation
+  end
+  local dispatchId = tostring(
+    registration.dispatchId
+      or ("standard:" .. tostring(queue.standardDispatchId))
+  )
+  local owner = tostring(
+    registration.owner or ("standard:" .. tostring(generation))
+  )
+  local mode = tostring(options.mode or "queued")
+  local targetId = tostring(options.targetId or "")
+  local operation = {
+    owner = owner,
+    generation = generation,
+    dispatchId = dispatchId,
+    kind = "standard",
+    mode = mode,
+    status = "dispatching",
+    terminal = false,
+    terminalReason = "",
+    action = tostring(options.action or ""),
+    targetId = targetId,
+    sourceAuthority = copySourceAuthority(options.sourceAuthority),
+    aliasBinding = tostring(options.aliasBinding or options.action or ""),
+    baseline = false,
+    expectedWireCommands = {},
+    observedWireCommands = {},
+    finalOwnedWireSequence = false,
+    candidate = nil,
+    promptCount = 0,
+    firstReadyPrompt = false,
+    graceStarted = false,
+    graceToken = 0,
+    graceTimer = false,
+    obstacle = false,
+    retryBudget = math.max(0, tonumber(options.retryBudget) or 1),
+    quarantined = false,
+    targetInvalid = false,
+    targetInvalidReason = "",
+    contaminatedAt = false,
+    contaminatedCommand = "",
+    clearSent = false,
+    startedAt = standardClock(),
+  }
+  queue.standardOperation = operation
+  queue.standardRecovery = false
+  queue.prequeuedStandard = true
+  queue.prequeueSourceAuthority =
+    copySourceAuthority(operation.sourceAuthority)
+  return {
+    owner = owner,
+    generation = generation,
+    dispatchId = dispatchId,
+    kind = "standard",
+  }
+end
+
+function boop.runtime.completeStandardDispatch(identity, options)
+  local operation = activeStandard()
+  if not sameStandardIdentity(operation, identity) then
+    return false
+  end
+  options = type(options) == "table" and options or {}
+  operation.mode = tostring(options.mode or operation.mode or "queued")
+  operation.aliasBinding = tostring(
+    options.aliasBinding or operation.aliasBinding or operation.action or ""
+  )
+  if operation.status == "dispatching" then
+    operation.status = "queued"
+  end
+  local queue = standardQueueState()
+  queue.prequeuedStandard = true
+  queue.prequeueSourceAuthority =
+    copySourceAuthority(operation.sourceAuthority)
+  return deepCopy(operation)
+end
+
+function boop.runtime.abortStandardDispatch(identity, reason)
+  local operation = activeStandard()
+  if not sameStandardIdentity(operation, identity) then
+    return false
+  end
+  operation.status = "aborted"
+  operation.terminal = true
+  operation.terminalReason = tostring(reason or "dispatch aborted")
+  operation.terminalAt = standardClock()
+  local queue = standardQueueState()
+  queue.prequeuedStandard = false
+  queue.prequeueSourceAuthority = false
+  queue.lastStandardTerminal = deepCopy(operation)
+  return true
+end
+
+function boop.runtime.registerOutboundExpectation(registration, command, role)
+  if type(registration) ~= "table" then
+    return false
+  end
+  local wire = tostring(command or "")
+  if wire == "" then
+    return false
+  end
+  local queue = standardQueueState()
+  local expectation = {
+    command = wire,
+    owner = tostring(registration.owner or ""),
+    generation = tonumber(registration.generation),
+    dispatchId = tostring(registration.dispatchId or ""),
+    kind = tostring(registration.kind or "standard"),
+    role = tostring(role or "wire"),
+    registeredAfterSequence = queue.outboundSequence,
+  }
+  local dispatch = false
+  for _, candidate in ipairs(queue.outboundDispatches) do
+    if sameStandardIdentity(candidate, expectation) then
+      dispatch = candidate
+      break
+    end
+  end
+  if not dispatch then
+    dispatch = {
+      owner = expectation.owner,
+      generation = expectation.generation,
+      dispatchId = expectation.dispatchId,
+      kind = expectation.kind,
+      expectedWireCommands = {},
+      observedWireCommands = {},
+      finalOwnedWireSequence = false,
+    }
+    queue.outboundDispatches[#queue.outboundDispatches + 1] = dispatch
+    trimOutboundHistory(queue.outboundDispatches, 32)
+  end
+  dispatch.expectedWireCommands[#dispatch.expectedWireCommands + 1] = {
+    command = wire,
+  }
+  queue.outboundExpectations[#queue.outboundExpectations + 1] = expectation
+  trimOutboundHistory(
+    queue.outboundExpectations,
+    OUTBOUND_EXPECTATION_LIMIT
+  )
+  local operation = activeStandard()
+  if operation and sameStandardIdentity(operation, expectation) then
+    operation.expectedWireCommands[
+      #operation.expectedWireCommands + 1
+    ] = { command = wire }
+  end
+  return deepCopy(expectation)
+end
+
+function boop.runtime.observeOutbound(command)
+  local wire = tostring(command or "")
+  if wire == "" then
+    return false
+  end
+  local queue = standardQueueState()
+  queue.outboundSequence = queue.outboundSequence + 1
+  local expectation = queue.outboundExpectations[1]
+  local owned = type(expectation) == "table"
+    and expectation.command == wire
+  if owned then
+    table.remove(queue.outboundExpectations, 1)
+  elseif type(expectation) == "table" then
+    queue.outboundExpectations = {}
+  end
+  local observed = {
+    command = wire,
+    sequence = queue.outboundSequence,
+    owned = owned,
+    owner = owned and expectation.owner or "manual",
+    generation = owned and expectation.generation or false,
+    dispatchId = owned and expectation.dispatchId or "",
+    kind = owned and expectation.kind or "manual",
+    role = owned and expectation.role or "manual",
+  }
+  queue.outboundObserved[#queue.outboundObserved + 1] = observed
+  trimOutboundHistory(queue.outboundObserved, OUTBOUND_HISTORY_LIMIT)
+
+  if owned then
+    for _, dispatch in ipairs(queue.outboundDispatches) do
+      if sameStandardIdentity(dispatch, expectation) then
+        dispatch.observedWireCommands[
+          #dispatch.observedWireCommands + 1
+        ] = {
+          command = wire,
+          sequence = observed.sequence,
+        }
+        dispatch.finalOwnedWireSequence = observed.sequence
+        break
+      end
+    end
+  end
+
+  local operation = activeStandard()
+  if operation then
+    if owned and sameStandardIdentity(operation, expectation) then
+      operation.observedWireCommands[
+        #operation.observedWireCommands + 1
+      ] = {
+        command = wire,
+        sequence = observed.sequence,
+      }
+      operation.finalOwnedWireSequence = observed.sequence
+      if expectation.role == "baseline"
+          or expectation.role == "final" then
+        operation.baseline = {
+          command = wire,
+          sequence = observed.sequence,
+          owner = observed.owner,
+          generation = observed.generation,
+          dispatchId = observed.dispatchId,
+        }
+      end
+    elseif type(operation.baseline) == "table"
+        and observed.sequence > tonumber(operation.baseline.sequence or 0)
+        and not operation.contaminatedAt then
+      operation.contaminatedAt = observed.sequence
+      operation.contaminatedCommand = wire
+    end
+  end
+  return deepCopy(observed)
+end
+
+local function clearStandardExpectations(identity)
+  local queue = standardQueueState()
+  local retained = {}
+  for _, expectation in ipairs(queue.outboundExpectations) do
+    if not sameStandardIdentity(identity, expectation) then
+      retained[#retained + 1] = expectation
+    end
+  end
+  queue.outboundExpectations = retained
+end
+
+local function terminalizeStandard(operation, status, reason)
+  local current = activeStandard()
+  if not sameStandardIdentity(current, operation) then
+    return false
+  end
+  if current.graceTimer and killTimer then
+    killTimer(current.graceTimer)
+  end
+  current.graceTimer = false
+  current.status = tostring(status or "expired")
+  current.terminal = true
+  current.terminalReason = tostring(reason or status or "terminal")
+  current.terminalAt = standardClock()
+  local queue = standardQueueState()
+  queue.prequeuedStandard = false
+  queue.prequeueSourceAuthority = false
+  clearStandardExpectations(current)
+
+  if current.status == "denied"
+      and tostring(current.obstacle or "") ~= ""
+      and current.obstacle ~= "target_absent" then
+    queue.standardRecovery = {
+      generation = current.generation,
+      obstacle = current.obstacle,
+      recovered = false,
+      retried = false,
+      retryBudget = current.retryBudget,
+      operation = deepCopy(current),
+    }
+  else
+    queue.standardRecovery = false
+  end
+  queue.lastStandardTerminal = deepCopy(current)
+  trace(string.format(
+    "standard terminal: %s | generation=%s | reason=%s",
+    current.status,
+    tostring(current.generation),
+    current.terminalReason
+  ))
+  if current.quarantined
+      and boop.onStandardLifecycleTerminal then
+    boop.onStandardLifecycleTerminal(deepCopy(current))
+  end
+  return deepCopy(current)
+end
+
+function boop.runtime.bufferStandardCandidate(candidate)
+  local operation = activeStandard()
+  if not operation then
+    return false
+  end
+  candidate = type(candidate) == "table" and candidate or {}
+  local kind = tostring(candidate.kind or "")
+  if kind ~= "success" and kind ~= "denial" then
+    return false
+  end
+  local queue = standardQueueState()
+  operation.candidate = {
+    kind = kind,
+    obstacle = tostring(candidate.obstacle or ""),
+    line = tostring(candidate.line or ""),
+    owner = operation.owner,
+    generation = operation.generation,
+    dispatchId = operation.dispatchId,
+    targetId = operation.targetId,
+    sourceAuthority = copySourceAuthority(operation.sourceAuthority),
+    baselineSequence = type(operation.baseline) == "table"
+        and tonumber(operation.baseline.sequence)
+      or false,
+    outboundSequence = queue.outboundSequence,
+    observedAt = standardClock(),
+  }
+  return true
+end
+
+local function candidateIsCurrent(operation, candidate)
+  if not sameStandardIdentity(operation, candidate)
+      or tostring(candidate.targetId or "")
+        ~= tostring(operation.targetId or "")
+      or type(operation.baseline) ~= "table"
+      or tonumber(candidate.baselineSequence)
+        ~= tonumber(operation.baseline.sequence)
+      or tonumber(candidate.outboundSequence or 0)
+        < tonumber(operation.baseline.sequence or 0) then
+    return false
+  end
+  if operation.contaminatedAt
+      and tonumber(operation.contaminatedAt)
+        <= tonumber(candidate.outboundSequence or 0) then
+    return false
+  end
+  if operation.quarantined then
+    return true
+  end
+  if operation.sourceAuthority then
+    return boop.runtime.validateRoomSourceAuthority(
+      operation.sourceAuthority
+    )
+  end
+  return true
+end
+
+local function retryStandard(operation, reason)
+  if type(operation) ~= "table"
+      or tonumber(operation.retryBudget or 0) <= 0
+      or not boop.retryStandardDispatch then
+    return false
+  end
+  local retry = deepCopy(operation)
+  retry.retryBudget = 0
+  return boop.retryStandardDispatch(retry, reason) == true
+end
+
+local function startStandardGrace(operation)
+  if operation.graceStarted then
+    return false
+  end
+  operation.firstReadyPrompt = true
+  operation.firstReadySequence = operation.promptCount
+  operation.graceStarted = true
+  operation.graceToken = (tonumber(operation.graceToken) or 0) + 1
+  local generation = operation.generation
+  local token = operation.graceToken
+  if not tempTimer then
+    local terminal = terminalizeStandard(
+      operation,
+      "expired",
+      "ready prompt grace unavailable"
+    )
+    if terminal and not terminal.quarantined then
+      retryStandard(terminal, "standard grace unavailable")
+    end
+    return true
+  end
+  local timerId = false
+  timerId = tempTimer(STANDARD_GRACE_SECONDS, function()
+    local current = activeStandard()
+    if not current
+        or tonumber(current.generation) ~= tonumber(generation)
+        or tonumber(current.graceToken) ~= tonumber(token)
+        or current.graceTimer ~= timerId then
+      return false
+    end
+    current.graceTimer = false
+    local terminal = terminalizeStandard(
+      current,
+      "expired",
+      "ready prompt grace expired"
+    )
+    if terminal and not terminal.quarantined then
+      retryStandard(terminal, "standard grace expired")
+    end
+    return true
+  end)
+  operation.graceTimer = timerId
+  return true
+end
+
+function boop.runtime.reconcileStandardPrompt(ready)
+  local operation = activeStandard()
+  if operation then
+    operation.promptCount = (tonumber(operation.promptCount) or 0) + 1
+    local candidate = operation.candidate
+    operation.candidate = nil
+    if type(candidate) == "table"
+        and candidateIsCurrent(operation, candidate) then
+      candidate.promptSequence = operation.promptCount
+      candidate.promptReady = ready == true
+      operation.resultCandidate = deepCopy(candidate)
+      operation.resultPrompt = {
+        sequence = operation.promptCount,
+        ready = ready == true,
+      }
+      if candidate.kind == "success" then
+        return terminalizeStandard(
+          operation,
+          "executed",
+          candidate.line ~= "" and candidate.line or "prompt-confirmed success"
+        )
+      end
+      operation.obstacle = tostring(candidate.obstacle or "denied")
+      return terminalizeStandard(
+        operation,
+        "denied",
+        candidate.line ~= "" and candidate.line or operation.obstacle
+      )
+    end
+    if type(candidate) == "table" then
+      operation.lastAmbiguousCandidate = deepCopy(candidate)
+      operation.lastAmbiguousPrompt = {
+        sequence = operation.promptCount,
+        ready = ready == true,
+      }
+      trace(string.format(
+        "standard candidate ambiguous: generation=%s | kind=%s | line=%s",
+        tostring(operation.generation),
+        tostring(candidate.kind or ""),
+        tostring(candidate.line or "")
+      ))
+    end
+    if ready == true then
+      startStandardGrace(operation)
+    end
+    return deepCopy(operation)
+  end
+
+  local recovery = standardQueueState().standardRecovery
+  if ready == true
+      and type(recovery) == "table"
+      and recovery.recovered
+      and not recovery.retried
+      and tonumber(recovery.retryBudget or 0) > 0 then
+    recovery.retried = true
+    retryStandard(recovery.operation, "matching obstacle recovery")
+    return true
+  end
+  return false
+end
+
+function boop.runtime.noteStandardRecovery(obstacle)
+  local recovery = standardQueueState().standardRecovery
+  local key = tostring(obstacle or "")
+  if type(recovery) ~= "table"
+      or recovery.retried
+      or key == ""
+      or tostring(recovery.obstacle or "") ~= key then
+    return false
+  end
+  recovery.recovered = true
+  recovery.recoveredAt = standardClock()
+  return true
+end
+
+function boop.runtime.markStandardTargetInvalid(reason)
+  local operation = activeStandard()
+  if not operation then
+    return false
+  end
+  operation.status = "target-invalid"
+  operation.targetInvalid = true
+  operation.quarantined = true
+  operation.targetInvalidReason = tostring(reason or "target invalid")
+  trace(string.format(
+    "standard target quarantined: generation=%s | target=%s | reason=%s",
+    tostring(operation.generation),
+    tostring(operation.targetId),
+    operation.targetInvalidReason
+  ))
+  return deepCopy(operation)
+end
+
+function boop.runtime.revokeStandard(reason)
+  local operation = activeStandard()
+  if not operation then
+    return false
+  end
+  if not operation.clearSent and send then
+    operation.clearSent = true
+    boop.runtime.registerOutboundExpectation(
+      operation,
+      "clearqueue all",
+      "revocation"
+    )
+    send("clearqueue all", false)
+    trace(string.format(
+      "standard queue collateral cleared: generation=%s | target=%s | reason=%s",
+      tostring(operation.generation),
+      tostring(operation.targetId),
+      tostring(reason or "target revoked")
+    ))
+  end
+  return terminalizeStandard(
+    operation,
+    "revoked",
+    tostring(reason or "target revoked")
+  )
+end
+
 local BLOCKER_PRIORITY = {
   gmcp_ire_missing = 10,
   missing_room = 20,
@@ -2109,6 +2758,16 @@ end
 function boop.runtime.clearAttackIntent(reason, opts)
   opts = opts or {}
   local state = boop.runtime.ensureState()
+  local reasonText = tostring(reason or "")
+  local pendingStandard = activeStandard()
+  local departureInvalidation = pendingStandard
+    and (
+      reasonText == "target_lost"
+      or reasonText == "room_changed"
+      or reasonText == "room_partial"
+      or reasonText == "missing_room"
+      or opts.standardDisposition == "target-invalid"
+    )
   state.combat.attacking = false
   state.combat.lastRageDecision = nil
   state.combat.pendingStandard = nil
@@ -2117,18 +2776,31 @@ function boop.runtime.clearAttackIntent(reason, opts)
 
   killOwnedTimer(state.queue.prequeueTimer)
   state.queue.prequeueTimer = nil
-  state.queue.prequeuedStandard = false
-  state.queue.prequeueSourceAuthority = false
-  state.queue.aliasAction = ""
-  state.queue.aliasDirty = true
 
   state.targeting.calledTargetId = ""
   state.targeting.calledTargetRoom = ""
   state.targeting.calledTargetBy = ""
   state.targeting.calledTargetAt = nil
 
+  if departureInvalidation then
+    boop.runtime.markStandardTargetInvalid(reasonText)
+    if not opts.suppressTrace then
+      trace("attack intent quarantined: " .. reasonText)
+    end
+    return true
+  end
+
+  if pendingStandard then
+    boop.runtime.revokeStandard(reasonText ~= "" and reasonText or "attack intent cleared")
+  end
+
+  state.queue.prequeuedStandard = false
+  state.queue.prequeueSourceAuthority = false
+  state.queue.aliasAction = ""
+  state.queue.aliasDirty = true
+
   if opts.clearTarget == true
-      or tostring(reason or "") == "target_lost" then
+      or reasonText == "target_lost" then
     state.targeting.currentTargetId = ""
     state.targeting.targetName = ""
     if boop.targets and boop.targets.clearTargetShield then
@@ -2287,6 +2959,8 @@ function boop.runtime.context(sourceAuthority, options)
     denizens = state.targeting.denizens or {},
     queue = {
       prequeuedStandard = not not state.queue.prequeuedStandard,
+      standardPending = boop.runtime.standardPending(),
+      standard = boop.runtime.standardSnapshot(),
       balanceReadyAt = state.queue.balanceReadyAt,
       equilibriumReadyAt = state.queue.equilibriumReadyAt,
       aliasAction = tostring(state.queue.aliasAction or ""),
@@ -2390,6 +3064,14 @@ local function tickStep(context)
     return { effects = effects, didAction = false }
   end
   if state.diag.hold then
+    return { effects = effects, didAction = false }
+  end
+
+  if activeStandard() or boop.runtime.standardRecoveryPending() then
+    effects[#effects + 1] = {
+      kind = "trace",
+      message = "tick held: exact standard lifecycle pending",
+    }
     return { effects = effects, didAction = false }
   end
 
