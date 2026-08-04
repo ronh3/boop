@@ -1987,14 +1987,77 @@ function boop.attacks.execute(plan, context, sourceAuthority)
   end
 
   if plan.rage and plan.rage ~= "" then
-    if attackAuthorityCurrent(authority, "rage")
+    local standardOperation = boop.runtime
+      and boop.runtime.standardSnapshot
+      and boop.runtime.standardSnapshot()
+      or false
+    local standardPending = boop.runtime
+      and boop.runtime.standardPending
+      and boop.runtime.standardPending()
+      and type(standardOperation) == "table"
+      and standardOperation.mode == "queued"
+      or false
+    if not standardPending
+        and attackAuthorityCurrent(authority, "rage")
         and boop.canUseRage
         and boop.canUseRage() then
-      local emitted = boop.executeRageAction(
-        plan.rage,
-        dispatchOptions
-      )
-      if emitted then
+      local targetId = activeContext
+        and activeContext.target
+        and activeContext.target.id
+        or boop.state
+          and boop.state.targeting
+          and boop.state.targeting.currentTargetId
+          or ""
+      local registration = boop.rage
+        and boop.rage.beginDispatch
+        and boop.rage.beginDispatch({
+          ability = plan.rageAbility,
+          logicalAction = plan.rage,
+          targetId = targetId,
+          sourceAuthority = authority,
+        })
+        or false
+      local emitted = false
+      local completed = false
+      if registration then
+        local rageDispatchOptions = {
+          roomOwned = dispatchOptions.roomOwned,
+          sourceAuthority = dispatchOptions.sourceAuthority,
+          dispatchMode = "direct",
+          outcomeRegistration = {
+            owner = registration.owner,
+            generation = registration.generation,
+            dispatchId = registration.dispatchId,
+            kind = "rage",
+          },
+        }
+        local ok, result = pcall(
+          boop.executeAction,
+          plan.rage,
+          false,
+          rageDispatchOptions
+        )
+        emitted = ok and result == true
+        if not ok and boop.trace and boop.trace.log then
+          boop.trace.log("rage dispatch failed: " .. tostring(result))
+        end
+        if emitted
+            and boop.rage
+            and boop.rage.completeDispatch then
+          completed = boop.rage.completeDispatch(registration)
+            and true or false
+        end
+        if not emitted or not completed then
+          if boop.rage and boop.rage.cancelDispatch then
+            boop.rage.cancelDispatch(
+              registration,
+              emitted and "dispatch_incomplete" or "dispatch_failed"
+            )
+          end
+          emitted = false
+        end
+      end
+      if emitted and completed then
         if boop.stats and boop.stats.onRageExecuted then
           boop.stats.onRageExecuted(plan.rageAbility, plan.rageDecision)
         end
@@ -2002,12 +2065,14 @@ function boop.attacks.execute(plan, context, sourceAuthority)
           boop.targets.onShieldbreakAttempt()
         end
         if boop.rage and boop.rage.onRageUsed then
-          boop.rage.onRageUsed(plan.rageAbility)
+          boop.rage.onRageUsed(plan.rageAbility, registration)
         end
         didAction = true
       else
         boop.state.combat.limiters.rage = false
       end
+    elseif standardPending and boop.trace and boop.trace.log then
+      boop.trace.log("rage held: exact standard lifecycle pending")
     end
   end
 

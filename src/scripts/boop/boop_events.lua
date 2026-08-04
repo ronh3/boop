@@ -1991,6 +1991,9 @@ function boop.onDataSendRequest(_, command)
     and boop.runtime.observeOutbound
     and boop.runtime.observeOutbound(command)
     or false
+  if boop.rage and boop.rage.onOutboundObserved then
+    boop.rage.onOutboundObserved(outboundObserved)
+  end
   local quarantine = runtime()
     and boop.runtime.packQuarantineSnapshot
     and boop.runtime.packQuarantineSnapshot()
@@ -2031,6 +2034,9 @@ end
 function boop.onConnectionEvent()
   if boop.runtime and boop.runtime.resolvePackQuarantine then
     boop.runtime.resolvePackQuarantine("connection")
+  end
+  if boop.rage and boop.rage.onConnectionReset then
+    boop.rage.onConnectionReset("connection")
   end
   boop.resetShieldMode("connection")
   if boop.runtime and boop.runtime.resetVenomConfusionCount then
@@ -3233,6 +3239,11 @@ function boop.canAct()
 end
 
 function boop.canUseRage()
+  if boop.rage
+      and boop.rage.isGlobalCooldownOpen
+      and not boop.rage.isGlobalCooldownOpen() then
+    return false
+  end
   if boop.state.combat.limiters.rage then return false end
   boop.state.combat.limiters.rage = true
   tempTimer(0.6, function() boop.state.combat.limiters.rage = false end)
@@ -3278,6 +3289,9 @@ function boop.onPrompt()
   })
   if not boop.config or not boop.config.enabled then
     return false
+  end
+  if boop.rage and boop.rage.onPrompt then
+    boop.rage.onPrompt()
   end
   local freestandReady = gmcp
     and gmcp.Char
