@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
 status: executing
-stopped_at: Completed 03-30-PLAN.md; live UAT gaps remain pending
-last_updated: "2026-08-04T20:19:29.146Z"
+stopped_at: Ready to execute 03-31-PLAN.md
+last_updated: "2026-08-04T21:23:46.039Z"
 last_activity: 2026-08-04
-last_activity_desc: Completed Plan 03-30 live UAT evidence recording
+last_activity_desc: Planned Phase 03 verification-gap closure through live UAT
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 44
+  total_plans: 52
   completed_plans: 44
-  percent: 100
+  percent: 85
 ---
 
 # Project State
@@ -29,17 +29,17 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
-Plan: 30 of 30
-Status: Ready for verification; live UAT gaps remain pending
-Last activity: 2026-08-04 — Completed Plan 03-30 live UAT evidence recording
+Plan: 30 of 38
+Status: Ready to execute
+Last activity: 2026-08-04 — Planned Phase 03 verification-gap closure through live UAT
 
-Progress: [██████████] 100%
+Progress: [█████████░] 85%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 43
+- Total plans completed: 44
 - Average duration: 14 min
 - Total execution time: 7.9 hours
 
@@ -49,12 +49,12 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | 01 | 7 | 156m | 22 min |
 | 02 | 7 | ~70m | ~10 min |
-| 03 | 29/30 | ~343m | ~12 min |
+| 03 | 30/38 | ~343m | ~11 min |
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 03 P25 (19m), Phase 03 P26 (19m), Phase 03 P27 (9m), Phase 03 P28 (14m), Phase 03 P29 (12m)
-- Trend: Plan 03-29 added exact terminal trace visibility and live-only routine deduplication; Plan 03-30, parent CI, and live UAT remain
+- Last 5 plans: Phase 03 P26 (19m), Phase 03 P27 (9m), Phase 03 P28 (14m), Phase 03 P29 (12m), Phase 03 P30 (0m)
+- Trend: Plan 03-30 recorded live UAT evidence; Plans 03-31 through 03-38 now cover the remaining implementation and live-verification gaps
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -201,7 +201,7 @@ Recent decisions affecting current work:
 
 - Plan 03-16 closed G-03-5 with one exact-operation room-only revalidation while preserving copied List authority and aggregate blockers.
 - Plan 03-17 closed G-03-4 while preserving manual-targeting movement safety and owned-stop versus attached-detach semantics.
-- Plan 03-29 closed G-03-26 with exact terminal trace visibility, retained forensics, live-only routine deduplication, and package 0.1.473; Plan 03-30 remains.
+- Plan 03-29 implemented G-03-26 terminal trace visibility, retained forensics, and live-only routine deduplication in package 0.1.473; live verification remains in Plan 03-37.
 - Six aggregate-owner cases in `boop_tick_spec.lua` retain pre-existing expectations that conflict with Plan 03-25 exact queued-standard ownership; starting HEAD reproduces them and the phase deferred ledger records follow-up.
 - Local real-Mudlet execution remains unavailable; the focused host helper cannot authoritatively run the entire unrelated profile/DB/rich-output test tree.
 - Parent exact-final-HEAD CI and live Achaea UAT remain blocking external gates before Phase 03 can be marked complete.

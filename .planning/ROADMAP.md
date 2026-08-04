@@ -87,9 +87,41 @@ Plans:
   4. `demonnicAutoWalker` remains optional, with explicit install/status feedback and no silent auto-update behavior.
   5. Regression coverage catches unsafe movement, attacks during holds, wrong-room loot commands, target-removal queue drift, and permanent walk stalls.
 
-**Plans**: 30/30 plans executed
+**Plans**: 30/38 plans executed
 
 Plans:
+
+**Wave 38** *(blocked on Wave 37 completion; final live UAT and immutable-HEAD handoff)*
+
+- [ ] 03-38-PLAN.md — Natural walk/room settlement UAT and final Phase 3 verification handoff
+
+**Wave 37** *(blocked on Wave 36 completion; live UAT checkpoint)*
+
+- [ ] 03-37-PLAN.md — Exact leap-denial and terminal trace live verification
+
+**Wave 36** *(blocked on Wave 35 completion; live UAT checkpoint)*
+
+- [ ] 03-36-PLAN.md — Alternate no-abilities Rage recovery live verification
+
+**Wave 35** *(blocked on Wave 34 completion; live UAT checkpoint)*
+
+- [ ] 03-35-PLAN.md — Autonomous GMCP refresh and full-queue gold live verification
+
+**Wave 34** *(blocked on Wave 33 completion; live UAT checkpoint)*
+
+- [ ] 03-34-PLAN.md — Normal/assist Magi chronology and conditional target-policy live verification
+
+**Wave 33** *(blocked on Wave 32 completion)*
+
+- [ ] 03-33-PLAN.md — Alternate no-abilities Rage parser, trigger, regressions, and package 0.1.476
+
+**Wave 32** *(blocked on Wave 31 completion)*
+
+- [ ] 03-32-PLAN.md — Autonomous GMCP request/flush and full-queue gold chronology repair in package 0.1.475
+
+**Wave 31** *(blocked on Wave 30 completion; ready for gap execution)*
+
+- [ ] 03-31-PLAN.md — Same-observation standard candidate authority repair in package 0.1.474
 
 **Wave 30** *(blocked on Wave 29 completion; live UAT checkpoint)*
 
