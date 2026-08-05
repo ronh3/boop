@@ -1069,13 +1069,16 @@ blocked: 0
   truth: "Every boop-owned standard command reaches executed, denied, expired, or cancelled exactly once; preserved ADDCLEARFULL semantics intentionally remove pre-existing native queue work before boop becomes pending; exact success/denial candidates reconcile only at their immediately following prompt for the matching generation when no later outbound came from outside that exact owner; and a first-ready prompt with no valid candidate starts bounded silent-loss recovery without leaving hunting stuck or producing a denial storm."
   status: pending
   latest_result: issue
-  installed_version: 0.1.473
-  reason: "Clean live standard success was fundamentally broken: successful Magi Staffcast/Erode candidates repeatedly became ambiguous and generations expired by ready-prompt grace instead of reaching one executed terminal, so denial, silent-loss, and contamination variants could not establish the full truth."
-  previous_reason: "The live 0.1.468 trace contains repeated post-denial stalls that recover only after unrelated balance/equilibrium use or manual diag, one silent native-queue disappearance, and repeated impossible-command storms under restraint."
+  installed_version: 0.1.476
+  reason: "The first clean normal Magi trial still failed: successful Staffcast output and `Equilibrium used: 1.56s.` were followed by prompts, but generation 249 and later generations expired by ready-prompt grace instead of reaching one executed terminal. Per the checkpoint gate, clean assist and both contamination controls were not run."
+  previous_reason: "At 0.1.473, successful Magi Staffcast/Erode candidates repeatedly became ambiguous and generations expired by ready-prompt grace instead of reaching one executed terminal."
   severity: blocker
   test: 7
   root_cause: "Standard dispatch is represented chiefly by the `prequeuedStandard` boolean. It is set after send and cleared directly by later balance/equilibrium-use evidence, but has no exact generation, candidate-to-following-prompt reconciliation, all-owner outbound causality, denial, or bounded expiry lifecycle. Rejected commands may therefore remain marked queued forever; unrelated output or balance events may instead clear the flag and resend while the same inability still exists."
   evidence:
+    - "0.1.476 live - output.md:34-61 shows generation 249 queue Staffcast, server attack success, `Equilibrium used: 1.56s.`, following prompts, and exactly one terminal `expired` with reason `ready prompt grace expired`; no `executed` terminal occurred."
+    - "0.1.476 live - output.md:490-537 shows the same expiry loop through generations 263-265, including a successful killing Staffcast followed by generation 265 expiring rather than executing."
+    - "0.1.476 live - clean normal failed, so clean assist, manual-outbound contamination, and differently-owned-boop-outbound contamination were NOT RUN."
     - "0.1.473 live - successful Magi Staffcast/Erode results such as `Equilibrium used: 1.56s` were repeatedly buffered as success candidates and then traced `standard candidate ambiguous`."
     - "0.1.473 live - generations 19-25, 155-161, and 198-225 expired with reason `ready prompt grace expired` instead of one executed terminal; this repeated in normal and assist hunting."
     - "output.md:7093-7229 - paralysis denial, cure, then approximately twelve seconds idle until diag indirectly resets the queue state."
@@ -1164,13 +1167,14 @@ blocked: 0
   truth: "Proven target death, departure, Item.Remove, or room movement enters a no-clear local retarget quarantine that keeps fixed BOOP_ATTACK and every boop target/alias/standard/rage/direct replacement unchanged until the old generation reaches result/prompt or ready-grace terminal; blacklist, target replacement, or eligibility revocation with old-target presence true or unknown sends one intentional clearqueue all before exact terminal; neither path may execute a forbidden target or redirect old work to a replacement target."
   status: pending
   latest_result: not_run
-  installed_version: 0.1.473
-  reason: "The prerequisite standard lifecycle was broken: attempted seated forbidden-target generations 142 and 143 expired before the blacklist update, leaving no active standard for intentional clear or revocation evidence and no valid departure-versus-forbidden comparison."
-  previous_reason: "The live trace showed target intent clear locally after room removal, followed by the previously queued server alias executing anyway and failing against the absent denizen."
+  installed_version: 0.1.476
+  reason: "NOT RUN: prerequisite G-03-21 failed its first clean normal Magi trial at 0.1.476, so the departure and forbidden-revocation branches were ineligible under the checkpoint gate."
+  previous_reason: "At 0.1.473, attempted seated forbidden-target generations 142 and 143 expired before the blacklist update, leaving no active standard for intentional clear or revocation evidence."
   severity: major
   test: 10
   root_cause: "clearAttackIntent invalidates Lua plans, flags, and alias metadata while an unresolved native BOOP_ATTACK may still exist. Immediate replacement can rebind the fixed alias before that old invocation resolves. Existing coverage neither serializes replacement targeting through old terminal nor distinguishes harmless proven absence from a still-present/unknown forbidden target that requires an explicit safety clear."
   evidence:
+    - "0.1.476 live - Test 7 generation 249 and later clean standards expired after successful attack evidence; Test 10 departure and forbidden-target branches were therefore NOT RUN."
     - "0.1.473 live - generation 142 expired and retry 143 expired before the blacklist update, so no active standard existed for intentional clear/revocation evidence; automated authority remains and Test 10 was NOT RUN."
     - "output.md:29998-30018 - giant bat removal clears local intent, then the stale alias executes and receives a cannot-see-target rejection."
     - "output.md:3567-3590 - the same stale queued invocation race occurs after target removal."
