@@ -71,6 +71,44 @@ describe("boop shield tracking", function()
     assert.stub(kill_timer_stub).was_called_with(77)
   end)
 
+  it("packages the single-blow shield fracture line as shield-down evidence", function()
+    local root = assert(os.getenv("BOOP_REPO_ROOT"))
+    local manifestPath = root
+      .. "/src/triggers/boop/Shield/General/triggers.json"
+    local adapterPath = root
+      .. "/src/triggers/boop/Shield/General/General_Attacks_Shield_Fracture.lua"
+    local manifestHandle = assert(io.open(manifestPath, "r"))
+    local manifest = manifestHandle:read("*a")
+    manifestHandle:close()
+
+    assert.is_truthy(manifest:find(
+      "^You deliver a single, powerful blow against the magical shield surrounding (.+), fracturing it\\\\.$",
+      1,
+      true
+    ))
+
+    helper.setTarget("42", "an ursu man", "80%")
+    helper.setDenizens({
+      { id = "42", name = "an ursu man" },
+    })
+    boop.state.targeting.targetShield = { attempted = true, timer = 78 }
+
+    local priorMatches = _G.matches
+    local priorLine = _G.line
+    _G.matches = {
+      "You deliver a single, powerful blow against the magical shield surrounding an ursu man, fracturing it.",
+      "an ursu man",
+    }
+    _G.line = _G.matches[1]
+    local ok, err = pcall(dofile, adapterPath)
+    _G.matches = priorMatches
+    _G.line = priorLine
+
+    assert.is_true(ok, tostring(err))
+    assert.is_false(boop.state.targeting.targetShield)
+    assert.stub(kill_timer_stub).was_called_with(78)
+  end)
+
   it("marks the tracked shield as attempted after a shieldbreak try", function()
     boop.state.targeting.targetShield = { attempted = false }
 
