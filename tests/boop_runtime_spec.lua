@@ -593,6 +593,29 @@ describe("boop runtime coordinator", function()
     assert.are.equal("harry 42", result.effects[2].plan.rage)
   end)
 
+  it("returns a target effect when GMCP is stale but the local target matches", function()
+    helper.setClass("Occultist")
+    helper.learnSkill("Lycantha", "Domination")
+    helper.setDenizens({
+      { id = "42", name = "a test denizen" },
+    })
+    helper.setTarget("42", "a test denizen", "80%")
+    gmcp.IRE.Target.Set = ""
+    gmcp.IRE.Target.Info.id = "64840"
+
+    boop.config.enabled = true
+    boop.config.targetingMode = "auto"
+
+    local result = boop.runtime.step({
+      type = "tick",
+      context = boop.runtime.context(),
+    })
+
+    assert.are.equal("target", result.effects[1].kind)
+    assert.are.equal("42", result.effects[1].id)
+    assert.are.equal("combat_plan", result.effects[2].kind)
+  end)
+
   it("holds automation effects while an operation affects runtime systems", function()
     helper.setClass("Occultist")
     helper.setTargetHp("80%")

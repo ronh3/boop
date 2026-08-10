@@ -209,6 +209,19 @@ describe("boop tick", function()
     assert.stub(send_stub).was_called_with("harry 42", false)
   end)
 
+  it("resynchronizes GMCP while attacking an unchanged local target", function()
+    helper.setTarget("42", "a test denizen", "80%")
+    gmcp.IRE.Target.Set = ""
+    gmcp.IRE.Target.Info.id = "64840"
+
+    boop.tick()
+
+    assert.are.equal("42", boop.state.targeting.currentTargetId)
+    assert.stub(send_stub).was_called_with("settarget 42", false)
+    assert.stub(send_stub).was_called_with("command hound at 42", false)
+    assert.stub(send_stub).was_called_with("harry 42", false)
+  end)
+
   it("does not send attacks while gold commands are pending", function()
     boop.state.gold.getPending = true
 

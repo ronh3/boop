@@ -3807,7 +3807,11 @@ local function tickStep(context)
     return { effects = effects, didAction = false }
   end
 
-  if tostring(state.targeting.currentTargetId or "") ~= tostring(targetId) then
+  local targetNeedsSync = boop.targets
+    and boop.targets.needsGameTargetSync
+    and boop.targets.needsGameTargetSync(targetId)
+  if tostring(state.targeting.currentTargetId or "") ~= tostring(targetId)
+      or targetNeedsSync then
     effects[#effects + 1] = {
       kind = "target",
       id = tostring(targetId),

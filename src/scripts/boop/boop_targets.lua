@@ -15,6 +15,15 @@ local function currentRoomId()
   return ""
 end
 
+local function gameTargetSnapshot()
+  local target = gmcp and gmcp.IRE and gmcp.IRE.Target or {}
+  local info = type(target.Info) == "table" and target.Info or {}
+  return {
+    setId = boop.util.trim(tostring(target.Set or "")),
+    infoId = boop.util.trim(tostring(info.id or "")),
+  }
+end
+
 local function copySourceAuthority(authority)
   if type(authority) ~= "table" then
     return false
@@ -298,19 +307,51 @@ function boop.targets.applyTarget(id, opts)
   return changed
 end
 
+function boop.targets.needsGameTargetSync(id)
+  local wanted = boop.util.trim(tostring(id or ""))
+  if wanted == "" then
+    return false
+  end
+  local gameTarget = gameTargetSnapshot()
+  if gameTarget.infoId ~= "" then
+    return gameTarget.infoId ~= wanted
+  end
+  return gameTarget.setId ~= wanted
+end
+
 function boop.targets.setTarget(id, opts)
   if not id or id == "" then return false end
   opts = normalizeTargetOptions(opts)
   if not targetAuthorityCurrent(opts, "set target") then
     return false
   end
-  local changed = boop.targets.applyTarget(id, opts)
+  local wanted = boop.util.trim(tostring(id or ""))
+  local previous = boop.util.trim(tostring(
+    boop.state
+      and boop.state.targeting
+      and boop.state.targeting.currentTargetId
+      or ""
+  ))
+  local gameTarget = gameTargetSnapshot()
+  local needsGameSync = boop.targets.needsGameTargetSync(wanted)
+  local changed = boop.targets.applyTarget(wanted, opts)
+  local syncSent = false
 
-  if changed and send then
+  if needsGameSync and send then
     if not targetAuthorityCurrent(opts, "settarget send") then
       return false
     end
-    send("settarget " .. boop.state.targeting.currentTargetId, false)
+    send("settarget " .. wanted, false)
+    syncSent = true
+    if boop.trace and boop.trace.log then
+      boop.trace.log(string.format(
+        "target sync sent: selected=%s | local=%s | gmcpSet=%s | gmcpInfo=%s",
+        wanted,
+        previous,
+        gameTarget.setId,
+        gameTarget.infoId
+      ))
+    end
   end
   if changed and autoTargetCallEnabled() and send then
     if not targetAuthorityCurrent(opts, "target call send") then
@@ -326,7 +367,7 @@ function boop.targets.setTarget(id, opts)
       boop.trace.log(string.format("auto target call: %s -> %s", caller, boop.state.targeting.currentTargetId))
     end
   end
-  return changed
+  return changed or syncSent
 end
 
 function boop.targets.clearTargetCall(reason)

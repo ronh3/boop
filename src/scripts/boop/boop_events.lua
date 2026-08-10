@@ -3198,7 +3198,11 @@ function boop.prequeueStandard(sourceAuthority, options)
     return false
   end
 
-  if boop.state.targeting.currentTargetId ~= targetId then
+  local targetNeedsSync = boop.targets
+    and boop.targets.needsGameTargetSync
+    and boop.targets.needsGameTargetSync(targetId)
+  if boop.state.targeting.currentTargetId ~= targetId
+      or targetNeedsSync then
     if not boop.targets.setTarget(
         targetId,
         automaticDispatchOptions(authority, roomOwned)

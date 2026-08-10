@@ -7,7 +7,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Class profiles: broad Foxhunt-derived profile coverage is included for the shipped classes.
 - IH integration: `ih` output is re-rendered with clickable whitelist/blacklist buttons for denizens.
 - Skill gating uses GMCP `Char.Skills.*` info for standard/rage abilities.
-- Targeting uses denizen IDs (`settarget <id>`), not names.
+- Targeting uses denizen IDs (`settarget <id>`), not names, and resynchronizes the gameside target when `IRE.Target.Info` disagrees with boop's selected target.
 
 ## Commands
 - `boop` (home dashboard)

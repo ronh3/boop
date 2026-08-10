@@ -138,6 +138,37 @@ describe("boop prequeue", function()
     assert.is_true(boop.state.queue.prequeuedStandard)
   end)
 
+  it("resynchronizes a stale gameside target when the local target is unchanged", function()
+    helper.setTarget("42", "a test denizen", "80%")
+    gmcp.IRE.Target.Set = ""
+    gmcp.IRE.Target.Info.id = "64840"
+    gmcp.Char.Vitals.bal = "0"
+    gmcp.Char.Vitals.eq = "0"
+
+    boop.prequeueStandard()
+
+    assert.are.equal("42", boop.state.targeting.currentTargetId)
+    assert.stub(send_stub).was_called_with("settarget 42", false)
+    assert.stub(send_stub).was_called_with(
+      "setalias BOOP_ATTACK command hound at 42",
+      false
+    )
+  end)
+
+  it("does not resend settarget when GMCP already matches", function()
+    helper.setTarget("42", "a test denizen", "80%")
+    gmcp.Char.Vitals.bal = "0"
+    gmcp.Char.Vitals.eq = "0"
+
+    boop.prequeueStandard()
+
+    assert.stub(send_stub).was_not_called_with("settarget 42", false)
+    assert.stub(send_stub).was_called_with(
+      "setalias BOOP_ATTACK command hound at 42",
+      false
+    )
+  end)
+
   it("keeps a queued standard alias fixed when the target shields", function()
     helper.reset()
     helper.setArea("Test Area")
