@@ -229,7 +229,7 @@ System is complete when:
 - Layout alignment remains consistent at 80 columns
 - Miniwindow (if enabled) mirrors inline functionality
 - All persisted values survive package reload/reconnect and redraw identically
-  - except explicitly session-local values such as `partySize`
+  - except explicitly session-local values such as `partySize` and targeting mode
 
 Release-phase guidance
 

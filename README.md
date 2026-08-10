@@ -40,7 +40,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop get [key]` / `boop set <key> <value>` (advanced raw config inspection/editing; prefer `boop config` for normal setup)
 - `boop trace` / `boop trace on|off|live on|off|show [n]|clear`
 - `boop gag` / `boop gag on|off|own|others|mobs|all|<scope> on|off|colors [own|others|mobs]|color [own|others|mobs] <who|ability|target|meta|separator|bg> [<color|off>]|color [own|others|mobs] reset`
-- `boop targeting <manual|whitelist|blacklist|auto>`
+- `boop targeting <manual|whitelist|blacklist|auto>` (session-only; every new profile session starts in `whitelist` mode)
 - `boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>` (default: `simple`; class modes without a matching rage ability are marked unavailable)
 - `boop ragepool <0-100|off>` (hold ordinary battlerage actions until current rage reaches the configured threshold)
 - `diag` (sends `clearqueue all`, replaces the full balance/equilibrium queue with diagnose, and pauses attacks until diagnose evidence plus prompt)
@@ -91,6 +91,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `ih` shows all valid object rows, but only GMCP-recognized denizens get whitelist/blacklist action labels.
 - Denizens on the global blacklist do not show `ih` whitelist/blacklist action labels.
 - The global blacklist overrides every targeting mode, including manual targeting and leader target calls.
+- Targeting mode starts as `whitelist` whenever the Mudlet profile opens. Mode changes apply to the current profile session and are not persisted.
 - Ordinary target departure or movement quarantines the old fixed-alias standard without clearing or rebinding the native queue; old result evidence or its bounded grace must terminalize before replacement targeting resumes.
 - Explicit blacklist/forbidden-target revocation sends one traced `clearqueue all` before replacement, whether the forbidden target is proven present or current-room presence is unknown.
 - `boop walk` integrates with `demonnicAutoWalker`; if it is missing, use `boop walk install`.

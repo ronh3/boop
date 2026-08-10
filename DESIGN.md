@@ -21,6 +21,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Self-contained Mudlet package that runs without external systems.
 - Use GMCP and IRE.Target when available.
 - Use Mudlet DB for persistent config and lists.
+- Start every Mudlet profile session in whitelist targeting mode; targeting-mode changes are session-local so a previously broad mode cannot carry into a new login.
 - Provide clear configuration commands and feedback.
 
 ## What We’ll Vulture

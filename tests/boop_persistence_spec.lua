@@ -98,7 +98,7 @@ describe("boop config and list persistence paths", function()
     end
   end)
 
-  it("persists durable edits but keeps party size and shield mode session-local", function()
+  it("persists durable edits but keeps targeting, party size, and shield mode session-local", function()
     boop.config.assistLeader = "Person"
     boop.ui.setTargetingMode("wl", true)
     boop.ui.targetCallCommand("on")
@@ -117,17 +117,48 @@ describe("boop config and list persistence paths", function()
     assert.are.equal("ocean", boop.config.uiTheme)
     assert.are.equal(3, boop.config.partySize)
     assert.is_false(boop.config.breakShields)
-    assert.are.same({ key = "targetingMode", value = "whitelist" }, saved_configs[1])
-    assert.are.same({ key = "targetCall", value = true }, saved_configs[2])
-    assert.are.same({ key = "autoTargetCall", value = true }, saved_configs[3])
-    assert.are.same({ key = "targetCall", value = false }, saved_configs[4])
-    assert.are.same({ key = "goldPack", value = "pack" }, saved_configs[5])
-    assert.are.same({ key = "rageAffCalloutsEnabled", value = false }, saved_configs[6])
-    assert.are.same({ key = "uiTheme", value = "ocean" }, saved_configs[7])
-    assert.are.same({ delete = "partySize" }, saved_configs[8])
-    assert.are.same({ delete = "breakShields" }, saved_configs[9])
+    assert.are.same({ key = "targetCall", value = true }, saved_configs[1])
+    assert.are.same({ key = "autoTargetCall", value = true }, saved_configs[2])
+    assert.are.same({ key = "targetCall", value = false }, saved_configs[3])
+    assert.are.same({ key = "goldPack", value = "pack" }, saved_configs[4])
+    assert.are.same({ key = "rageAffCalloutsEnabled", value = false }, saved_configs[5])
+    assert.are.same({ key = "uiTheme", value = "ocean" }, saved_configs[6])
+    assert.are.same({ delete = "partySize" }, saved_configs[7])
+    assert.are.same({ delete = "breakShields" }, saved_configs[8])
+    assert.stub(save_config_stub).was_not.called_with("targetingMode", "whitelist")
     assert.stub(save_config_stub).was_not.called_with("partySize", 3)
     assert.stub(save_config_stub).was_not.called_with("breakShields", false)
+  end)
+
+  it("restores whitelist targeting for a fresh profile session", function()
+    boop.ui.setTargetingMode("auto", true)
+
+    assert.are.equal("auto", boop.config.targetingMode)
+    assert.stub(save_config_stub).was_not.called_with("targetingMode", "auto")
+
+    helper.reset()
+
+    assert.are.equal("whitelist", boop.config.targetingMode)
+  end)
+
+  it("ignores and removes a targeting mode saved by an older package", function()
+    local previousDb = _G.db
+    _G.db = {
+      fetch = function()
+        return {
+          { name = "targetingMode", value = "auto" },
+        }
+      end,
+    }
+    boop.db.handle = { config = {} }
+    boop.config.targetingMode = "auto"
+
+    local ok, err = pcall(boop.db.loadConfig)
+    _G.db = previousDb
+
+    assert.is_true(ok, tostring(err))
+    assert.are.equal("whitelist", boop.config.targetingMode)
+    assert.stub(delete_config_stub).was_called_with("targetingMode")
   end)
 
   it("resets party size to the default on a fresh load", function()

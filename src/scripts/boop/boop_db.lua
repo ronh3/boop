@@ -186,6 +186,7 @@ end
 local SESSION_CONFIG_KEYS = {
   breakShields = true,
   partySize = true,
+  targetingMode = true,
 }
 
 local function isSessionConfig(key)
@@ -276,6 +277,7 @@ function boop.db.loadConfig()
 
   boop.db.deleteConfig("partySize")
   boop.db.deleteConfig("breakShields")
+  boop.db.deleteConfig("targetingMode")
 end
 
 function boop.db.saveConfig(key, value)

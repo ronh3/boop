@@ -1301,9 +1301,6 @@ function boop.ui.setTargetingMode(mode, quiet)
   end
   local previousMode = tostring(boop.config.targetingMode or "")
   boop.config.targetingMode = mode
-  if boop.db and boop.db.saveConfig then
-    boop.db.saveConfig("targetingMode", boop.config.targetingMode)
-  end
   if previousMode == "manual"
       and mode ~= "manual"
       and boop.walk

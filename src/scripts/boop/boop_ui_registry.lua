@@ -769,7 +769,7 @@ boop.registry.ui.helpTopics = {
     },
     commands = {
       helpCommand("boop targeting", "Show the current targeting mode and valid mode names."),
-      helpCommand("boop targeting <manual|whitelist|blacklist|auto>", "Set the top-level target-selection mode."),
+      helpCommand("boop targeting <manual|whitelist|blacklist|auto>", "Set the target-selection mode for this profile session; each new session starts in whitelist mode."),
       helpCommand("boop whitelist", "Open or print the current area whitelist."),
       helpCommand("boop whitelist add <name>", "Add a denizen name to the current area's whitelist."),
       helpCommand("boop whitelist remove <name>", "Remove a name from the current area's whitelist."),
@@ -791,6 +791,7 @@ boop.registry.ui.helpTopics = {
       helpCommand("boop set targetOrder order|numeric|reverse", "Choose how room denizens are ordered before whitelist priority is applied."),
     },
     notes = {
+      "Each new profile session starts in whitelist mode. A mode selected with `boop targeting` lasts for the current session only.",
       "`manual` means boop will not choose targets. `auto` may attack any valid denizen not blocked by blacklist rules.",
       "`blacklist` mode attacks valid denizens except names on the current or global blacklist.",
       "A departed target quarantines its fixed queued alias until old result/grace terminal evidence, without clearing or rebinding the server queue.",
