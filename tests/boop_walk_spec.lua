@@ -936,12 +936,7 @@ describe("boop walk integration", function()
         runTargetingAlias("auto")
 
         assert.are.equal("auto", boop.config.targetingMode)
-        assert.are.same({
-          {
-            key = "targetingMode",
-            value = "auto",
-          },
-        }, config_saves)
+        assert.are.same({}, config_saves)
         assert.are.equal(1, #feedback.ok - okCountBeforeAuto)
         assert.are.equal(
           "targeting mode: auto",
@@ -966,7 +961,7 @@ describe("boop walk integration", function()
 
         assert.are.equal(1, state.walk.reservationId)
         assert.are.equal(1, countRaised("demonwalker.move"))
-        assert.are.equal(2, #config_saves)
+        assert.are.equal(0, #config_saves)
         assert.are.equal(2, #feedback.ok - okCountBeforeAuto)
         assert.are.equal(4, #sent_gmcp)
       end
@@ -1005,12 +1000,7 @@ describe("boop walk integration", function()
 
     assert.are.equal(1, state.walk.reservationId)
     assert.are.equal(1, countRaised("demonwalker.move"))
-    assert.are.same({
-      {
-        key = "targetingMode",
-        value = "auto",
-      },
-    }, config_saves)
+    assert.are.same({}, config_saves)
     assert.are.equal(1, #feedback.ok - okCountBeforeAuto)
     assert.are.equal(
       "targeting mode: auto",
@@ -1066,12 +1056,7 @@ describe("boop walk integration", function()
 
     assert.are.equal(1, state.walk.reservationId)
     assert.are.equal(1, countRaised("demonwalker.move"))
-    assert.are.same({
-      {
-        key = "targetingMode",
-        value = "auto",
-      },
-    }, config_saves)
+    assert.are.same({}, config_saves)
     assert.are.equal(1, #feedback.ok - okCountBeforeAuto)
     assert.are.equal(
       "targeting mode: auto",

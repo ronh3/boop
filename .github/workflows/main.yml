@@ -216,6 +216,7 @@ jobs:
           run: bash /tmp/run-mudlet-tests.sh
         env:
           AUTORUN_BUSTED_TESTS: "true"
+          BOOP_REPO_ROOT: ${{ github.workspace }}
           TESTS_DIRECTORY: ${{ github.workspace }}/tests
           QUIT_MUDLET_AFTER_TESTS: "true"
           PRETEST_PACKAGE: ${{ github.workspace }}/build/boop Hunter.mpackage

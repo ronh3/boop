@@ -304,6 +304,7 @@ describe("boop tick", function()
         local first = pair.owners[clearFirst]
         local second = pair.owners[clearSecond]
         boop.config.useQueueing = true
+        helper.setTarget("42", "a test denizen", "80%")
         seedOperation(
           pair.owners[1].owner,
           pair.owners[1].code,
@@ -349,7 +350,7 @@ describe("boop tick", function()
           1,
           countSent("queue addclearfull freestand BOOP_ATTACK")
         )
-        assert.are.equal(1, countSent("harry 42"))
+        assert.are.equal(0, countSent("harry 42"))
         assert.are.equal(0, countSent("command hound at 42"))
       end)
     end
