@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
 Plan: 34 of 38
 Status: Ready to execute
-Last activity: 2026-08-04 — Completed Plan 03-33 alternate no-abilities Rage recovery repair
+Last activity: 2026-08-10 - Completed quick task 260810-ikl: Preserve configured rage after ordinary battlerage spending
 
 Progress: [█████████░] 90%
 
@@ -223,6 +223,7 @@ Recent decisions affecting current work:
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260718-uip | Restore GMCP-backed IH denizen actions and hide whitelist/blacklist controls for non-denizen items | 2026-07-19 | a984495 | [260718-uip-restore-gmcp-backed-ih-denizen-actions-a](./quick/260718-uip-restore-gmcp-backed-ih-denizen-actions-a/) |
+| 260810-ikl | Preserve configured rage after ordinary battlerage spending | 2026-08-10 | 906212f | [260810-ikl-change-ragepoolthreshold-to-preserve-the](./quick/260810-ikl-change-ragepoolthreshold-to-preserve-the/) |
 
 ## Deferred Items
 
