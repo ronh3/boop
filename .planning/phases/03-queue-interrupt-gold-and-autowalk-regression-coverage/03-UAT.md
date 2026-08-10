@@ -4,7 +4,7 @@ phase: 03-queue-interrupt-gold-and-autowalk-regression-coverage
 source:
   - 03-VERIFICATION.md
 started: 2026-07-26T21:45:34Z
-updated: 2026-08-04T20:10:32Z
+updated: 2026-08-10T06:42:21Z
 ---
 
 # Phase 03 UAT: Queue, Interrupt, Gold, and Autowalk Regression Coverage
@@ -537,6 +537,19 @@ previous_result: issue
 previous_reported: "The hour trace showed interrupt owners entering but omitted successful terminal exits, making healthy completion indistinguishable from a leaked blocker during forensic review."
 previous_severity: minor
 previous_observed: "Forty-three interrupt owners entered; only the timed-out leap displayed an exit. Combat resumed after the other forty-two, proving the owners completed even though their terminal trace records were absent from live output. The capture also contained 169 target_lost warnings, 505 room_partial holds, and 1362 no-target ticks."
+
+## Supplemental Acceptance Checks
+
+### A. Gameside target synchronization
+
+installed_version: 0.1.478
+source_commit: 1d60d45
+result: pass
+reported: "Pass."
+observed: |
+  The user confirmed that boop's selected target and the gameside
+  `IRE.Target.Info.id` synchronized during active hunting after the 0.1.478
+  target-synchronization fix.
 
 ## Non-Gating Queued-Alias Protocol Observation
 
