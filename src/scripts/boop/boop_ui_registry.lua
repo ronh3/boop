@@ -814,7 +814,7 @@ boop.registry.ui.helpTopics = {
     },
     commands = {
       helpCommand("boop ragemode <number|simple|big|small|aff|tempo|combo|hybrid|none>", "Set how boop chooses battlerage actions; unavailable class modes are marked and rejected."),
-      helpCommand("boop ragepool <0-100|off>", "Hold ordinary battlerage actions until current rage reaches this threshold."),
+      helpCommand("boop ragepool <0-100|off>", "Reserve this much rage after ordinary battlerage spending."),
       helpCommand("boop prequeue [on|off]", "Show, enable, or disable early standard-attack queueing."),
       helpCommand("boop lead [seconds]", "Show or set how early boop should prequeue before balance returns."),
       helpCommand("boop prefer", "Show standard attack preference options for your current class/spec."),
@@ -848,7 +848,7 @@ boop.registry.ui.helpTopics = {
       "`simple` is the default rage mode. `combo` and `hybrid` are party-aware and depend on roster/profile affliction data.",
       "`aff` is unavailable when the active class profile has no affliction rage ability; stale cross-class `aff` settings use `simple` until changed.",
       "`none` disables rage attacks only; it does not disable standard attacks.",
-      "A rage-pool threshold holds normal damage, affliction, and conditional rage actions below the configured amount; shieldbreaks and Triumph free rage remain immediate.",
+      "A rage-pool reserve permits normal damage, affliction, and conditional rage actions only when their cost leaves the configured amount; shieldbreaks and Triumph free rage remain immediate.",
       "A causally owned generic Rage cooldown closes the global Battlerage gate until an exact Available-list recovery; the independent Triumph credit is generation-owned and expires if it is not consumed.",
       "Temporary attack preferences reset on package reload or reconnect and never replace the saved class/spec preference.",
       "Shield mode resets to `break` on package reload or reconnect; `bypass` applies to every class profile.",

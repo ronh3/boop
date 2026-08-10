@@ -42,7 +42,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop gag` / `boop gag on|off|own|others|mobs|all|<scope> on|off|colors [own|others|mobs]|color [own|others|mobs] <who|ability|target|meta|separator|bg> [<color|off>]|color [own|others|mobs] reset`
 - `boop targeting <manual|whitelist|blacklist|auto>` (session-only; every new profile session starts in `whitelist` mode)
 - `boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>` (default: `simple`; class modes without a matching rage ability are marked unavailable)
-- `boop ragepool <0-100|off>` (hold ordinary battlerage actions until current rage reaches the configured threshold)
+- `boop ragepool <0-100|off>` (reserve this much rage after ordinary battlerage spending)
 - `diag` (sends `clearqueue all`, replaces the full balance/equilibrium queue with diagnose, and pauses attacks until diagnose evidence plus prompt)
 - `matic` (replaces the full balance/equilibrium queue with `ldeck draw matic`; pauses attacks until prompt or timeout)
 - `catarin` (replaces the full balance/equilibrium queue with `ldeck draw catarin`; pauses attacks until prompt or timeout)
@@ -78,7 +78,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - When hunting is off, boop disables its trigger/text-replacement folder; aliases remain available so `boop on` and configuration commands still work.
 - `boop ragemode big` pools rage until a `Big Damage` rage attack is usable; it only uses `Small Damage` while big is on cooldown.
 - `boop ragemode aff` is rejected when the active class has no affliction rage ability; a stale cross-class `aff` setting uses `simple` damage selection until changed.
-- `boop ragepool 50` waits until current rage reaches 50 before selecting an ordinary rage action; it is a reach-before-spend threshold, not a permanent 50-rage reserve. Shieldbreaks and Triumph free rage remain immediate. Use `boop ragepool off` to disable it.
+- `boop ragepool 50` permits an ordinary rage action only when paying its cost would leave at least 50 rage. Shieldbreaks and Triumph free rage remain immediate. Use `boop ragepool off` to disable it.
 - Temporary attack preferences take precedence over the saved value for the current class/spec, are visibly labeled by `boop prefer`, and reset on package reload or reconnect.
 - Denizens come from `gmcp.Char.Items.List` with attrib `m` and exclude `x`/`d`.
 - Denizen name matching for whitelist/blacklist is case-insensitive and normalizes straight/curly apostrophes.

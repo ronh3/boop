@@ -223,7 +223,7 @@ describe("boop rage modes", function()
     assert.are.equal("", actions.rage)
   end)
 
-  it("holds ordinary rage below the configured pool threshold", function()
+  it("preserves the configured rage pool after ordinary spending", function()
     helper.setClass("Sentinel")
     helper.setRage(19)
     helper.learnSkills({
@@ -240,6 +240,18 @@ describe("boop rage modes", function()
     assert.are.equal("pool_hold", actions.rageDecision.outcome)
 
     helper.setRage(20)
+    actions = boop.attacks.choose()
+
+    assert.are.equal("", actions.rage)
+    assert.are.equal("pool_hold", actions.rageDecision.outcome)
+
+    helper.setRage(33)
+    actions = boop.attacks.choose()
+
+    assert.are.equal("", actions.rage)
+    assert.are.equal("pool_hold", actions.rageDecision.outcome)
+
+    helper.setRage(34)
     actions = boop.attacks.choose()
 
     assert.are.equal("pester 42", actions.rage)
