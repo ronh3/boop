@@ -1,6 +1,6 @@
 boop.attacks.register("blademaster", {  standard = {
     dam = { cmd = "infuse fire/drawslash &tar sternum", skill = "Drawslash", group = "TwoArts" },
-    shield = { cmd = "raze &tar sternum", skill = "Raze", group = "Weaponmastery" },
+    shield = { cmd = "raze &tar sternum", skill = "Raze", group = "TwoArts" },
   },
   rage = {
     ["abilities"] = {

@@ -5,6 +5,7 @@ dofile(attacksRoot .. "runewarden.lua")
 dofile(attacksRoot .. "depthswalker.lua")
 dofile(attacksRoot .. "psion.lua")
 dofile(attacksRoot .. "blue_dragon.lua")
+dofile(attacksRoot .. "blademaster.lua")
 
 describe("boop class profile selection", function()
   before_each(function()
@@ -92,6 +93,20 @@ describe("boop class profile selection", function()
     assert.are.equal("combination 42 raze smash", actions.standard)
     assert.is_true(actions.standardShieldbreak)
     assert.are.equal("", actions.rage)
+  end)
+
+  it("uses the Blademaster TwoArts raze against a shielded target", function()
+    helper.setClass("Blademaster")
+    helper.learnSkills({
+      { name = "Drawslash", group = "TwoArts" },
+      { name = "Raze", group = "TwoArts" },
+    })
+    boop.state.targeting.targetShield = { attempted = false }
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("raze 42 sternum", actions.standard)
+    assert.is_true(actions.standardShieldbreak)
   end)
 
   it("uses the runewarden dual blunt standard for the matching spec", function()
