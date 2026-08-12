@@ -65,6 +65,16 @@ combat summaries. Those remain assigned to later roadmap phases.
 - Choose test organization and helper extraction, provided timing, stale callback, room ownership, and command-order assertions remain explicit.
 - If the external walker becomes unavailable mid-run, fail closed, invalidate boop-owned movement intent, and report the condition without attempting silent installation or update.
 
+### Interrupt Admission And Preemption (Supplemental 2026-08-11)
+- **D-25:** Keep blocker display priority and interrupt admission priority separate. `BLOCKER_PRIORITY` decides which active blocker is shown first; it does not authorize one operation to cancel another.
+- **D-26:** Use four interrupt admission tiers: absolute safety, emergency, diagnostic, and utility. Existing commands classify as: auto-flee at absolute safety; `leap` and `fly` at emergency; `diag` at diagnostic; and `matic`, `catarin`, and `ts` at utility. Future `tumble` and class-heal commands must register as emergency without adding command-specific arbitration branches.
+- **D-27:** Absolute safety may supersede any active operation. An emergency may atomically supersede a diagnostic or utility operation. A diagnostic may supersede a utility operation. Lower-priority work may never replace higher-priority work.
+- **D-28:** Same-tier operations do not replace one another. Repeating the same pending command is idempotent; a different same-tier request is rejected with the active owner and reason. This prevents duplicate movement or heal commands after the first may already have started executing.
+- **D-29:** Attacks, Rage, gold, target replacement, and walking are automation, not interrupt tiers. They remain held behind every active interrupt and may never preempt it. Emergency admission may displace their queued intent when required to make the emergency command authoritative.
+- **D-30:** Supersession is one atomic lifecycle transition: install the incoming generation and blocker, terminalize the old generation with `superseded_by:<name>`, cancel its timer, tombstone its late evidence, and replace the native queue before any tick, retry, walker move, gold action, or automatic diagnose can run.
+- **D-31:** Late result, prompt, timeout, denial, and room callbacks from a superseded generation are no-ops. They cannot complete, clear, or otherwise mutate the incoming operation.
+- **D-32:** A superseded automatic diagnose retains the venom-confusion threshold and may be retried only after the emergency terminal. No diagnose retry may run in the transition window or displace the emergency.
+
 </decisions>
 
 <canonical_refs>

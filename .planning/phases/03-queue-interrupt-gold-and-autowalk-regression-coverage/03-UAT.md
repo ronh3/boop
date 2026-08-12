@@ -551,6 +551,28 @@ observed: |
   `IRE.Target.Info.id` synchronized during active hunting after the 0.1.478
   target-synchronization fix.
 
+### B. Priority-aware interrupt supersession
+
+result: [pending]
+reported: "A pending diagnose was not detecting completion and rejected a later leap until the diagnose timeout."
+expected: |
+  A valid `leap <direction>` or `fly` request immediately supersedes a pending
+  diag or utility interrupt. The old owner terminalizes once with
+  `superseded_by:<incoming>`, its timer and result/prompt evidence become inert,
+  and the incoming emergency owns combat and queue continuously until its own
+  room-change, prompt, denial, or timeout terminal. Flee remains absolute;
+  lower-priority and same-tier requests do not replace active emergency work.
+
+  Easy live check after G-03-27 implementation:
+  1. In a room with a known valid leap exit, clear trace and enable live trace.
+  2. Queue `diag`, then immediately issue `leap <valid-direction>` before diag
+     completes.
+  3. Confirm one diag terminal with `superseded_by:leap`, one leap enter, no
+     attack/gold/walker action between those records, and a normal leap room
+     change terminal without waiting for the diag timeout.
+  4. Wait beyond the old diag timeout and confirm no second diag terminal and
+     no change to the completed/current interrupt state.
+
 ## Non-Gating Queued-Alias Protocol Observation
 
 protocol_observation:
@@ -1268,3 +1290,34 @@ blocked: 0
     - "Guarantee one visible owner/generation/reason terminal for successful, failed, and timed-out operations without tracing the trace output itself."
     - "Downgrade or deduplicate expected target death/removal and repeated unchanged room/no-target live events while retaining bounded-buffer forensic detail."
     - "Add exact-once trace regressions for successful diag, prompt-only interrupt, denied leap, timeout, and repeated-state suppression."
+
+- gap_id: G-03-27
+  truth: "Safety and room-exit interrupts use explicit admission tiers so a pending lower-priority operation cannot deny them, while superseded generations and their late evidence remain inert."
+  status: pending
+  latest_result: issue
+  installed_version: 0.1.482
+  reason: "The shared interrupt slot rejects every incoming request while any operation is active. A diagnose that misses completion therefore rejects leap or fly until its generic timeout, even though those commands must take priority over diagnosis and attacks."
+  severity: blocker
+  test: supplemental-b
+  root_cause: "boop.ui.queueInterrupt has one unconditional active-operation rejection and no tier, admission, or atomic supersession contract. Existing BLOCKER_PRIORITY only selects display order and cannot safely serve as cancellation authority."
+  evidence:
+    - "Source: boop_ui.lua queueInterrupt reports `<active> still pending; <incoming> not queued` for every nonterminal active operation."
+    - "User report: diagnose failed to detect completion, then blocked leap until the diagnose timer expired."
+    - "The current retained output.md no longer contains that incident; implementation must not infer a diagnose completion root cause from the unrelated trace."
+  artifacts:
+    - path: "src/scripts/boop/boop_ui.lua"
+      issue: "Interrupt admission is a local unconditional rejection rather than a declared command policy."
+    - path: "src/scripts/boop/boop_runtime.lua"
+      issue: "Operation generations can terminalize exactly once but have no atomic supersession transition or non-timeout evidence tombstone."
+    - path: "src/scripts/boop/boop_safety.lua"
+      issue: "Flee cleanup is separate from the interrupt slot and does not explicitly terminalize an active interrupt before its outbound action."
+    - path: "tests/boop_interrupt_spec.lua"
+      issue: "Coverage proves idempotent rejection and stale callbacks after ordinary terminals, not priority admission or supersession."
+  missing:
+    - "Declare absolute, emergency, diagnostic, and utility tiers independently from blocker display priority."
+    - "Implement and regress the complete start/reject/supersede matrix, with same-tier requests remaining idempotent or rejected."
+    - "Install incoming ownership atomically, terminalize and tombstone the old generation, replace the native queue once, and forbid automation in the transition window."
+    - "Prove late result, prompt, timeout, denial, and room callbacks from the old generation cannot mutate the incoming operation."
+    - "Preserve automatic diagnose threshold state and retry only after the emergency terminal."
+  planned_by:
+    - "03-39-PLAN.md"
