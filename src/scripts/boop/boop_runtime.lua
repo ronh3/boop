@@ -82,6 +82,16 @@ local DOMAIN_DEFAULTS = {
     calledTargetAt = nil,
     incomingWhitelistShares = {},
     pendingWhitelistShare = nil,
+    gameTargetSync = {
+      generation = 0,
+      desiredId = "",
+      confirmedId = "",
+      pending = false,
+      attempts = 0,
+      retryTimer = false,
+      suppressed = 0,
+      exhausted = false,
+    },
     roomObservation = {
       generation = 0,
       roomId = "",
@@ -287,6 +297,9 @@ function boop.runtime.beginConnectionLifecycle(source)
     boop.runtime.resolvePackQuarantine("connection")
   end
   local state = boop.runtime.ensureState()
+  if boop.targets and boop.targets.resetGameTargetSync then
+    boop.targets.resetGameTargetSync("connection")
+  end
   state.targeting.movementIntent =
     deepCopy(DOMAIN_DEFAULTS.targeting.movementIntent)
   local lifecycle = lifecycleState()
@@ -3444,6 +3457,9 @@ function boop.runtime.clearAttackIntent(reason, opts)
 
   if opts.clearTarget == true
       or reasonText == "target_lost" then
+    if boop.targets and boop.targets.resetGameTargetSync then
+      boop.targets.resetGameTargetSync(reasonText ~= "" and reasonText or "target cleared")
+    end
     state.targeting.currentTargetId = ""
     state.targeting.targetName = ""
     if boop.targets and boop.targets.clearTargetShield then

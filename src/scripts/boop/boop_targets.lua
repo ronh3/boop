@@ -1,5 +1,8 @@
 boop.targets = boop.targets or {}
 
+local TARGET_SYNC_RETRY_SECONDS = 0.75
+local TARGET_SYNC_MAX_ATTEMPTS = 2
+
 local function normalizeName(name)
   if not name then return "" end
   local v = boop.util.trim(tostring(name))
@@ -22,6 +25,183 @@ local function gameTargetSnapshot()
     setId = boop.util.trim(tostring(target.Set or "")),
     infoId = boop.util.trim(tostring(info.id or "")),
   }
+end
+
+local function gameTargetSyncState()
+  local state = boop.runtime and boop.runtime.state
+    and boop.runtime.state()
+    or boop.state
+  state.targeting = state.targeting or {}
+  local sync = state.targeting.gameTargetSync
+  if type(sync) ~= "table" then
+    sync = {}
+    state.targeting.gameTargetSync = sync
+  end
+  sync.generation = tonumber(sync.generation) or 0
+  sync.desiredId = boop.util.trim(tostring(sync.desiredId or ""))
+  sync.confirmedId = boop.util.trim(tostring(sync.confirmedId or ""))
+  sync.pending = sync.pending == true
+  sync.attempts = tonumber(sync.attempts) or 0
+  sync.retryTimer = sync.retryTimer or false
+  sync.suppressed = tonumber(sync.suppressed) or 0
+  sync.exhausted = sync.exhausted == true
+  return sync
+end
+
+local function stopGameTargetSyncTimer(sync)
+  if type(sync) ~= "table" then return end
+  local timer = sync.retryTimer
+  sync.retryTimer = false
+  if timer and killTimer then
+    killTimer(timer)
+  end
+end
+
+local function traceGameTargetSync(message)
+  if boop.trace and boop.trace.log then
+    boop.trace.log(message)
+  end
+end
+
+function boop.targets.resetGameTargetSync(reason)
+  local sync = gameTargetSyncState()
+  local active = sync.pending
+    or sync.exhausted
+    or sync.desiredId ~= ""
+    or sync.confirmedId ~= ""
+  local desiredId = sync.desiredId
+  local attempts = sync.attempts
+  local suppressed = sync.suppressed
+  stopGameTargetSyncTimer(sync)
+  sync.generation = sync.generation + 1
+  sync.desiredId = ""
+  sync.confirmedId = ""
+  sync.pending = false
+  sync.attempts = 0
+  sync.suppressed = 0
+  sync.exhausted = false
+  if active and reason and reason ~= "" then
+    traceGameTargetSync(string.format(
+      "target sync reset: desired=%s | attempts=%d | suppressed=%d | reason=%s",
+      desiredId,
+      attempts,
+      suppressed,
+      tostring(reason)
+    ))
+  end
+  return active
+end
+
+local function acknowledgeGameTargetSync(id, source)
+  local observedId = boop.util.trim(tostring(id or ""))
+  if observedId == "" then return false end
+  local sync = gameTargetSyncState()
+  if sync.desiredId == "" or sync.desiredId ~= observedId then
+    return false
+  end
+  local attempts = sync.attempts
+  local suppressed = sync.suppressed
+  stopGameTargetSyncTimer(sync)
+  sync.confirmedId = observedId
+  sync.desiredId = ""
+  sync.pending = false
+  sync.attempts = 0
+  sync.suppressed = 0
+  sync.exhausted = false
+  traceGameTargetSync(string.format(
+    "target sync acknowledged: id=%s | source=%s | attempts=%d | suppressed=%d",
+    observedId,
+    tostring(source or "gmcp"),
+    attempts,
+    suppressed
+  ))
+  return true
+end
+
+function boop.targets.observeGameTarget(id, source)
+  local observedId = boop.util.trim(tostring(id or ""))
+  local evidenceSource = tostring(source or "gmcp")
+  local sync = gameTargetSyncState()
+
+  if observedId == "" then
+    if sync.pending and evidenceSource == "info" then
+      sync.suppressed = sync.suppressed + 1
+      return false, "stale target info while sync pending"
+    end
+    boop.targets.resetGameTargetSync("gameside target cleared")
+    return true, "cleared"
+  end
+
+  if acknowledgeGameTargetSync(observedId, evidenceSource) then
+    return true, "acknowledged"
+  end
+
+  sync = gameTargetSyncState()
+  if sync.pending and sync.desiredId ~= observedId then
+    if evidenceSource == "info" then
+      sync.suppressed = sync.suppressed + 1
+      return false, "stale target info while sync pending"
+    end
+    boop.targets.resetGameTargetSync("gameside target changed")
+    sync = gameTargetSyncState()
+  elseif sync.confirmedId ~= ""
+      and sync.confirmedId ~= observedId
+      and evidenceSource == "info" then
+    sync.suppressed = sync.suppressed + 1
+    return false, "stale target info after newer selection"
+  end
+
+  return true, "observed"
+end
+
+local function beginGameTargetSync(wanted)
+  local sync = gameTargetSyncState()
+  if sync.desiredId ~= wanted then
+    stopGameTargetSyncTimer(sync)
+    sync.desiredId = wanted
+    sync.attempts = 0
+    sync.suppressed = 0
+    sync.exhausted = false
+  end
+
+  sync.generation = sync.generation + 1
+  local generation = sync.generation
+  sync.pending = true
+  sync.attempts = sync.attempts + 1
+  sync.exhausted = false
+
+  if tempTimer then
+    sync.retryTimer = tempTimer(TARGET_SYNC_RETRY_SECONDS, function()
+      local current = gameTargetSyncState()
+      if current.generation ~= generation
+          or current.desiredId ~= wanted
+          or not current.pending then
+        return
+      end
+      current.retryTimer = false
+      current.pending = false
+      if current.attempts >= TARGET_SYNC_MAX_ATTEMPTS then
+        current.exhausted = true
+        traceGameTargetSync(string.format(
+          "target sync exhausted: id=%s | attempts=%d | suppressed=%d",
+          wanted,
+          current.attempts,
+          current.suppressed
+        ))
+      else
+        traceGameTargetSync(string.format(
+          "target sync retry ready: id=%s | attempts=%d | suppressed=%d",
+          wanted,
+          current.attempts,
+          current.suppressed
+        ))
+      end
+    end)
+  else
+    sync.pending = false
+    sync.exhausted = true
+  end
+  return sync.attempts
 end
 
 local function copySourceAuthority(authority)
@@ -313,10 +493,23 @@ function boop.targets.needsGameTargetSync(id)
     return false
   end
   local gameTarget = gameTargetSnapshot()
-  if gameTarget.infoId ~= "" then
-    return gameTarget.infoId ~= wanted
+  if gameTarget.setId == wanted then
+    acknowledgeGameTargetSync(wanted, "snapshot:set")
+    return false
   end
-  return gameTarget.setId ~= wanted
+  if gameTarget.infoId == wanted then
+    acknowledgeGameTargetSync(wanted, "snapshot:info")
+    return false
+  end
+  local sync = gameTargetSyncState()
+  if sync.confirmedId == wanted then
+    return false
+  end
+  if sync.desiredId == wanted and (sync.pending or sync.exhausted) then
+    sync.suppressed = sync.suppressed + 1
+    return false
+  end
+  return true
 end
 
 function boop.targets.setTarget(id, opts)
@@ -332,6 +525,9 @@ function boop.targets.setTarget(id, opts)
       and boop.state.targeting.currentTargetId
       or ""
   ))
+  if previous ~= wanted then
+    boop.targets.resetGameTargetSync("local target changed")
+  end
   local gameTarget = gameTargetSnapshot()
   local needsGameSync = boop.targets.needsGameTargetSync(wanted)
   local changed = boop.targets.applyTarget(wanted, opts)
@@ -341,15 +537,18 @@ function boop.targets.setTarget(id, opts)
     if not targetAuthorityCurrent(opts, "settarget send") then
       return false
     end
+    local attempt = beginGameTargetSync(wanted)
     send("settarget " .. wanted, false)
     syncSent = true
     if boop.trace and boop.trace.log then
       boop.trace.log(string.format(
-        "target sync sent: selected=%s | local=%s | gmcpSet=%s | gmcpInfo=%s",
+        "target sync sent: selected=%s | local=%s | gmcpSet=%s | gmcpInfo=%s | attempt=%d/%d",
         wanted,
         previous,
         gameTarget.setId,
-        gameTarget.infoId
+        gameTarget.infoId,
+        attempt,
+        TARGET_SYNC_MAX_ATTEMPTS
       ))
     end
   end

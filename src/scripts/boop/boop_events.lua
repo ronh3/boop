@@ -2731,6 +2731,19 @@ function boop.onTargetSet()
     return true
   end
   local newId = tostring(gmcp.IRE.Target.Set or "")
+  if boop.targets and boop.targets.observeGameTarget then
+    local accepted, reason = boop.targets.observeGameTarget(newId, "set")
+    if not accepted then
+      if boop.trace and boop.trace.log then
+        boop.trace.log(string.format(
+          "target gmcp set ignored: id=%s | reason=%s",
+          newId,
+          tostring(reason or "stale")
+        ))
+      end
+      return true
+    end
+  end
   local pending = boop.runtime
     and boop.runtime.standardSnapshot
     and boop.runtime.standardSnapshot()
@@ -2772,6 +2785,19 @@ function boop.onTargetInfo()
   end
   if info.id then
     local newId = tostring(info.id or "")
+    if boop.targets and boop.targets.observeGameTarget then
+      local accepted, reason = boop.targets.observeGameTarget(newId, "info")
+      if not accepted then
+        if boop.trace and boop.trace.log then
+          boop.trace.log(string.format(
+            "target gmcp info ignored: id=%s | reason=%s",
+            newId,
+            tostring(reason or "stale")
+          ))
+        end
+        return true
+      end
+    end
     local pending = boop.runtime
       and boop.runtime.standardSnapshot
       and boop.runtime.standardSnapshot()

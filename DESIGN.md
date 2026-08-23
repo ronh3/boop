@@ -90,7 +90,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 7. Apply safety checks and flee if needed.
 
 ## Implementation Notes (Current)
-- Targeting uses GMCP `Char.Items.*` data and sends `settarget <id>` as the only outbound targeting command. Selection compares boop's local target with `IRE.Target.Info` so a stale gameside target is resynchronized even when boop's local ID has not changed.
+- Targeting uses GMCP `Char.Items.*` data and sends `settarget <id>` as the only outbound targeting command. Gameside synchronization is generation-owned and single-flight: either matching `IRE.Target.Set` or `IRE.Target.Info` acknowledges the selection, one timed retry is allowed, repeated tick/prequeue requests are coalesced, and delayed stale target info cannot roll back an acknowledged target.
 - Denizen filtering: attrib includes `m` and excludes `x` and `d`.
 - `boop ih` re-renders Info-Here lines and adds clickable whitelist/blacklist buttons for denizens.
 - `boop`, `boop control`, `boop config`, `boop party`, and `boop stats` are now distinct operator surfaces rather than one large menu tree.

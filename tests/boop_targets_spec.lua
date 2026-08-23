@@ -3,15 +3,48 @@ local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper
 describe("boop target selection", function()
   local tick_stub
   local save_list_stub
+  local send_stub
+  local timer_stub
+  local kill_timer_stub
+  local sent
+  local scheduled
+
+  local function countSent(command)
+    local count = 0
+    for _, entry in ipairs(sent or {}) do
+      if entry.command == command then
+        count = count + 1
+      end
+    end
+    return count
+  end
 
   before_each(function()
     helper.reset()
+    sent = {}
+    scheduled = {}
     helper.setArea("Test Area")
     helper.setDenizens({
       { id = "10", name = "goblin" },
       { id = "11", name = "orc" },
       { id = "12", name = "rat" },
     })
+    send_stub = stub(_G, "send", function(command, echoBack)
+      sent[#sent + 1] = {
+        command = command,
+        echoBack = echoBack,
+      }
+    end)
+    timer_stub = stub(_G, "tempTimer", function(delay, callback)
+      local id = 700 + #scheduled + 1
+      scheduled[#scheduled + 1] = {
+        id = id,
+        delay = delay,
+        callback = callback,
+      }
+      return id
+    end)
+    kill_timer_stub = stub(_G, "killTimer", function(_) end)
   end)
 
   after_each(function()
@@ -23,6 +56,114 @@ describe("boop target selection", function()
       save_list_stub:revert()
       save_list_stub = nil
     end
+    if send_stub then
+      send_stub:revert()
+      send_stub = nil
+    end
+    if timer_stub then
+      timer_stub:revert()
+      timer_stub = nil
+    end
+    if kill_timer_stub then
+      kill_timer_stub:revert()
+      kill_timer_stub = nil
+    end
+  end)
+
+  it("coalesces repeated gameside target synchronization", function()
+    helper.setTarget("10", "goblin")
+    gmcp.IRE.Target.Set = ""
+    gmcp.IRE.Target.Info.id = "99"
+
+    for _ = 1, 5 do
+      boop.targets.setTarget("10")
+    end
+
+    local sync = boop.runtime.state().targeting.gameTargetSync
+    assert.are.equal(1, countSent("settarget 10"))
+    assert.is_true(sync.pending)
+    assert.are.equal(1, sync.attempts)
+    assert.are.equal(4, sync.suppressed)
+    assert.are.equal(1, #scheduled)
+    assert.are.equal(0.75, scheduled[1].delay)
+  end)
+
+  it("acknowledges Target.Set and ignores delayed stale Target.Info", function()
+    boop.config.enabled = true
+    helper.setTarget("10", "goblin")
+    gmcp.IRE.Target.Set = ""
+    gmcp.IRE.Target.Info.id = "99"
+    boop.targets.setTarget("10")
+
+    gmcp.IRE.Target.Set = "10"
+    boop.onTargetSet()
+    gmcp.IRE.Target.Info.id = "99"
+    boop.onTargetInfo()
+
+    local sync = boop.runtime.state().targeting.gameTargetSync
+    assert.are.equal("10", boop.state.targeting.currentTargetId)
+    assert.are.equal("10", sync.confirmedId)
+    assert.is_false(sync.pending)
+    assert.are.equal(1, countSent("settarget 10"))
+    assert.is_false(boop.targets.needsGameTargetSync("10"))
+  end)
+
+  it("accepts Target.Info as synchronization acknowledgement", function()
+    boop.config.enabled = true
+    helper.setTarget("10", "goblin")
+    gmcp.IRE.Target.Set = ""
+    gmcp.IRE.Target.Info.id = "99"
+    boop.targets.setTarget("10")
+
+    gmcp.IRE.Target.Info.id = "10"
+    boop.onTargetInfo()
+
+    local sync = boop.runtime.state().targeting.gameTargetSync
+    assert.are.equal("10", sync.confirmedId)
+    assert.is_false(sync.pending)
+    assert.are.equal(1, countSent("settarget 10"))
+  end)
+
+  it("allows one target synchronization retry and then suppresses", function()
+    helper.setTarget("10", "goblin")
+    gmcp.IRE.Target.Set = ""
+    gmcp.IRE.Target.Info.id = "99"
+    boop.targets.setTarget("10")
+
+    scheduled[1].callback()
+    boop.targets.setTarget("10")
+    assert.are.equal(2, countSent("settarget 10"))
+    assert.are.equal(2, #scheduled)
+
+    scheduled[2].callback()
+    for _ = 1, 5 do
+      boop.targets.setTarget("10")
+    end
+
+    local sync = boop.runtime.state().targeting.gameTargetSync
+    assert.are.equal(2, countSent("settarget 10"))
+    assert.is_true(sync.exhausted)
+    assert.are.equal(2, sync.attempts)
+    assert.are.equal(5, sync.suppressed)
+  end)
+
+  it("starts a fresh synchronization budget for a new target", function()
+    helper.setTarget("10", "goblin")
+    gmcp.IRE.Target.Set = ""
+    gmcp.IRE.Target.Info.id = "99"
+    boop.targets.setTarget("10")
+    scheduled[1].callback()
+    boop.targets.setTarget("10")
+    scheduled[2].callback()
+
+    boop.targets.setTarget("11")
+
+    local sync = boop.runtime.state().targeting.gameTargetSync
+    assert.are.equal(1, countSent("settarget 11"))
+    assert.are.equal("11", sync.desiredId)
+    assert.are.equal(1, sync.attempts)
+    assert.is_true(sync.pending)
+    assert.is_false(sync.exhausted)
   end)
 
   it("uses whitelist priority order when enabled", function()
