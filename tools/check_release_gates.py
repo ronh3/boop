@@ -78,6 +78,49 @@ def is_folder(entry: dict[str, object]) -> bool:
     return str(value or "").strip().lower() == "yes"
 
 
+def check_trigger_patterns(
+    entry: dict[str, object],
+    location: str,
+    errors: list[str],
+) -> None:
+    patterns = entry.get("patterns")
+    if patterns is not None and not isinstance(patterns, list):
+        errors.append(f"{location}: patterns must be a JSON array")
+    elif isinstance(patterns, list):
+        for index, pattern in enumerate(patterns, start=1):
+            pattern_location = f"{location}.patterns[{index}]"
+            if not isinstance(pattern, dict):
+                errors.append(f"{pattern_location}: expected object entry")
+                continue
+            pattern_type = str(pattern.get("type") or "").strip().lower()
+            pattern_text = str(pattern.get("pattern") or "")
+            if pattern_type == "prompt" and "pattern" in pattern:
+                errors.append(
+                    f"{pattern_location}: native prompt triggers must omit pattern"
+                )
+            if pattern_type == "lua" and re.fullmatch(
+                r"\s*return\s+isPrompt\s*\(\s*\)\s*;?\s*",
+                pattern_text,
+                re.IGNORECASE,
+            ):
+                errors.append(
+                    f"{pattern_location}: use native prompt type instead of isPrompt Lua"
+                )
+
+    children = entry.get("children")
+    if children is None:
+        return
+    if not isinstance(children, list):
+        errors.append(f"{location}: children must be a JSON array")
+        return
+    for index, child in enumerate(children, start=1):
+        child_location = f"{location}.children[{index}]"
+        if not isinstance(child, dict):
+            errors.append(f"{child_location}: expected object entry")
+            continue
+        check_trigger_patterns(child, child_location, errors)
+
+
 def check_versions() -> list[str]:
     errors: list[str] = []
     mfile_path = ROOT / "mfile"
@@ -152,6 +195,12 @@ def walk_manifest(
         if not isinstance(entry, dict):
             errors.append(f"{rel(manifest_path)}[{index}]: expected object entry")
             continue
+        if manifest_name == "triggers.json":
+            check_trigger_patterns(
+                entry,
+                f"{rel(manifest_path)}[{index}]",
+                errors,
+            )
         name = str(entry.get("name") or "").strip()
         if not name:
             errors.append(f"{rel(manifest_path)}[{index}]: missing name")

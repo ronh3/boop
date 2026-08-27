@@ -25,7 +25,7 @@ Guidance for Codex when working in this repository.
 ## JSON Tips (Muddler)
 - Always double-escape backslashes in regex patterns: `"^\\d+$"`.
 - `isFolder` `"yes"` entries create nesting; leaf entries set `script` to the Lua file stem.
-- Trigger pattern types: `substring`, `regex`, `startOfLine`, `exactMatch`, `lua`, `prompt`, `color/colour`, `spacer`.
+- Trigger pattern types: `substring`, `regex`, `startOfLine`, `exactMatch`, `lua`, `prompt`, `color/colour`, `spacer`. Native prompt entries use only `{ "type": "prompt" }`; do not emulate them with `return isPrompt()`.
 
 ## CI & Versioning
 - CI reads `mfile` for `package` and `version`, builds with Muddler, and uploads `build/tmp/` as `<package>-<version>`.
@@ -106,7 +106,7 @@ Guidance for Codex when working in this repository.
 ## Session Checkpoint
 - Branch to continue from: `codex/pre-1.0-hardening-pass`
 - The branch tip moves with normal hardening commits; rely on git history rather than this file for the exact latest hash.
-- Current synchronized package version: `0.1.486`
+- Current synchronized package version: `0.1.487`
 - The purposeful pre-1.0 hardening work that is currently in this branch:
   - runtime/state ownership and coordinator path
   - combat planner split from execution

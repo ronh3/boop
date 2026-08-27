@@ -13,8 +13,7 @@
     "highlightBG": "#ffff00",
     "patterns": [
       {
-        "pattern": "return isPrompt()",
-        "type": "lua"
+        "type": "prompt"
       }
     ],
     "script": ""
