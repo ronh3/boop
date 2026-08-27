@@ -5,16 +5,16 @@ milestone_name: Pre-1.0 Hardening
 current_phase: 03
 current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
 status: executing
-stopped_at: Completed 03-33-PLAN.md
-last_updated: "2026-08-04T22:24:56.716Z"
-last_activity: 2026-08-04
-last_activity_desc: Completed Plan 03-33 alternate no-abilities Rage recovery repair
+stopped_at: Completed 03-39-PLAN.md
+last_updated: "2026-08-26T17:33:44-07:00"
+last_activity: 2026-08-26
+last_activity_desc: Completed Plan 03-39 interrupt admission hierarchy and atomic supersession
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 52
-  completed_plans: 47
-  percent: 90
+  total_plans: 54
+  completed_plans: 49
+  percent: 91
 ---
 
 # Project State
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 ## Current Position
 
 Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
-Plan: 34 of 38
-Status: Ready to execute
-Last activity: 2026-08-10 - Completed quick task 260810-ikl: Preserve configured rage after ordinary battlerage spending
+Plan: 39 of 40
+Status: Ready for Plan 03-40 live hierarchy UAT
+Last activity: 2026-08-26 - Completed Plan 03-39 interrupt admission hierarchy and atomic supersession
 
 Progress: [█████████░] 90%
 
@@ -53,8 +53,8 @@ Progress: [█████████░] 90%
 
 **Recent Trend:**
 
-- Last 5 plans: Phase 03 P29 (12m), Phase 03 P30 (0m), Phase 03 P31 (14m), Phase 03 P32 (22m), Phase 03 P33 (8m)
-- Trend: Plan 03-33 closed deterministic G-03-25 parser/manifest coverage; Plans 03-34 through 03-38 are the remaining live-verification checkpoints
+- Last 5 completed plans: Phase 03 P31 (14m), P32 (22m), P33 (8m), P34 (live checkpoint), P39 (interrupt hierarchy)
+- Trend: Plan 03-39 closes automated G-03-27 implementation; Plan 03-40 is its focused live-verification checkpoint
 
 *Updated after each plan completion*
 | Phase 02-state-ownership-repair-and-safety-baseline P06 | 8m | 2 tasks | 7 files |
@@ -92,6 +92,8 @@ Progress: [█████████░] 90%
 | Phase 03 P31 | 14m | 1 tasks | 5 files |
 | Phase 03 P32 | 22m | 1 tasks | 11 files |
 | Phase 03 P33 | 8m | 1 tasks | 6 files |
+| Phase 03 P34 | live | 3 tasks | 2 files |
+| Phase 03 P39 | 20m | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -201,6 +203,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Treat the alternate no-abilities sentence as global cooldown recovery only; preserve all per-ability readiness and neighboring Rage lifecycle state.
 - [Phase 03]: Keep Rage_Command_Outcome.lua unchanged and route one exact anchored manifest alternative into boop.rage.onCommandOutcome.
 - [Phase 03]: Reject punctuation, prefix, suffix, and similar-prose near matches at both trigger and parser boundaries.
+- [Phase 03]: Keep interrupt admission tiers independent from blocker display priority: flee is absolute, leap/fly are emergency, diagnose is diagnostic, and matic/catarin/touch-shield are utility.
+- [Phase 03]: A repeated emergency of the same kind is an explicit retry that atomically replaces the prior generation; different same-tier and lower-tier requests preserve the active owner.
 
 ### Pending Todos
 

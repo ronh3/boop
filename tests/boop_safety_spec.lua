@@ -122,6 +122,51 @@ describe("boop safety", function()
     assert.stub(send_stub).was_called_with("wake", false)
   end)
 
+  it("supersedes a pending interrupt before sending flee commands", function()
+    local state = boop.runtime.state()
+    local operation = {
+      generation = 7,
+      name = "diag",
+      command = "diagnose",
+      tier = "diagnostic",
+      completionMode = "result_then_prompt",
+      blockerOwner = "interrupt:7",
+      timeoutTimer = 77,
+      terminal = false,
+    }
+    state.diag.generation = 7
+    state.diag.operation = operation
+    state.diag.hold = true
+    state.diag.timeoutTimer = 77
+    state.diag.evidenceQueue = {
+      {
+        generation = 7,
+        resultSeen = false,
+        terminal = false,
+        tombstone = false,
+      },
+    }
+    boop.runtime.setOperationLock(
+      "interrupt:7",
+      "interrupt_pending",
+      "diag pending",
+      { combat = true, queue = true },
+      {},
+      { source = "interrupt" }
+    )
+    state.targeting.lastRoomDir = "north"
+
+    boop.safety.flee()
+
+    assert.is_true(operation.terminal)
+    assert.are.equal("superseded_by:flee", operation.terminalReason)
+    assert.is_false(state.diag.operation)
+    assert.is_nil(state.combat.blockersByOwner["interrupt:7"])
+    assert.is_true(state.diag.evidenceQueue[1].tombstone)
+    assert.stub(send_stub).was_called_with("clearqueue all", false)
+    assert.stub(send_stub).was_called_with("north", false)
+  end)
+
   it("does not auto-flee when auto flee is disabled", function()
     gmcp.Char.Vitals.hp = 1000
     gmcp.Char.Vitals.maxhp = 5000

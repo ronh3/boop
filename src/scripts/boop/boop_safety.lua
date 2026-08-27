@@ -22,12 +22,15 @@ end
 
 function boop.safety.flee()
   local state = boop.runtime.ensureState()
+  boop.config.enabled = false
+  local interrupted = boop.runtime.cancelActiveInterrupt
+    and boop.runtime.cancelActiveInterrupt("flee")
+    or false
   boop.runtime.clearAutomationIntent("flee", {
     includeWalk = true,
     includeGold = true,
     includeAttack = true,
   })
-  boop.config.enabled = false
   if boop.clearGoldQueueIntent then
     boop.clearGoldQueueIntent()
   end
@@ -53,6 +56,9 @@ function boop.safety.flee()
     return
   end
 
+  if interrupted and send then
+    send("clearqueue all", false)
+  end
   local action = "wake/wake/apply mending to legs/stand/" .. dir
   boop.executeAction(action)
   boop.util.ok("fleeing " .. dir .. " (boop disabled)")

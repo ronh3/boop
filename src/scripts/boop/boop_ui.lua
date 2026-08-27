@@ -1600,24 +1600,32 @@ local function queueInterrupt(label, command, opts)
   opts = opts or {}
   local state = boop.runtime.state()
   local active = state.diag.operation
-  if type(active) == "table" and not active.terminal then
+  local name = tostring(label or "interrupt")
+  local admission = boop.runtime.interruptAdmission(active, {
+    name = name,
+    tier = opts.tier,
+    source = opts.source or "operator",
+    replaceSame = opts.replaceSame == true,
+  })
+  if admission.decision == "reject" then
     boop.util.info(string.format(
-      "%s still pending; %s not queued",
-      tostring(active.name or "interrupt"),
-      tostring(label or "interrupt")
+      "%s still pending; %s not queued (%s)",
+      tostring(admission.activeName or "interrupt"),
+      name,
+      tostring(admission.reason or "rejected")
+    ))
+    boop.trace.log(string.format(
+      "interrupt admission rejected: active=%s/%s | incoming=%s/%s | reason=%s",
+      tostring(admission.activeName),
+      tostring(admission.activeTier),
+      name,
+      tostring(admission.incomingTier),
+      tostring(admission.reason)
     ))
     return false
   end
 
-  if state.queue.prequeueTimer then
-    killTimer(state.queue.prequeueTimer)
-    state.queue.prequeueTimer = nil
-  end
-  state.queue.prequeuedStandard = false
-  state.queue.aliasDirty = true
-
   local generation = (tonumber(state.diag.generation) or 0) + 1
-  local name = tostring(label or "interrupt")
   local completionMode = tostring(opts.completionMode or "prompt")
   local waitsFor = type(opts.waitsFor) == "table" and opts.waitsFor or {}
   local blockerOwner = "interrupt:" .. tostring(generation)
@@ -1633,6 +1641,8 @@ local function queueInterrupt(label, command, opts)
     generation = generation,
     name = name,
     command = tostring(command or ""),
+    tier = admission.incomingTier,
+    source = tostring(opts.source or "operator"),
     completionMode = completionMode,
     originRoomId = originRoomId,
     resultSeen = false,
@@ -1659,9 +1669,35 @@ local function queueInterrupt(label, command, opts)
       observed = {
         generation = generation,
         completionMode = completionMode,
+        tier = admission.incomingTier,
       },
     }
   )
+
+  if admission.decision == "supersede" then
+    boop.runtime.supersedeInterrupt(active, operation)
+    boop.util.info(string.format(
+      "%s replaced pending %s (%s)",
+      name,
+      tostring(admission.activeName or "interrupt"),
+      tostring(admission.reason or "superseded")
+    ))
+    boop.trace.log(string.format(
+      "interrupt admission superseded: active=%s/%s | incoming=%s/%s | reason=%s",
+      tostring(admission.activeName),
+      tostring(admission.activeTier),
+      name,
+      tostring(admission.incomingTier),
+      tostring(admission.reason)
+    ))
+  end
+
+  if state.queue.prequeueTimer then
+    killTimer(state.queue.prequeueTimer)
+    state.queue.prequeueTimer = nil
+  end
+  state.queue.prequeuedStandard = false
+  state.queue.aliasDirty = true
 
   if completionMode == "result_then_prompt" then
     boop.runtime.enqueueDiagEvidence(generation)
@@ -1733,6 +1769,7 @@ end
 
 function boop.ui.diag()
   return queueInterrupt("diag", "diagnose", {
+    tier = "diagnostic",
     clearQueue = true,
     completionMode = "result_then_prompt",
     infoMessage = "diag queued; attacks paused until diagnose line + prompt",
@@ -1740,7 +1777,8 @@ function boop.ui.diag()
 end
 
 function boop.ui.matic()
-  queueInterrupt("matic", "ldeck draw matic", {
+  return queueInterrupt("matic", "ldeck draw matic", {
+    tier = "utility",
     clearQueue = false,
     completionMode = "prompt",
     infoMessage = "matic queued; attacks paused until next prompt",
@@ -1748,7 +1786,8 @@ function boop.ui.matic()
 end
 
 function boop.ui.catarin()
-  queueInterrupt("catarin", "ldeck draw catarin", {
+  return queueInterrupt("catarin", "ldeck draw catarin", {
+    tier = "utility",
     clearQueue = false,
     completionMode = "prompt",
     infoMessage = "catarin queued; attacks paused until next prompt",
@@ -1756,7 +1795,9 @@ function boop.ui.catarin()
 end
 
 function boop.ui.fly()
-  queueInterrupt("fly", "fly", {
+  return queueInterrupt("fly", "fly", {
+    tier = "emergency",
+    replaceSame = true,
     clearQueue = false,
     completionMode = "prompt",
     infoMessage = "fly queued; attacks paused until next prompt",
@@ -1764,7 +1805,8 @@ function boop.ui.fly()
 end
 
 function boop.ui.touchShield()
-  queueInterrupt("ts", "touch shield", {
+  return queueInterrupt("ts", "touch shield", {
+    tier = "utility",
     clearQueue = false,
     completionMode = "prompt",
     infoMessage = "touch shield queued; attacks paused until next prompt",
@@ -1779,7 +1821,9 @@ function boop.ui.leap(direction)
     return
   end
 
-  queueInterrupt("leap", "leap " .. dir, {
+  return queueInterrupt("leap", "leap " .. dir, {
+    tier = "emergency",
+    replaceSame = true,
     clearQueue = true,
     completionMode = "room_change",
     waitsFor = { room = true },

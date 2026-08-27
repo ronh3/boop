@@ -87,9 +87,17 @@ Plans:
   4. `demonnicAutoWalker` remains optional, with explicit install/status feedback and no silent auto-update behavior.
   5. Regression coverage catches unsafe movement, attacks during holds, wrong-room loot commands, target-removal queue drift, and permanent walk stalls.
 
-**Plans**: 33/38 plans executed
+**Plans**: 35/40 plans executed
 
 Plans:
+
+**Wave 40** *(blocked on Wave 39 completion; focused live hierarchy UAT)*
+
+- [ ] 03-40-PLAN.md — Validate leap supersession and stale-generation isolation in live Mudlet
+
+**Wave 39** *(interrupt hierarchy gap closure)*
+
+- [x] 03-39-PLAN.md — Runtime-owned interrupt admission tiers and atomic supersession
 
 **Wave 38** *(blocked on Wave 37 completion; final live UAT and immutable-HEAD handoff)*
 

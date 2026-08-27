@@ -2961,6 +2961,75 @@ function boop.runtime.operationHolds(system, exceptOwner)
   return false
 end
 
+local INTERRUPT_TIER_VALUES = {
+  utility = 10,
+  diagnostic = 20,
+  emergency = 30,
+  absolute = 40,
+}
+
+local INTERRUPT_NAME_TIERS = {
+  matic = "utility",
+  catarin = "utility",
+  ts = "utility",
+  diag = "diagnostic",
+  leap = "emergency",
+  fly = "emergency",
+  flee = "absolute",
+}
+
+local function normalizeInterruptTier(tier, name)
+  local key = tostring(tier or ""):lower()
+  if INTERRUPT_TIER_VALUES[key] then
+    return key
+  end
+  return INTERRUPT_NAME_TIERS[tostring(name or ""):lower()] or "utility"
+end
+
+function boop.runtime.interruptAdmission(active, request)
+  request = type(request) == "table" and request or {}
+  local incomingName = tostring(request.name or "interrupt"):lower()
+  local incomingTier = normalizeInterruptTier(request.tier, incomingName)
+  local result = {
+    decision = "start",
+    reason = "no_active_interrupt",
+    incomingName = incomingName,
+    incomingTier = incomingTier,
+    activeName = "",
+    activeTier = "",
+  }
+  if type(active) ~= "table" or active.terminal then
+    return result
+  end
+
+  local activeName = tostring(active.name or "interrupt"):lower()
+  local activeTier = normalizeInterruptTier(active.tier, activeName)
+  result.activeName = activeName
+  result.activeTier = activeTier
+
+  if incomingName == activeName and request.replaceSame == true then
+    result.decision = "supersede"
+    result.reason = "same_interrupt_retry"
+    return result
+  end
+
+  local incomingValue = INTERRUPT_TIER_VALUES[incomingTier] or 0
+  local activeValue = INTERRUPT_TIER_VALUES[activeTier] or 0
+  if incomingValue > activeValue then
+    result.decision = "supersede"
+    result.reason = "higher_priority"
+  elseif incomingValue == activeValue then
+    result.decision = "reject"
+    result.reason = incomingName == activeName
+      and "duplicate_pending"
+      or "same_tier_conflict"
+  else
+    result.decision = "reject"
+    result.reason = "lower_priority"
+  end
+  return result
+end
+
 function boop.runtime.enqueueDiagEvidence(generation)
   local state = boop.runtime.ensureState()
   local staleQueue = state.diag.evidenceQueue or {}
@@ -3004,18 +3073,29 @@ function boop.runtime.resetVenomConfusionCount(reason)
   return previous
 end
 
-function boop.runtime.completeInterrupt(generation, terminalReason)
+local function tombstoneInterruptEvidence(state, generation)
+  for _, record in ipairs(state.diag.evidenceQueue or {}) do
+    if type(record) == "table"
+        and tonumber(record.generation) == tonumber(generation) then
+      record.terminal = true
+      record.tombstone = true
+      return true
+    end
+  end
+  return false
+end
+
+local function terminalizeInterrupt(operation, terminalReason, opts)
+  opts = type(opts) == "table" and opts or {}
   local state = boop.runtime.ensureState()
-  local operation = state.diag.operation
-  local expectedGeneration = tonumber(generation)
-  if type(operation) ~= "table"
-      or operation.generation ~= expectedGeneration
-      or operation.terminal then
+  if type(operation) ~= "table" or operation.terminal then
     return false
   end
 
   local reason = tostring(terminalReason or "")
+  local expectedGeneration = tonumber(operation.generation)
   operation.terminal = true
+  operation.terminalReason = reason
   local causal = operation.causal
   if type(causal) == "table" then
     causal.windowOpen = false
@@ -3024,14 +3104,10 @@ function boop.runtime.completeInterrupt(generation, terminalReason)
     causal.terminalOutboundSequence = standardQueueState().outboundSequence
     clearStandardExpectations(causal)
   end
-  if reason == "timeout" and operation.completionMode == "result_then_prompt" then
-    for _, record in ipairs(state.diag.evidenceQueue or {}) do
-      if type(record) == "table" and record.generation == expectedGeneration then
-        record.terminal = true
-        record.tombstone = true
-        break
-      end
-    end
+  if opts.tombstoneEvidence == true
+      or (reason == "timeout"
+        and operation.completionMode == "result_then_prompt") then
+    tombstoneInterruptEvidence(state, expectedGeneration)
   end
 
   local timerId = operation.timeoutTimer
@@ -3044,22 +3120,26 @@ function boop.runtime.completeInterrupt(generation, terminalReason)
 
   local name = tostring(operation.name or "interrupt")
   local owner = tostring(operation.blockerOwner or "")
-  state.diag.operation = false
-  state.diag.hold = false
-  state.diag.awaitPrompt = false
-  state.diag.timeoutTimer = nil
-  state.diag.label = ""
+  if state.diag.operation == operation then
+    state.diag.operation = false
+    state.diag.hold = false
+    state.diag.awaitPrompt = false
+    state.diag.timeoutTimer = nil
+    state.diag.label = ""
+  end
 
-  if reason == "timeout" then
-    if boop.util and boop.util.warn then
-      boop.util.warn(name .. " timeout; attacks resumed")
+  if opts.silent ~= true then
+    if reason == "timeout" then
+      if boop.util and boop.util.warn then
+        boop.util.warn(name .. " timeout; attacks resumed")
+      end
+    elseif reason == "command_failed" then
+      if boop.util and boop.util.warn then
+        boop.util.warn(name .. " command failed; attacks resumed")
+      end
+    elseif boop.util and boop.util.ok then
+      boop.util.ok(name .. " complete; attacks resumed")
     end
-  elseif reason == "command_failed" then
-    if boop.util and boop.util.warn then
-      boop.util.warn(name .. " command failed; attacks resumed")
-    end
-  elseif boop.util and boop.util.ok then
-    boop.util.ok(name .. " complete; attacks resumed")
   end
   trace(string.format(
     "interrupt terminal: %s | generation=%s | name=%s | reason=%s",
@@ -3068,14 +3148,60 @@ function boop.runtime.completeInterrupt(generation, terminalReason)
     name,
     reason
   ))
-  if name == "diag" and reason == "diagnose_result_prompt" then
-    boop.runtime.resetVenomConfusionCount("diagnose complete")
-  elseif name ~= "diag"
-      and boop.tryVenomConfusionDiag
-      and (tonumber(state.diag.venomConfusionCount) or 0) >= 2 then
-    boop.tryVenomConfusionDiag("interrupt complete")
+  if opts.suppressFollowup ~= true then
+    if name == "diag" and reason == "diagnose_result_prompt" then
+      boop.runtime.resetVenomConfusionCount("diagnose complete")
+    elseif name ~= "diag"
+        and boop.tryVenomConfusionDiag
+        and (tonumber(state.diag.venomConfusionCount) or 0) >= 2 then
+      boop.tryVenomConfusionDiag("interrupt complete")
+    end
   end
   return true
+end
+
+function boop.runtime.supersedeInterrupt(operation, incoming)
+  local incomingName = type(incoming) == "table"
+      and tostring(incoming.name or "interrupt")
+    or tostring(incoming or "interrupt")
+  return terminalizeInterrupt(
+    operation,
+    "superseded_by:" .. incomingName,
+    {
+      silent = true,
+      suppressFollowup = true,
+      tombstoneEvidence = true,
+    }
+  )
+end
+
+function boop.runtime.cancelActiveInterrupt(reason)
+  local state = boop.runtime.ensureState()
+  local operation = state.diag.operation
+  if type(operation) ~= "table" or operation.terminal then
+    return false
+  end
+  return terminalizeInterrupt(
+    operation,
+    "superseded_by:" .. tostring(reason or "safety"),
+    {
+      silent = true,
+      suppressFollowup = true,
+      tombstoneEvidence = true,
+    }
+  )
+end
+
+function boop.runtime.completeInterrupt(generation, terminalReason)
+  local state = boop.runtime.ensureState()
+  local operation = state.diag.operation
+  local expectedGeneration = tonumber(generation)
+  if type(operation) ~= "table"
+      or operation.generation ~= expectedGeneration
+      or operation.terminal then
+    return false
+  end
+  return terminalizeInterrupt(operation, terminalReason)
 end
 
 local function traceLeapDenialDiagnostic(operation, causal, reason)

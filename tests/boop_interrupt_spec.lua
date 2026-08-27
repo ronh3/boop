@@ -22,21 +22,25 @@ describe("boop queued interrupts", function()
     {
       name = "matic",
       command = "ldeck draw matic",
+      tier = "utility",
       invoke = function() boop.ui.matic() end,
     },
     {
       name = "catarin",
       command = "ldeck draw catarin",
+      tier = "utility",
       invoke = function() boop.ui.catarin() end,
     },
     {
       name = "fly",
       command = "fly",
+      tier = "emergency",
       invoke = function() boop.ui.fly() end,
     },
     {
       name = "ts",
       command = "touch shield",
+      tier = "utility",
       invoke = function() boop.ui.touchShield() end,
     },
   }
@@ -128,6 +132,8 @@ describe("boop queued interrupts", function()
     assert.are.equal(1, boop.state.diag.generation)
     assert.are.equal(1, operation.generation)
     assert.are.equal(row.name, operation.name)
+    assert.are.equal(row.tier, operation.tier)
+    assert.are.equal("operator", operation.source)
     assert.are.equal(row.command, operation.command)
     assert.are.equal("prompt", operation.completionMode)
     assert.is_false(operation.resultSeen)
@@ -182,6 +188,52 @@ describe("boop queued interrupts", function()
     end)
   end)
 
+  it("keeps interrupt admission independent from blocker display priority", function()
+    local cases = {
+      {
+        active = false,
+        incoming = { name = "diag", tier = "diagnostic" },
+        decision = "start",
+      },
+      {
+        active = { name = "matic", tier = "utility" },
+        incoming = { name = "diag", tier = "diagnostic" },
+        decision = "supersede",
+      },
+      {
+        active = { name = "diag", tier = "diagnostic" },
+        incoming = { name = "leap", tier = "emergency" },
+        decision = "supersede",
+      },
+      {
+        active = { name = "leap", tier = "emergency" },
+        incoming = { name = "diag", tier = "diagnostic" },
+        decision = "reject",
+      },
+      {
+        active = { name = "leap", tier = "emergency" },
+        incoming = {
+          name = "leap",
+          tier = "emergency",
+          replaceSame = true,
+        },
+        decision = "supersede",
+      },
+      {
+        active = { name = "leap", tier = "emergency" },
+        incoming = { name = "fly", tier = "emergency" },
+        decision = "reject",
+      },
+    }
+    for _, row in ipairs(cases) do
+      local result = boop.runtime.interruptAdmission(
+        row.active,
+        row.incoming
+      )
+      assert.are.equal(row.decision, result.decision)
+    end
+  end)
+
   after_each(function()
     if tick_stub then tick_stub:revert() tick_stub = nil end
     if warn_stub then warn_stub:revert() warn_stub = nil end
@@ -192,36 +244,123 @@ describe("boop queued interrupts", function()
     if kill_timer_stub then kill_timer_stub:revert() kill_timer_stub = nil end
   end)
 
-  it("keeps one generation, send, owner, and timer for same and different repeats", function()
+  it("rejects repeated utility interrupts without disturbing their generation", function()
     for _, row in ipairs(prompt_interrupts) do
-      configureScenario()
-      seedUnrelatedOwner()
+      if row.tier == "utility" then
+        configureScenario()
+        seedUnrelatedOwner()
 
-      row.invoke()
-      assertActiveOperation(row, 1)
-      assert.are.equal(1, #sent)
-      assert.are.same({
-        command = "queue addclearfull freestand " .. row.command,
-        echoBack = false,
-      }, sent[1])
-      assert.are.equal(1, #scheduled)
+        row.invoke()
+        assertActiveOperation(row, 1)
+        local original_operation = boop.state.diag.operation
+        row.invoke()
 
-      local original_operation = boop.state.diag.operation
-      local original_timer = boop.state.diag.timeoutTimer
-      local original_info_count = #info_messages
-      row.invoke()
-      boop.ui.diag()
-
-      assert.are.equal(1, boop.state.diag.generation)
-      assert.is_true(original_operation == boop.state.diag.operation)
-      assert.are.equal(original_timer, boop.state.diag.timeoutTimer)
-      assert.are.equal(1, #sent)
-      assert.are.equal(1, #scheduled)
-      assert.are.equal(original_info_count + 2, #info_messages)
-      assert.is_true(info_messages[#info_messages]:find(row.name, 1, true) ~= nil)
-      assert.is_table(blockerFor("pull:unrelated"))
-      assertActiveOperation(row, 1)
+        assert.is_true(original_operation == boop.state.diag.operation)
+        assert.are.equal(1, boop.state.diag.generation)
+        assert.are.equal(1, #sent)
+        assert.are.equal(1, #scheduled)
+        assert.are.equal(2, #info_messages)
+        assert.is_table(blockerFor("pull:unrelated"))
+      end
     end
+  end)
+
+  it("lets diagnose supersede utility and rejects utility behind diagnose", function()
+    boop.ui.matic()
+    local utility = boop.state.diag.operation
+    local utility_timeout = scheduled[1].callback
+
+    assert.is_true(boop.ui.diag())
+    local diagnostic = boop.state.diag.operation
+    assert.are.equal(2, diagnostic.generation)
+    assert.are.equal("diag", diagnostic.name)
+    assert.are.equal("diagnostic", diagnostic.tier)
+    assert.is_true(utility.terminal)
+    assert.is_nil(blockerFor("interrupt:1"))
+    assert.is_table(blockerFor("interrupt:2"))
+    assert.are.same({ 1 }, killed)
+
+    boop.ui.matic()
+    assert.is_true(diagnostic == boop.state.diag.operation)
+    assert.are.equal(3, #sent)
+    assert.are.equal(2, #scheduled)
+
+    utility_timeout()
+    assert.is_true(diagnostic == boop.state.diag.operation)
+  end)
+
+  it("lets leap supersede diagnose while stale diagnose evidence stays inert", function()
+    assert.is_true(boop.ui.diag())
+    local diagnostic = boop.state.diag.operation
+    local diagnostic_timeout = scheduled[1].callback
+
+    boop.ui.leap("north")
+    local leap = boop.state.diag.operation
+    assert.are.equal(2, leap.generation)
+    assert.are.equal("leap", leap.name)
+    assert.are.equal("emergency", leap.tier)
+    assert.is_true(diagnostic.terminal)
+    assert.are.equal("superseded_by:leap", diagnostic.terminalReason)
+    assert.is_nil(blockerFor("interrupt:1"))
+    assert.is_table(blockerFor("interrupt:2"))
+    assert.are.same({ 1 }, killed)
+    assert.are.equal(1, #boop.state.diag.evidenceQueue)
+    assert.is_true(boop.state.diag.evidenceQueue[1].terminal)
+    assert.is_true(boop.state.diag.evidenceQueue[1].tombstone)
+    assert.are.same({
+      "clearqueue all",
+      "queue addclearfull freestand diagnose",
+      "clearqueue all",
+      "queue addclearfull freestand leap north",
+    }, {
+      sent[1].command,
+      sent[2].command,
+      sent[3].command,
+      sent[4].command,
+    })
+
+    diagnostic_timeout()
+    boop.runtime.markOldestDiagEvidenceResult("late old result")
+    boop.onPrompt()
+    assert.is_true(leap == boop.state.diag.operation)
+    assert.are.equal(0, #warn_messages)
+  end)
+
+  it("restarts an active leap instead of inheriting its timeout", function()
+    boop.ui.leap("north")
+    local first = boop.state.diag.operation
+    local first_timeout = scheduled[1].callback
+
+    boop.ui.leap("east")
+    local second = boop.state.diag.operation
+    assert.are.equal(2, second.generation)
+    assert.are.equal("leap east", second.command)
+    assert.are.equal("emergency", second.tier)
+    assert.is_true(first.terminal)
+    assert.are.equal("superseded_by:leap", first.terminalReason)
+    assert.are.same({ 1 }, killed)
+    assert.is_nil(blockerFor("interrupt:1"))
+    assert.is_table(blockerFor("interrupt:2"))
+    assert.are.equal(4, #sent)
+    assert.are.equal(2, #scheduled)
+
+    first_timeout()
+    assert.is_true(second == boop.state.diag.operation)
+    assert.are.equal(0, #warn_messages)
+  end)
+
+  it("rejects a different same-tier emergency and lower-priority work", function()
+    boop.ui.leap("north")
+    local leap = boop.state.diag.operation
+
+    boop.ui.fly()
+    assert.is_false(boop.ui.diag())
+    boop.ui.matic()
+
+    assert.is_true(leap == boop.state.diag.operation)
+    assert.are.equal(2, #sent)
+    assert.are.equal(1, #scheduled)
+    assert.are.equal(4, #info_messages)
   end)
 
   it("lets prompt completion win once and makes the captured timeout a no-op", function()

@@ -1294,9 +1294,9 @@ blocked: 0
 - gap_id: G-03-27
   truth: "Safety and room-exit interrupts use explicit admission tiers so a pending lower-priority operation cannot deny them, while superseded generations and their late evidence remain inert."
   status: pending
-  latest_result: issue
-  installed_version: 0.1.482
-  reason: "The shared interrupt slot rejects every incoming request while any operation is active. A diagnose that misses completion therefore rejects leap or fly until its generic timeout, even though those commands must take priority over diagnosis and attacks."
+  latest_result: automated_pass_pending_live
+  installed_version: 0.1.484
+  reason: "Package 0.1.484 implements runtime-owned utility, diagnostic, emergency, and absolute tiers. Focused regressions prove leap supersedes diagnose, diagnose supersedes utility, repeated leap replaces its stuck generation, lower/different same-tier work is rejected, and old timeout/result evidence is inert; Plan 03-40 live Mudlet validation remains required."
   severity: blocker
   test: supplemental-b
   root_cause: "boop.ui.queueInterrupt has one unconditional active-operation rejection and no tier, admission, or atomic supersession contract. Existing BLOCKER_PRIORITY only selects display order and cannot safely serve as cancellation authority."
@@ -1314,10 +1314,9 @@ blocked: 0
     - path: "tests/boop_interrupt_spec.lua"
       issue: "Coverage proves idempotent rejection and stale callbacks after ordinary terminals, not priority admission or supersession."
   missing:
-    - "Declare absolute, emergency, diagnostic, and utility tiers independently from blocker display priority."
-    - "Implement and regress the complete start/reject/supersede matrix, with same-tier requests remaining idempotent or rejected."
-    - "Install incoming ownership atomically, terminalize and tombstone the old generation, replace the native queue once, and forbid automation in the transition window."
-    - "Prove late result, prompt, timeout, denial, and room callbacks from the old generation cannot mutate the incoming operation."
-    - "Preserve automatic diagnose threshold state and retry only after the emergency terminal."
+    - "Install package 0.1.484 and run Plan 03-40's valid leap-over-pending-diagnose live checkpoint."
+    - "Confirm a repeated leap replaces the active leap immediately and that the superseded timer emits no later timeout warning."
   planned_by:
     - "03-39-PLAN.md"
+  implemented_by:
+    - "03-39-SUMMARY.md"
