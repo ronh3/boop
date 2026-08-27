@@ -112,6 +112,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - Infernal includes `quash &tar/arc` as `quarc`, so it can be selected with `boop prefer dam quarc`.
 - Psion includes `weave flurry &tar` as a standard damage option, so it can be selected with `boop prefer dam flurry`.
 - Magi includes `staffcast scintilla at &tar` and `staffcast dissolution at &tar` as standard damage options, selectable with `boop prefer dam scintilla` or `boop prefer dam dissolution`.
+- Blademaster prefers `multislash &tar` when Multislash is known, falls back to its existing Drawslash attack, and exposes both through `boop prefer dam multislash|drawslash`.
 - Hybrid rage skips fear-affliction primers; Psion hybrid treats `weave whirlwind &tar` as conditional on target `inhibit` or `stun`, uses `enact regrowth &tar` to prime inhibit, and otherwise falls back to simple damage with `psi devastate &tar` as the high-damage hit.
 - A causally owned generic Battlerage cooldown closes a global Rage gate independently of per-ability timers; only exact `Available`-list recovery (or reconnect reset) reopens it, while ambiguous manual output is diagnostic only.
 - `Triumph suffuses you with incredible rage.` creates a bounded generation-owned free-rage credit. Hybrid rage spends it on the highest ready damage or satisfied conditional action, while matching use, expiry, causal insufficient-rage output, timeout, movement, replacement, or reconnect terminalizes it exactly once.

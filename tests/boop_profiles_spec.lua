@@ -109,6 +109,46 @@ describe("boop class profile selection", function()
     assert.is_true(actions.standardShieldbreak)
   end)
 
+  it("uses Blademaster multislash by default when it is known", function()
+    helper.setClass("Blademaster")
+    helper.learnSkills({
+      { name = "Multislash", group = "TwoArts" },
+      { name = "Drawslash", group = "TwoArts" },
+    })
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("multislash 42", actions.standard)
+  end)
+
+  it("keeps Blademaster drawslash selectable as a damage preference", function()
+    helper.setClass("Blademaster")
+    helper.learnSkills({
+      { name = "Multislash", group = "TwoArts" },
+      { name = "Drawslash", group = "TwoArts" },
+    })
+    boop.config[boop.attacks.preferenceConfigKey(
+      "blademaster",
+      "dam",
+      ""
+    )] = "drawslash"
+
+    local actions = boop.attacks.choose()
+
+    assert.are.equal("infuse fire/drawslash 42 sternum", actions.standard)
+  end)
+
+  it("lists both Blademaster standard damage preferences", function()
+    local options = boop.attacks.standardOptions("blademaster", "dam")
+
+    assert.are.equal(2, #options)
+    assert.are.equal("Multislash -> multislash &tar", options[1].label)
+    assert.are.equal(
+      "Drawslash -> infuse fire/drawslash &tar sternum",
+      options[2].label
+    )
+  end)
+
   it("uses the runewarden dual blunt standard for the matching spec", function()
     helper.setClass("Runewarden")
     helper.setSpec("Dual Blunt")
