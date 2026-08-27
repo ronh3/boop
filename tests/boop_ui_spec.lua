@@ -398,6 +398,7 @@ describe("boop ui home", function()
     assert.is_true(joined:find("[13] Shield mode             [ BREAK ] [toggle]", 1, true) ~= nil)
     assert.is_true(joined:find("[17] Game separator          [ | ] [set]", 1, true) ~= nil)
     assert.is_true(joined:find("[18] Rage pool               [ off ] [set]", 1, true) ~= nil)
+    assert.is_true(joined:find("[19] Keep boop enabled       [ OFF ] [toggle]", 1, true) ~= nil)
     assert.is_true(joined:find("Type: boop config home | boop config combat <number> | boop config back", 1, true) ~= nil)
   end)
 

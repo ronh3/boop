@@ -2048,8 +2048,8 @@ function boop.ui.fleeCommand(raw)
     return
   end
 
-  local keepEnabledValue = value:match("^keepenabled%s+(on|off|toggle)$")
-  if keepEnabledValue then
+  local keepEnabledValue = value:match("^keepenabled%s+(%S+)$")
+  if keepEnabledValue == "on" or keepEnabledValue == "off" or keepEnabledValue == "toggle" then
     local keepEnabled = boop.config and boop.config.fleeKeepEnabled == true
     if keepEnabledValue == "toggle" then
       keepEnabled = not keepEnabled
