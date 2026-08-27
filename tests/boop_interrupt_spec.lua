@@ -2,6 +2,7 @@ local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper
 
 describe("boop queued interrupts", function()
   local LEAP_DENIAL = "Both of your legs must be free and unhindered to do that."
+  local FLY_SUCCESS = "The gauntlets carry you up into the skies."
   local send_stub
   local timer_stub
   local kill_timer_stub
@@ -399,6 +400,38 @@ describe("boop queued interrupts", function()
     end
   end)
 
+  it("completes only the active fly from its exact success line", function()
+    boop.ui.fly()
+    local operation = boop.state.diag.operation
+    local timeout_callback = scheduled[1].callback
+
+    assert.is_false(boop.runtime.onFlyCommandSucceeded("You begin to fly."))
+    assert.is_false(
+      boop.runtime.onFlyCommandSucceeded(FLY_SUCCESS, operation.generation + 1)
+    )
+    assert.is_true(operation == boop.state.diag.operation)
+
+    assert.is_true(
+      boop.runtime.onFlyCommandSucceeded(FLY_SUCCESS, operation.generation)
+    )
+    assert.is_false(boop.state.diag.operation)
+    assert.is_false(boop.state.diag.hold)
+    assert.are.equal("command_succeeded", operation.terminalReason)
+    assert.are.same({ 1 }, killed)
+    assert.are.equal(1, #ok_messages)
+    assert.are.equal(0, #warn_messages)
+
+    assert.is_false(boop.runtime.onFlyCommandSucceeded(FLY_SUCCESS))
+    timeout_callback()
+    boop.onPrompt()
+    assert.are.equal(1, #ok_messages)
+    assert.are.equal(0, #warn_messages)
+
+    assert.are.equal(2, #scheduled)
+    scheduled[2].callback()
+    assert.are.equal(1, tick_count)
+  end)
+
   it("lets timeout win once without removing server queue work or releasing another owner", function()
     for _, row in ipairs(prompt_interrupts) do
       configureScenario()
@@ -698,6 +731,23 @@ describe("boop queued interrupts", function()
     assert.is_string(adapter)
     assert.is_truthy(
       adapter:find("boop.runtime.onLeapCommandDenied", 1, true)
+    )
+    assert.is_falsy(adapter:find("completeInterrupt", 1, true))
+    assert.is_falsy(adapter:find("clearqueue", 1, true))
+  end)
+
+  it("pairs the exact fly success manifest stem with a thin runtime adapter", function()
+    local manifest = readRepoFile("src/triggers/boop/Diag/triggers.json")
+    local adapter = readRepoFile(
+      "src/triggers/boop/Diag/Fly_Command_Succeeded.lua"
+    )
+
+    assert.is_string(manifest)
+    assert.is_truthy(manifest:find('"name": "Fly Command Succeeded"', 1, true))
+    assert.is_truthy(manifest:find(FLY_SUCCESS, 1, true))
+    assert.is_string(adapter)
+    assert.is_truthy(
+      adapter:find("boop.runtime.onFlyCommandSucceeded", 1, true)
     )
     assert.is_falsy(adapter:find("completeInterrupt", 1, true))
     assert.is_falsy(adapter:find("clearqueue", 1, true))

@@ -3204,6 +3204,44 @@ function boop.runtime.completeInterrupt(generation, terminalReason)
   return terminalizeInterrupt(operation, terminalReason)
 end
 
+local FLY_SUCCESS_LINE = "The gauntlets carry you up into the skies."
+
+function boop.runtime.onFlyCommandSucceeded(line, capturedGeneration)
+  if tostring(line or "") ~= FLY_SUCCESS_LINE then
+    return false
+  end
+
+  local state = boop.runtime.ensureState()
+  local operation = state.diag.operation
+  if type(operation) ~= "table"
+      or operation.terminal
+      or operation.name ~= "fly" then
+    return false
+  end
+  if capturedGeneration ~= nil
+      and tonumber(capturedGeneration) ~= tonumber(operation.generation) then
+    return false
+  end
+
+  local completed = boop.runtime.completeInterrupt(
+    operation.generation,
+    "command_succeeded"
+  )
+  if not completed then
+    return false
+  end
+  if tempTimer then
+    tempTimer(0, function()
+      if boop and boop.tick then
+        boop.tick()
+      end
+    end)
+  elseif boop and boop.tick then
+    boop.tick()
+  end
+  return true
+end
+
 local function traceLeapDenialDiagnostic(operation, causal, reason)
   if type(causal) == "table" and causal.ambiguityTraced then
     return false
