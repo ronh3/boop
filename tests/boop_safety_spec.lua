@@ -99,6 +99,23 @@ describe("boop safety", function()
     assert.are.same({ { op = "disable", name = "boop" } }, boop_folder_trigger_calls())
   end)
 
+  it("keeps boop enabled after fleeing when configured", function()
+    gmcp.Char.Vitals.hp = 1000
+    gmcp.Char.Vitals.maxhp = 5000
+    boop.config.fleeAt = "30%"
+    boop.config.fleeKeepEnabled = true
+    boop.state.targeting.lastRoomDir = "north"
+
+    boop.tick()
+
+    assert.is_true(boop.config.enabled)
+    assert.is_true(boop.state.combat.fleeing)
+    assert.is_false(boop.safety.shouldFlee())
+    assert.stub(save_config_stub).was_not_called_with("enabled", false)
+    assert.stub(send_stub).was_called_with("north", false)
+    assert.are.same({}, boop_folder_trigger_calls())
+  end)
+
   it("clears automation intent before the first flee command is sent", function()
     helper.seedAutomationIntent()
     boop.state.targeting.lastRoomDir = "north"

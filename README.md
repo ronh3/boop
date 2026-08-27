@@ -53,6 +53,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop separator <text>` (sets the game-side command separator used by `pull`; for example `|`)
 - `boop focus <speed|precision>` (sets which battlefury focus verb two-handed standards use when `Focus` is known)
 - `boop flee <on|off|toggle|percent>` (controls auto-flee and sets its threshold; example: `boop flee 25%`)
+- `boop flee keepenabled <on|off|toggle>` (controls whether boop remains enabled after auto-flee; default: `off`)
 - `boop set pullRageReserve on|off` (advanced toggle; keep enough rage reserved for a pull-capable damage battlerage attack)
 - `boop set breakShields on|off` (advanced compatibility form of `boop shieldmode break|bypass`; session-only)
 - `boop whitelist` / `boop whitelist add <name>` / `boop whitelist remove <name>` (display is clickable: up/down/remove)
@@ -129,6 +130,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - A queued shieldbreak remains eligible until combat output confirms the shield is down; merely staging or rebuilding `BOOP_ATTACK` does not count as a completed attempt.
 - Magi Staffcast damage does not clear tracked shield state because it can land while the target's shield remains active.
 - Auto-flee can be toggled independently from its threshold; `boop flee off` disables it without clearing the saved percentage.
+- Auto-flee disables hunting by default. `boop flee keepenabled on` preserves the enabled setting after an escape while the in-progress flee guard suppresses duplicate attempts.
 - Prequeue is separately configurable from queueing (`boop prequeue`); when enabled, it queues standard attacks before recovery using `boop lead` seconds (default `1.00`).
 - Warrior classes (Infernal/Paladin/Runewarden) use `gmcp.Char.Vitals` `Spec` to select standard attacks.
 - In queueing mode, boop caches the last `BOOP_ATTACK` alias payload and skips redundant `setalias` sends when unchanged.

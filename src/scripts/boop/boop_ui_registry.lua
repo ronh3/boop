@@ -21,6 +21,7 @@ boop.registry.config.schema = boop.registry.config.schema or {
     "pullRageReserve",
     "breakShields",
     "fleeEnabled",
+    "fleeKeepEnabled",
     "fleeAt",
     "tempoRageWindowSeconds",
     "tempoSqueezeEtaSeconds",
@@ -140,6 +141,8 @@ boop.registry.config.schema = boop.registry.config.schema or {
     shieldbreaks = "breakShields",
     flee = "fleeEnabled",
     fleeenabled = "fleeEnabled",
+    fleekeepenabled = "fleeKeepEnabled",
+    keepenabledafterflee = "fleeKeepEnabled",
     fleeat = "fleeAt",
     theme = "uiTheme",
     uitheme = "uiTheme",
@@ -467,6 +470,12 @@ boop.registry.config.setters = boop.registry.config.setters or {
       boop.ui.fleeCommand(parsed and "on" or "off")
     end,
   }),
+  fleeKeepEnabled = configBoolSetter({
+    key = "fleeKeepEnabled",
+    warn = "fleeKeepEnabled expects on/off",
+    okLabel = "keep boop enabled after flee",
+    reopen = { screen = "combat" },
+  }),
   fleeAt = function(raw)
     boop.ui.fleeCommand(raw)
   end,
@@ -743,7 +752,8 @@ boop.registry.ui.helpTopics = {
       helpCommand("boop status", "Open the full status dashboard for enabled state, class/profile readiness, targeting, rage, loot, and active operations."),
       helpCommand("boop control", "Watch target, active operations, queue, party, and walker state while hunting."),
       helpCommand("boop flee <on|off|percent>", "Control auto-flee and set its HP threshold, for example `boop flee 25%`."),
-      helpCommand("bflee", "Immediately run boop's flee action using the last room direction and disable hunting."),
+      helpCommand("boop flee keepenabled <on|off|toggle>", "Choose whether boop remains enabled after it flees; the default is off."),
+      helpCommand("bflee", "Immediately run boop's flee action using the last room direction and apply the configured keep-enabled policy."),
       helpCommand("boop autogold on|off", "Control automatic pickup of dropped sovereigns."),
       helpCommand("boop pack <container>", "Set a container for automatic sovereign stashing after pickup."),
       helpCommand("boop stats", "Review session/trip performance and suggested drill-downs."),
@@ -1144,6 +1154,10 @@ boop.registry.ui.screens.configActions = boop.registry.ui.screens.configActions 
       [18] = function(ctx)
         ctx.seed("combat", "boop ragepool ")
         return "seed"
+      end,
+      [19] = function()
+        boop.ui.fleeCommand("keepenabled toggle")
+        return "refresh"
       end,
     },
     targeting = {

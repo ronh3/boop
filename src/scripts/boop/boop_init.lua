@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = "0.1.484"
+boop.version = "0.1.485"
 
 boop.defaults = {
   enabled = false,
@@ -40,6 +40,7 @@ boop.defaults = {
   pullRageReserve = false,
   breakShields = true,
   fleeEnabled = true,
+  fleeKeepEnabled = false,
   fleeAt = "30%",
   rageFallbackSeconds = 26,
   tempoRageWindowSeconds = 10,

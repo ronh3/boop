@@ -59,7 +59,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - `boop.rage`
   - Rage readiness fallback (timers + text triggers).
 - `boop.safety`
-  - Auto-flee thresholds and pause-on-affliction logic.
+  - Auto-flee thresholds, optional keep-enabled policy, and pause-on-affliction logic.
 - `boop.stats`
   - Session/trip/lifetime gains and timers.
 - `boop.ui`
@@ -116,6 +116,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Magi Staffcast damage can land while a target's magical shield remains active, so Staffcast output is not shield-down evidence.
 - Runtime safety uses owner-keyed operation locks only for asynchronous interrupt, pull, and gold work, so each operation releases only itself.
 - Interrupt admission uses its own runtime-owned tiers rather than blocker display priority: absolute auto-flee supersedes every interrupt, emergency leap/fly supersedes diagnostic or utility work, and diagnose supersedes utility work. Lower-priority and different same-tier requests preserve the active owner.
+- Auto-flee disables hunting by default. The persisted keep-enabled option preserves hunting state after escape, while the runtime fleeing guard prevents duplicate dispatch until movement or the bounded flee window completes.
 - Emergency retries of the same kind atomically install a fresh generation before terminalizing the old one as `superseded_by:<name>`. The old timer, causal window, blocker, and diagnose evidence become inert without an owner-free automation window.
 - Lifecycle, room readiness, target eligibility, attack-profile readiness, and walker state are computed from canonical state. A missing or unusable attack profile is reported without creating an operation lock, and computed state never depends on a later callback releasing a pseudo-owner.
 - Movement, accepted room contents, and blacklist edits reconcile stale target intent without stopping an active walker. An active pull preserves its target and queued intent until return or termination.

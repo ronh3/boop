@@ -1187,6 +1187,18 @@ describe("boop ui home", function()
     assert.are.equal("[OK] auto flee: off", echoes[#echoes])
   end)
 
+  it("supports keeping boop enabled after auto flee", function()
+    boop.ui.fleeCommand("keepenabled on")
+
+    assert.is_true(boop.config.fleeKeepEnabled)
+    assert.are.equal("[OK] keep boop enabled after flee: on", echoes[#echoes])
+
+    boop.ui.fleeCommand("keepenabled toggle")
+
+    assert.is_false(boop.config.fleeKeepEnabled)
+    assert.are.equal("[OK] keep boop enabled after flee: off", echoes[#echoes])
+  end)
+
   it("sets and reports the active theme", function()
     boop.ui.themeCommand("ocean")
 

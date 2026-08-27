@@ -129,6 +129,7 @@ Current visual language expectations
 - Help syntax should match the parser exactly. If a command only accepts either no args or two args, avoid optional-looking placeholders like `[left] [right]`.
 - Internal review helpers such as `boop help audit` should stay discoverable from advanced/troubleshooting help, not the normal help footer.
 - The combat settings screen exposes `Rage pool` as `off` or an integer threshold and seeds `boop ragepool` for edits.
+- The combat settings screen exposes `Keep boop enabled` as a persisted autoflee policy; it defaults to `OFF` and maps to `boop flee keepenabled on|off|toggle`.
 - Attack preference status labels temporary overrides and shows the saved value underneath so session-only choices cannot be mistaken for persisted configuration.
 
 Trace diagnostics contract

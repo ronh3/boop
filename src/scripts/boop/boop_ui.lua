@@ -2042,8 +2042,26 @@ function boop.ui.fleeCommand(raw)
   if value == "" or value == "status" or value == "show" then
     local shown = (boop.config and boop.config.fleeEnabled) and tostring(boop.config.fleeAt or currentThreshold) or "off"
     boop.util.info("auto flee: " .. shown)
-    boop.util.info("Usage: boop flee <on|off|toggle|percent>")
+    boop.util.info("keep boop enabled after flee: " .. ((boop.config and boop.config.fleeKeepEnabled) and "on" or "off"))
+    boop.util.info("Usage: boop flee <on|off|toggle|percent|keepenabled on|off|toggle>")
     boop.util.info("Example: boop flee 25%")
+    return
+  end
+
+  local keepEnabledValue = value:match("^keepenabled%s+(on|off|toggle)$")
+  if keepEnabledValue then
+    local keepEnabled = boop.config and boop.config.fleeKeepEnabled == true
+    if keepEnabledValue == "toggle" then
+      keepEnabled = not keepEnabled
+    else
+      keepEnabled = keepEnabledValue == "on"
+    end
+    saveConfigValue("fleeKeepEnabled", keepEnabled)
+    boop.util.ok("keep boop enabled after flee: " .. (keepEnabled and "on" or "off"))
+    local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("combat") or ""
+    if returnScreen == "combat" and boop.ui and boop.ui.config then
+      boop.ui.config("combat")
+    end
     return
   end
 
@@ -2092,7 +2110,7 @@ function boop.ui.fleeCommand(raw)
     return
   end
 
-  boop.util.warn("flee expects on|off|toggle|<percent>")
+  boop.util.warn("flee expects on|off|toggle|<percent>|keepenabled on|off|toggle")
   boop.util.info("Example: boop flee 25%")
 end
 
@@ -4996,6 +5014,9 @@ local function configRenderCombatSection()
     uiPrintActionControl(18, "Rage pool", ragePoolShown, "yellow", "[set]", "info", function()
       boop.ui.config("combat 18")
     end, "Set the rage threshold before ordinary battlerage spending")
+    uiPrintToggleControl(19, "Keep boop enabled", boop.config.fleeKeepEnabled == true, function()
+      boop.ui.config("combat 19")
+    end, "Keep hunting enabled after auto-flee")
     uiPrintFooter("Type: boop config home | boop config combat <number> | boop config back")
     return
   end
@@ -5022,6 +5043,7 @@ local function configRenderCombatSection()
   boop.util.echo("[16] Focus verb              [ " .. tostring(boop.config.focusVerb or "speed") .. " ] [set]")
   boop.util.echo("[17] Game separator          [ " .. tostring(boop.config.gameSeparator or "|") .. " ] [set]")
   boop.util.echo("[18] Rage pool               [ " .. ragePoolShown .. " ] [set]")
+  boop.util.echo("[19] Keep boop enabled       [ " .. boolText(boop.config.fleeKeepEnabled == true) .. " ] [toggle]")
   boop.util.echo("----------------------------------------")
   boop.util.echo("Type: boop config home | boop config combat <number> | boop config back")
 end
