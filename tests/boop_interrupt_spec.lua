@@ -423,13 +423,17 @@ describe("boop queued interrupts", function()
 
     assert.is_false(boop.runtime.onFlyCommandSucceeded(FLY_SUCCESS))
     timeout_callback()
-    boop.onPrompt()
     assert.are.equal(1, #ok_messages)
     assert.are.equal(0, #warn_messages)
 
     assert.are.equal(2, #scheduled)
     scheduled[2].callback()
     assert.are.equal(1, tick_count)
+
+    boop.onPrompt()
+    assert.are.equal(1, #ok_messages)
+    assert.are.equal(0, #warn_messages)
+    assert.are.equal(2, tick_count)
   end)
 
   it("lets timeout win once without removing server queue work or releasing another owner", function()
