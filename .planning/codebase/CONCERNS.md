@@ -1,208 +1,162 @@
+<!-- refreshed: 2026-08-30 -->
 # Codebase Concerns
 
-**Analysis Date:** 2026-07-09
+**Analysis Date:** 2026-08-30
+**Source verified against:** commit `96384bc` (package `0.1.490`)
+
+> **Authoritative sources:** `/ARCHITECTURE.md` (as-is, including the API-surface classification), `/PERFORMANCE.md` (hot-path findings and the performance budget), `/REFACTOR-ROADMAP.md` (sequenced remediation). This file is a planning summary.
 
 ## Tech Debt
 
-**Runtime state ownership drift:**
-- Issue: `boop.runtime.ensureState()` defines owned state domains in `src/scripts/boop/boop_runtime.lua`, but movement and room handlers still read or write flat state fields such as `vars.room`, `vars.pullState`, `state.walkActive`, `state.diagHold`, `state.goldGetPending`, and `state.currentTargetId`.
-- Files: `src/scripts/boop/boop_runtime.lua`, `src/scripts/boop/boop_events.lua`, `src/scripts/boop/boop_walk.lua`, `CODEX.md`
-- Impact: room transitions, pull completion, flee return direction, and autowalk blockers can desynchronize from `boop.state.targeting`, `boop.state.combat`, `boop.state.gold`, `boop.state.diag`, and `boop.state.walk`.
-- Fix approach: use only the owned domains from `src/scripts/boop/boop_runtime.lua`; move room fields to `boop.state.targeting`, pull state to `boop.state.combat.pullState`, and walk runtime flags to `boop.state.walk`.
+**The module dependency graph is a single strongly-connected component.**
+- Issue: of 20 script modules, `boop_bootstrap` is the composition root (zero incoming edges); the other 19 form a single SCC in which every module can reach every other. There are **nineteen directly reciprocal pairs** (`A ↔ B`) plus many longer directed cycles. Three modules concentrate the problem: `boop_runtime` holds the combat loop and calls outward into `attacks`, `targets`, `safety`, and `walk`; `boop_util` holds the command dispatcher and calls into `runtime`, `gag`, and `rage`; and `boop_events` owns 42 top-level `boop.<function>` symbols that six other modules call, accounting for six pairs on its own. A namespace-only graph misses those six — top-level attribution is required.
+- Files: `boop_runtime.lua`, `boop_util.lua`, `boop_events.lua`, and every decision module.
+- Impact: no module can be reasoned about or tested in isolation; a change anywhere can reach anywhere.
+- Fix approach: `/REFACTOR-ROADMAP.md` Phase 3 closes five pairs, Phase 4 nine, Phase 5 one, and **Phase 8 the final four**. The graph becomes acyclic at Phase 8, which is the architecture stopping point; DAG enforcement is staged until then.
 
-**Large multipurpose modules:**
-- Issue: `src/scripts/boop/boop_ui.lua` contains dashboard rendering, command parsing, config setters, help rendering, Foxhunt import, pull handling, diagnostics, and theme browsing in one 4504-line file. `src/scripts/boop/boop_stats.lua` similarly combines scope models, persistence-facing aggregation, rendering, and command parsing in one 2936-line file.
-- Files: `src/scripts/boop/boop_ui.lua`, `src/scripts/boop/boop_stats.lua`, `src/scripts/boop/boop_ui_registry.lua`
-- Impact: small command-surface changes require editing broad, stateful files and increase the chance of breaking unrelated UI or stats behavior.
-- Fix approach: split by operator surface and responsibility, using `src/scripts/boop/boop_ui_registry.lua` as the stable contract for config/help routes.
+**Large multipurpose modules.**
+- Issue: `boop_ui.lua` (5546) contains screens, config mutation, the interrupt/pull state machine, and command routing. `boop_runtime.lua` (4167) contains six subsystems. `boop_events.lua` (3429) contains the gold pipeline, inventory tracking, the prequeue engine, and the tick entry point. `boop_stats.lua` (2948) is roughly 45% model and 55% presentation.
+- Impact: small changes require editing broad, stateful files.
+- Fix approach: Phases 3-12. Note that file size itself is **not** a runtime problem — see `/PERFORMANCE.md` §3.
 
-**Manual trigger and manifest maintenance:**
-- Issue: The package has 507 trigger Lua scripts and 105 `triggers.json` files under `src/triggers/boop/`; manifest sorting exists, but manifest membership is not broadly tested.
-- Files: `src/triggers/boop/`, `tools/sort_manifests.sh`, `tests/boop_ih_spec.lua`, `CODEX.md`
-- Impact: a trigger can be added without the matching local manifest entry, or a manifest can reference the wrong script, causing silent Mudlet package omissions.
-- Fix approach: add a manifest parity test that checks every manifest entry resolves to an expected Lua file and every trigger/alias script is reachable from a manifest.
+**No single command egress point.**
+- Issue: 15 production `send()` call sites across seven files, plus eight `sendGMCP()` calls across three.
+- Files: `boop_util.lua`, `boop_events.lua`, `boop_targets.lua`, `boop_safety.lua`, `boop_rage.lua`, `boop_runtime.lua`, `boop_ui.lua`.
+- Impact: outbound behaviour cannot be audited, instrumented, or gated in one place.
+- Fix approach: Phase 4d moves the dispatcher out of `boop_util`; Phase 6 migrates the remaining fourteen sites through `boop.wire`.
 
-**Version synchronization is policy-only:**
-- Issue: Version synchronization is required across `mfile.version`, `mfile.title`, and `boop.version`, but CI reads only `mfile` metadata and does not check `src/scripts/boop/boop_init.lua`.
-- Files: `mfile`, `src/scripts/boop/boop_init.lua`, `.github/workflows/main.yml`, `AGENTS.md`, `CODEX.md`
-- Impact: runtime `boop.version` can diverge from the packaged artifact name without a CI failure.
-- Fix approach: add a CI step that parses all three fields and fails unless they match exactly.
+**Divergent reimplementations of shared concepts.**
+- Issue: `currentRoomId()` has five implementations with four different semantics; `currentClass()` has three with divergent precedence and normalization; `copySourceAuthority` has five copies, `deepCopy` four, `nowSeconds` four.
+- Impact: behaviour depends on which module asks.
+- Fix approach: Phase 7.
+
+**`boop_state.lua` puts a service function under the data-only state tree.**
+- Issue: `boop.state.init()` both violates the "no functions under `boop.state`" intent and performs a second registry attachment, duplicating the one at the tail of `boop_ui_registry.lua`. It is called from `boop.bootstrap()` (`boop_init.lua:164`) and from `tests/support/boop_test_helper.lua:168`.
+- Fix approach: Phase 4b retires the file, moves both registry attachments to the composition root, replaces the call with `boop.runtime.ensureState()`, and migrates the test helper to the production initialization path.
+
+**Manual trigger and manifest maintenance.**
+- Issue: 513 trigger scripts across 107 manifests. `tools/check_release_gates.py --check manifests` catches orphans and unresolved entries, but membership correctness still depends on the author.
+- Fix approach: keep the manifest gate in the pre-commit routine.
 
 ## Known Bugs
 
-**Room change handling writes the wrong state object:**
-- Symptoms: `boop.onRoomInfo()` updates flat `boop.state.room`, `boop.state.lastRoom`, `boop.state.lastRoomDir`, and `boop.state.movedRooms`, while the rest of the code and tests use `boop.state.targeting.room`, `boop.state.targeting.lastRoomDir`, and related nested fields.
-- Files: `src/scripts/boop/boop_events.lua`, `src/scripts/boop/boop_safety.lua`, `tests/boop_event_transitions_spec.lua`
-- Trigger: GMCP `gmcp.Room.Info` events during movement.
-- Workaround: None in package code; operators can avoid relying on `bflee` until a room-change pass repairs the nested state writes.
+None outstanding at the architectural level. Five candidate defects were identified during the 2026-08-30 audit and are tracked as F1-F5 in `/REFACTOR-ROADMAP.md` §2:
 
-**Pull completion does not observe the stored pull state:**
-- Symptoms: `boop.ui.pullCommand()` stores active pull state in `boop.state.combat.pullState`, but `boop.onRoomInfo()` checks `boop.state.pullState`; return-to-origin completion can be missed and recovery falls back to the timeout path.
-- Files: `src/scripts/boop/boop_ui.lua`, `src/scripts/boop/boop_events.lua`, `tests/boop_pull_spec.lua`
-- Trigger: `pull <mobname> <direction>` followed by normal GMCP room changes out and back.
-- Workaround: Wait for the pull timeout or manually run `boop on` after confirming the character is back in the origin room.
+| # | Finding | Status |
+|---|---|---|
+| F1 | `boop_init.lua:118` divides `getEpoch()` by 1000 while every `nowSeconds()` treats it as seconds, so the `requestCoreSupports` throttle never engages | Approved, Phase 2c |
+| F2 | `boop_ui.lua:72`'s `currentClass()` does not lowercase and defaults to `"unknown"`; latent because `profileReadiness` lowercases internally | Approved, Phase 7 |
+| F3 | `boop.onVitals` lacks an `enabled` guard, so a disabled boop still builds two contexts per prompt | Approved, Phase 2c |
+| F4 | `markUnnamableMaulUsed` runs only on the direct dispatch path | Investigate only; trigger-driven handlers may already cover the queued path |
+| F5 | `schedulePrequeue` returns `nil` at `boop_events.lua:3146` where every other exit returns `false` | Approved, Phase 3 |
+| F6 | `init ↔ ui`: `boop.bootstrap()` calls `boop.ui.status("ready")` at `boop_init.lua:207-208` | Approved, Phase 4a |
 
-**Autowalk blockers read stale flat flags:**
-- Symptoms: `boop.walk.blockedReason()` checks flat fields such as `state.diagHold`, `state.fleeing`, `state.autoGrabGoldPending`, `state.goldGetPending`, and `state.currentTargetId`, but active state lives in `boop.state.diag`, `boop.state.combat`, `boop.state.gold`, and `boop.state.targeting`.
-- Files: `src/scripts/boop/boop_walk.lua`, `src/scripts/boop/boop_runtime.lua`, `tests/boop_walk_spec.lua`
-- Trigger: `boop walk start` while diagnose, flee, gold pickup, or active-target state is present.
-- Workaround: Use `boop walk stop` before interrupts, gold debugging, or manual target work.
+**Previously listed here and now resolved:** room handling writing flat `boop.state.room`; pull completion reading `boop.state.pullState`; autowalk blockers reading flat state flags. All three were fixed when the flat-state bridge was removed. `boop.onRoomInfo` writes `targeting.*`, and `boop.walk.blockedReason()` delegates to `evaluateAllClear`.
 
 ## Security Considerations
 
-**Broad CI permissions and moving dependencies:**
-- Risk: The GitHub Actions workflow grants `permissions: write-all`, uses `demonnic/build-with-muddler@main`, installs LuaRocks packages at runtime, and clones `https://github.com/demonnic/test-in-mudlet.git` without a commit pin.
-- Files: `.github/workflows/main.yml`
-- Current mitigation: The workflow runs on `pull_request` and `push` and executes Mudlet/Busted tests before uploading artifacts.
-- Recommendations: Reduce job permissions to the minimum required, pin third-party actions and cloned test assets to immutable SHAs, and keep PR commenting permissions scoped to pull requests.
+**Broad CI permissions and unpinned dependencies.**
+- Risk: `.github/workflows/main.yml` grants `permissions: write-all`, uses `demonnic/build-with-muddler@main`, and clones `demonnic/test-in-mudlet` without a commit pin.
+- Recommendation: reduce job permissions, pin third-party actions and cloned test assets to immutable SHAs.
 
-**Remote Mudlet package install is unpinned:**
-- Risk: `boop walk install` installs the latest `demonnicAutoWalker.mpackage` URL through Mudlet without a checksum or pinned release version.
-- Files: `src/scripts/boop/boop_walk.lua`, `README.md`
-- Current mitigation: The install is an explicit operator command and Mudlet may prompt before package installation.
-- Recommendations: Pin a known release URL, display the exact package URL before install, and document the trusted version in `README.md`.
+**Remote Mudlet package install is unpinned.**
+- Risk: `boop walk install` installs the latest `demonnicAutoWalker.mpackage` URL without a checksum or pinned release.
+- Mitigation: the install is an explicit operator command.
+- Recommendation: pin a known release URL and display it before install.
 
-**User-controlled command fragments are sent directly:**
-- Risk: Saved values such as `goldPack`, assist leader names, leap directions, and the configured game separator are concatenated into game commands. Pull validates the mob name against the separator and newlines, but gold-pack and several other command fragments do not share a central validator.
-- Files: `src/scripts/boop/boop_ui.lua`, `src/scripts/boop/boop_events.lua`, `src/scripts/boop/boop_util.lua`
-- Current mitigation: Most values are operator-entered, and `pull` rejects mob names containing the configured separator or newline characters.
-- Recommendations: Add a shared command-token validator for container IDs, leader names, directions, separators, and any future command fragment before values are persisted or sent.
+**User-controlled command fragments are concatenated into game commands.**
+- Risk: `goldPack`, assist leader names, leap directions, and the configured separator reach `send()` without a shared validator. `pull` validates its mob name; most others do not.
+- Files: `boop_ui.lua`, `boop_events.lua`, `boop_util.lua`.
+- Recommendation: add a shared command-token validator. Phase 6 creates the natural home for it, since every outbound command will pass through `boop.wire`.
 
-**Party whitelist share trust is permissive without a leader:**
-- Risk: Incoming whitelist-share packets from any non-self party member are accepted into pending state when `assistLeader` is blank; applying `overwrite` can replace an area's whitelist.
-- Files: `src/scripts/boop/boop_targets.lua`, `src/triggers/boop/Core/Party_Whitelist_Share.lua`, `tests/boop_whitelist_share_spec.lua`
-- Current mitigation: Incoming shares remain pending until the operator runs `boop whitelist receive merge|merge-reorder|overwrite`.
-- Recommendations: Require an explicit trusted sender for whitelist sharing, show sender/area/count prominently before apply, and cap incoming packet counts.
+**Party whitelist share trust is permissive without a leader.**
+- Risk: with `assistLeader` blank, any non-self party member's share packets enter pending state; applying `overwrite` replaces an area's whitelist.
+- Mitigation: incoming shares stay pending until an explicit `boop whitelist receive`.
+- Recommendation: require a trusted sender, show sender/area/count before apply, cap incoming packet counts.
 
 ## Performance Bottlenecks
 
-**Mob XP persistence scans area rows per observation:**
-- Problem: `boop.db.recordMobXpObservation()` fetches all mob XP rows for an area and then scans for matching party size, mob name, and XP value.
-- Files: `src/scripts/boop/boop_db.lua`, `src/scripts/boop/boop_stats.lua`
-- Cause: The storage schema indexes broad columns but the write path fetches only by area before filtering in Lua.
-- Improvement path: Fetch or index by area, party size, name, and XP bucket; keep a small in-memory dirty cache during a hunt and flush aggregated counts in batches.
+Full analysis in `/PERFORMANCE.md`. **No measurements have been taken**; the items below are static-analysis findings.
 
-**Stats renderers build and sort full result sets:**
-- Problem: stats views collect all area, mob, target, ability, crit, rage, and record rows before limiting display output.
-- Files: `src/scripts/boop/boop_stats.lua`, `tests/boop_stats_spec.lua`
-- Cause: The stats model is optimized for rich local summaries rather than bounded incremental rendering.
-- Improvement path: Apply limits earlier, cache sorted summaries per scope during a render, and invalidate those summaries only when scope counters change.
+**Synchronous SQLite on the retarget path.**
+- Problem: `boop.db.saveStats()` performs 13 `db:fetch` plus up to 13 `db:update` per call, and `boop.stats.onTargetSet` calls `incrementCounter` three times, so **one retarget triggers 39 synchronous indexed SELECTs plus writes**.
+- Files: `boop_db.lua:587`, `boop_stats.lua`.
+- Improvement path: dirty-flag with a 5-second coalesced flush and immediate flush on the observable boundaries. `/REFACTOR-ROADMAP.md` Phase 2b.
 
-**Large trigger set increases every-line matching cost:**
-- Problem: Gag, shield, and rage-affliction coverage is broad: 277 gag trigger scripts, 116 shield trigger scripts, and 101 rage trigger scripts live under `src/triggers/boop/`.
-- Files: `src/triggers/boop/Gag/`, `src/triggers/boop/Shield/`, `src/triggers/boop/Rage/`
-- Cause: Each supported class adds text-line triggers in parallel categories.
-- Improvement path: Prefer shared trigger handlers and data-driven class pattern tables when adding new broad coverage, and keep live profiling focused on gag-heavy hunting sessions.
+**Room-item deep copies on every context build.**
+- Problem: `roomObservationSnapshot()` deep-copies `acceptedItems`, `fenceQueue`, `lastCompletedFence`, and `activeApplication` (itself holding a copy of the room item list), while `readinessSnapshot()` reads four scalar fields from the result.
+- Improvement path: a non-copying readiness snapshot. Phase 2a.
+
+**`ensureState()` revalidates 13 domains on every call**, and `runtime.context()` calls it nine times — roughly 1,100 hash lookups per context, two to four contexts per prompt.
+- Improvement path: schema-version sentinel plus domain integrity check, full hydration only on failure. Phase 2a.
+
+**Duplicate ticks per prompt.** `onVitals` and `onPrompt` each drive a full decision pass; the `canAct` limiter discards the second dispatch but not the work. Measurement-gated; see `/PERFORMANCE.md` §5B.
+
+**Large trigger set increases every-line matching cost.** 885 patterns across 512 triggers, all enabled together, roughly 95% class-irrelevant for any given character. Engine-side and invisible to Lua profiling. Deferred and measurement-gated; see `/PERFORMANCE.md` §5A, which records the naming-collision and mapping risks that make scoping non-trivial.
+
+**Mob XP persistence scans area rows per observation.** `boop.db.recordMobXpObservation()` fetches all rows for an area then filters in Lua.
+
+**Stats renderers build and sort full result sets** before limiting display output.
 
 ## Fragile Areas
 
-**Gag summarization is timing-sensitive:**
-- Files: `src/scripts/boop/boop_gag.lua`, `src/triggers/boop/Gag/`, `tests/boop_gag_spec.lua`
-- Why fragile: Attack, damage, crit, balance, slain, and XP lines are correlated through pending state and short timers; new Achaea line variants can leave lines visible, delete the wrong line, or emit summaries in the wrong order.
-- Safe modification: Add a replay-style Busted case in `tests/boop_gag_spec.lua` for every new live line shape before changing timer or merge logic.
-- Test coverage: Good unit coverage exists for many line sequences, but live combat logs remain the main source for missing variants.
+**Gag summarization is timing-sensitive.**
+- Files: `boop_gag.lua`, `src/triggers/boop/Gag/`, `tests/boop_gag_spec.lua`.
+- Why: attack, damage, crit, balance, slain, and XP lines are correlated through pending state and short timers.
+- Safe modification: add a replay case for every new live line shape before changing timer or merge logic.
 
-**Attack profile contracts are data-heavy:**
-- Files: `src/scripts/boop/attacks/`, `src/scripts/boop/boop_attacks.lua`, `tests/boop_profile_matrix_spec.lua`, `tests/boop_rage_contract_spec.lua`
-- Why fragile: Profile tables encode class/spec standards, rage descriptions, conditional needs, skill groups, shieldbreaks, openers, and command prefixes in a compact data shape.
-- Safe modification: Add or update profile-matrix and rage-contract cases before changing a profile's table shape.
-- Test coverage: Broad profile coverage exists, but game text and skill availability still depend on GMCP values observed in Mudlet.
+**The queued-standard lifecycle.**
+- Files: `boop_runtime.lua` (dispatch generations, baseline, candidate disposition, grace, retry, terminals).
+- Why: the most intricate invariant in the package, with generation ownership and quarantine semantics.
+- Safe modification: `tests/boop_prequeue_spec.lua` (1255 lines) is the contract. Extend it first.
 
-**Load order is runtime-sensitive:**
-- Files: `src/scripts/boop/scripts.json`, `tools/sort_manifests.sh`, `CODEX.md`
-- Why fragile: `src/scripts/boop/scripts.json` intentionally stays unsorted because bootstrap, runtime, state, registry, UI, events, and attack registration depend on load order.
-- Safe modification: Treat new script insertion as a dependency decision and run the Mudlet Busted suite after any order change.
-- Test coverage: CI exercises the built package, but there is no dedicated load-order lint that explains dependency violations before Mudlet import.
+**Attack profile contracts are data-heavy.**
+- Files: `src/scripts/boop/attacks/`, `tests/boop_profile_matrix_spec.lua`, `tests/boop_rage_contract_spec.lua`.
+- Safe modification: update the matrix and rage-contract cases before changing a profile's table shape.
 
-**Mudlet DB schema changes are opportunistic:**
-- Files: `src/scripts/boop/boop_db.lua`, `tests/boop_db_spec.lua`, `tests/boop_persistence_spec.lua`
-- Why fragile: New sheets are created by helper functions and older missing-sheet paths degrade to warnings; there is no explicit schema version or migration ledger.
-- Safe modification: Add schema-version metadata before adding more persistent tables or changing row meanings.
-- Test coverage: Guard-path and save-hook tests exist; full DB migration coverage is limited.
+**Load order is runtime-sensitive.**
+- Files: `src/scripts/boop/scripts.json`.
+- Why: three documented registration mechanisms execute at load. Note that with the current function bodies, definitions themselves are order-independent — but that is a property of the code, not a guarantee.
+
+**Mudlet DB schema changes are opportunistic.**
+- Why: new sheets are created by helper functions and missing-sheet paths degrade to warnings; there is no schema version or migration ledger.
 
 ## Scaling Limits
 
-**Whitelist share packets have no TTL or total cap:**
-- Current capacity: Data packets are capped by a 180-character line limit, but `incomingWhitelistShares` stores entries until an end packet or manual replacement.
-- Limit: Malformed or excessive party packets can grow pending share state during a session.
-- Scaling path: Add a maximum expected count, maximum packets per token, sender allowlist, and expiry timer to `src/scripts/boop/boop_targets.lua`.
+**Trigger count grows linearly with supported classes**, with no sharding mechanism. This is the only unbounded cost in the system.
 
-**Stats detail structures grow with hunting diversity:**
-- Current capacity: `newScope()` stores unbounded `areas`, `abilities`, `targetStats`, and rage breakdown tables per scope.
-- Limit: Long sessions with many areas, mobs, and ability variants increase memory and rendering cost in `src/scripts/boop/boop_stats.lua`.
-- Scaling path: Add caps or archival rules for high-cardinality detail tables, while preserving aggregate lifetime totals.
+**Stats detail structures grow with hunting diversity.** `newScope()` stores unbounded `areas`, `abilities`, `targetStats`, and rage breakdowns per scope.
 
-**Trace history is intentionally capped:**
-- Current capacity: `boop.trace.log()` keeps the last 100 trace entries.
-- Limit: Long reproduction sessions can lose the decision that caused a problem before the operator runs `boop trace show`.
-- Scaling path: Add a configurable trace limit or optional file-backed export in `src/scripts/boop/boop_util.lua`.
+**`runtime.context()` is one wide struct** handed to every consumer; each new field is paid for by every caller on every tick.
+
+**Whitelist share packets have no TTL or total cap.**
+
+**Trace history is intentionally capped** at 100 entries.
 
 ## Dependencies at Risk
 
-**demonnicAutoWalker:**
-- Risk: Walk behavior depends on an external package and event names such as `demonwalker.arrived`, `demonwalker.finished`, and `demonwalker.move`.
-- Impact: Walker API changes can break `boop walk` without changing boop source.
-- Migration plan: Keep `src/scripts/boop/boop_walk.lua` behind a small adapter and add contract tests in `tests/boop_walk_spec.lua`.
+**demonnicAutoWalker** — behaviour depends on external event names. Keep `boop_walk.lua` as a thin adapter with contract tests.
 
-**Muddler build action:**
-- Risk: CI uses `demonnic/build-with-muddler@main`, which can change independently of this repo.
-- Impact: Package output or build behavior can change without a local code change.
-- Migration plan: Pin the action to a known commit or vendor a local build wrapper documented in `CODEX.md`.
+**Muddler build action** — CI uses `demonnic/build-with-muddler@main`, which can change independently.
 
-**Mudlet test profile and AppImage:**
-- Risk: CI downloads or restores a Mudlet AppImage and clones an external Mudlet test profile.
-- Impact: Test behavior can shift if the profile repository or AppImage changes.
-- Migration plan: Pin `test-in-mudlet` and document the supported Mudlet version in `tests/README.md` and `.github/workflows/main.yml`.
+**Mudlet test profile and AppImage** — CI downloads an AppImage and clones an external test profile; neither is pinned.
 
 ## Missing Critical Features
 
-**Automated version sync gate:**
-- Problem: The required version sync rule is not enforced by CI.
-- Blocks: Safe release automation and reliable package/runtime version reporting.
-- Files: `mfile`, `src/scripts/boop/boop_init.lua`, `.github/workflows/main.yml`
+**Runtime performance instrumentation.** There is no way to answer "is boop fast enough" from a live session. `/REFACTOR-ROADMAP.md` Phase 1 adds `boop.perf`.
 
-**Active walk regression suite:**
-- Problem: `tests/boop_walk_spec.lua` contains only a disabled placeholder while `boop walk` controls movement automation.
-- Blocks: Confident fixes to autowalk state, blocker checks, event integration, and external walker adapter behavior.
-- Files: `tests/boop_walk_spec.lua`, `src/scripts/boop/boop_walk.lua`, `src/scripts/boop/boop_events.lua`
+**Architecture guardrails.** `check_release_gates.py` covers versions, manifests, and state drift, but not module dependencies. Phase 1 adds `--check architecture` with DAG cycle detection.
 
-**Manifest parity validation:**
-- Problem: There is no full-repo test for `scripts.json`, `aliases.json`, and `triggers.json` membership.
-- Blocks: Confident trigger, alias, and script additions across the Muddler package tree.
-- Files: `src/scripts/boop/scripts.json`, `src/aliases/`, `src/triggers/`, `tools/sort_manifests.sh`
+**Automated version sync gate.** CI reads `mfile` only and does not verify `boop_init.lua`'s `boop.version`.
+
+**Command-fragment validator.** No shared validation for operator-entered values that reach `send()`.
 
 ## Test Coverage Gaps
 
-**Autowalk integration:**
-- What's not tested: Start/stop state, blocker reasons, room-settled fallback, `demonwalker.move` event emission, and gold/diag/flee interaction.
-- Files: `tests/boop_walk_spec.lua`, `src/scripts/boop/boop_walk.lua`
-- Risk: Movement automation can advance at unsafe times or fail to resume when rooms clear.
-- Priority: High
+**Cross-path gate equivalence.** Nothing asserts that the tick path and the prequeue path reach the same verdict for the same state, though they reimplement the same gate sequence three times. Phase 3 adds a table-driven spec.
 
-**State-domain migration regressions:**
-- What's not tested: A focused assertion that `boop.onRoomInfo()` writes only `boop.state.targeting.*` and `boop.state.combat.*`, and that no live code relies on removed flat state keys.
-- Files: `tests/boop_event_transitions_spec.lua`, `tests/boop_pull_spec.lua`, `src/scripts/boop/boop_events.lua`, `src/scripts/boop/boop_walk.lua`
-- Risk: Room, pull, flee, and walk state regressions bypass the runtime coordinator.
-- Priority: High
+**Command-fragment validation.** Pack names, assist leaders, directions, and separators containing newlines or command separators are untested.
 
-**Command-fragment validation:**
-- What's not tested: Pack names, assist leaders, directions, and separators containing newlines, command separators, or other unsafe command fragments.
-- Files: `tests/boop_ui_spec.lua`, `tests/boop_gold_spec.lua`, `tests/boop_pull_spec.lua`, `src/scripts/boop/boop_ui.lua`
-- Risk: Operator-entered config can produce unintended game commands during automatic actions.
-- Priority: Medium
+**Manifest and package parity.** `--check manifests` covers orphans and unresolved entries; there is no test that the built package contains what the source implies.
 
-**Manifest and generated package coverage:**
-- What's not tested: Every source Lua file is included in a Muddler manifest and every manifest script entry resolves to a source file.
-- Files: `src/scripts/`, `src/aliases/`, `src/triggers/`, `tests/boop_ih_spec.lua`
-- Risk: A feature can pass source-level review but be absent from the built Mudlet package.
-- Priority: Medium
-
-**Live combat log replay breadth:**
-- What's not tested: Broad real-world line streams for gag summaries, shield state, rage affliction ingestion, stats attribution, and target lifecycle.
-- Files: `tests/boop_gag_spec.lua`, `tests/boop_rage_ingestion_spec.lua`, `tests/boop_shields_spec.lua`, `tests/boop_stats_spec.lua`, `tests/README.md`
-- Risk: Supported class profiles can miss new or rare Achaea line variants.
-- Priority: Medium
-
----
-
-*Concerns audit: 2026-07-09*
+**Live combat log replay breadth.** Gag correlation has good unit coverage, but live logs remain the main source for missing line variants.

@@ -95,6 +95,7 @@ Guidance for Codex when working in this repository.
 
 ## Session Startup (New Agent Checklist)
 - Read `README.md` and `DESIGN.md` to understand current scope and user-facing behavior.
+- Read `ARCHITECTURE.md` for how boop actually works today, and `ARCHITECTURE-RULES.md` before changing module boundaries.
 - Read `UIDESIGN.md` as well when doing UI or UX work; it is now lagging less and should be kept in sync.
 - Open `mfile`, `src/scripts/boop/boop_init.lua`, and this checkpoint to confirm synchronized versions. Bump all four only for package-affecting commits; preserve them for planning-only commits.
 - Work only under `src/` for package content; never edit built artifacts.
@@ -106,7 +107,7 @@ Guidance for Codex when working in this repository.
 ## Session Checkpoint
 - Branch to continue from: `codex/pre-1.0-hardening-pass`
 - The branch tip moves with normal hardening commits; rely on git history rather than this file for the exact latest hash.
-- Current synchronized package version: `0.1.490`
+- Current synchronized package version: `0.1.491`
 - The purposeful pre-1.0 hardening work that is currently in this branch:
   - runtime/state ownership and coordinator path
   - combat planner split from execution

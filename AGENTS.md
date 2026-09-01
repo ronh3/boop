@@ -4,6 +4,7 @@ Repository-local instructions for Codex and future agent sessions.
 
 ## Session Startup
 - Read `README.md` and `DESIGN.md` to understand current scope and user-facing behavior.
+- Read `ARCHITECTURE.md` for how boop actually works today, and `ARCHITECTURE-RULES.md` before changing module boundaries.
 - Read `UIDESIGN.md` when doing UI or UX work.
 - Read `CODEX.md` for repo-specific workflow guidance.
 - Check version fields before making changes.
