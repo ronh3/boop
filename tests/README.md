@@ -76,6 +76,10 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
   Confirms rage readiness fallback, rage gain sampling, rage affliction trigger ingestion, and optional suppression of party affliction callouts.
 - `boop_trace_spec.lua`
   Confirms `boop trace` captures compact GMCP room, item, and gold-related item events plus the response-fence half still awaited for debugging live hunting flow.
+- `boop_perf_spec.lua`
+  Confirms the disabled-cost contract, bounded timing/counter storage, two-clock aggregation, prompt correlation and incomplete-epoch discard, command routing, bootstrap reset, persistence exclusion, and trace independence.
+- `test_architecture_guard.py`
+  Confirms Boop's direct/static architectural subset, the narrow Mudlet literal-handler exception, prohibited indirection, explicit first-level state-domain and owned-data resolution, forbidden directions, exact attack-profile/schema-custody handling, duplicate exports, sender/forwarder baselines, and the current graph report. It does not promise arbitrary Lua or string semantic analysis.
 - `boop_persistence_spec.lua`
   Confirms public config, including rage affliction callout settings, with targeting mode, party size, and shield mode intentionally kept session-local, trigger-folder sync for hunting on/off, plus whitelist/blacklist and whitelist-tag edits through the DB hooks.
 - `boop_db_spec.lua`

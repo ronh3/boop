@@ -170,19 +170,25 @@ Phase 1 instruments `ticks_per_prompt` and `tick` specifically so this decision 
 
 ### Disabled-cost contract
 
-A disabled probe costs **one plain boolean field read and a branch**. `boop.perf.on` is a field on a table, never a function call:
+A disabled inline probe costs **one plain boolean field read and a branch**. `boop.perf.on` is a field on a table, never a function call:
 
 ```lua
-if boop.perf.on then boop.perf.enter("tick", "vitals") end
-...
-if boop.perf.on then boop.perf.exit("tick") end
+local function rawSendCommand(command)
+  send(command, false)
+end
+
+if boop.perf.on then
+  boop.perf.measure("wire.send", nil, rawSendCommand, command)
+else
+  rawSendCommand(command)
+end
 ```
 
-When disabled there is **no clock call of any kind**, no table allocation, no string formatting, no counter update, and no logging. Probe names are string literals interned at load.
+Most function-envelope probes are installed only by `boop perf on` and restored to the exact original function by `boop perf off`, so their disabled path has no wrapper overhead at all. When disabled there is **no clock call of any kind**, no table allocation, no string formatting, no counter update, and no logging. Probe names are string literals interned at load.
 
 ### State and lifetime
 
-`boop.perf` is **module-owned and session-local**. It is not a `boop.state` domain, so the state-contract guardrail is untouched, and it is not a `boop.defaults` key, so `saveConfig` cannot persist it. `boop_bootstrap.lua` resets `boop.perf.on` to `false` on every package load, alongside the existing `state.trace.live` reset.
+`boop.perf` is **module-owned and session-local**. It is not a `boop.state` domain, so the state-contract guardrail is untouched, and it is not a `boop.defaults` key, so `saveConfig` cannot persist it. `boop_bootstrap.lua` resets `boop.perf.on` to `false` on every package load, alongside the existing `state.trace.live` reset. Disabling Perf or running `boop perf reset` discards any incomplete leading/trailing correlation epoch; stale partial callbacks can never be committed after re-enable or reset.
 
 ### Two clocks, chosen per probe
 
@@ -197,19 +203,22 @@ This distinction matters. `os.clock()` measures **CPU** time and would under-rep
 
 ### Storage
 
-Allocated once on enable; no per-call allocation. Per probe: `count`, `totalSeconds`, `maxSeconds`, `lastSeconds`, and a fixed eight-bucket log-spaced histogram (`<0.05`, `<0.1`, `<0.25`, `<0.5`, `<1`, `<2.5`, `<10`, `>=10` ms) for approximate p50/p95/p99. Source tags are a small fixed counter map, not free-form strings.
+Fixed records and depth slots are allocated once on enable. Per probe: `count`, `totalSeconds`, `maxSeconds`, `lastSeconds`, and a fixed eight-bucket log-spaced histogram (`<0.05`, `<0.1`, `<0.25`, `<0.5`, `<1`, `<2.5`, `<10`, `>=10` ms) for approximate p50/p95/p99. Source tags are a small fixed counter map, not free-form strings. Enabled exception-safe wrappers use transient argument/result packing for `xpcall`; the disabled path allocates nothing.
+
+Each active span receives an opaque numeric token. Exit validates that token against the exact top depth, so a rejected depth-overflow enter cannot pop a different span. Enabled wrappers always unwind the token, preserve nil and multiple return values, and rethrow the original error object.
 
 ### Prompt correlation and the per-prompt total
 
 Probes nest — `tick` contains `context`, which contains nothing else instrumented; `applyEffects` contains `wire.send`. **Summing probe totals therefore double-counts** and must never be used to derive the per-prompt figure.
 
-Instead, `boop.perf` maintains an explicit **prompt epoch**:
+Instead, `boop.perf` maintains an explicit **prompt epoch** from separately measured synchronous callback segments:
 
-- The prompt trigger increments a monotonic `promptSeq` and records a wall-clock mark before any other boop work for that prompt begins.
-- Every probe records which `promptSeq` it fired under, so work can be attributed to a prompt even when it runs from a GMCP handler that arrived alongside it.
-- The **`prompt_total` probe is a single outer span**, opened at the start of the prompt trigger and closed when the last synchronous boop work for that epoch returns. It is measured directly, not summed.
-- Work that a prompt schedules but that runs later on a timer — the prequeue fire, for instance — is attributed to its own probe and **excluded** from `prompt_total`, since it does not block that prompt's render.
-- `ticks_per_prompt` is `tick.count` divided by `promptSeq` advances over the same window, not a per-sample ratio.
+- The real `boop.onVitals()` envelope is measured as `gmcp.Char.Vitals`; the real `boop.onPrompt()` envelope is measured as `prompt.callback`. The prompt entry increments monotonic `promptSeq`.
+- `prompt_total` is the sum of the relevant completed callback-envelope durations, not their wall-clock start/end interval. Waiting or network idle time between Vitals and Prompt is therefore excluded. Nested `tick`, `context`, and other probes are already inside those envelopes and are never added again.
+- Ordering mode is learned from the first observed callback sequence. If Vitals precedes the first Prompt, **leading mode** accumulates one or more Vitals segments and commits them with the next Prompt. A Prompt with no pending Vitals commits a prompt-only epoch, which explicitly handles missing Vitals.
+- If Prompt is observed first, **trailing mode** opens that Prompt epoch. Following Vitals segments attach to it, and the next Prompt commits the prior epoch and opens another. The newest trailing-order Prompt remains visibly pending until the next Prompt; no timer or idle-time span is introduced merely to close it.
+- Multiple Vitals callbacks in either order are accumulated into the appropriate single epoch. Timer-deferred work, room/target/walk/char-status ticks, and any other work outside the active Vitals or Prompt callback are excluded.
+- `completedPromptEpochs` counts only committed epochs. `correlatedTicks` counts only ticks executed synchronously inside their Vitals/Prompt callbacks. `ticks_per_prompt` is `correlatedTicks / completedPromptEpochs`, so unrelated or deferred ticks cannot distort it.
 
 The budget's "total boop Lua per prompt" row means `prompt_total`, and nothing else. Nested probes explain *where* that total goes; they never construct it.
 
@@ -233,7 +242,8 @@ A probe whose owner has not been extracted yet is placed at the current equivale
 
 | Probe | Question it answers |
 |---|---|
-| `prompt_total` | **the budget's per-prompt figure** — one outer span, measured directly |
+| `prompt_total` | **the budget's per-prompt figure** — correlated synchronous Vitals + Prompt callback segments |
+| `prompt.callback` | Synchronous work in the real Prompt callback before deferred timers run |
 | `tick`, tagged `vitals`/`prompt`/`target`/`room`/`walk`/`charstatus` | invocation count, duration, and **source attribution** |
 | `ticks_per_prompt` | Is the duplicate-tick hypothesis real? Gates deferred item B |
 | `context` | Cost of the wide context build |
@@ -241,9 +251,9 @@ A probe whose owner has not been extracted yet is placed at the current equivale
 | `prequeue.schedule`, `prequeue.standard`, `prequeue.refresh` | Prequeue cost and frequency |
 | `gmcp.<Package>` | Per-handler duration and rate |
 | `db.saveStats`, `db.saveConfig`, `db.recordMobXpObservation` | Synchronous I/O on the combat path; before/after evidence for P1 |
-| `combatlog.line` | Per-line parse cost |
+| `combatlog.line` | Attack-line capture parsing, duplicate/correlation checks, and razeslash intent resolution; ends before stats publication, gag decisions, rendering, and trace formatting |
 | `applyEffects`, `wire.send` | Dispatch cost |
-| counters: `ticks_suppressed_by_limiter`, `contexts_built`, `deepcopy_items`, `stats_flushes` | Coalescible waste |
+| counters: `ticks_suppressed_by_limiter`, `contexts_built`, `deepcopy_items`, `stats_flushes` | Coalescible waste; `deepcopy_items` counts accepted items plus item-bearing pending/completed fences and the active application traversed by the snapshot |
 
 ### Command surface
 

@@ -630,7 +630,7 @@ function boop.targets.onPartyTargetCall(speaker, targetId, _rawLine)
       if boop and boop.tick then
         boop.tick(sourceAuthority or nil, {
           roomOwned = sourceAuthority and true or false,
-        })
+        }, "target")
       end
     end)
   end
@@ -1357,6 +1357,8 @@ function boop.targets.choose()
   return ""
 end
 
+boop.perf.register("targets.choose", boop.targets, "choose")
+
 function boop.targets.isCurrentTargetEligible()
   local state = boop.state and boop.state.targeting or {}
   local currentId = tostring(state.currentTargetId or "")
@@ -1386,7 +1388,7 @@ local function scheduleTargetWake(reason, sourceAuthority)
   local function wake()
     boop.tick(sourceAuthority or nil, {
       roomOwned = sourceAuthority and true or false,
-    })
+    }, "target")
   end
   wake()
   if boop.trace and boop.trace.log then

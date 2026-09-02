@@ -1711,7 +1711,7 @@ local function queueInterrupt(label, command, opts)
           and completionMode == "result_then_prompt"
           and boop
           and boop.tick then
-        boop.tick()
+        boop.tick(nil, nil, "other")
       end
     end)
     operation.timeoutTimer = timerId

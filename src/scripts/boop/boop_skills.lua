@@ -178,3 +178,7 @@ end
 function boop.onSkillsInfo()
   boop.skills.handleInfo()
 end
+
+boop.perf.register("gmcp.Char.Skills.Groups", boop, "onSkillsGroups")
+boop.perf.register("gmcp.Char.Skills.List", boop, "onSkillsList")
+boop.perf.register("gmcp.Char.Skills.Info", boop, "onSkillsInfo")

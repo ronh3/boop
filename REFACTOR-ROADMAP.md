@@ -13,15 +13,15 @@ Every phase ends with a green full Mudlet Busted run and **no unapproved observa
 1. **Measure first** (Phase 1) — nothing is optimized before it can be observed.
 2. **Remove proven waste** (Phase 2) — the two findings that need no structural change.
 3. **Break the runtime cycles** (Phase 3) — the four reciprocal pairs caused by the combat loop living in the state module.
-4. **Composition, presentation, and persistence seams** (Phase 4) — nine more pairs, and the composition root.
+4. **Composition, presentation, and persistence seams** (Phase 4) — twelve more pairs, and the composition root.
 5. **Draw the remaining boundaries** (Phases 5-7) — room authority, egress, canonical accessors.
 6. **Extract feature subsystems** (Phase 8) — **the graph becomes acyclic here**; Phase 9 adds the combatlog seam.
 7. **Presentation and data hygiene** (Phases 10-13) — safely deferrable past 1.0.
 
 ### Suggested stopping points
 
-- **Phases 1-4** deliver measurement, proven waste removal, the composition root, and fourteen of nineteen reciprocal pairs closed. A useful intermediate milestone — but the graph is **not** acyclic here, and stopping leaves five pairs and a residual SCC.
-- **Phase 8 is the architecture stopping point.** It is where the graph becomes acyclic, the legacy list empties, and cycle enforcement becomes unconditional. Everything structural is in place.
+- **Phases 1-4** deliver measurement, proven waste removal, the composition root, and seventeen of twenty-three reciprocal pairs closed. A useful intermediate milestone — but the graph is **not** acyclic here, and stopping leaves six pairs and a residual SCC.
+- **Phase 8 is the architecture stopping point.** It is where the supported direct-reference graph becomes acyclic and cycle enforcement becomes unconditional. Everything structural is in place.
 - **Phases 9-13** are cohesion and data hygiene, safely deferrable past 1.0.
 
 ---
@@ -51,25 +51,23 @@ Discovered during the audit. Each is a deliberate, approved change, isolated int
 - New `src/scripts/boop/boop_perf.lua`, manifest position after `boop_util`. Probes and storage per `PERFORMANCE.md` §6.
 - `boop.perf.on` reset in `boop_bootstrap.lua`.
 - New alias `src/aliases/boop/Diagnostics/Boop_Perf.lua` for `boop perf on|off|show|reset`.
-- `tools/check_release_gates.py` gains `--check architecture`, which builds the module dependency graph from **both** `boop.<namespace>.<member>` references **and** top-level `boop.<function>` references, each attributed to its defining module. Top-level attribution is not optional: a namespace-only graph misses seven of the nineteen reciprocal pairs. The check then:
-  1. **fails on any cycle** (SCC detection);
-  2. classifies every edge **allowed / legacy / forbidden** — additional calls along an allowed edge need no edit, a new unapproved edge fails, a legacy edge may shrink but never grow;
-  3. fails on `send(` outside the sanctioned sender set — initially `boop_util.lua` plus the twelve legacy sites, narrowed to `boop_wire.lua` alone in Phase 5;
-  4. fails if any top-level `boop.*` symbol is defined twice;
-  5. fails if `boop.tick` or `boop.executeAction` — the two retained external forwarders — is called from inside `src/scripts/boop/`. Internal callers must use the namespaced owner. Callers migrate together with the cohesive extraction that creates that owner, never twice.
-- **Staged cycle policy, in force through Phase 7.** The graph does not become acyclic until Phase 8, so every currently reciprocal edge is registered as `legacy` and the guardrail enforces monotonic improvement:
-  - existing legacy edges may only **disappear**, never grow back;
-  - **no new legacy edge** may appear;
-  - **no module may newly join a cyclic SCC**;
-  - **SCC size may only decrease**;
-  - new unapproved edges and forbidden edges always fail.
-  The guardrail does **not** fail on the cycles that exist today — that would fail on the first run. Unconditional cycle failure begins at Phase 8 acceptance.
+- `tools/check_release_gates.py` gains `--check architecture`, a **convention-based guard** for Boop's direct, statically visible architectural subset. It builds the graph from direct namespaced APIs, known direct top-level APIs, and direct shared-data references resolved to their semantic owners. It deliberately does not claim to analyze arbitrary valid Lua.
+- Production rejects architecture-obscuring indirection: aliased or parenthesized/bracket-computed `boop` roots, cross-module function captures, aliased/`_G` `send` and `sendGMCP`, compatibility-forwarder captures, and hidden owned-data mutation through aliases or `rawset`. Fourteen existing path-and-symbol patterns remain narrow documented legacy exceptions; Runtime's exact line-scoped schema-hydration `rawset` is a separate permanent exception. The only sanctioned string dependency is the existing Mudlet event-registration helper's literal `"boop.<symbol>"` callback, which resolves normally and fails closed when unknown.
+- **Direct data-resolution semantics** (declared in `ARCHITECTURE.md` §4, not inferred):
+  1. longest matching declared prefix wins — `boop.state.targeting.roomObservation` resolves to current owner `boop.runtime` even though `boop.state.targeting` resolves to `boop.targets`;
+  2. reads **and** writes both create an edge on the semantic owner;
+  3. a visible write by a non-owner is additionally a **mutation violation**; hidden mutation syntax is prohibited rather than followed through data flow;
+  4. **fail closed** — a direct Boop reference resolving to neither a known executable, declared owner, nor the shared kernel is a hard error; `boop.state` schema custody is exact-root only and never supplies fallback ownership for a new first-level domain;
+  5. defensive initialization (`boop.X = boop.X or {}`) creates no edge and transfers no ownership;
+  6. **exported locals are executable, not data** — `boop.ui.printHeader = uiPrintHeader` where the right-hand side is a local function. Without this rule 15 `boop.ui` members are misclassified.
+- The check rejects the authoritative hard-forbidden direct directions, duplicate direct exports, new direct outbound sender locations, and new direct internal uses of `boop.tick` or `boop.executeAction`. Attack-profile files are analyzed as `boop.attacks`; only the two exact `boop.attacks.register` definitions are exempted from duplicate-export failure.
+- **Staged cycle policy, in force through Phase 7.** The guard reports direct edges, reciprocal pairs, and SCCs as review evidence but does not maintain an occurrence tombstone ledger or formal SCC-history state machine. Unconditional cycle failure begins at Phase 8 acceptance.
 - `boop_bootstrap` is the composition root and has zero incoming edges, so it cannot be in a cycle. Graph analysis reports on the other modules by construction rather than by special-casing.
-- 
+- The historical `96384bc` facts remain documented reference data: 20 modules, 108 edges, 98 executable, 39 owned-data, 29 overlapping, 23 reciprocal pairs, and one SCC of 19. The current Phase-1 tree is 21 modules and 117 edges after exactly nine explicit Perf dependencies.
 
-**Tests** — new `tests/boop_perf_spec.lua`: disabled probes record nothing **and call neither clock**; enabled probes accumulate count, total, and max; `reset` clears; `boop.perf` is absent from `boop.defaults` and untouched by `saveConfig`; bootstrap resets `on` to `false`; `boop perf` command routing.
+**Tests** — `tests/boop_perf_spec.lua` covers disabled real probes and both clocks, exception-safe tokens, nesting overflow, normal/reversed/missing/multiple Vitals/Prompt correlation through the real production entry points, incomplete-epoch discard, unrelated/deferred ticks, parse-boundary and deep-copy counters, stale reserved DB rows, bootstrap reset, command routing, and trace independence. `tests/test_architecture_guard.py` covers allowed direct references, prohibited indirection, fail-closed unknown namespaces, ownership writes, exact attack-profile handling, duplicate exports, forbidden edges, outbound/forwarder baselines, and the current graph report.
 
-**Acceptance** — suite green · `boop perf show` renders with zero samples while disabled · the guardrail passes clean against today's graph, fails on an injected forbidden edge, fails on a new legacy edge, and fails if SCC size increases · `README.md` and the in-game diagnostics help topic document `boop perf` · no config-dashboard row added.
+**Acceptance** — suite green · `boop perf show` renders with zero samples while disabled · the convention guard passes today's graph and fails on prohibited indirection, forbidden direct edges, unresolved direct namespaces, duplicate exports, new sender sites, or new compatibility-forwarder sites · `README.md` and the in-game diagnostics help topic document `boop perf` · no config-dashboard row added.
 
 ---
 
@@ -122,9 +120,11 @@ Discovered during the audit. Each is a deliberate, approved change, isolated int
 
 **Invariant established:** package composition happens in one place; presentation primitives are shared without a dependency on `boop.ui`; persistence exchanges plain tables; and **no function is reachable under `boop.state`**.
 
-This phase closes **nine** of the nineteen reciprocal pairs. It does **not** produce a DAG — four pairs survive until Phase 8, which is where the graph becomes acyclic.
+This phase closes **twelve** of the twenty-three reciprocal pairs. It does **not** produce a DAG — five pairs survive until Phase 8, which is where the graph becomes acyclic.
 
 **4a — composition root (`init ↔ ui`, `events ↔ init`).** F6 approved. Move the `boop.ui.status("ready")` notification out of `boop_init.lua:207-208`, and relocate the wiring body of `boop.bootstrap()` — the ordered `init` calls into db, state, afflictions, rage, ih, triggers, skills, stats, and `boop.events.register()` — into `boop_bootstrap.lua`, the composition root. `boop_init.lua` keeps `boop.defaults`, the trigger-folder helpers, and the GMCP support announcement. **Observable package-load behaviour is preserved**: the same sequence runs in the same order and the same ready message appears at the same point.
+
+Also in 4a: **`boop_init` writes `boop.skills.desiredGroups`**, another module's owned data — a mutation violation. Replace the direct write with a `boop.skills.setDesiredGroups()` ingestion API.
 
 **4b — retire `boop_state.lua`.** The file defines `boop.state.init()`, a service function under the data-only state tree, and performs a **second** registry attachment.
 
@@ -146,15 +146,20 @@ This phase closes **nine** of the nineteen reciprocal pairs. It does **not** pro
 - The remaining 12 `gag -> ui` references (`_setScreen`, `consumeConfigReturnScreen`, `config`) come from the gag **colour-picker screens**, which are config screens that happen to be about gag. They move to the UI layer; `boop.gag` keeps palette resolution and line rendering.
 - The last `stats -> ui` reference is a dashboard click handler calling `boop.ui.setEnabled(true)` (`boop_stats.lua:2610`). Neighbouring rows already use the command-seeding pattern (`statsCommandAction(...)`); this row becomes consistent with them. Clicking it still enables hunting.
 
-**4e — dispatcher relocation (`runtime ↔ util`, `rage ↔ util`, `gag ↔ util`).** Create `boop_wire.lua` and move `boop.executeAction`, `boop.executeRageAction`, `prependAssist`, `markUnnamableMaulUsed`, `normalizeDispatchOptions`, and `dispatchAuthorityCurrent` into it. `boop.executeAction` is retained as an external forwarder; internal callers move to `boop.wire.*` in this phase, since this is the extraction that creates the owner. Phase 6 completes the Wire invariant.
+**4e — dispatcher relocation (`runtime ↔ util`, `rage ↔ util`, `gag ↔ util`, `targets ↔ util`).** Create `boop_wire.lua` and move `boop.executeAction`, `boop.executeRageAction`, `prependAssist`, `markUnnamableMaulUsed`, `normalizeDispatchOptions`, and `dispatchAuthorityCurrent` into it. Also re-own `boop.lists.separator` to the command concern — it is used only by `executeAction` and gag razeslash parsing, with zero targeting use.
 
-**4f — persistence port (`db ↔ stats`).** `boop.db.loadStats()` returns a table for the caller to apply rather than writing `boop.stats.lifetime.*` and `boop.stats.mobXp` directly; `boop.db.saveStats(table)` takes one. Removes all 37 `db -> stats` references without requiring the stats/report split, which stays in Phase 10.
+**G3, mandatory:** `boop.wire` must take `targetId` as a **parameter** from its caller rather than reading `boop.state.targeting.currentTargetId` (`boop_util.lua:346`). Without this the pair simply re-forms as `wire ↔ targets` in Phase 6 once targets routes `settarget` through wire. This is already implied by the transport-boundary definition; it is called out because it is easy to carry across unchanged. `boop.executeAction` is retained as an external forwarder; internal callers move to `boop.wire.*` in this phase, since this is the extraction that creates the owner. Phase 6 completes the Wire invariant.
+
+**4f — persistence ports (`db ↔ stats`, `db ↔ targets`).** Two applications of the same pattern:
+
+- `boop.db.loadStats()` returns a table for the caller to apply rather than writing `boop.stats.lifetime.*` and `boop.stats.mobXp` directly; `boop.db.saveStats(table)` takes one. Removes all 37 `db -> stats` references without requiring the stats/report split, which stays in Phase 10.
+- **G2:** `boop.db.loadLists()` likewise returns a table rather than writing `boop.lists` directly. Same inversion, same fix; it was missed originally because `boop.lists` ownership was undeclared.
 
 **Tests protecting it** — `boop_ui_spec`, `boop_ui_registry_spec`, `boop_menu_wiring_spec`, `boop_gag_spec`, `boop_stats_spec`, `boop_persistence_spec`, `boop_db_spec`, `boop_lifecycle_spec`, `boop_assist_spec`, `boop_prequeue_spec`, `boop_tick_spec`, and the whole suite via the migrated test helper.
 
 **New tests** — package load produces the same sequence and the same ready output · `boop.registry.attachUiConfigRegistries()` is invoked exactly once · registry data is complete with no `boop.ui` edge from the registry · every screen renders identically through `boop.render` · gag colour screens behave identically from their new home · the stats dashboard enable row still enables hunting · `boop.db.loadStats()` returns a table and mutates no `boop.stats` field · **no function value is reachable under `boop.state`** · the test helper's initialization path matches production's.
 
-**Acceptance** — identical observable behaviour including package-load output · nine reciprocal pairs closed (`init ↔ ui`, `events ↔ init`, `ui ↔ ui_registry`, `gag ↔ ui`, `stats ↔ ui`, `runtime ↔ util`, `rage ↔ util`, `gag ↔ util`, `db ↔ stats`) · SCC size strictly decreased · `boop_state.lua` no longer exists · **the graph is not yet acyclic; staged enforcement continues**.
+**Acceptance** — identical observable behaviour including package-load output · twelve reciprocal pairs closed (`init ↔ ui`, `events ↔ init`, `db ↔ init`, `ui ↔ ui_registry`, `gag ↔ ui`, `stats ↔ ui`, `runtime ↔ util`, `rage ↔ util`, `gag ↔ util`, `targets ↔ util`, `db ↔ stats`, `db ↔ targets`) · zero mutation violations remaining in `boop_init` · SCC size strictly decreased · `boop_state.lua` no longer exists · **the graph is not yet acyclic; staged enforcement continues**.
 
 ---
 
@@ -231,7 +236,7 @@ Carries the **F4 investigation** (no behaviour change): determine whether the tr
 
 **Invariant established:** each stateful feature machine owns its own state domain in its own module, **and the module dependency graph contains no non-trivial SCC**.
 
-This phase closes the last four reciprocal pairs, because the cohesive gold, inventory, and interrupt extraction is what finally gives the remaining top-level `boop_events` functions an owner:
+This phase closes the last five reciprocal pairs. Four of them depend on the cohesive gold, inventory, and interrupt extraction, which is what finally gives the remaining top-level `boop_events` functions an owner; the fifth is a data pair pulled forward so the milestone actually holds:
 
 | Pair | Closed by moving |
 |---|---|
@@ -239,6 +244,12 @@ This phase closes the last four reciprocal pairs, because the cohesive gold, inv
 | `events ↔ safety` | `boop.clearGoldQueueIntent` → `boop.gold` |
 | `events ↔ ui` | `boop.clearGoldQueueIntent`, `boop.displaceGoldQueueIntent` → `boop.gold` |
 | `events ↔ runtime` | `boop.tryVenomConfusionDiag` → `boop.interrupt` |
+| `stats ↔ targets` | **G1**, two parts — see below |
+
+**G1** is a data pair, pulled forward from Phases 10 and 12 so that Phase 8 genuinely produces a DAG:
+
+- delete the single `boop.state.targeting` read at `boop_stats.lua:1501`, passing the target id in instead. Already required by "stats observes, never controls";
+- move the two `boop.stats.formatMobXp` calls at `boop_targets.lua:1597` and `:1643` out of list rendering into the report layer.
 
 Internal callers migrate **with** each extraction, not before it — no caller is moved twice.
 
@@ -246,9 +257,9 @@ Internal callers migrate **with** each extraction, not before it — no caller i
 
 **Tests** — `boop_gold_spec`, `boop_gold_retry_spec` (1,799 lines), `boop_interrupt_spec`, `boop_pull_spec`, `boop_diag_spec`, `boop_diag_timeout_spec`, `boop_wield_spec`, `boop_trace_spec`.
 
-**Acceptance** — trace output byte-identical for the gold flows the trace spec asserts · no timer creation or lock mutation remains in any `boop_ui*` file · `boop_events.lua` contains only `on*` handlers · **the graph contains no non-trivial SCC, the legacy edge list is empty, and `--check architecture` switches to unconditional cycle failure** · no internal caller of `boop.tick` or `boop.executeAction` remains.
+**Acceptance** — trace output byte-identical for the gold flows the trace spec asserts · no timer creation or lock mutation remains in any `boop_ui*` file · `boop_events.lua` contains only `on*` handlers · **the supported graph contains no non-trivial SCC and `--check architecture` switches to unconditional cycle failure** · no internal caller of `boop.tick` or `boop.executeAction` remains.
 
-**New tests** — a guardrail test asserting the complete top-level-aware graph has no non-trivial SCC and an empty legacy list.
+**New tests** — a guardrail test asserting the supported direct-reference graph has no non-trivial SCC.
 
 **Risk** — the interrupt extraction is the highest-behavioural-risk move in the roadmap. Land it alone, with a live session pass over `diag`, `matic`, `fly`, `leap`, and one `pull` round trip.
 

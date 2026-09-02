@@ -164,6 +164,11 @@ function M.reset()
     separator = "/",
   }
 
+  if boop.perf then
+    boop.perf.setEnabled(false)
+    boop.perf.reset()
+  end
+
   resetTableData(boop.state)
   boop.state.init()
   boop.state.lifecycle.promptSeen = true

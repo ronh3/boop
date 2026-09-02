@@ -26,6 +26,7 @@ end
 
 loadBoop("boop_init.lua")
 loadBoop("boop_util.lua")
+loadBoop("boop_perf.lua")
 loadBoop("boop_theme.lua")
 loadBoop("boop_skills.lua")
 loadBoop("boop_db.lua")

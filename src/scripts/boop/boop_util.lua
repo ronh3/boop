@@ -301,6 +301,10 @@ local function dispatchAuthorityCurrent(options, boundary)
   return not not valid
 end
 
+local function rawSendCommand(command)
+  send(command, false)
+end
+
 function boop.executeAction(action, forceQueue, options)
   if not action or action == "" then return false end
   options = normalizeDispatchOptions(options)
@@ -373,7 +377,11 @@ function boop.executeAction(action, forceQueue, options)
         role
       )
     end
-    send(command, false)
+    if boop.perf.on then
+      boop.perf.measure("wire.send", nil, rawSendCommand, command)
+    else
+      rawSendCommand(command)
+    end
   end
 
   if queued then

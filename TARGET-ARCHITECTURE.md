@@ -8,7 +8,7 @@ This is **not a rewrite**. Every module below is formed by moving existing funct
 
 ## 1. What problem this solves
 
-`ARCHITECTURE.md` §3 records the measured state. Of the 20 script modules, `boop_bootstrap` is the composition root with zero incoming edges; the other **19 form a single strongly-connected component**, containing **nineteen directly reciprocal pairs** (`A ↔ B`) and a large number of longer directed cycles.
+`ARCHITECTURE.md` §3 records the measured state. Of the 20 script modules, `boop_bootstrap` is the composition root with zero incoming edges; the other **19 form a single strongly-connected component** across **108 unique dependency edges**, containing **twenty-three directly reciprocal pairs** (`A ↔ B`) and a large number of longer directed cycles.
 
 Three modules concentrate the problem:
 
@@ -16,7 +16,9 @@ Three modules concentrate the problem:
 - **`boop_util`** holds the command dispatcher (`executeAction`), so the string-helpers module calls into `runtime`, `gag`, and `rage`.
 - **`boop_events`** owns 42 top-level `boop.<function>` symbols — `tick`, `canAct`, `getWieldedItem`, `clearGoldQueueIntent`, `requestRoomItemsOnce` and the rest — which six other modules call directly. This alone accounts for six reciprocal pairs.
 
-Closing them is staged across four phases: Phase 3 closes five, Phase 4 nine, Phase 5 one, and **Phase 8 the final four**. The last group depends on the cohesive gold, inventory, and interrupt extraction, because that is what gives the remaining `boop_events` top-level functions an owner. **Phase 8 is therefore the point at which the graph becomes acyclic** — not Phase 4.
+A fourth source is not a module but a missing rule: **shared data**. Four pairs exist only because one module reads or writes another's state or lists — `db ↔ init`, `db ↔ targets`, `stats ↔ targets`, `targets ↔ util`. They are invisible to an executable-only graph, which is why data references are part of the dependency model (§3) and why ownership is declared explicitly rather than inferred from assignment order.
+
+Closing them is staged across four phases: Phase 3 closes five, Phase 4 twelve, Phase 5 one, and **Phase 8 the final five**. The last group depends on the cohesive gold, inventory, and interrupt extraction, because that is what gives the remaining `boop_events` top-level functions an owner. **Phase 8 is therefore the point at which the graph becomes acyclic** — not Phase 4.
 
 The target is a directed acyclic graph with one owner per concept.
 
@@ -38,37 +40,27 @@ The target is a directed acyclic graph with one owner per concept.
 
 ### The binding invariant
 
-**The module dependency graph is a DAG.** Every edge is classified, and `tools/check_release_gates.py --check architecture` enforces both the classification and acyclicity.
+**The target module dependency graph is a DAG.** `tools/check_release_gates.py --check architecture` enforces Boop's direct-reference coding convention and builds the supported graph from it. Before Phase 8, the existing cycles are reported as migration evidence. At Phase 8 acceptance, acyclicity becomes a hard gate.
 
-| Class | Meaning | Guardrail behaviour |
-|---|---|---|
-| **allowed** | A sanctioned direction. | Any number of calls. Adding calls along it never requires an edit. |
-| **legacy** | An edge that exists today and is scheduled for removal or a decision. | May shrink, never grow. A phase deletes it or promotes it to allowed. |
-| **forbidden** | Never permissible. | Fails immediately. |
+Supported edges come from direct namespaced executable references, direct known top-level executable references, and **direct shared-data references resolved to their declared semantic owner**. Data reads and writes both create edges. The single graph exception is the **shared kernel** (`boop.config`, `boop.version`); `boop.defaults` remains ordinary owned data belonging to `boop.init`.
+
+This is a repository subset, not a claim about arbitrary valid Lua. Cross-module references must remain statically visible. Aliasing `boop`, parenthesized or bracket-computed roots, captured cross-module functions, aliased/`_G` outbound calls, compatibility-forwarder captures, and hidden owned-data mutation are rejected as unsupported architectural indirection. The sole sanctioned string dependency is a literal `"boop.<symbol>"` passed through `boop.events.register()`'s existing local helper to Mudlet's string-callback event API; it resolves to the symbol's normal owner and unknown symbols fail closed. The guard does not implement general alias, string, or data-flow analysis beyond that exact mechanism.
 
 Forbidden edges:
 
 - `runtime` -> any decision, orchestration, or presentation module
 - `db` -> `stats`
 - `stats` -> `ui`
+- `gag` -> `ui`
+- `registry` -> any other module
 - `util` -> any boop module except `theme`
 - `send(` outside `boop.wire`
 
-**Any cycle fails, regardless of edge classification.**
-
 ### Enforcement schedule
 
-Cycle enforcement tightens in two stages, because the graph is not acyclic until Phase 8 completes.
+**Through Phase 7**, the guard reports current direct edges, reciprocal pairs, and SCC membership for review and rejects the hard forbidden directions above. The historical 96384bc facts remain documented reference data; the tool does not maintain occurrence tombstones or a formal SCC-history ratchet.
 
-**Through Phase 7**, every currently reciprocal edge is registered as `legacy`, and the guardrail enforces monotonic improvement:
-
-- existing legacy edges may only **disappear**, never grow back;
-- **no new legacy edge** may appear;
-- **no module may newly join a cyclic SCC**;
-- **SCC size may only decrease**;
-- new unapproved edges and forbidden edges always fail.
-
-**On Phase 8 acceptance**, the graph must contain **no non-trivial SCC** and the legacy list must be **empty**. From that point, any cycle is an unconditional hard CI failure.
+**On Phase 8 acceptance**, the supported graph must contain **no non-trivial SCC**. From that point, any direct-reference cycle is an unconditional hard CI failure, with the source convention preventing hidden cross-module dependencies from being an accepted escape hatch.
 
 ### The composition root
 
@@ -144,7 +136,7 @@ New modules are marked *. Provenance lets each move be traced to its source.
 | `boop.targets` | | `boop_targets` | Denizen inventory, selection, game-target sync | `state.targeting` | State ownership |
 | `boop.lists` | * | `boop_targets` | Whitelist/blacklist/tag data, ordering, membership queries | `boop.lists.*` | **State ownership** — a user-edited, persisted lifecycle distinct from per-tick selection |
 | `boop.share` | * | `boop_targets` | Party whitelist-share packet encode/decode, sender trust, pending application | `state.targeting.incomingWhitelistShares` | **Transport boundary** (party chat) |
-| `boop.attacks` | | `boop_attacks` | Profile registry, standard and rage selection, command modifiers. **Loses `execute`** | `attacks.registry`, `state.combat.temporaryAttackPreferences` | Becomes purely a decision module |
+| `boop.attacks` | | `boop_attacks` | Profile registry, standard and rage selection, command modifiers. **Loses `execute`** | `attacks.registry`, `state.combat.openerUsedByClass`, `state.combat.temporaryAttackPreferences` | Becomes purely a decision module |
 | `boop.rage` | | `boop_rage` | Readiness, global cooldown, Triumph credit, gain sampling, affliction ingestion | `state.rage` | Lifecycle ownership |
 | `boop.safety` | | `boop_safety` | Flee policy and execution. **No longer sends directly** | `state.combat.fleeing` | **Reusable policy** |
 | `boop.inventory` | * | `boop_events` | Wielded-hand tracking, inventory snapshots | `state.inventory` | **State ownership**, with a real consumer — `attacks` Depthswalker weapon designation currently reaches a bare global `boop.getWieldedItem` |
@@ -203,32 +195,49 @@ Conflating these is what let `boop.state.init()` exist and let six modules mutat
 
 **Semantic ownership — one module per field or subtree.** Owns the meaning and the invariants: which transitions are legal, what evidence justifies a write, and which generation a value belongs to. The semantic owner is the only module permitted to mutate that subtree; everyone else reads, or calls an ingestion API.
 
-| Subtree | Semantic owner | Everyone else |
-|---|---|---|
-| `combat.hunting`, `.attacking`, `.limiters` | `boop.combat` | read |
-| `combat.fleeing` | `boop.safety` | read |
-| `combat.class`, `.spec` | `boop.events` (adapter, via a runtime ingestion API) | read |
-| `combat.blockersByOwner`, `.operationLock` | `boop.locks` | read; mutate only through the lock API |
-| `combat.pullState` | `boop.interrupt` | read |
-| `combat.temporaryAttackPreferences` | `boop.attacks` | read |
-| `targeting.currentTargetId`, `.targetName`, `.targetShield`, `.denizens`, `.gameTargetSync` | `boop.targets` | read |
-| `targeting.roomObservation`, `.movementIntent` | `boop.room` | read; mutate only through the observation API |
-| `targeting.incomingWhitelistShares` | `boop.share` | read |
-| `queue.standard*` | `boop.standard` | read |
-| `queue.outbound*` | `boop.wire` | read |
-| `queue.prequeue*`, `.balanceReadyAt`, `.equilibriumReadyAt`, `.alias*` | `boop.combat` | read |
-| `gold.*` | `boop.gold` | read |
-| `diag.*` | `boop.interrupt` | read |
-| `walk.*` | `boop.walk` | read |
-| `inventory.*` | `boop.inventory` | read |
-| `rage.*` | `boop.rage` | read |
-| `gag.pending*` | `boop.combatlog` | read |
-| `lifecycle.*` | `boop.runtime` (ingestion API called by adapters) | read |
-| `trace.*` | `boop.trace` | — |
-| `ui.*` | `boop.ui` | — |
-| `ih.*` | `boop.ih` | — |
+Current owners are recorded in `ARCHITECTURE.md` §4; this table is the target, with the phase that moves each one.
+
+| Subtree | Target semantic owner | Moves in | Everyone else |
+|---|---|---|---|
+| `combat.hunting`, `.attacking`, `.limiters` | `boop.combat` | P3 | read |
+| `combat.fleeing` | `boop.safety` | P3 | read |
+| `combat.class`, `.spec` | `boop.events` (adapter, via a runtime ingestion API) | P2a | read |
+| `combat.blockersByOwner`, `.operationLock` | `boop.locks` | P5 | read; mutate only through the lock API |
+| `combat.pullState` | `boop.interrupt` | P8 | read |
+| `combat.openerUsedByClass`, `.temporaryAttackPreferences` | `boop.attacks` | already | read |
+| `targeting.currentTargetId`, `.targetName`, `.targetShield`, `.denizens`, `.gameTargetSync` | `boop.targets` | already | read |
+| `targeting.roomObservation`, `.movementIntent` | `boop.room` | P5 | read; mutate only through the observation API |
+| `targeting.incomingWhitelistShares` | `boop.share` | P12 | read |
+| `queue.standard*` | `boop.standard` | P6 | read |
+| `queue.outbound*` | `boop.wire` | P4e | read |
+| `queue.prequeue*`, `.balanceReadyAt`, `.equilibriumReadyAt`, `.alias*` | `boop.combat` | P3 | read |
+| `gold.*` | `boop.gold` | P8 | read |
+| `diag.*` | `boop.interrupt` | P8 | read |
+| `walk.*` | `boop.walk` | already (runtime writes today) | read |
+| `inventory.*` | `boop.inventory` | P8 | read |
+| `rage.*` | `boop.rage` | already | read |
+| `gag.pending*` | `boop.combatlog` | P9 | read |
+| `lifecycle.*` | `boop.runtime` (ingestion API called by adapters) | already | read |
+| `trace.*` | `boop.trace` | P7 | — |
+| `ui.*` | `boop.ui` | already | — |
+| `ih.*` | `boop.ih` | already | — |
 
 Ownership is non-overlapping at subtree granularity. Where a domain splits across owners — `combat` and `queue` do — the split is by named subtree, and the table above is the authority.
+
+Data outside `boop.state` follows the same model:
+
+| Namespace | Current owner | Target owner | Moves in |
+|---|---|---|---|
+| `boop.lists` | `boop.targets` | `boop.lists` module | P12 |
+| `boop.lists.separator` | command/dispatch concern in `boop_util` | `boop.wire` | P4e |
+| `boop.handlers` | `boop.events` | unchanged | — |
+| `boop.attacks.registry`, `.pendingRegistry` | `boop.attacks` | unchanged | — |
+| `boop.skills.*` | `boop.skills` | unchanged; `desiredGroups` gains an ingestion API | P4a |
+| `boop.stats.*` | `boop.stats` | unchanged; `db` exchanges plain tables | P4f |
+| `boop.db.handle` | `boop.db` | unchanged; UI raw access removed | P11 |
+| `boop.registry.*`, `boop.ui.{modes,presets,helpTopics,screens}` | `boop.registry` | unchanged; registration inverted | P4c |
+| `boop.config`, `boop.version` | **shared kernel — no owner** | unchanged | — |
+| `boop.defaults` | `boop.init` | unchanged | — |
 
 ### Where the acting code lives
 

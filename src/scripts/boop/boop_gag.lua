@@ -1462,7 +1462,7 @@ function boop.gag.onHealthLostLine(amount, dtype, _rawLine)
   end
 end
 
-function boop.gag.onAttackLine(spec, matchTable, rawLine)
+local function parseAttackLine(spec, matchTable, rawLine)
   local actor = boop.util.trim(resolveCapture(spec and spec.actor, matchTable))
   if actor == "" then
     actor = findLikelyActor(matchTable)
@@ -1494,6 +1494,27 @@ function boop.gag.onAttackLine(spec, matchTable, rawLine)
   if selfActor and normName(ability) == "raze" and consumeRazeslashIntent() then
     ability = "Razeslash"
   end
+
+  return true, actor, selfActor, victim, ability, battlerage
+end
+
+function boop.gag.onAttackLine(spec, matchTable, rawLine)
+  local proceed, actor, selfActor, victim, ability, battlerage
+  if boop.perf.on then
+    proceed, actor, selfActor, victim, ability, battlerage =
+      boop.perf.measure(
+        "combatlog.line",
+        nil,
+        parseAttackLine,
+        spec,
+        matchTable,
+        rawLine
+      )
+  else
+    proceed, actor, selfActor, victim, ability, battlerage =
+      parseAttackLine(spec, matchTable, rawLine)
+  end
+  if not proceed then return end
 
   if boop.stats and boop.stats.onAttackLine then
     boop.stats.onAttackLine(actor, selfActor, ability, victim)

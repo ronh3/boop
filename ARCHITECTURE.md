@@ -33,13 +33,15 @@ init → util → theme → skills → db → runtime → state → afflictions 
 
 **As the current function bodies are written**, definitions are order-independent: every cross-module reference resolves at call time through the `boop` global, and all guarded call sites use the `if boop.x and boop.x.y then` idiom. This is a property of the code as it stands, not a guarantee of the language — a function body that read another module's table at definition time, or a file that captured a `boop.*` value into an upvalue at load, would reintroduce order sensitivity.
 
-Three places execute work at load time today, all deliberate registration mechanisms:
+Approved load-time work falls into these current classes:
 
-1. **`attacks/attack_profile_bootstrap.lua`** defines `boop.attacks.register` as a queueing stub *if and only if* `boop_attacks.lua` has not already defined the real one. `boop.attacks.flushPendingProfiles()` later drains the queue. This makes profile files load-order tolerant and lets the spec suite `dofile` a profile standalone.
-2. **`boop_ui_registry.lua`** calls `boop.registry.attachUiConfigRegistries()` at its tail, installing the config/UI registry tables and their metatable fallbacks.
-3. **`boop_bootstrap.lua`** runs last: it resets session-local runtime flags and calls `boop.bootstrap()`.
+- **Namespace, schema, and function/export definition**, including defensive `boop.<namespace> = boop.<namespace> or {}` initialization.
+- **Attack-profile registration.** `attacks/attack_profile_bootstrap.lua` defines `boop.attacks.register` as a queueing stub *if and only if* `boop_attacks.lua` has not already defined the real one; profile files register at load time and `boop.attacks.flushPendingProfiles()` later drains the queue.
+- **Registry attachment.** `boop_ui_registry.lua` calls `boop.registry.attachUiConfigRegistries()` at its tail, installing the config/UI registry tables and their metatable fallbacks.
+- **Performance probe registration.** Instrumented modules call `boop.perf.register(...)` after defining the wrapped functions. `boop_perf.lua` initializes session-local probe storage and safely unwraps a prior source-load generation before accepting those registrations.
+- **Composition-root startup.** `boop_bootstrap.lua` runs last, resets session-local runtime flags, and calls `boop.bootstrap()`.
 
-Anything else that performs behaviorally significant work at load time is a defect.
+Any new behaviorally significant class or site of load-time work must be explicitly documented here and reviewed. Undocumented load-time behavior is a defect.
 
 ---
 
@@ -76,26 +78,38 @@ The left column is the file; the right column is what it *actually* owns, which 
 
 ### Graph shape
 
-The dependency graph is built from two kinds of reference, with comments stripped:
+Boop deliberately uses a **convention-based, statically analyzable architectural subset**. The guard tokenizes enough Lua to recognize direct references while keeping comments and strings opaque. It is not a general Lua parser or data-flow analyzer. The graph is built from three kinds of supported direct reference:
 
-- **namespaced** — `boop.<namespace>.<member>`, attributed to the module that defines the namespace's first member;
-- **top-level** — `boop.<function>`, attributed to the module that defines it.
+- **namespaced executable** — `boop.<namespace>.<member>`, attributed to the module that defines the namespace's first member;
+- **top-level executable** — `boop.<function>`, attributed to the module that defines it;
+- **shared data** — a read or write of a declared data namespace or subtree, attributed to its **explicitly declared semantic owner** (§4).
 
-Both are required. An earlier namespace-only analysis missed seven reciprocal pairs, because `boop_events` alone owns 42 top-level functions that six other modules call. Counts throughout this document are **occurrences**, not lines containing a reference.
+All three are required, and each was added because omitting it hid real coupling. A namespace-only graph misses six reciprocal pairs, because `boop_events` alone owns 42 top-level functions that six other modules call. Adding data references surfaces four more. Counts throughout this document are **occurrences**, not lines containing a reference.
 
-One attribution caveat remains: a namespace belongs to whichever module defines its first member, so `boop.trace` counts as `boop_util` and `boop.triggers` as `boop_init`.
+The coding convention is part of the protection. Cross-module code uses direct forms such as `boop.targets.choose()` and `boop.state.targeting.currentTargetId`. Architecture-obscuring forms are rejected: `local b = boop`, `(boop).targets`, `boop["targets"]`, function captures such as `local f = boop.tick`, aliases or `_G` access for `send`/`sendGMCP`, and owned-data mutation through aliases or `rawset`. The guard does not try to recover the hidden dependency semantically. Fourteen current path-and-symbol legacy exceptions cover seven computed owned-data writes, pre-existing `boop_events` state aliases, four `boop_stats` rendering captures, and the protected compatibility-forwarder call in `boop_attacks`; they are not permission for new indirection. Separately, the exact `rawset(state, domain, current)` in `boop_runtime.lua:247` is a permanent line-scoped schema-custody exception, not architectural debt.
 
-The package contains **20 script modules**. `boop_bootstrap` has **zero incoming edges** — nothing references it — so it cannot participate in any cycle. It is the **composition root**, and graph analysis excludes it by construction rather than by special-casing.
+One narrow string form is architectural by necessity: inside `boop.events.register()`, its existing local `add(event, fn)` helper passes literal `"boop.<symbol>"` callbacks to Mudlet's `registerAnonymousEventHandler`. The guard resolves only that handler-registration shape to the symbol's normal owner and fails closed if the literal names an unknown Boop symbol. Other strings remain opaque and do not create dependencies.
+
+Two direct-reference rules matter enough to state here:
+
+- **Exported locals are executable, not data.** `boop.ui.printHeader = uiPrintHeader`, where `uiPrintHeader` is a local function, is a function export. Without this rule 15 members of `boop.ui` are misclassified as data (`boop_ui.lua:101`, `:1124`, `:1132`, `:1133`, `:1157`).
+- **A namespace belongs to whichever module defines its first member**, so `boop.trace` counts as `boop_util` and `boop.triggers` as `boop_init`.
+
+The package contains **20 script modules** and **108 unique dependency edges**: 98 executable/API directions and 39 semantically owned-data directions, with 29 directions present in both sets. This corrects the earlier 109 count after the final shared-kernel reconciliation made `boop.defaults` ordinary data owned by `boop.init`. `boop_bootstrap` has **zero incoming edges** — nothing references it — so it cannot participate in any cycle. It is the **composition root**, and graph analysis excludes it by construction rather than by special-casing.
 
 The remaining **19 modules form a single strongly-connected component**. Every one of them can reach every other by some directed path.
 
+The Phase-1 working tree is tracked separately from that historical reference. It contains **21 modules** after adding `boop_perf` and **117 unique directions**: the frozen 108 plus exactly nine reviewed telemetry edges into Perf. Of those current directions, 107 are executable/API and 44 are owned-data, with 34 directions in both sets. It retains the same 23 reciprocal pairs, the same 19-member SCC, `boop_bootstrap` as the sole composition root, and zero unresolved direct references or duplicate direct exports.
+
 Terminology used below:
 
-- **Directly reciprocal pair (`A ↔ B`)** — both `A → B` and `B → A` exist. There are **nineteen**.
+- **Directly reciprocal pair (`A ↔ B`)** — both `A → B` and `B → A` exist. There are **twenty-three**.
 - **Directed cycle** — any closed path of arbitrary length. The SCC implies a very large number; they are not enumerated.
 - **SCC** — the maximal set of mutually reachable modules. There is one non-trivial SCC, of size 19.
 
-### The nineteen directly reciprocal pairs
+### The twenty-three directly reciprocal pairs
+
+Pairs marked **(data)** exist only because of a shared-data reference and are invisible to an executable-only graph.
 
 | Pair | Reverse edge caused by | Closed by |
 |---|---|---|
@@ -104,22 +118,26 @@ Terminology used below:
 | `runtime ↔ safety` | `tickStep` calls `safety.shouldFlee` (`:3906`, `:3954`), `applyEffects` calls `safety.flee` (`:4140`) | Phase 3 |
 | `runtime ↔ walk` | `applyEffects` calls `walk.maybeAdvance` (`:4133`) | Phase 3 |
 | `events ↔ targets` | `boop_targets` calls the top-level `boop.tick` and `boop.refreshPrequeuedStandard` | Phase 3 |
-| `runtime ↔ util` | util→runtime 16 from `executeAction`; runtime→util 14 for string helpers and `boop.trace` | Phase 4 |
-| `rage ↔ util` | `boop_util.markUnnamableMaulUsed` calls `rage.setReady` (`boop_util.lua:208`) | Phase 4 |
-| `gag ↔ util` | `executeAction` calls `gag.noteStandardIntent`; gag→util 108, mostly `boop.util` and `boop.trace` | Phase 4 |
-| `db ↔ stats` | db→stats 37 (`loadStats` writes `boop.stats.lifetime` directly); stats→db 8 | Phase 4 |
-| `stats ↔ ui` | stats→ui 47 — 46 rendering primitives plus one dashboard click handler calling `ui.setEnabled`; ui→stats 9 | Phase 4 |
-| `gag ↔ ui` | gag→ui 22 — 10 rendering primitives plus 12 screen and navigation calls from the gag colour screens; ui→gag 29 | Phase 4 |
-| `init ↔ ui` | init→ui 2: `boop.bootstrap()` calls `ui.status("ready")` (`boop_init.lua:207–208`). ui→init: `boop.triggers.syncEnabled()` (`boop_ui.lua:1266–1267`) plus the top-level `boop.getShieldMode` | Phase 4 |
-| `ui ↔ ui_registry` | registry→ui 48 — config-setter closures invoking `boop.ui.*Command`/`set*` at call time; ui→registry 20 | Phase 4 |
-| `events ↔ init` | events calls the top-level `boop.requestCoreSupports` and `boop.resetShieldMode`; init calls the top-level `boop.reconcileIreSupport` and `boop.events.register` from `boop.bootstrap()` | Phase 4 |
+| `init ↔ ui` | init→ui 2: `boop.bootstrap()` calls `ui.status("ready")` (`boop_init.lua:207–208`). ui→init: `boop.triggers.syncEnabled()` (`boop_ui.lua:1266–1267`) plus the top-level `boop.getShieldMode` | Phase 4a |
+| `events ↔ init` | events calls the top-level `boop.requestCoreSupports` and `boop.resetShieldMode`; init calls the top-level `boop.reconcileIreSupport` and `boop.events.register` from `boop.bootstrap()` | Phase 4a |
+| **`db ↔ init` (data)** | db→init: reads `boop.defaults` to cast persisted config values. init→db: `boop.db.init()` from `boop.bootstrap()` | Phase 4a |
+| `ui ↔ ui_registry` | registry→ui 48 — config-setter closures invoking `boop.ui.*Command`/`set*` at call time; ui→registry 20 | Phase 4c |
+| `stats ↔ ui` | stats→ui 47 — 46 rendering primitives plus one dashboard click handler calling `ui.setEnabled`; ui→stats 9 | Phase 4d |
+| `gag ↔ ui` | gag→ui 22 — 10 rendering primitives plus 12 screen and navigation calls from the gag colour screens; ui→gag 29 | Phase 4d |
+| `runtime ↔ util` | util→runtime 16 from `executeAction`; runtime→util 14 for string helpers and `boop.trace` | Phase 4e |
+| `rage ↔ util` | `boop_util.markUnnamableMaulUsed` calls `rage.setReady` (`boop_util.lua:208`) | Phase 4e |
+| `gag ↔ util` | `executeAction` calls `gag.noteStandardIntent`; gag→util 108, mostly `boop.util` and `boop.trace` | Phase 4e |
+| **`targets ↔ util` (data)** | util→targets: `executeAction` reads `boop.state.targeting.currentTargetId` (`boop_util.lua:346`). targets→util: `boop.util`, `boop.trace` | Phase 4e |
+| `db ↔ stats` | db→stats 37 (`loadStats` writes `boop.stats.lifetime` directly); stats→db 8 | Phase 4f |
+| **`db ↔ targets` (data)** | db→targets: `loadLists()` writes `boop.lists` directly. targets→db: `boop.db.saveList` | Phase 4f |
 | `events ↔ walk` | `boop_walk` calls the top-level `boop.requestRoomItemsOnce` | Phase 5 |
 | `attacks ↔ events` | `boop_attacks` calls the top-level `boop.canAct`, `boop.canUseRage`, and `boop.getWieldedItem` | Phase 8 |
 | `events ↔ runtime` | `boop_runtime` calls the top-level `boop.tick`, `boop.retryStandardDispatch`, `boop.onStandardLifecycleTerminal`, and `boop.tryVenomConfusionDiag` | Phase 8 |
 | `events ↔ safety` | `boop_safety` calls the top-level `boop.clearGoldQueueIntent` | Phase 8 |
 | `events ↔ ui` | `boop_ui` calls the top-level `boop.tick`, `boop.schedulePrequeue`, `boop.refreshPrequeuedStandard`, `boop.clearGoldQueueIntent`, and `boop.displaceGoldQueueIntent` | Phase 8 |
+| **`stats ↔ targets` (data)** | stats→targets: one read of `state.targeting.currentTargetId` (`boop_stats.lua:1501`). targets→stats: `onTargetSet` push (`:484`) plus two `formatMobXp` calls in list rendering (`:1597`, `:1643`) | Phase 8 |
 
-Phase 3 closes five, Phase 4 nine, Phase 5 one, and **Phase 8 the final four** — at which point the graph is acyclic. The last pairs depend on the cohesive gold, inventory, and interrupt extraction, because that is what gives the remaining top-level `boop_events` functions an owner. See `REFACTOR-ROADMAP.md`.
+Phase 3 closes five, Phase 4 twelve, Phase 5 one, and **Phase 8 the final five** — at which point the graph is acyclic. The last pairs depend on the cohesive gold, inventory, and interrupt extraction, because that is what gives the remaining top-level `boop_events` functions an owner. See `REFACTOR-ROADMAP.md`.
 
 `boop_events` references `boop.runtime.*` **181 times**. The two files are one tangled subsystem separated by history rather than by design.
 
@@ -127,7 +145,7 @@ Phase 3 closes five, Phase 4 nine, Phase 5 one, and **Phase 8 the final four** �
 
 ### Top-level symbol ownership
 
-Fifty top-level `boop.<function>` symbols exist, and twenty are called across module boundaries. `boop_events` owns 42 of the 50, which is why it participates in six of the nineteen pairs.
+Fifty top-level `boop.<function>` symbols exist, and twenty are called across module boundaries. `boop_events` owns 42 of the 50, which is why it participates in six of the twenty-three pairs.
 
 | Owner | Count | Cross-module examples |
 |---|---|---|
@@ -185,6 +203,73 @@ The legacy flat `boop.state.<key>` bridge was removed on this branch. `CODEX.md`
 | `boop.handlers` | Registered anonymous event-handler ids |
 
 Stats state outside the canonical tree is the largest ownership gap: it is mutated by `boop_db`, `boop_gag`, `boop_targets`, `boop_safety`, `boop_attacks`, and `boop_events`.
+
+### Shared-data ownership
+
+**Physical table initialization does not establish architectural ownership.** `boop.lists = boop.lists or {}` in `boop_init.lua` is defensive bootstrap, not a claim. Executable ownership is *inferred* from Lua definitions and exports; **shared-data ownership is explicit, semantic, and versioned** — declared in this section and nowhere else.
+
+This distinction is load-bearing, not stylistic. A first-assignment rule was measured against this tree and invents six reciprocal pairs — including `runtime ↔ state` and `init ↔ util`, artifacts of where a table happened to be initialized — while losing two genuine pairs by misattribution. It measures assignment history, not architecture.
+
+**Resolution rules.** For supported direct references, the longest matching declared prefix wins. Reads and writes both create a dependency edge on the semantic owner. A visible write by a non-owner is additionally a **mutation violation**, reported separately from the graph. Defensive initialization creates no edge and transfers no ownership. **A direct reference resolving to neither a declared owner nor the shared kernel is a hard error.** Indirect mutation is prohibited by convention instead of being followed through arbitrary Lua data flow.
+
+#### Shared kernel — no module owner, no edges
+
+| Namespace | Why |
+|---|---|
+| `boop.config` | Six modules write it, fifteen read it. No module has a defensible claim; forcing one manufactures 1–5 fictional pairs (measured: init +5, registry +3, db +1). Structurally it is already three-way — **schema** owned by `boop.registry`, **persistence** by `boop.db`, **values** written by whichever module owns that setting's semantics. |
+| `boop.version` | Written once by `boop_init`, read by `boop_ui`. S1. |
+
+This list is **closed and versioned**. Adding to it requires editing this section — the reviewable act that keeps the exemption from becoming a blind spot. Kernel namespaces are exempt from the *graph*, not from *governance*: a module may write only config keys whose semantics it owns, through the registry's setter path.
+
+#### Pure data namespaces
+
+| Namespace | Defensive init in | Actual writers | Semantic owner |
+|---|---|---|---|
+| `boop.defaults` | — | init | **`boop.init`** — DB reads create `db → init`; writes are restricted to init |
+| `boop.lists` | `boop_targets` (8), `boop_init` (6) | db 8, ui 6, targets 3 | **`boop.targets`** — not `boop_init` |
+| `boop.lists.separator` | `boop_init` | init | **command/dispatch** — used only by `executeAction` and gag razeslash parsing; zero targeting use |
+| `boop.handlers` | `boop_init` | events 2 | `boop.events` |
+| `boop.gmcp` | `boop_init` | init | `boop.init` — not cross-module |
+| `boop.bootstrapped` | — | init | `boop.init` — not cross-module |
+
+#### Data subtrees under executable namespaces
+
+| Subtree | Cross-module access | Semantic owner |
+|---|---|---|
+| `boop.attacks.registry`, `.pendingRegistry` | `boop_ui` reads (3 sites) | `boop.attacks` |
+| `boop.skills.known`, `.pending`, `.skillToGroup`, `.lastInfo`, `.lastList` | `boop_ui` reads | `boop.skills` |
+| `boop.skills.desiredGroups` | **written by `boop_init`** | `boop.skills` — **mutation violation today**; needs an ingestion API |
+| `boop.stats.lifetime`, `.mobXp` | `boop_db` reads and writes | `boop.stats` |
+| `boop.stats.trip` | `boop_ui` reads | `boop.stats` |
+| `boop.db.handle` | `boop_ui` reads (5 raw `db:` sites) | `boop.db` |
+| `boop.registry.config`, `.ui` | `boop_ui` reads | `boop.registry` |
+| `boop.ui.modes`, `.presets`, `.helpTopics`, `.screens` | `boop_ui_registry` | `boop.registry`, aliased onto `boop.ui` by `attachUiConfigRegistries` |
+
+#### `boop.state` — schema custody versus semantic ownership
+
+`boop.runtime` owns the tree's **shape**: domain list, defaults, hydration, schema sentinel, integrity repair, migration. It does **not** own the meaning of any field. The root `boop.state` declaration below is exact schema custody, not fallback ownership for its children: every first-level `boop.state.<domain>` must have an explicit semantic-owner declaration or the guard fails closed. Each subtree has one semantic owner that decides which transitions are legal and is the only module permitted to mutate it. Ownership is declared at whatever prefix depth makes it non-overlapping.
+
+| Prefix | Semantic owner | Writers today |
+|---|---|---|
+| `boop.state` *(schema only)* | `boop.runtime` | — |
+| `boop.state.combat` | `boop.runtime` | runtime 19, attacks 11, events 8, ui 3, stats |
+| `boop.state.combat.openerUsedByClass`, `.temporaryAttackPreferences` | `boop.attacks` | attacks |
+| `boop.state.lifecycle` | `boop.runtime` | events 1 |
+| `boop.state.targeting` | `boop.targets` | targets 27, runtime 14, events 6, rage 1 |
+| `boop.state.targeting.roomObservation` | `boop.runtime` | runtime |
+| `boop.state.targeting.movementIntent` | `boop.runtime` | runtime |
+| `boop.state.gold` | `boop.events` | events 33, runtime 14 |
+| `boop.state.queue` | `boop.runtime` | events 18, ui 11, runtime 7, util 3, attacks |
+| `boop.state.walk` | `boop.walk` | runtime 12 — **runtime writes walk's subtree** |
+| `boop.state.diag` | `boop.runtime` | runtime 9, ui 7, events 1 |
+| `boop.state.trace` | `boop.util` | util 6, ui 1, bootstrap 1 |
+| `boop.state.ui` | `boop.ui` | — |
+| `boop.state.rage` | `boop.rage` | rage 3 |
+| `boop.state.inventory` | `boop.events` | events 11 |
+| `boop.state.ih` | `boop.ih` | ih 10 |
+| `boop.state.gag` | `boop.gag` | gag 54 |
+
+The multi-writer domains — `combat` (5 modules), `queue` (5), `targeting` (4), `diag` (3) — are the ownership drift the roadmap corrects. `TARGET-ARCHITECTURE.md` §6 records where each subtree's ownership moves.
 
 ---
 
@@ -253,10 +338,11 @@ Every remaining top-level `boop.*` function, reachable only from other scripts a
 
 ## 6. Outbound egress
 
-**Fifteen production `send()` call sites across seven files.** There is no single egress point today.
+**Sixteen production `send()` call sites across eight files.** There is no single egress point today. The count covers every executable Lua file under `src/`, including aliases.
 
 | Site | Command | Concern |
 |---|---|---|
+| `src/aliases/boop/Targeting/IH.lua:2` | `ih` | direct targeting alias |
 | `boop_util.lua:376` | `sendOwned` inside `executeAction` | the dispatcher itself |
 | `boop_events.lua:135` | gold queue command | gold |
 | `boop_events.lua:487` | `send(" ")` | GMCP request flush |
@@ -271,7 +357,7 @@ Every remaining top-level `boop.*` function, reachable only from other scripts a
 | `boop_ui.lua:1757` | queued interrupt command | interrupt |
 | `boop_ui.lua:2206` | pull chain | pull |
 
-A sixteenth textual match at `boop_targets.lua:925` is an error-message string (`"Cannot share whitelist: send() is unavailable."`), not a call.
+A further textual match at `boop_targets.lua:925` is an error-message string (`"Cannot share whitelist: send() is unavailable."`), not a call.
 
 `sendGMCP()` is a separate protocol path: **eight literal calls across three files** — `boop_init.lua:140–143` (four core-supports announcements), `boop_skills.lua:42`, `:51`, `:68` (three skill queries), and `boop_events.lua:486` (one room-item request).
 

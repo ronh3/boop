@@ -1,0 +1,89 @@
+{
+  "format_version": 2,
+  "model": "convention-based-direct-references",
+  "stage": "phase-1-pre-dag",
+  "expected_modules": [
+    "boop_init", "boop_util", "boop_perf", "boop_theme", "boop_skills",
+    "boop_db", "boop_runtime", "boop_state", "boop_afflictions", "boop_rage",
+    "boop_ih", "boop_targets", "boop_gag", "boop_attacks", "boop_safety",
+    "boop_stats", "boop_walk", "boop_ui_registry", "boop_ui", "boop_events",
+    "boop_bootstrap"
+  ],
+  "reviewed_forbidden_edges": [
+    ["boop_db", "boop_stats"],
+    ["boop_gag", "boop_ui"],
+    ["boop_runtime", "boop_attacks"],
+    ["boop_runtime", "boop_events"],
+    ["boop_runtime", "boop_gag"],
+    ["boop_runtime", "boop_safety"],
+    ["boop_runtime", "boop_targets"],
+    ["boop_runtime", "boop_walk"],
+    ["boop_stats", "boop_ui"],
+    ["boop_ui_registry", "boop_gag"],
+    ["boop_ui_registry", "boop_targets"],
+    ["boop_ui_registry", "boop_ui"],
+    ["boop_ui_registry", "boop_util"],
+    ["boop_util", "boop_gag"],
+    ["boop_util", "boop_perf"],
+    ["boop_util", "boop_rage"],
+    ["boop_util", "boop_runtime"],
+    ["boop_util", "boop_targets"]
+  ],
+  "reviewed_mutation_edges": [
+    ["boop_attacks", "boop_runtime"],
+    ["boop_db", "boop_stats"],
+    ["boop_db", "boop_targets"],
+    ["boop_events", "boop_runtime"],
+    ["boop_events", "boop_targets"],
+    ["boop_init", "boop_runtime"],
+    ["boop_init", "boop_util"],
+    ["boop_rage", "boop_runtime"],
+    ["boop_rage", "boop_targets"],
+    ["boop_state", "boop_runtime"],
+    ["boop_ui", "boop_runtime"],
+    ["boop_ui", "boop_targets"],
+    ["boop_util", "boop_runtime"]
+  ],
+  "legacy_indirection_exceptions": [
+    {"kind":"dynamic-owned-write","path":"src/scripts/boop/boop_db.lua","symbol":"boop.lists.blacklist"},
+    {"kind":"dynamic-owned-write","path":"src/scripts/boop/boop_db.lua","symbol":"boop.lists.globalBlacklist"},
+    {"kind":"dynamic-owned-write","path":"src/scripts/boop/boop_db.lua","symbol":"boop.lists.whitelist"},
+    {"kind":"dynamic-owned-write","path":"src/scripts/boop/boop_db.lua","symbol":"boop.lists.whitelistTags"},
+    {"kind":"dynamic-owned-write","path":"src/scripts/boop/boop_db.lua","symbol":"boop.stats.mobXp"},
+    {"kind":"dynamic-owned-write","path":"src/scripts/boop/boop_ui.lua","symbol":"boop.lists.blacklist"},
+    {"kind":"dynamic-owned-write","path":"src/scripts/boop/boop_ui.lua","symbol":"boop.lists.whitelist"},
+    {"kind":"foreign-data-alias-write","path":"src/scripts/boop/boop_events.lua","symbol":"boop.state.combat"},
+    {"kind":"foreign-data-alias-write","path":"src/scripts/boop/boop_events.lua","symbol":"boop.state.targeting"},
+    {"kind":"forwarder-capture","path":"src/scripts/boop/boop_attacks.lua","symbol":"boop.executeAction"},
+    {"kind":"function-capture","path":"src/scripts/boop/boop_stats.lua","symbol":"boop.ui.printFooter"},
+    {"kind":"function-capture","path":"src/scripts/boop/boop_stats.lua","symbol":"boop.ui.printHeader"},
+    {"kind":"function-capture","path":"src/scripts/boop/boop_stats.lua","symbol":"boop.ui.printRow"},
+    {"kind":"function-capture","path":"src/scripts/boop/boop_stats.lua","symbol":"boop.ui.printSection"}
+  ],
+  "schema_custody_exceptions": [
+    {"kind":"rawset","path":"src/scripts/boop/boop_runtime.lua","symbol":"rawset","line":247}
+  ],
+  "outbound_sites": [
+    {"symbol":"send","path":"src/aliases/boop/Targeting/IH.lua","count":1},
+    {"symbol":"send","path":"src/scripts/boop/boop_events.lua","count":2},
+    {"symbol":"send","path":"src/scripts/boop/boop_rage.lua","count":1},
+    {"symbol":"send","path":"src/scripts/boop/boop_runtime.lua","count":1},
+    {"symbol":"send","path":"src/scripts/boop/boop_safety.lua","count":1},
+    {"symbol":"send","path":"src/scripts/boop/boop_targets.lua","count":5},
+    {"symbol":"send","path":"src/scripts/boop/boop_ui.lua","count":4},
+    {"symbol":"send","path":"src/scripts/boop/boop_util.lua","count":1},
+    {"symbol":"sendGMCP","path":"src/scripts/boop/boop_events.lua","count":1},
+    {"symbol":"sendGMCP","path":"src/scripts/boop/boop_init.lua","count":4},
+    {"symbol":"sendGMCP","path":"src/scripts/boop/boop_skills.lua","count":3}
+  ],
+  "forwarder_sites": [
+    {"symbol":"boop.executeAction","path":"src/scripts/boop/boop_attacks.lua","count":1},
+    {"symbol":"boop.executeAction","path":"src/scripts/boop/boop_events.lua","count":3},
+    {"symbol":"boop.executeAction","path":"src/scripts/boop/boop_safety.lua","count":1},
+    {"symbol":"boop.executeAction","path":"src/scripts/boop/boop_util.lua","count":1},
+    {"symbol":"boop.tick","path":"src/scripts/boop/boop_events.lua","count":11},
+    {"symbol":"boop.tick","path":"src/scripts/boop/boop_runtime.lua","count":4},
+    {"symbol":"boop.tick","path":"src/scripts/boop/boop_targets.lua","count":2},
+    {"symbol":"boop.tick","path":"src/scripts/boop/boop_ui.lua","count":1}
+  ]
+}

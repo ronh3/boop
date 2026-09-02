@@ -190,7 +190,10 @@ local SESSION_CONFIG_KEYS = {
 }
 
 local function isSessionConfig(key)
+  key = tostring(key or "")
   return SESSION_CONFIG_KEYS[key] == true
+    or key == "perf"
+    or key:match("^perf%.") ~= nil
 end
 
 function boop.db.init()
@@ -255,15 +258,21 @@ function boop.db.loadConfig()
 
   if not boop.db.handle then return end
   local rows = db:fetch(boop.db.handle.config, nil, { boop.db.handle.config.name })
+  local sessionRows = {}
   for _, row in ipairs(rows) do
     local key = row.name
     if isSessionConfig(key) then
       -- Session settings reset to their defaults on startup.
+      sessionRows[key] = true
     elseif boop.defaults[key] ~= nil then
       boop.config[key] = castValue(row.value, boop.defaults[key])
     else
       boop.config[key] = row.value
     end
+  end
+
+  for key in pairs(sessionRows) do
+    boop.db.deleteConfig(key)
   end
 
   for k, v in pairs(boop.defaults) do
@@ -586,6 +595,7 @@ end
 
 function boop.db.saveStats()
   if not boop.db.handle then return end
+  if boop.perf.on then boop.perf.count("stats_flushes") end
   local function nowSeconds()
     if getEpoch then return getEpoch() end
     return os.clock()
@@ -627,3 +637,11 @@ function boop.db.saveStats()
   save("lifetime_best_ttk", boop.stats.lifetime.bestTtk or "")
   save("lifetime_worst_ttk", boop.stats.lifetime.worstTtk or "")
 end
+
+boop.perf.register("db.saveConfig", boop.db, "saveConfig")
+boop.perf.register(
+  "db.recordMobXpObservation",
+  boop.db,
+  "recordMobXpObservation"
+)
+boop.perf.register("db.saveStats", boop.db, "saveStats")

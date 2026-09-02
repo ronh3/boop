@@ -1336,8 +1336,31 @@ function boop.runtime.observeRoomItemsList(location, items)
   }
 end
 
+local function itemListSize(value)
+  return type(value) == "table" and #value or 0
+end
+
+local function fenceItemSize(fence)
+  if type(fence) ~= "table" then return 0 end
+  return itemListSize(fence.invItems)
+    + itemListSize(fence.roomItems)
+    + itemListSize(fence.roomDeltas)
+end
+
 function boop.runtime.roomObservationSnapshot()
   local observation = roomObservationState()
+  if boop.perf.on then
+    local copiedItems = itemListSize(observation.acceptedItems)
+    for _, fence in ipairs(observation.fenceQueue or {}) do
+      copiedItems = copiedItems + fenceItemSize(fence)
+    end
+    copiedItems = copiedItems + fenceItemSize(observation.lastCompletedFence)
+    if type(observation.activeApplication) == "table" then
+      copiedItems = copiedItems
+        + itemListSize(observation.activeApplication.items)
+    end
+    boop.perf.count("deepcopy_items", copiedItems)
+  end
   return {
     generation = tonumber(observation.generation) or 0,
     roomId = tostring(observation.roomId or ""),
@@ -3233,11 +3256,11 @@ function boop.runtime.onFlyCommandSucceeded(line, capturedGeneration)
   if tempTimer then
     tempTimer(0, function()
       if boop and boop.tick then
-        boop.tick()
+        boop.tick(nil, nil, "other")
       end
     end)
   elseif boop and boop.tick then
-    boop.tick()
+    boop.tick(nil, nil, "other")
   end
   return true
 end
@@ -3350,11 +3373,11 @@ function boop.runtime.onLeapCommandDenied(line, capturedGeneration)
   if tempTimer then
     tempTimer(0, function()
       if boop and boop.tick then
-        boop.tick()
+        boop.tick(nil, nil, "other")
       end
     end)
   elseif boop and boop.tick then
-    boop.tick()
+    boop.tick(nil, nil, "other")
   end
   return true
 end
@@ -3733,6 +3756,9 @@ local function currentRoom()
 end
 
 function boop.runtime.context(sourceAuthority, options)
+  if boop.perf.on then
+    boop.perf.count("contexts_built")
+  end
   local state = boop.runtime.ensureState()
   local room = currentRoom()
   local authority = copySourceAuthority(sourceAuthority)
@@ -4165,3 +4191,6 @@ function boop.runtime.applyEffects(result, context)
 
   return didAction
 end
+
+boop.perf.register("context", boop.runtime, "context")
+boop.perf.register("applyEffects", boop.runtime, "applyEffects")

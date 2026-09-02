@@ -39,6 +39,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop lead` / `boop lead <seconds>` (prequeue lead timing)
 - `boop get [key]` / `boop set <key> <value>` (advanced raw config inspection/editing; prefer `boop config` for normal setup)
 - `boop trace` / `boop trace on|off|live on|off|show [n]|clear`
+- `boop perf on|off|show|reset` (session-local bounded performance measurements; off on every package load)
 - `boop gag` / `boop gag on|off|own|others|mobs|all|<scope> on|off|colors [own|others|mobs]|color [own|others|mobs] <who|ability|target|meta|separator|bg> [<color|off>]|color [own|others|mobs] reset`
 - `boop targeting <manual|whitelist|blacklist|auto>` (session-only; every new profile session starts in `whitelist` mode)
 - `boop ragemode <simple|big|small|aff|tempo|combo|hybrid|none>` (default: `simple`; class modes without a matching rage ability are marked unavailable)
@@ -139,6 +140,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop theme list` exposes boop's built-in themes plus the built-in ADB city/class palette names, so themes like `ashtan`, `depthswalker`, and `targossas` work directly in boop.
 - `boop trace on|off` controls persisted collection into the bounded trace buffer; `show` reads retained entries and `clear` empties them.
 - `boop trace live on|off` controls session-only streaming, starts off on package initialization, is not persisted, and does not enable collection.
+- `boop perf` is independent of trace and configuration persistence. While disabled, each inline probe site performs only a boolean read and branch; `prompt_total` correlates only the synchronous Vitals and Prompt callback segments, excludes idle/deferred time, and never sums nested probes.
 - Live trace output requires collection and live streaming to both be on. Operation enter/exit and exact interrupt success, failure, or timeout terminals render once per accepted producer event as `trace live: HH:MM:SS | ...`, before prompt gag summaries flush.
 - The retained 100-entry trace buffer keeps every accepted entry. Live output alone collapses unchanged expected target-removal, `room_partial`, and no-target fingerprints; a changed fingerprint, terminal lifecycle, denial, timeout, or authority failure remains visible.
 - Fenced item-list trace entries expose each GMCP response's `location`, `status`, `seen`, and `waits` fields. A `waits=inv` line means room contents arrived first but remain safety-held; `waits=room` means the requested room snapshot has not arrived yet.

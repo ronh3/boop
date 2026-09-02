@@ -2117,3 +2117,7 @@ function boop.attacks.choosePullRage(targetToken)
 
   return boop.util.formatTarget(cmd, target), ability
 end
+
+boop.perf.register("attacks.plan", boop.attacks, "plan")
+boop.perf.register("attacks.selectRage", boop.attacks, "selectRage")
+boop.perf.register("attacks.applyModifiers", boop.attacks, "applyModifiers")

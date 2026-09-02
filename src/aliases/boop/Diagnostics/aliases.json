@@ -28,6 +28,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Boop Perf",
+    "isActive": "yes",
+    "regex": "^(?i)boop\\s+perf(?:\\s+(on|off|show|reset))?$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Boop Trace",
     "isActive": "yes",
     "regex": "^(?i)boop\\s+trace$",

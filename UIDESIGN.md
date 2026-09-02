@@ -141,6 +141,12 @@ Trace diagnostics contract
 - Each accepted streamed entry uses the `trace live: {timestamped entry}` prefix and appears exactly once.
 - `boop trace show [n]` and `boop trace clear` retain their existing bounded-buffer behavior; clearing entries does not toggle live streaming.
 
+Performance diagnostics contract
+
+- `boop perf on|off|show|reset` controls bounded session-local instrumentation and is deliberately absent from the normal config dashboard.
+- Package load and reload reset `boop.perf.on` to `false`; no perf state is persisted or placed under `boop.state`.
+- Perf and trace are independent. `prompt_total` correlates the synchronous Vitals and Prompt callback segments without idle/deferred time; nested probe totals are explanatory and must not be summed.
+
 Button rendering
 - Format: `[ <value> ]`
 - Color rules:

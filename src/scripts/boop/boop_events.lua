@@ -449,7 +449,7 @@ function boop.onIreSupportObserved(source)
       if boop and boop.tick then
         boop.tick(authority or nil, {
           roomOwned = authority and true or false,
-        })
+        }, "other")
       end
     end)
   end
@@ -1290,7 +1290,7 @@ completeGoldOperation = function(generation, terminalReason)
         return
       end
       if boop and boop.tick then
-        boop.tick()
+        boop.tick(nil, nil, "other")
       end
     end)
   end
@@ -2164,7 +2164,7 @@ local function applyMovementProvisionalCombat(movement)
 
   boop.targets.updateRoomItems(items)
   return boop.tick
-    and boop.tick(nil, { provisionalCombat = true })
+    and boop.tick(nil, { provisionalCombat = true }, "room")
     or false
 end
 
@@ -2223,7 +2223,7 @@ local function applyRoomApplication(
     end
   end
   local attacking = false
-  if boop.tick then attacking = boop.tick(authority) end
+  if boop.tick then attacking = boop.tick(authority, nil, "room") end
   return true, attacking
 end
 
@@ -2382,7 +2382,7 @@ function boop.onRoomItemsAdd()
     if authority then
       tempTimer(0, function()
         if roomAuthorityCurrent(authority, "room denizen add") then
-          boop.tick(authority, { roomOwned = true })
+          boop.tick(authority, { roomOwned = true }, "room")
         end
       end)
     end
@@ -2492,7 +2492,7 @@ function boop.onRoomItemsRemove()
     if boop and boop.tick then
       boop.tick(sourceAuthority or nil, {
         roomOwned = sourceAuthority and true or false,
-      })
+      }, "target")
     end
     return true
   end)
@@ -2849,7 +2849,7 @@ function boop.onCharStatus()
     tempTimer(0, function()
       boop.tick(authority or nil, {
         roomOwned = authority and true or false,
-      })
+      }, "charstatus")
     end)
   end
 end
@@ -2870,7 +2870,7 @@ function boop.onVitals()
     end
     boop.state.combat.spec = spec
   end
-  boop.tick()
+  boop.tick(nil, nil, "vitals")
 end
 
 function boop.onBalanceUsed(kind, seconds, sourceAuthority)
@@ -3094,7 +3094,7 @@ function boop.onStandardLifecycleTerminal(operation)
     local authority = currentRoomSourceAuthority()
     return boop.tick(authority or nil, {
       roomOwned = authority and true or false,
-    })
+    }, "other")
   end)
   return true
 end
@@ -3327,7 +3327,12 @@ function boop.refreshPrequeuedStandard(reason, sourceAuthority, options)
 end
 
 function boop.canAct()
-  if boop.state.combat.limiters.hunting then return false end
+  if boop.state.combat.limiters.hunting then
+    if boop.perf.on then
+      boop.perf.count("ticks_suppressed_by_limiter")
+    end
+    return false
+  end
   if gmcp and gmcp.Char and gmcp.Char.Vitals then
     if gmcp.Char.Vitals.bal ~= "1" or gmcp.Char.Vitals.eq ~= "1" then
       return false
@@ -3350,7 +3355,7 @@ function boop.canUseRage()
   return true
 end
 
-function boop.tick(sourceAuthority, options)
+function boop.tick(sourceAuthority, options, perfSource)
   if boop.runtime and boop.runtime.step and boop.runtime.applyEffects then
     options = type(options) == "table" and options or {}
     local suppliedAuthority = copySourceAuthority(sourceAuthority)
@@ -3422,8 +3427,48 @@ function boop.onPrompt()
           and standardResult.terminal
           and standardResult.quarantined
         ) then
-      boop.tick(sourceAuthority or nil)
+      boop.tick(sourceAuthority or nil, nil, "prompt")
     end
     return
   end
 end
+
+local function ireDisplayProbe(source)
+  if source == "gmcp.IRE.Display.ButtonActions"
+      or source == "gmcp.IRE.Display.FixedFont"
+      or source == "gmcp.IRE.Display.Ohmap" then
+    return source
+  end
+  return false
+end
+
+boop.perf.register(false, boop, "onIreSupportObserved", {
+  nameResolver = ireDisplayProbe,
+})
+boop.perf.register(
+  "gmcp.Char.Afflictions.List",
+  boop,
+  "onDiagAfflictionsList"
+)
+boop.perf.register("sysDataSendRequest", boop, "onDataSendRequest")
+boop.perf.register("sysConnectionEvent", boop, "onConnectionEvent")
+boop.perf.register("gmcp.Char.Items.List", boop, "onRoomItemsList")
+boop.perf.register("gmcp.Char.Items.Add", boop, "onRoomItemsAdd")
+boop.perf.register("gmcp.Char.Items.Remove", boop, "onRoomItemsRemove")
+boop.perf.register("gmcp.Char.Items.Update", boop, "onItemsUpdate")
+boop.perf.register("gmcp.Room.Info", boop, "onRoomInfo")
+boop.perf.register("demonwalker.arrived", boop, "onWalkArrived")
+boop.perf.register("demonwalker.finished", boop, "onWalkFinished")
+boop.perf.register("gmcp.IRE.Target.Set", boop, "onTargetSet")
+boop.perf.register("gmcp.IRE.Target.Info", boop, "onTargetInfo")
+boop.perf.register("gmcp.Char.Status", boop, "onCharStatus")
+boop.perf.register("gmcp.Char.Vitals", boop, "onVitals", {
+  callback = "vitals",
+})
+boop.perf.register("prequeue.schedule", boop, "schedulePrequeue")
+boop.perf.register("prequeue.standard", boop, "prequeueStandard")
+boop.perf.register("prequeue.refresh", boop, "refreshPrequeuedStandard")
+boop.perf.register("tick", boop, "tick", { sourceIndex = 3 })
+boop.perf.register("prompt.callback", boop, "onPrompt", {
+  callback = "prompt",
+})

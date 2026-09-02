@@ -1,4 +1,5 @@
 local state = boop.runtime.ensureState()
+boop.perf.setEnabled(false)
 state.trace.live = false
 boop.runtime.resetVenomConfusionCount("package reload")
 boop.resetShieldMode("package reload")

@@ -20,6 +20,9 @@ jobs:
       - name: Release gates
         run: python3 tools/check_release_gates.py
 
+      - name: Architecture analyzer tests
+        run: python3 tests/test_architecture_guard.py
+
       - name: Read package metadata
         id: pkg
         run: |

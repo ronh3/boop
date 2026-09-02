@@ -14,6 +14,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from architecture_guard import check_repository_architecture
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOTS = {
@@ -317,10 +319,38 @@ def check_state_drift() -> list[str]:
     return errors
 
 
+def check_architecture() -> list[str]:
+    errors, summary = check_repository_architecture(ROOT)
+    roots = summary.get("composition_roots", [])
+    scc_sizes = [len(component) for component in summary.get("nontrivial_sccs", [])]
+    print(
+        "  Convention-based current graph: "
+        f"modules={summary.get('modules', 0)} | "
+        f"edges={summary.get('edges', 0)} "
+        f"(exec={summary.get('executable_edges', 0)}, "
+        f"data={summary.get('owned_data_edges', 0)}, "
+        f"overlap={summary.get('overlapping_edge_directions', 0)}) | "
+        f"roots={', '.join(roots) or 'none'} | "
+        f"reciprocal pairs={summary.get('reciprocal_pairs', 0)} | "
+        f"SCC sizes={scc_sizes or 'none'}"
+    )
+    print(
+        "  Architectural syntax: direct/static references + Mudlet literal handlers | "
+        f"reviewed legacy indirections={summary.get('legacy_indirection_exceptions', 0)} | "
+        f"schema custody exceptions={summary.get('schema_custody_exceptions', 0)} | "
+        f"outbound send/sendGMCP={summary.get('outbound_send_calls', 0)}/"
+        f"{summary.get('outbound_sendgmcp_calls', 0)} | "
+        f"forwarders tick/executeAction={summary.get('tick_forwarders', 0)}/"
+        f"{summary.get('execute_action_forwarders', 0)}"
+    )
+    return errors
+
+
 CHECKS = {
     "versions": check_versions,
     "manifests": check_manifests,
     "state-drift": check_state_drift,
+    "architecture": check_architecture,
 }
 
 
