@@ -40,6 +40,7 @@ local function rageState()
   boop.state = boop.state or {}
   boop.state.rage = boop.state.rage or {}
   local state = boop.state.rage
+  state.amount = tonumber(state.amount) or 0
   state.ready = type(state.ready) == "table" and state.ready or {}
   state.timers = type(state.timers) == "table" and state.timers or {}
   state.timerGenerations = type(state.timerGenerations) == "table"
@@ -671,9 +672,9 @@ function boop.rage.onRageObserved(value)
   local rage = tonumber(value)
   if not rage then return end
 
-  boop.state = boop.state or {}
-  boop.state.rage.samples = boop.state.rage.samples or {}
-  local samples = boop.state.rage.samples
+  local state = rageState()
+  state.amount = rage
+  local samples = state.samples
   local now = nowSeconds()
 
   if #samples > 0 and math.abs((samples[#samples].t or 0) - now) < 0.05 then

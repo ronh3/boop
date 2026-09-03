@@ -594,7 +594,7 @@ function boop.db.clearMobXpStats()
 end
 
 function boop.db.saveStats()
-  if not boop.db.handle then return end
+  if not boop.db.handle then return false end
   if boop.perf.on then boop.perf.count("stats_flushes") end
   local function nowSeconds()
     if getEpoch then return getEpoch() end
@@ -636,6 +636,7 @@ function boop.db.saveStats()
   save("lifetime_total_ttk", boop.stats.lifetime.totalTtk or 0)
   save("lifetime_best_ttk", boop.stats.lifetime.bestTtk or "")
   save("lifetime_worst_ttk", boop.stats.lifetime.worstTtk or "")
+  return true
 end
 
 boop.perf.register("db.saveConfig", boop.db, "saveConfig")

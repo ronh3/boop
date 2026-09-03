@@ -306,10 +306,111 @@ local function withArea(scope, area, fn)
   end
 end
 
-local function persistLifetime()
-  if boop.db and boop.db.saveStats then
-    boop.db.saveStats()
+local PERSISTENCE_DELAY_SECONDS = 5
+
+local function persistenceState()
+  if type(boop.stats.persistence) ~= "table" then
+    boop.stats.persistence = {}
   end
+  local state = boop.stats.persistence
+  state.dirty = state.dirty == true
+  state.timer = state.timer or false
+  state.timerToken = state.timerToken or false
+  state.mutationGeneration =
+    tonumber(state.mutationGeneration) or 0
+  state.flushing = state.flushing == true
+  return state
+end
+
+local function schedulePersistenceFlush(state)
+  if state.timer or type(tempTimer) ~= "function" then
+    return state.timer or false
+  end
+  local token = {}
+  local timerId = tempTimer(PERSISTENCE_DELAY_SECONDS, function()
+    return boop.stats.flushPersistence("coalesced", token)
+  end)
+  if not timerId then
+    return false
+  end
+  state.timer = timerId
+  state.timerToken = token
+  return timerId
+end
+
+local function retirePersistenceTimer(state)
+  local timerId = state.timer
+  state.timer = false
+  state.timerToken = false
+  if timerId and type(killTimer) == "function" then
+    pcall(killTimer, timerId)
+  end
+end
+
+function boop.stats.markPersistenceDirty()
+  local state = persistenceState()
+  state.dirty = true
+  state.mutationGeneration = state.mutationGeneration + 1
+  schedulePersistenceFlush(state)
+  return true
+end
+
+function boop.stats.flushPersistence(reason, expectedToken)
+  local state = persistenceState()
+  if expectedToken then
+    if state.timerToken ~= expectedToken then
+      return false, "stale timer"
+    end
+    state.timer = false
+    state.timerToken = false
+  else
+    retirePersistenceTimer(state)
+  end
+
+  if not state.dirty then
+    return false, "clean"
+  end
+  if not (boop.db and type(boop.db.saveStats) == "function") then
+    schedulePersistenceFlush(state)
+    return false, "database unavailable"
+  end
+
+  local mutationGeneration = state.mutationGeneration
+  state.flushing = true
+  local ok, saved = pcall(function()
+    return boop.db.saveStats()
+  end)
+  state.flushing = false
+  if ok and saved == true then
+    state.dirty = state.mutationGeneration ~= mutationGeneration
+    if state.dirty then
+      schedulePersistenceFlush(state)
+    end
+    return true, tostring(reason or "flush")
+  end
+
+  state.dirty = true
+  schedulePersistenceFlush(state)
+  return false, ok and "save failed" or tostring(saved)
+end
+
+function boop.stats.persistenceSnapshot()
+  local state = persistenceState()
+  return {
+    dirty = state.dirty,
+    timerActive = state.timer and true or false,
+    timerId = state.timer or false,
+    mutationGeneration = state.mutationGeneration,
+    flushing = state.flushing,
+  }
+end
+
+local function persistLifetime()
+  boop.stats.markPersistenceDirty()
+end
+
+local function flushLifetimeForObservation()
+  boop.stats.flushPersistence("stats rendering")
 end
 
 local findMobXpTarget
@@ -986,6 +1087,7 @@ local function observeMobXp(area, name, amount, partySize)
 end
 
 function boop.stats.init()
+  persistenceState()
   local now = nowSeconds()
   boop.stats.session = newScope(now)
   boop.stats.login = ensureScope(boop.stats.login, now)
@@ -1239,6 +1341,7 @@ end
 
 function boop.stats.onFlee()
   incrementCounter("flees", currentArea())
+  boop.stats.flushPersistence("flee")
 end
 
 function boop.stats.onExperienceGain(amount, area)
@@ -1307,6 +1410,9 @@ function boop.stats.onEnabledChanged(enabled)
 
   seedBaselinesFromStatus()
   persistLifetime()
+  if not active then
+    boop.stats.flushPersistence("disable")
+  end
 end
 
 function boop.stats.reset(scopeName)
@@ -1346,6 +1452,7 @@ function boop.stats.reset(scopeName)
       boop.db.clearMobXpStats()
     end
     persistLifetime()
+    boop.stats.flushPersistence("stats reset")
     boop.util.ok("stats reset: all")
     return
   end
@@ -1360,6 +1467,7 @@ function boop.stats.reset(scopeName)
     boop.stats.pendingAttack = nil
     boop.stats.lastResolvedAttack = nil
     seedBaselinesFromStatus()
+    boop.stats.flushPersistence("stats reset")
     boop.util.ok("stats reset: session")
     return
   end
@@ -1376,6 +1484,7 @@ function boop.stats.reset(scopeName)
     boop.stats.pendingAttack = nil
     boop.stats.lastResolvedAttack = nil
     seedBaselinesFromStatus()
+    boop.stats.flushPersistence("stats reset")
     boop.util.ok("stats reset: trip")
     return
   end
@@ -1389,6 +1498,7 @@ function boop.stats.reset(scopeName)
     boop.stats.pendingAttack = nil
     boop.stats.lastResolvedAttack = nil
     seedBaselinesFromStatus()
+    boop.stats.flushPersistence("stats reset")
     boop.util.ok("stats reset: login")
     return
   end
@@ -1407,6 +1517,7 @@ function boop.stats.reset(scopeName)
       boop.db.clearMobXpStats()
     end
     persistLifetime()
+    boop.stats.flushPersistence("stats reset")
     boop.util.ok("stats reset: lifetime")
     return
   end
@@ -1420,6 +1531,7 @@ local statsLabelWidth
 local renderRichRows
 
 function boop.stats.show(scopeName)
+  flushLifetimeForObservation()
   local scope, label = scopeByName(scopeName)
   local elapsed = elapsedFor(scope)
   local avg = avgTtk(scope)
@@ -1593,6 +1705,7 @@ local function topCounts(map, limit)
 end
 
 function boop.stats.showRage(scopeName)
+  flushLifetimeForObservation()
   local scope, label = scopeByName(scopeName)
   local rage = ensureRageStats(scope)
   local avgCost = rage.uses > 0 and (rage.totalCost / rage.uses) or 0
@@ -1819,6 +1932,7 @@ local function scopeSummaryValue(scope)
 end
 
 function boop.stats.showCrits(scopeName)
+  flushLifetimeForObservation()
   local scope, label = scopeByName(scopeName)
   local totals = aggregateCrits(scope)
   local rate = totals.uses > 0 and (totals.crits * 100 / totals.uses) or 0
@@ -1866,6 +1980,7 @@ function boop.stats.showCrits(scopeName)
 end
 
 function boop.stats.showRecords(scopeName)
+  flushLifetimeForObservation()
   local scope, label = scopeByName(scopeName)
   local records = scope.records or {}
   local bestHit = records.bestHit
@@ -1964,6 +2079,7 @@ function boop.stats.showRecords(scopeName)
 end
 
 function boop.stats.showAreas(scopeName, limit, sortKey)
+  flushLifetimeForObservation()
   local scope, label = scopeByName(scopeName)
   local rows = {}
   for area, data in pairs(scope.areas or {}) do
@@ -2100,6 +2216,7 @@ function boop.stats.formatMobXp(area, name, partySize)
 end
 
 function boop.stats.showMobs(areaName, limit)
+  flushLifetimeForObservation()
   local area = boop.util.trim(areaName or "")
   if area == "" then
     area = currentArea()
@@ -2186,6 +2303,7 @@ function boop.stats.showMobs(areaName, limit)
 end
 
 function boop.stats.showTargets(scopeName, limit)
+  flushLifetimeForObservation()
   local scope, label = scopeByName(scopeName)
   local area = currentArea()
   local partySize = currentPartySize()
@@ -2317,6 +2435,7 @@ function boop.stats.showTargets(scopeName, limit)
 end
 
 function boop.stats.showAbilities(scopeName, limit)
+  flushLifetimeForObservation()
   local scope, label = scopeByName(scopeName)
   local rows = {}
   for ability, entry in pairs(scope.abilities or {}) do
@@ -2448,6 +2567,7 @@ local function compareSummaryBits(leftScope, rightScope)
 end
 
 function boop.stats.showCompare(leftName, rightName)
+  flushLifetimeForObservation()
   local leftScope, leftLabel = scopeByName(leftName)
   local rightScope, rightLabel = scopeByName(rightName)
   leftScope = ensureScope(leftScope)
@@ -2620,6 +2740,7 @@ local function showDashboardRich(context)
 end
 
 function boop.stats.showDashboard()
+  flushLifetimeForObservation()
   local area = currentArea()
   local partySize = currentPartySize()
   local session = ensureScope(boop.stats.session)
@@ -2747,6 +2868,7 @@ function boop.stats.showDashboard()
 end
 
 function boop.stats.showHelp()
+  flushLifetimeForObservation()
   boop.util.info("stats help:")
   boop.util.info("  Start")
   boop.util.info("    boop stats                 -> dashboard and suggested drill-downs")

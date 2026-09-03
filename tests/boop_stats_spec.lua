@@ -29,7 +29,7 @@ describe("boop stats", function()
     echo_stub = stub(boop.util, "echo", function(msg)
       echoes[#echoes + 1] = msg
     end)
-    save_stats_stub = stub(boop.db, "saveStats", function() end)
+    save_stats_stub = stub(boop.db, "saveStats", function() return true end)
     record_mob_xp_stub = stub(boop.db, "recordMobXpObservation", function() end)
     clear_mob_xp_stub = stub(boop.db, "clearMobXpStats", function() end)
   end)
@@ -896,5 +896,206 @@ describe("boop stats", function()
     local joined = table.concat(echoes, "\n")
     assert.are.equal("Whitelist for Test Area:", echoes[1])
     assert.is_true(joined:find("a vicious gnoll soldier | xp mean 28500 | median 28500 | mode 28000 (1x) | seen 2 | p1", 1, true) ~= nil)
+  end)
+end)
+
+describe("boop stats persistence coalescing", function()
+  local savedTempTimer
+  local savedKillTimer
+  local savedSaveStats
+  local saveStatsFunction
+  local timers
+  local infoStub
+  local clearMobXpStub
+  local saveResult
+  local saveHook
+  local saves
+  local savedSnapshots
+
+  local function activateLifetimeScopes()
+    boop.config.enabled = true
+    boop.stats.session.activeSince = 1
+    boop.stats.login.activeSince = 1
+    boop.stats.lifetime.activeSince = 1
+  end
+
+  before_each(function()
+    helper.reset()
+    timers = helper.newTimerQueue()
+    savedTempTimer = _G.tempTimer
+    savedKillTimer = _G.killTimer
+    savedSaveStats = boop.db.saveStats
+    _G.tempTimer = timers.tempTimer
+    _G.killTimer = timers.killTimer
+    saveResult = true
+    saveHook = nil
+    saves = 0
+    savedSnapshots = {}
+    saveStatsFunction = function()
+      saves = saves + 1
+      savedSnapshots[#savedSnapshots + 1] = {
+        targets = boop.stats.lifetime.targets,
+        flees = boop.stats.lifetime.flees,
+        gold = boop.stats.lifetime.gold,
+      }
+      if saveHook then
+        return saveHook()
+      end
+      return saveResult
+    end
+    boop.db.saveStats = saveStatsFunction
+    infoStub = stub(boop.util, "info", function(_) end)
+    clearMobXpStub = stub(boop.db, "clearMobXpStats", function() end)
+    activateLifetimeScopes()
+  end)
+
+  after_each(function()
+    _G.tempTimer = savedTempTimer
+    _G.killTimer = savedKillTimer
+    boop.db.saveStats = savedSaveStats
+    if infoStub then infoStub:revert() end
+    if clearMobXpStub then clearMobXpStub:revert() end
+  end)
+
+  it("coalesces a seeded retarget from three immediate saves into one timer flush", function()
+    boop.stats.onTargetSet("42", "first denizen")
+    assert.are.equal(0, saves)
+    assert.are.equal(1, timers.nextId)
+    assert.are.equal(5, timers.delays[1])
+
+    assert.is_true(boop.stats.flushPersistence("test baseline"))
+    assert.are.equal(1, saves)
+    saves = 0
+
+    boop.stats.onTargetSet("43", "second denizen")
+
+    assert.are.equal(0, saves)
+    assert.are.equal(2, timers.nextId)
+    local pending = boop.stats.persistenceSnapshot()
+    assert.is_true(pending.dirty)
+    assert.is_true(pending.timerActive)
+    assert.are.equal(2, pending.timerId)
+
+    assert.is_true(timers.run(2))
+    assert.are.equal(1, saves)
+    assert.is_false(boop.stats.persistenceSnapshot().dirty)
+    assert.is_false(boop.stats.persistenceSnapshot().timerActive)
+
+    assert.is_false(timers.run(2))
+    assert.are.equal(1, saves)
+
+    boop.stats.onTargetSet("44", "third denizen")
+    assert.are.equal(3, timers.nextId)
+    assert.is_true(timers.run(3))
+    assert.are.equal(2, saves)
+  end)
+
+  it("flushes exact totals at disable, disconnect, flee, render, reset, and reload boundaries", function()
+    boop.stats.onTargetSet("42", "first denizen")
+    boop.stats.onEnabledChanged(false)
+    assert.are.equal(1, saves)
+    assert.are.equal(1, savedSnapshots[1].targets)
+    assert.is_true(timers.cancelled[1])
+    assert.is_false(boop.stats.persistenceSnapshot().dirty)
+
+    saves = 0
+    activateLifetimeScopes()
+    boop.stats.onTargetSet("43", "second denizen")
+    boop.onConnectionEvent()
+    assert.are.equal(1, saves)
+    assert.is_false(boop.stats.persistenceSnapshot().dirty)
+
+    activateLifetimeScopes()
+    boop.stats.onFlee()
+    assert.are.equal(2, saves)
+    assert.are.equal(1, savedSnapshots[#savedSnapshots].flees)
+
+    boop.stats.onTargetSet("44", "third denizen")
+    boop.stats.show("lifetime")
+    assert.are.equal(3, saves)
+    assert.are.equal(3, savedSnapshots[#savedSnapshots].targets)
+
+    boop.stats.onTargetSet("45", "fourth denizen")
+    boop.stats.reset("lifetime")
+    assert.are.equal(4, saves)
+    assert.are.equal(0, savedSnapshots[#savedSnapshots].targets)
+
+    activateLifetimeScopes()
+    boop.stats.onTargetSet("46", "reload denizen")
+    local priorBootstrapped = boop.bootstrapped
+    boop.bootstrapped = true
+    dofile(helper.repoRoot() .. "/src/scripts/boop/boop_bootstrap.lua")
+    boop.bootstrapped = priorBootstrapped
+    assert.are.equal(5, saves)
+    assert.is_false(boop.stats.persistenceSnapshot().dirty)
+  end)
+
+  it("keeps failed or concurrent flush mutations dirty for one owned retry", function()
+    boop.stats.onTargetSet("42", "first denizen")
+    saveResult = false
+
+    assert.is_false(timers.run(1))
+    assert.are.equal(1, saves)
+    local failed = boop.stats.persistenceSnapshot()
+    assert.is_true(failed.dirty)
+    assert.is_true(failed.timerActive)
+    assert.are.equal(2, failed.timerId)
+
+    saveResult = true
+    assert.is_true(timers.run(2))
+    assert.are.equal(2, saves)
+    assert.is_false(boop.stats.persistenceSnapshot().dirty)
+
+    boop.stats.onTargetSet("43", "second denizen")
+    saveHook = function()
+      saveHook = nil
+      boop.stats.markPersistenceDirty()
+      return true
+    end
+    assert.is_true(timers.run(3))
+    local changedDuringFlush = boop.stats.persistenceSnapshot()
+    assert.is_true(changedDuringFlush.dirty)
+    assert.is_true(changedDuringFlush.timerActive)
+    assert.are.equal(4, changedDuringFlush.timerId)
+
+    assert.is_true(timers.run(4))
+    assert.are.equal(4, saves)
+    assert.is_false(boop.stats.persistenceSnapshot().dirty)
+  end)
+
+  it("keeps DB-unavailable mutations dirty until one owned retry succeeds", function()
+    boop.stats.onTargetSet("42", "first denizen")
+    boop.db.saveStats = nil
+
+    assert.is_false(timers.run(1))
+    assert.are.equal(0, saves)
+    local unavailable = boop.stats.persistenceSnapshot()
+    assert.is_true(unavailable.dirty)
+    assert.is_true(unavailable.timerActive)
+    assert.are.equal(2, unavailable.timerId)
+
+    boop.db.saveStats = saveStatsFunction
+    assert.is_true(timers.run(2))
+    assert.are.equal(1, saves)
+    assert.is_false(boop.stats.persistenceSnapshot().dirty)
+  end)
+
+  it("invalidates cancelled timer callbacks before a newer dirty generation", function()
+    boop.stats.onTargetSet("42", "first denizen")
+    assert.is_true(boop.stats.flushPersistence("immediate boundary"))
+    assert.are.equal(1, saves)
+
+    saves = 0
+    boop.stats.onTargetSet("43", "second denizen")
+    assert.are.equal(2, boop.stats.persistenceSnapshot().timerId)
+
+    assert.is_false(timers.run(1))
+    assert.are.equal(0, saves)
+    assert.is_true(boop.stats.persistenceSnapshot().dirty)
+    assert.are.equal(2, boop.stats.persistenceSnapshot().timerId)
+
+    assert.is_true(timers.run(2))
+    assert.are.equal(1, saves)
+    assert.is_false(boop.stats.persistenceSnapshot().dirty)
   end)
 end)

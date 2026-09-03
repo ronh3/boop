@@ -61,7 +61,7 @@
     {"kind":"function-capture","path":"src/scripts/boop/boop_stats.lua","symbol":"boop.ui.printSection"}
   ],
   "schema_custody_exceptions": [
-    {"kind":"rawset","path":"src/scripts/boop/boop_runtime.lua","symbol":"rawset","line":247}
+    {"kind":"rawset","path":"src/scripts/boop/boop_runtime.lua","symbol":"rawset","line":283}
   ],
   "outbound_sites": [
     {"symbol":"send","path":"src/aliases/boop/Targeting/IH.lua","count":1},

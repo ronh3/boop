@@ -18,6 +18,7 @@ end
 
 local DOMAIN_DEFAULTS = {
   combat = {
+    stateSchemaVersion = 1,
     hunting = false,
     attacking = false,
     fleeing = false,
@@ -195,6 +196,7 @@ local DOMAIN_DEFAULTS = {
     configReturnPrefix = nil,
   },
   rage = {
+    amount = 0,
     ready = {},
     timers = {},
     samples = {},
@@ -223,7 +225,23 @@ local DOMAIN_DEFAULTS = {
   },
 }
 
+local STATE_SCHEMA_VERSION = 1
 local OPERATION_MODEL_VERSION = 1
+local DOMAIN_NAMES = {
+  "combat",
+  "lifecycle",
+  "targeting",
+  "gold",
+  "queue",
+  "walk",
+  "diag",
+  "trace",
+  "ui",
+  "rage",
+  "inventory",
+  "ih",
+  "gag",
+}
 
 local function isOperationOwner(owner)
   local value = tostring(owner or "")
@@ -233,12 +251,30 @@ local function isOperationOwner(owner)
 end
 
 function boop.runtime.ensureState()
-  boop.state = boop.state or {}
+  if type(boop.state) ~= "table" then
+    boop.state = {}
+  end
   local state = boop.state
   local previousCombat = rawget(state, "combat")
+  local schemaCurrent = type(previousCombat) == "table"
+    and tonumber(rawget(previousCombat, "stateSchemaVersion"))
+      == STATE_SCHEMA_VERSION
   local migrateOperationModel = type(previousCombat) == "table"
     and tonumber(rawget(previousCombat, "operationModelVersion"))
       ~= OPERATION_MODEL_VERSION
+
+  if schemaCurrent and not migrateOperationModel then
+    local domainsIntact = true
+    for _, domain in ipairs(DOMAIN_NAMES) do
+      if type(rawget(state, domain)) ~= "table" then
+        domainsIntact = false
+        break
+      end
+    end
+    if domainsIntact then
+      return state
+    end
+  end
 
   for domain, defaults in pairs(DOMAIN_DEFAULTS) do
     local current = rawget(state, domain)
@@ -264,6 +300,7 @@ function boop.runtime.ensureState()
       end
     end
   end
+  state.combat.stateSchemaVersion = STATE_SCHEMA_VERSION
   state.combat.operationModelVersion = OPERATION_MODEL_VERSION
   state.combat.operationLocksByOwner = state.combat.blockersByOwner
   state.combat.operationLock =
@@ -1132,8 +1169,10 @@ function boop.runtime.claimRoomApplication(
   return boop.runtime.roomApplicationSnapshot(application.applicationId)
 end
 
-function boop.runtime.validateRoomSourceAuthority(sourceAuthority)
-  local observation = roomObservationState()
+local function roomSourceAuthorityCurrent(
+  observation,
+  sourceAuthority
+)
   local captured = copySourceAuthority(sourceAuthority)
   return captured
     and sourceAuthorityMatches(
@@ -1149,13 +1188,20 @@ function boop.runtime.validateRoomSourceAuthority(sourceAuthority)
     or false
 end
 
+function boop.runtime.validateRoomSourceAuthority(sourceAuthority)
+  return roomSourceAuthorityCurrent(
+    roomObservationState(),
+    sourceAuthority
+  ) and true or false
+end
+
 function boop.runtime.currentRoomSourceAuthority()
   local observation = roomObservationState()
   local authority = copySourceAuthority(
     observation.acceptedSourceAuthority
   )
   if authority
-      and boop.runtime.validateRoomSourceAuthority(authority) then
+      and roomSourceAuthorityCurrent(observation, authority) then
     return authority
   end
   return false
@@ -1382,10 +1428,14 @@ function boop.runtime.roomObservationSnapshot()
   }
 end
 
-function boop.runtime.readinessSnapshot()
-  local lifecycle = boop.runtime.lifecycleSnapshot()
-  local observation = boop.runtime.roomObservationSnapshot()
-  local authority = boop.runtime.currentRoomSourceAuthority()
+function boop.runtime.roomReadinessSnapshot()
+  local observation = roomObservationState()
+  local authority = copySourceAuthority(
+    observation.acceptedSourceAuthority
+  )
+  if not roomSourceAuthorityCurrent(observation, authority) then
+    authority = false
+  end
   local roomReady = authority and true or false
   local roomCode = "ready"
   local roomLabel = "room ready"
@@ -1399,17 +1449,21 @@ function boop.runtime.readinessSnapshot()
   end
 
   return {
-    lifecycle = lifecycle,
-    room = {
-      ready = roomReady,
-      code = roomCode,
-      label = roomLabel,
-      roomId = observation.roomId,
-      generation = observation.generation,
-      infoSeen = observation.infoSeen,
-      itemsSeen = observation.itemsSeen,
-      sourceAuthority = authority,
-    },
+    ready = roomReady,
+    code = roomCode,
+    label = roomLabel,
+    roomId = tostring(observation.roomId or ""),
+    generation = tonumber(observation.generation) or 0,
+    infoSeen = not not observation.infoSeen,
+    itemsSeen = not not observation.itemsSeen,
+    sourceAuthority = authority,
+  }
+end
+
+function boop.runtime.readinessSnapshot()
+  return {
+    lifecycle = boop.runtime.lifecycleSnapshot(),
+    room = boop.runtime.roomReadinessSnapshot(),
   }
 end
 
@@ -2699,11 +2753,19 @@ local function blockerPriority(blocker)
   return BLOCKER_PRIORITY[tostring(blocker and blocker.code or "")] or 100
 end
 
-local function sortedBlockerRecords()
-  local state = boop.runtime.ensureState()
-  state.combat.blockersByOwner = state.combat.blockersByOwner or {}
+local EMPTY_BLOCKER_RECORDS = {}
+
+local function sortedBlockerRecords(blockersByOwner)
+  if type(blockersByOwner) ~= "table" then
+    local state = boop.runtime.ensureState()
+    state.combat.blockersByOwner = state.combat.blockersByOwner or {}
+    blockersByOwner = state.combat.blockersByOwner
+  end
+  if next(blockersByOwner) == nil then
+    return EMPTY_BLOCKER_RECORDS
+  end
   local records = {}
-  for owner, blocker in pairs(state.combat.blockersByOwner) do
+  for owner, blocker in pairs(blockersByOwner) do
     if type(blocker) == "table" and tostring(blocker.code or "") ~= "" then
       records[#records + 1] = {
         owner = tostring(owner),
@@ -2927,9 +2989,15 @@ function boop.runtime.clearBlocker(owner, observed)
 end
 
 function boop.runtime.shouldHold(system, exceptOwner)
+  local blockersByOwner =
+    boop.runtime.ensureState().combat.blockersByOwner
+  if type(blockersByOwner) ~= "table"
+      or next(blockersByOwner) == nil then
+    return false
+  end
   local key = normalizeKey(system)
   local excluded = tostring(exceptOwner or "")
-  for _, blocker in ipairs(sortedBlockerRecords()) do
+  for _, blocker in ipairs(sortedBlockerRecords(blockersByOwner)) do
     if blocker.owner ~= excluded and blocker.systems[key] == true then
       return true
     end
@@ -2974,10 +3042,18 @@ function boop.runtime.clearOperationLock(owner, observed)
 end
 
 function boop.runtime.operationHolds(system, exceptOwner)
+  local blockersByOwner =
+    boop.runtime.ensureState().combat.blockersByOwner
+  if type(blockersByOwner) ~= "table"
+      or next(blockersByOwner) == nil then
+    return false
+  end
   local key = normalizeKey(system)
   local excluded = tostring(exceptOwner or "")
-  for _, operation in ipairs(sortedOperationRecords()) do
-    if operation.owner ~= excluded and operation.systems[key] == true then
+  for _, blocker in ipairs(sortedBlockerRecords(blockersByOwner)) do
+    if isOperationOwner(blocker.owner)
+        and blocker.owner ~= excluded
+        and blocker.systems[key] == true then
       return true
     end
   end
@@ -3775,16 +3851,7 @@ function boop.runtime.context(sourceAuthority, options)
       hpperc = tostring(targetInfo.hpperc or "")
     end
   end
-  local rageAmount = 0
-  if gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.charstats then
-    for _, stat in ipairs(gmcp.Char.Vitals.charstats) do
-      local name, val = tostring(stat or ""):match("^(%w+):%s*(%d+)")
-      if name == "Rage" then
-        rageAmount = tonumber(val) or 0
-        break
-      end
-    end
-  end
+  local rageAmount = tonumber(state.rage.amount) or 0
   local assistLeader = boop.util and boop.util.trim and boop.util.trim((boop.config and boop.config.assistLeader) or "") or tostring((boop.config and boop.config.assistLeader) or "")
 
   local operation = boop.runtime.operationLockSnapshot()
@@ -3832,7 +3899,9 @@ function boop.runtime.context(sourceAuthority, options)
     },
     gold = {
       generation = tonumber(state.gold.generation) or 0,
-      operation = deepCopy(state.gold.operation),
+      operation = type(state.gold.operation) == "table"
+          and deepCopy(state.gold.operation)
+        or false,
       autoGrabPending = not not state.gold.autoGrabPending,
       getPending = not not state.gold.getPending,
       putPending = not not state.gold.putPending,

@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = "0.1.492"
+boop.version = "0.1.493"
 
 boop.defaults = {
   enabled = false,
@@ -115,7 +115,7 @@ end
 
 local function gmcpSupportTimestamp()
   if getEpoch then
-    return getEpoch() / 1000
+    return getEpoch()
   end
   return os.clock()
 end

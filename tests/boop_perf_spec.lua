@@ -267,7 +267,7 @@ describe("boop performance instrumentation", function()
     assert.are.equal(0, snapshot.counters.contexts_built)
   end)
 
-  it("counts every item-bearing structure traversed by readiness snapshots", function()
+  it("counts full diagnostic copies but not lightweight readiness snapshots", function()
     boop.perf.setEnabled(true)
     boop.state.targeting.roomObservation.acceptedItems = { {}, {} }
     boop.state.targeting.roomObservation.fenceQueue = {
@@ -287,6 +287,9 @@ describe("boop performance instrumentation", function()
     }
 
     boop.runtime.roomObservationSnapshot()
+    assert.are.equal(17, boop.perf.snapshot().counters.deepcopy_items)
+
+    boop.runtime.readinessSnapshot()
     assert.are.equal(17, boop.perf.snapshot().counters.deepcopy_items)
   end)
 

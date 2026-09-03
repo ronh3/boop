@@ -51,17 +51,17 @@ The left column is the file; the right column is what it *actually* owns, which 
 
 | Module | Lines | Actually owns |
 |---|---|---|
-| `boop_runtime` | 4167 | **Six distinct subsystems**: the state schema and `ensureState`; room observation, response fences, applications, movement intent, and source authority; operation locks and blockers; the queued-standard dispatch lifecycle and outbound expectations; interrupt terminals and diag evidence; pack quarantine. Plus `context`/`step`/`applyEffects` — the combat loop. |
-| `boop_events` | 3429 | GMCP and system event handlers, **plus** the entire gold pipeline (~1250 lines), wielded-inventory tracking, standard retry/recovery, the prequeue engine, `boop.tick`, and `boop.onPrompt`. |
+| `boop_runtime` | 4265 | **Six distinct subsystems**: the state schema and sentinel-guarded `ensureState`; room observation, response fences, applications, movement intent, and source authority; operation locks and blockers; the queued-standard dispatch lifecycle and outbound expectations; interrupt terminals and diag evidence; pack quarantine. Plus `context`/`step`/`applyEffects` — the combat loop. |
+| `boop_events` | 3493 | GMCP and system event handlers, including the single Vitals `charstats` adapter into canonical Rage/Spec state, **plus** the entire gold pipeline (~1250 lines), wielded-inventory tracking, standard retry/recovery, the prequeue engine, `boop.tick`, and `boop.onPrompt`. |
 | `boop_ui` | 5546 | Dashboards, help, and config screens; config mutation; **the pull/interrupt state machine** (`queueInterrupt`, `diag`, `matic`, `catarin`, `fly`, `leap`, `touchShield`, `pullCommand`, `completePull`, `armPullTimeout`); alias-facing command parsers; five sites of raw `db:` access. |
-| `boop_stats` | 2948 | Roughly the first 1,400 lines are the scope model and accumulators; **the remaining ~1,500 lines are rendering and `boop stats` command routing**, with a few late model functions interleaved among them. |
-| `boop_attacks` | 2119 | Profile registry, `plan`/`applyModifiers`/`choose`, standard and rage selection, skill gating — **plus `execute`, which is dispatch rather than decision**. |
+| `boop_stats` | 3070 | The scope model and accumulators also own the 5-second dirty/coalesced lifetime-persistence schedule and exact-boundary flushes; **the remaining ~1,500 lines are rendering and `boop stats` command routing**, with a few late model functions interleaved among them. |
+| `boop_attacks` | 2120 | Profile registry, `plan`/`applyModifiers`/`choose`, standard and rage selection, skill gating — **plus `execute`, which is dispatch rather than decision**. |
 | `boop_targets` | 2035 | Denizen inventory, selection, game-target sync — **plus** whitelist/blacklist/tag data, the party whitelist-share packet protocol, and list rendering. |
 | `boop_gag` | 1795 | Line condensation and palette — **plus the combat-line parser, which is the sole ingestion point for combat-line telemetry into `boop.stats`**. |
 | `boop_ui_registry` | 1352 | Config schema and setters; UI modes, presets, help topics, screens; the metatable fallback bridge. |
-| `boop_rage` | 884 | Rage readiness, global Battlerage cooldown, Triumph free-rage credit, gain sampling, affliction-trigger ingestion, party callouts. |
+| `boop_rage` | 885 | Rage readiness, global Battlerage cooldown, Triumph free-rage credit, canonical current amount, gain sampling, affliction-trigger ingestion, party callouts. |
 | `boop_walk` | 812 | `demonnicAutoWalker` adapter, all-clear evaluation, reserved-move emission, blocker reporting. |
-| `boop_db` | 629 | Mudlet DB schema, config/list/stats/mob-XP load and save. |
+| `boop_db` | 648 | Mudlet DB schema, config/list/stats/mob-XP load and save. |
 | `boop_util` | 492 | String and operator-output helpers — **plus `boop.trace.*` and `boop.executeAction`/`boop.executeRageAction`**, the command dispatcher. |
 | `boop_theme` | 357 | Colour tag sets. |
 | `boop_init` | 210 | Namespace bootstrap, `boop.defaults`, trigger folder enable/disable, GMCP support announcement, `boop.bootstrap`. |
@@ -70,7 +70,7 @@ The left column is the file; the right column is what it *actually* owns, which 
 | `boop_afflictions` | 95 | Target affliction tracking (manual). |
 | `boop_safety` | 77 | Flee threshold parsing and flee execution. |
 | `boop_state` | 16 | A thin shim: attaches UI registries, then delegates to `boop.runtime.ensureState()`. |
-| `boop_bootstrap` | 7 | Session-local resets, then `boop.bootstrap()`. |
+| `boop_bootstrap` | 11 | Flushes pending stats before controlled source reload, performs session-local resets, then calls `boop.bootstrap()`. |
 
 ---
 
@@ -86,7 +86,7 @@ Boop deliberately uses a **convention-based, statically analyzable architectural
 
 All three are required, and each was added because omitting it hid real coupling. A namespace-only graph misses six reciprocal pairs, because `boop_events` alone owns 42 top-level functions that six other modules call. Adding data references surfaces four more. Counts throughout this document are **occurrences**, not lines containing a reference.
 
-The coding convention is part of the protection. Cross-module code uses direct forms such as `boop.targets.choose()` and `boop.state.targeting.currentTargetId`. Architecture-obscuring forms are rejected: `local b = boop`, `(boop).targets`, `boop["targets"]`, function captures such as `local f = boop.tick`, aliases or `_G` access for `send`/`sendGMCP`, and owned-data mutation through aliases or `rawset`. The guard does not try to recover the hidden dependency semantically. Fourteen current path-and-symbol legacy exceptions cover seven computed owned-data writes, pre-existing `boop_events` state aliases, four `boop_stats` rendering captures, and the protected compatibility-forwarder call in `boop_attacks`; they are not permission for new indirection. Separately, the exact `rawset(state, domain, current)` in `boop_runtime.lua:247` is a permanent line-scoped schema-custody exception, not architectural debt.
+The coding convention is part of the protection. Cross-module code uses direct forms such as `boop.targets.choose()` and `boop.state.targeting.currentTargetId`. Architecture-obscuring forms are rejected: `local b = boop`, `(boop).targets`, `boop["targets"]`, function captures such as `local f = boop.tick`, aliases or `_G` access for `send`/`sendGMCP`, and owned-data mutation through aliases or `rawset`. The guard does not try to recover the hidden dependency semantically. Fourteen current path-and-symbol legacy exceptions cover seven computed owned-data writes, pre-existing `boop_events` state aliases, four `boop_stats` rendering captures, and the protected compatibility-forwarder call in `boop_attacks`; they are not permission for new indirection. Separately, the exact `rawset(state, domain, current)` in `boop_runtime.lua:283` is a permanent line-scoped schema-custody exception, not architectural debt.
 
 One narrow string form is architectural by necessity: inside `boop.events.register()`, its existing local `add(event, fn)` helper passes literal `"boop.<symbol>"` callbacks to Mudlet's `registerAnonymousEventHandler`. The guard resolves only that handler-registration shape to the symbol's normal owner and fails closed if the literal names an unknown Boop symbol. Other strings remain opaque and do not create dependencies.
 
@@ -100,6 +100,8 @@ The package contains **20 script modules** and **108 unique dependency edges**: 
 The remaining **19 modules form a single strongly-connected component**. Every one of them can reach every other by some directed path.
 
 The Phase-1 working tree is tracked separately from that historical reference. It contains **21 modules** after adding `boop_perf` and **117 unique directions**: the frozen 108 plus exactly nine reviewed telemetry edges into Perf. Of those current directions, 107 are executable/API and 44 are owned-data, with 34 directions in both sets. It retains the same 23 reciprocal pairs, the same 19-member SCC, `boop_bootstrap` as the sole composition root, and zero unresolved direct references or duplicate direct exports.
+
+The Phase-2 working tree contains the same **21 modules** and **118 unique directions**: 108 executable/API and 46 owned-data, with 36 directions in both sets. The one new direction is the explicit controlled-reload call `boop_bootstrap -> boop_stats`; canonical Rage ownership makes the existing `boop_attacks -> boop_rage` direction owned-data as well, and the persistence availability check makes the existing `boop_stats -> boop_db` direction owned-data as well as executable. The graph still has 23 reciprocal pairs, the same 19-member SCC, and the same sole composition root. No target-architecture boundary changed.
 
 Terminology used below:
 
@@ -388,7 +390,7 @@ prompt trigger ──→ boop.onPrompt() ───┘        │
                                                           └─ boop.executeAction() → send()
 ```
 
-`boop.onVitals()` has no `enabled` guard and ticks unconditionally. `boop.onPrompt()` guards on `enabled`, builds a context for `promptStep`, then ticks again if `promptStep` returns `runTick`. The `boop.canAct()` 0.4 s limiter suppresses a duplicate *dispatch* but not the duplicate decision work.
+`boop.onVitals()` parses `gmcp.Char.Vitals.charstats` once into canonical `state.rage.amount` and `state.combat.spec`, even while Boop is disabled. It then returns before combat decision work when disabled; otherwise it follows the unchanged Vitals tick path. `boop.onPrompt()` guards on `enabled`, builds a context for `promptStep`, then ticks again if `promptStep` returns `runTick`. The `boop.canAct()` 0.4 s limiter still suppresses a duplicate *dispatch* but not the duplicate enabled decision work; tick coalescing remains deferred.
 
 ### Prequeue flow
 
@@ -413,11 +415,13 @@ Telemetry reaches `boop.stats` by two independent paths:
 1. **Combat lines** — gag triggers → `boop.gag.on*Line` → `boop.stats.on*`. The stats call happens **before** the gag-config early return, so telemetry survives with gags disabled, but only while the `boop` trigger folder is enabled. `boop.stats.onAttackLine` early-returns on `not selfActor` (`boop_stats.lua:1043–1046`), so other players' attack lines feed display only. `boop_gag` is the sole ingestion point for this path.
 2. **Character status** — `gmcp.Char.Status` → `boop.stats.onCharStatus()` computes gold and experience deltas, independently of gag and of the trigger folder's enabled state.
 
+Vitals `charstats` have a separate canonical-state path: `boop.onVitals()` performs the only production scan, sends Rage through `boop.rage.onRageObserved()`, and writes Spec to `state.combat.spec`. Planning and context callers read those owned values rather than rescanning GMCP.
+
 ### Persistence flow
 
-`boop.db.init()` creates seven sheets and calls `loadConfig`, `loadLists`, `loadStats`. Thereafter: `saveConfig` per setting change; `saveList`/`saveWhitelistTags` per list edit; `recordMobXpObservation` per observed mob XP; and `saveStats` per accumulation event.
+`boop.db.init()` creates seven sheets and calls `loadConfig`, `loadLists`, `loadStats`. Thereafter: `saveConfig` runs per setting change; `saveList`/`saveWhitelistTags` per list edit; `recordMobXpObservation` per observed mob XP; and lifetime-stat mutations mark `boop.stats.persistence` dirty.
 
-`saveStats` performs 13 `db:fetch` queries plus up to 13 `db:update` writes, and is called from `addGold`, `addExperience`, `incrementCounter` (every counter except `roomMoves`), and `recordKill`. Because `boop.stats.onTargetSet` calls `incrementCounter` three times, a single retarget currently triggers 39 synchronous indexed SELECTs plus writes. See `PERFORMANCE.md`.
+Only one 5-second timer is owned while dirty. Its callback performs one `saveStats`; mutations during or after a flush remain dirty and own one retry. Disable, disconnect, flee, controlled source reload, every stats-rendering entry point, and stats reset flush immediately. An immediate flush invalidates/cancels its timer token so a late callback cannot save a newer generation redundantly. DB failure or unavailability leaves the state dirty. The DB schema and `saveStats` probe remain unchanged; see `PERFORMANCE.md`.
 
 Session-local config keys — `partySize`, `breakShields`, `targetingMode` — are reset to defaults on load and actively deleted from the config sheet.
 

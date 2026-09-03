@@ -240,6 +240,11 @@ function M.setRage(rage)
   else
     table.insert(gmcp.Char.Vitals.charstats, value)
   end
+  if boop.rage and boop.rage.onRageObserved then
+    boop.rage.onRageObserved(rage)
+  else
+    boop.state.rage.amount = tonumber(rage) or 0
+  end
 end
 
 function M.setTarget(id, name, hpperc)

@@ -273,10 +273,10 @@ class ConventionTests(unittest.TestCase):
 
     def test_runtime_schema_rawset_exception_is_exactly_site_scoped(self) -> None:
         exact = ConventionViolation(
-            "rawset", "src/scripts/boop/boop_runtime.lua", "rawset", 247
+            "rawset", "src/scripts/boop/boop_runtime.lua", "rawset", 283
         )
         shifted = ConventionViolation(
-            "rawset", "src/scripts/boop/boop_runtime.lua", "rawset", 248
+            "rawset", "src/scripts/boop/boop_runtime.lua", "rawset", 284
         )
         self.assertIn(exact.exact_key, SCHEMA_CUSTODY_EXCEPTIONS)
         self.assertNotIn(shifted.exact_key, SCHEMA_CUSTODY_EXCEPTIONS)
@@ -321,10 +321,10 @@ class ProductionGuardTests(unittest.TestCase):
     def test_repository_graph_and_complete_check_match_accepted_facts(self) -> None:
         graph = load_repository_graph(ROOT)
         self.assertEqual(21, len(graph.modules))
-        self.assertEqual(117, len(graph.edges))
-        self.assertEqual(107, len(graph.executable_edges))
-        self.assertEqual(44, len(graph.data_edges))
-        self.assertEqual(34, len(graph.executable_edges & graph.data_edges))
+        self.assertEqual(118, len(graph.edges))
+        self.assertEqual(108, len(graph.executable_edges))
+        self.assertEqual(46, len(graph.data_edges))
+        self.assertEqual(36, len(graph.executable_edges & graph.data_edges))
         self.assertEqual(23, len(graph.reciprocal_pairs()))
         self.assertEqual([19], sorted(len(value) for value in graph.nontrivial_sccs()))
         self.assertEqual(["boop_bootstrap"], graph.composition_roots())
@@ -333,7 +333,7 @@ class ProductionGuardTests(unittest.TestCase):
 
         errors, summary = check_repository_architecture(ROOT)
         self.assertEqual([], errors)
-        self.assertEqual(117, summary["edges"])
+        self.assertEqual(118, summary["edges"])
         self.assertEqual(14, summary["legacy_indirection_exceptions"])
         self.assertEqual(1, summary["schema_custody_exceptions"])
 

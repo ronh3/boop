@@ -97,6 +97,7 @@ end
 
 local function seedNoAbilitiesRecoveryState()
   boop.state.rage = {
+    amount = 0,
     ready = {
       harry = false,
       squeeze = true,

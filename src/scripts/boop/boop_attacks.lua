@@ -617,15 +617,12 @@ function boop.attacks.getRage()
   if planningContext and planningContext.rage and planningContext.rage.amount ~= nil then
     return tonumber(planningContext.rage.amount) or 0
   end
-  if gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.charstats then
-    for _, stat in ipairs(gmcp.Char.Vitals.charstats) do
-      local name, val = stat:match("^(%w+):%s*(%d+)")
-      if name == "Rage" then
-        return tonumber(val) or 0
-      end
-    end
-  end
-  return 0
+  return tonumber(
+    boop.state
+      and boop.state.rage
+      and boop.state.rage.amount
+      or 0
+  ) or 0
 end
 
 function boop.attacks.getTargetHpPerc()

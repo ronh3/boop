@@ -145,6 +145,30 @@ describe("boop runtime coordinator", function()
     assert.is_table(snapshot.observed)
   end)
 
+  it("uses the schema sentinel fast path and fully hydrates only after invalidation", function()
+    local state = boop.runtime.state()
+    state.gag.lastRawLine = nil
+
+    assert.are.equal(state, boop.runtime.ensureState())
+    assert.is_nil(state.gag.lastRawLine)
+
+    state.combat.stateSchemaVersion = 0
+    assert.are.equal(state, boop.runtime.ensureState())
+    assert.are.equal("", state.gag.lastRawLine)
+    assert.are.equal(1, state.combat.stateSchemaVersion)
+  end)
+
+  it("repairs a deleted top-level domain on the next ensureState call", function()
+    local state = boop.runtime.state()
+    state.inventory = nil
+
+    assert.are.equal(state, boop.runtime.ensureState())
+    assert.is_table(state.inventory)
+    assert.are.equal(0, state.inventory.generation)
+    assert.is_false(state.inventory.wieldedLeft)
+    assert.is_false(state.inventory.wieldedRight)
+  end)
+
   it("migrates legacy readiness owners and retains only operations", function()
     local state = boop.runtime.state()
     state.combat.operationModelVersion = nil
@@ -225,6 +249,70 @@ describe("boop runtime coordinator", function()
     assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
     assert.are.equal("", boop.runtime.operationLockSnapshot().owner)
     assert.is_false(boop.runtime.operationHolds("combat"))
+  end)
+
+  it("skips blocker sorting on empty hold checks and preserves non-empty behavior", function()
+    local originalSort = table.sort
+    local sortCalls = 0
+    local sortStub = stub(table, "sort", function(values, comparator)
+      sortCalls = sortCalls + 1
+      return originalSort(values, comparator)
+    end)
+
+    assert.is_false(boop.runtime.shouldHold("combat"))
+    assert.is_false(boop.runtime.operationHolds("combat"))
+    assert.are.equal(0, sortCalls)
+
+    helper.setRuntimeBlocker({
+      owner = "interrupt:sort-test",
+      code = "interrupt_pending",
+      systems = { combat = true },
+    })
+    local callsBeforeHold = sortCalls
+    assert.is_true(boop.runtime.operationHolds("combat"))
+    assert.is_true(sortCalls > callsBeforeHold)
+    sortStub:revert()
+  end)
+
+  it("matches full observation readiness semantics without exposing copied room structures", function()
+    helper.seedRoomObservation("44", {
+      generation = 9,
+      itemsSeen = true,
+      acceptedItems = {
+        { id = "1", name = "a denizen", attrib = "m" },
+      },
+      fenceQueue = {
+        { fenceId = 8, generation = 9, roomId = "44", valid = false },
+      },
+    })
+
+    local full = boop.runtime.roomObservationSnapshot()
+    local authority = boop.runtime.currentRoomSourceAuthority()
+    local lightweight = boop.runtime.roomReadinessSnapshot()
+    local readiness = boop.runtime.readinessSnapshot().room
+
+    assert.are.equal(authority and true or false, lightweight.ready)
+    assert.are.equal(full.roomId, lightweight.roomId)
+    assert.are.equal(full.generation, lightweight.generation)
+    assert.are.equal(full.infoSeen, lightweight.infoSeen)
+    assert.are.equal(full.itemsSeen, lightweight.itemsSeen)
+    assert.are.same(authority, lightweight.sourceAuthority)
+    assert.are.same(lightweight, readiness)
+    assert.is_nil(lightweight.acceptedItems)
+    assert.is_nil(lightweight.fenceQueue)
+    assert.is_nil(lightweight.activeApplication)
+
+    helper.seedRoomObservation("44", {
+      generation = 10,
+      infoSeen = true,
+      itemsSeen = false,
+      acceptedItems = { { id = "2" } },
+    })
+    lightweight = boop.runtime.roomReadinessSnapshot()
+    assert.is_false(lightweight.ready)
+    assert.are.equal("room_partial", lightweight.code)
+    assert.are.equal("44", lightweight.roomId)
+    assert.are.equal(10, lightweight.generation)
   end)
 
   it("resets pull generation and active-record fields independently", function()

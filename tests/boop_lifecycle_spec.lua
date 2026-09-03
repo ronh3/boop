@@ -279,6 +279,68 @@ describe("boop lifecycle recovery", function()
     assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
   end)
 
+  it("updates canonical Rage and Spec while disabled without running a tick", function()
+    local tickCalls = 0
+    replaceFunction(boop, "tick", function()
+      tickCalls = tickCalls + 1
+      return true
+    end)
+    gmcp.Char.Vitals.charstats = {
+      "Rage: 42",
+      "Spec: Two Handed",
+      "Other: ignored",
+    }
+    boop.config.enabled = false
+
+    assert.is_false(boop.onVitals())
+    assert.are.equal(0, tickCalls)
+    assert.are.equal(42, boop.state.rage.amount)
+    assert.are.equal("Two Handed", boop.state.combat.spec)
+    assert.are.equal(42, boop.attacks.getRage())
+    assert.are.equal(42, boop.runtime.context().rage.amount)
+    assert.are.equal(
+      42,
+      boop.state.rage.samples[#boop.state.rage.samples].r
+    )
+
+    gmcp.Char.Vitals.charstats = {
+      "Spec: Sword and Shield",
+      "Rage: 27",
+    }
+    boop.config.enabled = true
+    boop.onVitals()
+    assert.are.equal(1, tickCalls)
+    assert.are.equal(27, boop.state.rage.amount)
+    assert.are.equal("Sword and Shield", boop.state.combat.spec)
+  end)
+
+  it("throttles Core.Supports in seconds while preserving forced announcements", function()
+    local now = 100
+    local sent = {}
+    replaceGlobal("getEpoch", function() return now end)
+    replaceGlobal("sendGMCP", function(payload)
+      sent[#sent + 1] = payload
+    end)
+    boop.gmcp.lastSupportAnnounceAt = 0
+
+    assert.is_true(boop.requestCoreSupports({ force = true }))
+    assert.are.equal(4, #sent)
+
+    now = 100.5
+    assert.is_false(boop.requestCoreSupports({ minInterval = 1 }))
+    assert.are.equal(4, #sent)
+
+    assert.is_true(boop.requestCoreSupports({
+      force = true,
+      minInterval = 1,
+    }))
+    assert.are.equal(8, #sent)
+
+    now = 101.6
+    assert.is_true(boop.requestCoreSupports({ minInterval = 1 }))
+    assert.are.equal(12, #sent)
+  end)
+
   it("gap-03-3 accepts lifecycle evidence in either order", function()
     local marker = "GAP_03_3_LIFECYCLE_BOUNDARY_BROKEN"
     assert.is_function(boop.onIreSupportObserved, marker)

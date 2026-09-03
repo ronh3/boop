@@ -2,9 +2,39 @@
 
 The hot-path model, a performance budget, and the instrumentation needed to replace the budget's guesses with measurements.
 
-> **No measurements have been taken.** Every finding below is static analysis, and every threshold in §4 is a starting hypothesis. The classifications describe confidence in the *shape* of a cost, not an observed timing. Phase 1 of `REFACTOR-ROADMAP.md` exists to fix that before anything is optimized.
+> Phase 1 has produced a live Achaea hunting baseline. The thresholds in §4 remain the original starting hypotheses; Phase 2 does not rewrite them from synthetic tests. Static-analysis passages below are retained as the before-state for the approved optimizations and are labelled accordingly.
 
 Source verified against commit `96384bc` (package version `0.1.490`).
+
+### Phase-1 live baseline
+
+| Measure | Samples/calls | Mean | Max | Other evidence |
+|---|---:|---:|---:|---|
+| `prompt_total` | 2,243 | 2.077 ms | 45 ms | below the 8 ms tick-coalescing reopen threshold |
+| `tick` | 4,629 | 1.016 ms | 59 ms | Vitals 2,243; prompt 2,151; duplicate work confirmed but deferred |
+| `context` | 9,870 | 0.301 ms | 3.998 ms | 1,859,872 copied room items across the run |
+| `db.saveStats` | 335 | 19.015 ms | 51 ms | 6,370 ms cumulative; median, p95, and p99 buckets all >=10 ms |
+
+The inexpensive decision probes remained small (`targets.choose` 0.057 ms, `attacks.plan` 0.092 ms, `attacks.selectRage` 0.048 ms, `attacks.applyModifiers` 0.016 ms). Phase 2 therefore targets persistence and discarded context work, not decision algorithms or duplicate-tick ordering.
+
+### Phase-2 live validation
+
+An approximately eight-minute Achaea hunting run on package version `0.1.493` produced the following post-change evidence:
+
+| Measure | Samples/calls | Mean | Phase-1 mean/evidence |
+|---|---:|---:|---|
+| `prompt_total` | 1,392 | 0.607 ms | 2.077 ms |
+| `tick` | 2,769 | 0.213 ms | 1.016 ms |
+| `context` | 6,026 | 0.064 ms | 0.301 ms |
+| `db.saveStats` | 43 over 1,392 prompts | variable by individual SQLite write | 335 calls over 2,243 prompts |
+| `Items.Remove` | live run | 0.110 ms | 8.420 ms |
+| `Room.Info` | live run | 0.625 ms | 9.071 ms |
+| `Char.Status` | live run | 0.017 ms | 4.752 ms |
+| `applyEffects` | live run | 0.039 ms | 0.366 ms |
+
+The run recorded 43 `stats_flushes` and 99,337 `deepcopy_items` over 6,026 contexts, compared with 1,859,872 copied items over 9,870 contexts in the Phase-1 baseline. Persistence coalescing is therefore validated by the dramatic reduction in save frequency; variable latency for an individual SQLite write remains expected.
+
+Duplicate work remains observable — 1,390 Vitals ticks, 1,379 prompt ticks, and 1,392 `prompt_total` samples — but the work is now cheap. Tick coalescing remains deferred exactly as described in §5.
 
 ---
 
@@ -17,7 +47,7 @@ Work in boop divides by how often it runs.
 | **Per line of game output** | 885 Mudlet trigger patterns; on a match, one of three generic handlers | game output rate x pattern count |
 | **Per prompt** | `boop.onPrompt` -> `promptStep` -> often `boop.tick`; separately `gmcp.Char.Vitals` -> `boop.onVitals` -> `boop.tick` | prompt rate (assumed 2-4/sec in combat) |
 | **Per room change** | `Room.Info` + `Char.Items.List` fence and application; denizen list rebuild | movement rate |
-| **Per retarget** | `targets.setTarget`, three `incrementCounter` calls, each flushing stats to SQLite | kill rate |
+| **Per retarget** | `targets.setTarget`, three `incrementCounter` calls, each marking one shared pending stats flush dirty | kill rate; at most one coalesced save per 5-second window |
 | **Per kill** | `recordKill`, mob XP observation, gold and experience deltas | kill rate |
 | **Per balance recovery** | `onBalanceUsed` -> `schedulePrequeue` -> timer -> `prequeueStandard` | balance rate |
 
@@ -25,15 +55,15 @@ The per-line tier is the only one whose cost is unbounded in the codebase's own 
 
 ---
 
-## 2. Per-prompt work as written
+## 2. Per-prompt work at the Phase-1 baseline
 
-`boop.onVitals()` has no `enabled` guard and calls `boop.tick()` unconditionally. `boop.onPrompt()` guards on `enabled`, builds a context for `promptStep`, then calls `boop.tick()` again if `promptStep` returns `runTick`.
+Before Phase 2, `boop.onVitals()` had no `enabled` guard and called `boop.tick()` unconditionally. Phase 2 retains Vitals observation while disabled but now returns before the tick. `boop.onPrompt()` still guards on `enabled`, builds a context for `promptStep`, then calls `boop.tick()` again if `promptStep` returns `runTick`.
 
-Assuming `gmcp.Char.Vitals` fires alongside each prompt — **an assumption Phase 1 must confirm** — each prompt performs two full tick decisions. `boop.canAct()`'s 0.4 s limiter suppresses the second *dispatch*, but not the decision work behind it. That is waste, not a correctness bug.
+Phase-1 source counts confirmed that `gmcp.Char.Vitals` usually fires alongside each prompt, producing roughly two full tick decisions per prompt. `boop.canAct()`'s 0.4 s limiter suppresses the second *dispatch*, but not the decision work behind it. The measured means remain below the reopen threshold, so tick coalescing is still deferred.
 
 ### `boop.runtime.context()`
 
-Tracing the call chain, `context()` invokes `boop.runtime.ensureState()` **nine times**:
+At the Phase-1 baseline, tracing the call chain showed that `context()` invoked `boop.runtime.ensureState()` **nine times**:
 
 | Path | Call |
 |---|---|
@@ -47,9 +77,9 @@ Tracing the call chain, `context()` invokes `boop.runtime.ensureState()` **nine 
 | `operationLockSnapshot` -> `currentOperationLock` | 8 |
 | ... -> `sortedOperationRecords` -> `sortedBlockerRecords` | 9 |
 
-Each `ensureState()` iterates 13 domains against roughly 119 default keys, checking `current[key] == nil` — approximately 1,100 hash lookups per `context()`, multiplied by two to four contexts per prompt.
+Before Phase 2, each call iterated 13 domains against roughly 119 default keys, checking `current[key] == nil` — approximately 1,100 hash lookups per `context()`. Phase 2 keeps the call topology but healthy calls now validate only the schema/migration sentinels and the 13 top-level domain table types. Full hydration still runs when a sentinel is stale or a domain is damaged.
 
-Additionally, per context:
+Additionally, the Phase-1 baseline paid these per-context costs:
 
 - `roomObservationSnapshot()` deep-copies `acceptedItems`, `fenceQueue`, `lastCompletedFence`, and `activeApplication` — the last of which itself holds a deep copy of the room item list. This scales with room population. `readinessSnapshot()` then reads four scalar fields from the result and discards the rest.
 - `deepCopy(state.gold.operation)` runs even when gold is idle.
@@ -57,7 +87,9 @@ Additionally, per context:
 - `gmcp.Char.Vitals.charstats` is scanned with a per-entry `string.match` to extract Rage.
 - Roughly twelve nested sub-tables are allocated.
 
-`tickStep` then calls `boop.runtime.operationHolds()` five times consecutively (`target`, `combat`, `queue`, `gold`, `walk`) and four more times in the gold branch. Each call runs `sortedOperationRecords()` -> `sortedBlockerRecords()`, which invokes `ensureState()`, allocates a fresh record table per blocker, and calls `table.sort` — even when `blockersByOwner` is empty, which is the normal hunting case. `prequeueStandard` pays four, `schedulePrequeue` three, `refreshPrequeuedStandard` four.
+Phase 2 replaces the readiness caller's full room snapshot with scalar-only readiness data, skips the gold-operation copy when idle, and reads canonical Rage state populated once by the Vitals handler. The full diagnostic room snapshot and active-operation copy semantics remain intact.
+
+`tickStep` then calls `boop.runtime.operationHolds()` five times consecutively (`target`, `combat`, `queue`, `gold`, `walk`) and four more times in the gold branch. At the Phase-1 baseline, each call allocated normalized records and sorted even when `blockersByOwner` was empty. Phase 2 returns immediately for the normal empty map; non-empty priority and normalization behavior is unchanged.
 
 `tickStep` also rebuilds a near-complete second copy of the context (`boop_runtime.lua:4012-4036`) whenever the chosen target differs from `context.target.id`, linear-scanning `denizens` to resolve the name — that is, on essentially every retarget.
 
@@ -69,15 +101,15 @@ Additionally, per context:
 
 Clear waste with a behaviour-preserving fix. Measure to size it, then fix.
 
-**P1 — `boop.db.saveStats()` on the combat path.** The function performs 13 `db:fetch` queries plus up to 13 `db:update` writes. It is called from `persistLifetime()` inside `addGold`, `addExperience`, `incrementCounter` (every counter except `roomMoves`), and `recordKill`. Because `boop.stats.onTargetSet` calls `incrementCounter` three times — `retargets`, `abandoned`, `targets` — **a single retarget triggers 39 synchronous indexed SELECTs plus writes**, on the most frequent event in bashing.
+**P1 — `boop.db.saveStats()` on the combat path (addressed in Phase 2).** At the live baseline the function performed 13 `db:fetch` queries plus up to 13 `db:update` writes per call and averaged 19.015 ms. `persistLifetime()` now marks one coalesced persistence state dirty; repeated mutations share a single 5-second timer, with immediate flushes at exact observation and lifecycle boundaries.
 
 The `stats` sheet declares `_unique = { "name" }`, so each lookup is indexed rather than a scan. Even so, this is the only place in boop that performs synchronous I/O at combat frequency, and it is the most likely cause of any observed client hitching. Addressed in Phase 2.
 
-**P2 — Room-item deep copies in `readinessSnapshot()`.** Copy work that scales with room population, performed on every context build and discarded immediately.
+**P2 — Room-item deep copies in `readinessSnapshot()` (addressed in Phase 2).** The readiness path is now scalar-only; the full copied observation API remains available to diagnostic callers.
 
 **P3 — Duplicate ticks per prompt.** Full decision work runs twice; the second result is discarded by the `canAct` limiter. Measured in Phase 1; the fix is deferred — see §5.
 
-**P4 — `ensureState()` re-validating 13 domains on every call.** After bootstrap, nothing is ever missing.
+**P4 — `ensureState()` re-validating every nested default on every call (addressed in Phase 2).** Healthy calls now use sentinel plus top-level integrity checks while damaged domains and stale migrations still self-repair.
 
 ### Worth measuring
 
@@ -87,7 +119,7 @@ Plausibly significant; cannot be settled by reading the code.
 
 **M2 — timer churn from `canAct` and `canUseRage`.** Each creates a `tempTimer` per successful call (0.4 s and 0.6 s respectively). At combat cadence that is a steady trickle of Mudlet timer objects. Both are also query-shaped names with mutating side effects, which is a clarity problem independent of cost.
 
-**M3 — `charstats` scanned three times per Vitals event** — once by `boop.attacks.getRage()` called from `onVitals`, once by the Spec extraction loop in `onVitals`, and once inside `context()`. Individually cheap. Worth doing regardless, because parsing once into `state.rage.amount` and `state.combat.spec` is also the correct architecture.
+**M3 — `charstats` scanned three times per Vitals event (addressed in Phase 2).** The Vitals event now scans once and writes `state.rage.amount` and `state.combat.spec`; attacks and context consume those canonical values.
 
 ### Likely negligible — already fast enough
 
@@ -114,7 +146,7 @@ Documented so that a future session does not spend effort here.
 
 ## 4. Performance budget
 
-**These are hypotheses.** They are derived from a model, not from measurement, and Phase 1 replaces them with observed values.
+**These thresholds remain hypotheses.** Phase-1 and Phase-2 live measurements are compared against them above; Phase 2 leaves the thresholds unchanged because the post-change run validates the approved optimizations without crossing the tick-coalescing reopen thresholds.
 
 Mudlet's UI and Lua share one thread, so per-prompt work is time the client cannot spend rendering. At an assumed 2-4 prompts per second, holding boop under roughly 5% of wall time means 12-25 ms of Lua work per second.
 

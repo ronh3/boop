@@ -2102,6 +2102,9 @@ function boop.onDataSendRequest(_, command)
 end
 
 function boop.onConnectionEvent()
+  if boop.stats and boop.stats.flushPersistence then
+    boop.stats.flushPersistence("disconnect")
+  end
   if boop.runtime and boop.runtime.resolvePackQuarantine then
     boop.runtime.resolvePackQuarantine("connection")
   end
@@ -2855,20 +2858,36 @@ function boop.onCharStatus()
 end
 
 function boop.onVitals()
-  if boop.rage and boop.rage.onRageObserved and boop.attacks and boop.attacks.getRage then
-    boop.rage.onRageObserved(boop.attacks.getRage())
-  end
-
-  if gmcp and gmcp.Char and gmcp.Char.Vitals and gmcp.Char.Vitals.charstats then
-    local spec = ""
-    for _, stat in ipairs(gmcp.Char.Vitals.charstats) do
-      local name, val = stat:match("^([^:]+):%s*(.+)$")
-      if name == "Spec" then
+  local charstats = gmcp
+    and gmcp.Char
+    and gmcp.Char.Vitals
+    and gmcp.Char.Vitals.charstats
+  local rageAmount = 0
+  local spec = ""
+  local rageSeen = false
+  local specSeen = false
+  if type(charstats) == "table" then
+    for _, stat in ipairs(charstats) do
+      local name, val = tostring(stat or ""):match("^([^:]+):%s*(.+)$")
+      if name == "Rage" and not rageSeen then
+        rageAmount = tonumber(tostring(val):match("^(%d+)")) or 0
+        rageSeen = true
+      end
+      if name == "Spec" and not specSeen then
         spec = val
-        break
+        specSeen = true
       end
     end
+  end
+
+  if boop.rage and boop.rage.onRageObserved then
+    boop.rage.onRageObserved(rageAmount)
+  end
+  if type(charstats) == "table" then
     boop.state.combat.spec = spec
+  end
+  if not boop.config or not boop.config.enabled then
+    return false
   end
   boop.tick(nil, nil, "vitals")
 end
