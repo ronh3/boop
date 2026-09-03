@@ -1172,7 +1172,7 @@ describe("boop event-driven state transitions", function()
     })
 
     local oldContext = boop.runtime.context(oldAuthority)
-    local oldResult = boop.runtime.step({
+    local oldResult = boop.combat.step({
       type = "tick",
       context = oldContext,
     })
@@ -1198,7 +1198,7 @@ describe("boop event-driven state transitions", function()
     assertSourceAuthority(oldAuthority, oldApplication.sourceAuthority)
     assertSourceAuthority(oldAuthority, oldContext.sourceAuthority)
     oldCallback()
-    boop.runtime.applyEffects(oldResult, oldContext)
+    boop.combat.applyEffects(oldResult, oldContext)
 
     assert.are.same({ 0, 0, 0, 0, 0 }, {
       targetUpdates,
@@ -1376,13 +1376,13 @@ describe("boop event-driven state transitions", function()
         plan.rage,
         automaticOptions(authority)
       ))
-      assert.is_false(boop.attacks.execute(plan, context, authority))
+      assert.is_false(boop.combat.execute(plan, context, authority))
       assert.is_false(boop.executeAction(
         plan.standard,
         true,
         automaticOptions(false)
       ))
-      assert.is_false(boop.runtime.applyEffects({
+      assert.is_false(boop.combat.applyEffects({
         effects = {
           {
             kind = "target",

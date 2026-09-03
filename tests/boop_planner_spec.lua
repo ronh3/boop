@@ -49,7 +49,7 @@ describe("boop combat planner", function()
     local context = boop.runtime.context()
     local plan = boop.attacks.choose(context)
 
-    local did_action = boop.attacks.execute(plan, context)
+    local did_action = boop.combat.execute(plan, context)
 
     assert.is_true(did_action)
     assert.stub(send_stub).was_called_with("command hound at 42", false)
@@ -65,7 +65,7 @@ describe("boop combat planner", function()
     local plan = boop.attacks.choose(context)
 
     assert.is_true(plan.standardShieldbreak)
-    assert.is_true(boop.attacks.execute(plan, context))
+    assert.is_true(boop.combat.execute(plan, context))
     assert.is_true(boop.state.targeting.targetShield.attempted)
   end)
 
@@ -79,7 +79,7 @@ describe("boop combat planner", function()
     local plan = boop.attacks.choose(context)
 
     assert.is_true(plan.standardShieldbreak)
-    assert.is_true(boop.attacks.execute(plan, context))
+    assert.is_true(boop.combat.execute(plan, context))
     assert.stub(send_stub).was_called_with(
       "setalias BOOP_ATTACK command hound at 42",
       false

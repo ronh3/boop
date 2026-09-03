@@ -294,7 +294,7 @@ describe("boop exact rage dispatch contracts", function()
 
   local function dispatchRage(command, abilityName)
     boop.state.combat.limiters.rage = false
-    return boop.attacks.execute({
+    return boop.combat.execute({
       class = "test",
       rage = command,
       rageAbility = {
@@ -476,7 +476,7 @@ describe("boop exact rage dispatch contracts", function()
     sent = {}
     boop.state.combat.limiters.rage = false
 
-    assert.is_false(boop.attacks.execute({
+    assert.is_false(boop.combat.execute({
       rage = "harry 42",
       rageAbility = { name = "Harry" },
     }))

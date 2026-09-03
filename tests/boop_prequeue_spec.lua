@@ -126,6 +126,14 @@ describe("boop prequeue", function()
     assert.is_function(last_callback)
   end)
 
+  it("returns false when no balance recovery time is available", function()
+    boop.state.queue.balanceReadyAt = nil
+    boop.state.queue.equilibriumReadyAt = nil
+
+    assert.is_false(boop.schedulePrequeue())
+    assert.is_nil(boop.state.queue.prequeueTimer)
+  end)
+
   it("queues the next standard attack when prequeue fires while off balance", function()
     gmcp.Char.Vitals.bal = "0"
     gmcp.Char.Vitals.eq = "0"

@@ -3162,7 +3162,7 @@ function boop.schedulePrequeue(sourceAuthority, options)
   local bal = boop.state.queue.balanceReadyAt or 0
   local eq = boop.state.queue.equilibriumReadyAt or 0
   local readyAt = math.max(bal, eq)
-  if readyAt <= 0 then return end
+  if readyAt <= 0 then return false end
 
   local delay = readyAt - lead - nowSeconds()
   if delay < 0 then delay = 0 end
@@ -3206,43 +3206,24 @@ function boop.prequeueStandard(sourceAuthority, options)
   if not roomAuthorityCurrent(authority, "prequeue standard") then
     return false
   end
-  if not boop.config.enabled then return false end
-  if not boop.config.prequeueEnabled then return false end
-  if boop.runtime.standardPending
-      and boop.runtime.standardPending() then
-    return false
-  end
-  if operationHolds("queue")
-      or operationHolds("target")
-      or operationHolds("combat")
-      or operationHolds("gold") then
-    traceHeld("queue", "prequeue standard")
-    return false
-  end
-  if boop.state.diag.hold then return false end
-  if boop.state.gold.getPending or boop.state.gold.putPending then return false end
-  if boop.state.queue.prequeuedStandard then return false end
-  if gmcp and gmcp.Char and gmcp.Char.Vitals then
-    if gmcp.Char.Vitals.bal == "1" and gmcp.Char.Vitals.eq == "1" then
-      return false
-    end
-  end
-
-  if boop.safety and boop.safety.shouldFlee and boop.safety.shouldFlee() then
-    return false
-  end
-
-  local targetId = boop.targets.choose()
-  if not targetId or targetId == "" then
-    if boop.config.useQueueing and boop.state.gold.autoGrabPending then
-      flushPendingGold("prequeue no target")
-    end
-    if boop.targets and boop.targets.waitingForTargetCall and boop.targets.waitingForTargetCall() then
-      return false
+  local gate = boop.combat.evaluateGates({
+    kind = "prequeue",
+    deferPlanning = true,
+  })
+  if not gate.allowed then
+    if gate.held then
+      traceHeld("queue", "prequeue standard")
+    elseif gate.code == "no_target"
+        or gate.code == "waiting_for_target" then
+      if boop.config.useQueueing
+          and boop.state.gold.autoGrabPending then
+        flushPendingGold("prequeue no target")
+      end
     end
     return false
   end
 
+  local targetId = gate.targetId
   local targetNeedsSync = boop.targets
     and boop.targets.needsGameTargetSync
     and boop.targets.needsGameTargetSync(targetId)
@@ -3256,30 +3237,40 @@ function boop.prequeueStandard(sourceAuthority, options)
     end
   end
 
-  local context = boop.runtime
-    and boop.runtime.context
-    and boop.runtime.context(authority)
-    or nil
-  local actions = boop.attacks.choose(context)
-  if actions.standard and actions.standard ~= "" then
-    local emitted = boop.executeAction(
-      actions.standard,
-      true,
-      automaticDispatchOptions(authority, roomOwned)
-    )
-    if not emitted then
-      return false
-    end
-    if actions.standardIsOpener and boop.attacks and boop.attacks.markOpenerUsed then
-      boop.attacks.markOpenerUsed(classKeyForOpener(), targetId)
-    end
-    boop.state.queue.prequeuedStandard = true
-    boop.state.queue.prequeueSourceAuthority =
-      copySourceAuthority(authority)
-    boop.trace.log("prequeue sent standard")
-    return true
+  local context = boop.runtime.context(authority, {
+    roomOwned = roomOwned,
+  })
+  gate = boop.combat.evaluateGates({
+    kind = "prequeue",
+    context = context,
+    targetId = targetId,
+    resumeAtPlan = true,
+  })
+  if not gate.allowed then
+    return false
   end
-  return false
+  local actions = gate.plan
+  local emitted = boop.executeAction(
+    actions.standard,
+    true,
+    automaticDispatchOptions(authority, roomOwned)
+  )
+  if not emitted then
+    return false
+  end
+  if actions.standardIsOpener
+      and boop.attacks
+      and boop.attacks.markOpenerUsed then
+    boop.attacks.markOpenerUsed(
+      classKeyForOpener(),
+      targetId
+    )
+  end
+  boop.state.queue.prequeuedStandard = true
+  boop.state.queue.prequeueSourceAuthority =
+    copySourceAuthority(authority)
+  boop.trace.log("prequeue sent standard")
+  return true
 end
 
 function boop.refreshPrequeuedStandard(reason, sourceAuthority, options)
@@ -3298,44 +3289,34 @@ function boop.refreshPrequeuedStandard(reason, sourceAuthority, options)
   if not roomAuthorityCurrent(authority, "refresh prequeue") then
     return false
   end
-  if not boop.config.enabled then return false end
-  if not boop.config.prequeueEnabled then return false end
-  if boop.runtime.standardPending
-      and boop.runtime.standardPending() then
-    return false
-  end
-  if operationHolds("queue")
-      or operationHolds("target")
-      or operationHolds("combat")
-      or operationHolds("gold") then
-    traceHeld("queue", "refresh prequeue")
-    return false
-  end
-  if not boop.state.queue.prequeuedStandard then return false end
-  if boop.state.diag.hold then return false end
-  if boop.state.gold.getPending or boop.state.gold.putPending then return false end
-  if gmcp and gmcp.Char and gmcp.Char.Vitals then
-    if gmcp.Char.Vitals.bal == "1" and gmcp.Char.Vitals.eq == "1" then
-      return false
+  local gate = boop.combat.evaluateGates({
+    kind = "refresh",
+    deferPlanning = true,
+  })
+  if not gate.allowed then
+    if gate.held then
+      traceHeld("queue", "refresh prequeue")
     end
-  end
-
-  local targetId = boop.targets.choose()
-  if not targetId or targetId == "" then return false end
-  if tostring(boop.state.targeting.currentTargetId or "") ~= tostring(targetId) then
     return false
   end
 
-  local context = boop.runtime
-    and boop.runtime.context
-    and boop.runtime.context(authority)
-    or nil
-  local actions = boop.attacks.choose(context)
-  if not actions.standard or actions.standard == "" then return false end
-  if requireShieldbreak and not actions.standardShieldbreak then return false end
+  local targetId = gate.targetId
+  local context = boop.runtime.context(authority, {
+    roomOwned = roomOwned,
+  })
+  gate = boop.combat.evaluateGates({
+    kind = "refresh",
+    context = context,
+    targetId = targetId,
+    requireShieldbreak = requireShieldbreak,
+    resumeAtPlan = true,
+  })
+  if not gate.allowed then
+    return false
+  end
 
   if not boop.executeAction(
-      actions.standard,
+      gate.plan.standard,
       true,
       automaticDispatchOptions(authority, roomOwned)
     ) then
@@ -3345,40 +3326,12 @@ function boop.refreshPrequeuedStandard(reason, sourceAuthority, options)
   return true
 end
 
-function boop.canAct()
-  if boop.state.combat.limiters.hunting then
-    if boop.perf.on then
-      boop.perf.count("ticks_suppressed_by_limiter")
-    end
-    return false
-  end
-  if gmcp and gmcp.Char and gmcp.Char.Vitals then
-    if gmcp.Char.Vitals.bal ~= "1" or gmcp.Char.Vitals.eq ~= "1" then
-      return false
-    end
-  end
-  boop.state.combat.limiters.hunting = true
-  tempTimer(0.4, function() boop.state.combat.limiters.hunting = false end)
-  return true
-end
-
-function boop.canUseRage()
-  if boop.rage
-      and boop.rage.isGlobalCooldownOpen
-      and not boop.rage.isGlobalCooldownOpen() then
-    return false
-  end
-  if boop.state.combat.limiters.rage then return false end
-  boop.state.combat.limiters.rage = true
-  tempTimer(0.6, function() boop.state.combat.limiters.rage = false end)
-  return true
-end
-
 function boop.tick(sourceAuthority, options, perfSource)
-  if boop.runtime and boop.runtime.step and boop.runtime.applyEffects then
+  if boop.combat and boop.combat.tick then
     options = type(options) == "table" and options or {}
     local suppliedAuthority = copySourceAuthority(sourceAuthority)
-    if not suppliedAuthority and options.provisionalCombat ~= true then
+    if not suppliedAuthority
+        and options.provisionalCombat ~= true then
       local applied, attacking = applyPendingRoomApplicationFromTick()
       if applied then return attacking end
     end
@@ -3391,18 +3344,16 @@ function boop.tick(sourceAuthority, options, perfSource)
         ) then
       return false
     end
-    local authority = suppliedAuthority or currentRoomSourceAuthority()
+    local authority = suppliedAuthority
+      or currentRoomSourceAuthority()
     roomOwned = roomOwned or authority and true or false
     if roomOwned and not authority then
       return false
     end
-    local context = boop.runtime.context(authority, {
+    return boop.combat.tick(authority, {
       roomOwned = roomOwned,
       provisionalCombat = options.provisionalCombat == true,
-    })
-    local result = boop.runtime.step({ type = "tick", context = context })
-    boop.state.combat.attacking = boop.runtime.applyEffects(result, context)
-    return boop.state.combat.attacking
+    }, perfSource)
   end
   return false
 end
@@ -3424,7 +3375,8 @@ function boop.onPrompt()
     and gmcp.Char.Vitals.eq == "1"
     or false
   reconcileGoldPickupPrompt(freestandReady)
-  if boop.runtime and boop.runtime.observePackQuarantinePrompt then
+  if boop.runtime
+      and boop.runtime.observePackQuarantinePrompt then
     boop.runtime.observePackQuarantinePrompt(freestandReady)
   end
   local standardResult = boop.runtime
@@ -3433,13 +3385,9 @@ function boop.onPrompt()
       freestandReady
     )
     or false
-  if boop.runtime and boop.runtime.step and boop.runtime.applyEffects then
+  if boop.combat and boop.combat.prompt then
     local sourceAuthority = currentRoomSourceAuthority()
-    local context = boop.runtime.context(sourceAuthority, {
-      roomOwned = sourceAuthority and true or false,
-    })
-    local result = boop.runtime.step({ type = "prompt", context = context })
-    boop.runtime.applyEffects(result, context)
+    local result = boop.combat.prompt(sourceAuthority)
     if result.runTick
         and not (
           type(standardResult) == "table"
@@ -3487,7 +3435,6 @@ boop.perf.register("gmcp.Char.Vitals", boop, "onVitals", {
 boop.perf.register("prequeue.schedule", boop, "schedulePrequeue")
 boop.perf.register("prequeue.standard", boop, "prequeueStandard")
 boop.perf.register("prequeue.refresh", boop, "refreshPrequeuedStandard")
-boop.perf.register("tick", boop, "tick", { sourceIndex = 3 })
 boop.perf.register("prompt.callback", boop, "onPrompt", {
   callback = "prompt",
 })

@@ -28,7 +28,7 @@ PRE_DAG_STAGE = True
 
 DECISION_ORCHESTRATION_PRESENTATION_MODULES = frozenset(
     {
-        "boop_attacks", "boop_events", "boop_gag", "boop_ih", "boop_rage",
+        "boop_attacks", "boop_combat", "boop_events", "boop_gag", "boop_ih", "boop_rage",
         "boop_safety", "boop_stats", "boop_targets", "boop_ui", "boop_walk",
     }
 )
@@ -115,6 +115,7 @@ STATE_DOMAIN_OWNERS = {
 MODULE_DATA_ROOTS: dict[tuple[str, ...], str] = {
     ("afflictions",): "boop_afflictions",
     ("attacks",): "boop_attacks",
+    ("combat",): "boop_combat",
     ("db",): "boop_db",
     ("events",): "boop_events",
     ("gag",): "boop_gag",
@@ -799,6 +800,8 @@ def is_hard_forbidden(source: str, target: str) -> bool:
     if target == COMPOSITION_ROOT:
         return True
     if source == "boop_runtime" and target in DECISION_ORCHESTRATION_PRESENTATION_MODULES:
+        return True
+    if source == "boop_attacks" and target == "boop_combat":
         return True
     if (source, target) in {
         ("boop_db", "boop_stats"),

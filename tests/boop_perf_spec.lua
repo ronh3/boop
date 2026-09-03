@@ -297,7 +297,7 @@ describe("boop performance instrumentation", function()
     boop.perf.setEnabled(true)
     boop.runtime.context()
     boop.state.combat.limiters.hunting = true
-    assert.is_false(boop.canAct())
+    assert.is_false(boop.combat.canAct())
     boop.state.combat.limiters.hunting = false
 
     local counters = boop.perf.snapshot().counters

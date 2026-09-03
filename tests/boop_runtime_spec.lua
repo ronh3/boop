@@ -460,7 +460,7 @@ describe("boop runtime coordinator", function()
   end)
 
   it("keeps attack sends held until both owners clear in either order", function()
-    attack_execute_stub = stub(boop.attacks, "execute", function(_, _)
+    attack_execute_stub = stub(boop.combat, "execute", function(_, _)
       send("attack 42", false)
       return true
     end)
@@ -484,14 +484,14 @@ describe("boop runtime coordinator", function()
       boop.config.attackMode = "simple"
       boop.config.useQueueing = true
     end, function()
-      local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
-      boop.runtime.applyEffects(result, boop.runtime.context())
+      local result = boop.combat.step({ type = "tick", context = boop.runtime.context() })
+      boop.combat.applyEffects(result, boop.runtime.context())
       assert.are.equal(0, #sent)
       assert.are.equal(0, #scheduled)
       assert.are.equal(0, #raised_events)
     end, function()
-      local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
-      boop.runtime.applyEffects(result, boop.runtime.context())
+      local result = boop.combat.step({ type = "tick", context = boop.runtime.context() })
+      boop.combat.applyEffects(result, boop.runtime.context())
       assert.are.equal(1, #sent)
       assert.are.equal("attack 42", sent[1].command)
       assert.are.equal(0, #scheduled)
@@ -516,8 +516,8 @@ describe("boop runtime coordinator", function()
       boop.config.targetingMode = "auto"
       boop.config.useQueueing = true
       boop.state.gold.autoGrabPending = true
-      local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
-      boop.runtime.applyEffects(result, boop.runtime.context())
+      local result = boop.combat.step({ type = "tick", context = boop.runtime.context() })
+      boop.combat.applyEffects(result, boop.runtime.context())
       assert.are.equal(0, #sent)
       assert.are.equal(0, #scheduled)
       assert.are.equal(0, #raised_events)
@@ -526,8 +526,8 @@ describe("boop runtime coordinator", function()
       boop.config.targetingMode = "auto"
       boop.config.useQueueing = true
       boop.state.gold.autoGrabPending = true
-      local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
-      boop.runtime.applyEffects(result, boop.runtime.context())
+      local result = boop.combat.step({ type = "tick", context = boop.runtime.context() })
+      boop.combat.applyEffects(result, boop.runtime.context())
       assert.are.equal(1, #sent)
       assert.are.equal("queue add full get sovereigns", sent[1].command)
       assert.are.equal(0, #scheduled)
@@ -546,16 +546,16 @@ describe("boop runtime coordinator", function()
     clearInBothOrders("walk", nil, function()
       boop.config.enabled = true
       boop.config.targetingMode = "auto"
-      local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
-      boop.runtime.applyEffects(result, boop.runtime.context())
+      local result = boop.combat.step({ type = "tick", context = boop.runtime.context() })
+      boop.combat.applyEffects(result, boop.runtime.context())
       assert.are.equal(0, #sent)
       assert.are.equal(0, #scheduled)
       assert.are.equal(0, #raised_events)
     end, function()
       boop.config.enabled = true
       boop.config.targetingMode = "auto"
-      local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
-      boop.runtime.applyEffects(result, boop.runtime.context())
+      local result = boop.combat.step({ type = "tick", context = boop.runtime.context() })
+      boop.combat.applyEffects(result, boop.runtime.context())
       assert.are.equal(0, #sent)
       assert.are.equal(1, #scheduled)
       assert.are.equal(0, #raised_events)
@@ -672,7 +672,7 @@ describe("boop runtime coordinator", function()
     boop.config.targetingMode = "auto"
     boop.config.attackMode = "simple"
 
-    local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
+    local result = boop.combat.step({ type = "tick", context = boop.runtime.context() })
 
     assert.are.equal("target", result.effects[1].kind)
     assert.are.equal("42", result.effects[1].id)
@@ -694,7 +694,7 @@ describe("boop runtime coordinator", function()
     boop.config.enabled = true
     boop.config.targetingMode = "auto"
 
-    local result = boop.runtime.step({
+    local result = boop.combat.step({
       type = "tick",
       context = boop.runtime.context(),
     })
@@ -749,7 +749,7 @@ describe("boop runtime coordinator", function()
     assert.is_true(boop.runtime.operationHolds("gold"))
     assert.is_true(boop.runtime.operationHolds("walk"))
 
-    local result = boop.runtime.step({ type = "tick", context = boop.runtime.context() })
+    local result = boop.combat.step({ type = "tick", context = boop.runtime.context() })
     local kinds = effectKinds(result)
 
     assert.is_nil(kinds.target)
@@ -783,8 +783,8 @@ describe("boop runtime coordinator", function()
       systems = { combat = true, queue = true },
     })
 
-    local result = boop.runtime.step({ type = "prompt", context = boop.runtime.context() })
-    boop.runtime.applyEffects(result, boop.runtime.context())
+    local result = boop.combat.step({ type = "prompt", context = boop.runtime.context() })
+    boop.combat.applyEffects(result, boop.runtime.context())
 
     assert.is_false(boop.state.diag.operation)
     assert.is_false(boop.state.diag.hold)

@@ -2,7 +2,7 @@
 
 How boop works today. Present tense, descriptive — this file records what the code *is*, not what it should become. For the intended shape see `TARGET-ARCHITECTURE.md`; for the rules that protect it see `ARCHITECTURE-RULES.md`.
 
-**Source verified against commit `96384bc` (package version `0.1.490`).** Every count in this document was produced mechanically against that tree; the method is given wherever a number could be measured more than one way.
+**Source verified against the Phase-3 `0.1.494` working tree.** Current graph counts are measured by `tools/architecture_guard.py`; historical `96384bc` and Phase-1/2 counts remain below only as migration reference points.
 
 ---
 
@@ -12,10 +12,10 @@ boop is a standalone Mudlet package for Achaea, built with [Muddler](https://git
 
 | Area | Path | Size |
 |---|---|---|
-| Scripts | `src/scripts/boop/` | 20 modules + 35 attack profiles, 29,390 lines |
-| Aliases | `src/aliases/boop/` | 82 files, 130 lines — thin dispatchers |
+| Scripts | `src/scripts/boop/` | 22 modules + 35 attack profiles, 30,651 lines |
+| Aliases | `src/aliases/boop/` | 83 files, 131 lines — thin dispatchers |
 | Triggers | `src/triggers/boop/`, `src/triggers/boop_lifecycle/` | 513 files, 3,247 lines |
-| Tests | `tests/` | 41 Busted specs, 23,114 lines, run inside a real Mudlet in CI |
+| Tests | `tests/` | 43 Busted specs, 24,268 lines, run inside a real Mudlet in CI |
 
 There is no `require()`. Modules are namespace tables on a single global, each file opening with `boop.<ns> = boop.<ns> or {}`. This is the correct idiom for Muddler packages and is deliberate — see §10.
 
@@ -26,8 +26,8 @@ There is no `require()`. Modules are namespace tables on a single global, each f
 `src/scripts/boop/scripts.json` is deliberately unsorted and excluded from `tools/sort_manifests.sh`:
 
 ```
-init → util → theme → skills → db → runtime → state → afflictions → rage → ih
-→ targets → gag → attacks → attacks/* → safety → stats → walk
+init → util → perf → theme → skills → db → runtime → state → afflictions → rage → ih
+→ targets → gag → attacks → attacks/* → safety → stats → walk → combat
 → ui_registry → ui → events → bootstrap
 ```
 
@@ -51,21 +51,22 @@ The left column is the file; the right column is what it *actually* owns, which 
 
 | Module | Lines | Actually owns |
 |---|---|---|
-| `boop_runtime` | 4265 | **Six distinct subsystems**: the state schema and sentinel-guarded `ensureState`; room observation, response fences, applications, movement intent, and source authority; operation locks and blockers; the queued-standard dispatch lifecycle and outbound expectations; interrupt terminals and diag evidence; pack quarantine. Plus `context`/`step`/`applyEffects` — the combat loop. |
-| `boop_events` | 3493 | GMCP and system event handlers, including the single Vitals `charstats` adapter into canonical Rage/Spec state, **plus** the entire gold pipeline (~1250 lines), wielded-inventory tracking, standard retry/recovery, the prequeue engine, `boop.tick`, and `boop.onPrompt`. |
+| `boop_runtime` | 3937 | **Six distinct subsystems** remain: state schema and sentinel-guarded `ensureState`; the permanent canonical composite `context()` projection; room observation, response fences, applications, movement intent, and source authority; operation locks and blockers; queued-standard dispatch lifecycle/outbound expectations; interrupt terminals and diag evidence; pack quarantine. It no longer owns combat decision/execution. |
+| `boop_combat` | 867 | Tick/prompt decision orchestration (`tickStep`, `promptStep`, `step`), the shared `evaluateGates(intent)`, target-adjusted planning, effect application, action execution, and the 0.4/0.6-second dispatch limiters. It consumes `boop.runtime.context()` and does not define a context projection. |
+| `boop_events` | 3440 | GMCP and system event handlers, including the single Vitals `charstats` adapter into canonical Rage/Spec state, **plus** the entire Gold pipeline (~1250 lines), wielded-inventory tracking, Standard retry/recovery, the prequeue engine, the room-aware `boop.tick` facade, and `boop.onPrompt`. |
 | `boop_ui` | 5546 | Dashboards, help, and config screens; config mutation; **the pull/interrupt state machine** (`queueInterrupt`, `diag`, `matic`, `catarin`, `fly`, `leap`, `touchShield`, `pullCommand`, `completePull`, `armPullTimeout`); alias-facing command parsers; five sites of raw `db:` access. |
 | `boop_stats` | 3070 | The scope model and accumulators also own the 5-second dirty/coalesced lifetime-persistence schedule and exact-boundary flushes; **the remaining ~1,500 lines are rendering and `boop stats` command routing**, with a few late model functions interleaved among them. |
-| `boop_attacks` | 2120 | Profile registry, `plan`/`applyModifiers`/`choose`, standard and rage selection, skill gating — **plus `execute`, which is dispatch rather than decision**. |
-| `boop_targets` | 2035 | Denizen inventory, selection, game-target sync — **plus** whitelist/blacklist/tag data, the party whitelist-share packet protocol, and list rendering. |
-| `boop_gag` | 1795 | Line condensation and palette — **plus the combat-line parser, which is the sole ingestion point for combat-line telemetry into `boop.stats`**. |
-| `boop_ui_registry` | 1352 | Config schema and setters; UI modes, presets, help topics, screens; the metatable fallback bridge. |
+| `boop_attacks` | 1941 | Decision-only profile registry, `plan`/`applyModifiers`/`choose`, standard and Rage selection, and skill gating. Its bare `choose()` fallback still obtains the canonical projection from `boop.runtime.context()`. |
+| `boop_targets` | 2037 | Denizen inventory, selection, game-target sync — **plus** whitelist/blacklist/tag data, the party whitelist-share packet protocol, and list rendering. |
+| `boop_gag` | 1816 | Line condensation and palette — **plus the combat-line parser, which is the sole ingestion point for combat-line telemetry into `boop.stats`**. |
+| `boop_ui_registry` | 1355 | Config schema and setters; UI modes, presets, help topics, screens; the metatable fallback bridge. |
 | `boop_rage` | 885 | Rage readiness, global Battlerage cooldown, Triumph free-rage credit, canonical current amount, gain sampling, affliction-trigger ingestion, party callouts. |
 | `boop_walk` | 812 | `demonnicAutoWalker` adapter, all-clear evaluation, reserved-move emission, blocker reporting. |
 | `boop_db` | 648 | Mudlet DB schema, config/list/stats/mob-XP load and save. |
-| `boop_util` | 492 | String and operator-output helpers — **plus `boop.trace.*` and `boop.executeAction`/`boop.executeRageAction`**, the command dispatcher. |
+| `boop_util` | 500 | String and operator-output helpers — **plus `boop.trace.*` and `boop.executeAction`/`boop.executeRageAction`**, the command dispatcher. |
 | `boop_theme` | 357 | Colour tag sets. |
 | `boop_init` | 210 | Namespace bootstrap, `boop.defaults`, trigger folder enable/disable, GMCP support announcement, `boop.bootstrap`. |
-| `boop_skills` | 180 | GMCP-driven skill inventory and gating lookups. |
+| `boop_skills` | 184 | GMCP-driven skill inventory and gating lookups. |
 | `boop_ih` | 143 | Info-Here capture and clickable list management. |
 | `boop_afflictions` | 95 | Target affliction tracking (manual). |
 | `boop_safety` | 77 | Flee threshold parsing and flee execution. |
@@ -84,9 +85,9 @@ Boop deliberately uses a **convention-based, statically analyzable architectural
 - **top-level executable** — `boop.<function>`, attributed to the module that defines it;
 - **shared data** — a read or write of a declared data namespace or subtree, attributed to its **explicitly declared semantic owner** (§4).
 
-All three are required, and each was added because omitting it hid real coupling. A namespace-only graph misses six reciprocal pairs, because `boop_events` alone owns 42 top-level functions that six other modules call. Adding data references surfaces four more. Counts throughout this document are **occurrences**, not lines containing a reference.
+All three are required, and each was added because omitting it hid real coupling. A namespace-only graph misses reciprocal pairs created by top-level Events facades; `boop_events` currently owns 42 top-level functions. Adding data references surfaces additional pairs. Counts throughout this document are **occurrences**, not lines containing a reference.
 
-The coding convention is part of the protection. Cross-module code uses direct forms such as `boop.targets.choose()` and `boop.state.targeting.currentTargetId`. Architecture-obscuring forms are rejected: `local b = boop`, `(boop).targets`, `boop["targets"]`, function captures such as `local f = boop.tick`, aliases or `_G` access for `send`/`sendGMCP`, and owned-data mutation through aliases or `rawset`. The guard does not try to recover the hidden dependency semantically. Fourteen current path-and-symbol legacy exceptions cover seven computed owned-data writes, pre-existing `boop_events` state aliases, four `boop_stats` rendering captures, and the protected compatibility-forwarder call in `boop_attacks`; they are not permission for new indirection. Separately, the exact `rawset(state, domain, current)` in `boop_runtime.lua:283` is a permanent line-scoped schema-custody exception, not architectural debt.
+The coding convention is part of the protection. Cross-module code uses direct forms such as `boop.targets.choose()` and `boop.state.targeting.currentTargetId`. Architecture-obscuring forms are rejected: `local b = boop`, `(boop).targets`, `boop["targets"]`, function captures such as `local f = boop.tick`, aliases or `_G` access for `send`/`sendGMCP`, and owned-data mutation through aliases or `rawset`. The guard does not try to recover the hidden dependency semantically. Fourteen current path-and-symbol legacy exceptions cover seven computed owned-data writes, pre-existing `boop_events` state aliases, four `boop_stats` rendering captures, and the protected `pcall(boop.executeAction, ...)` site now owned by Combat; they are not permission for new indirection. Separately, the exact `rawset(state, domain, current)` in `boop_runtime.lua:283` is a permanent line-scoped schema-custody exception, not architectural debt.
 
 One narrow string form is architectural by necessity: inside `boop.events.register()`, its existing local `add(event, fn)` helper passes literal `"boop.<symbol>"` callbacks to Mudlet's `registerAnonymousEventHandler`. The guard resolves only that handler-registration shape to the symbol's normal owner and fails closed if the literal names an unknown Boop symbol. Other strings remain opaque and do not create dependencies.
 
@@ -103,23 +104,23 @@ The Phase-1 working tree is tracked separately from that historical reference. I
 
 The Phase-2 working tree contains the same **21 modules** and **118 unique directions**: 108 executable/API and 46 owned-data, with 36 directions in both sets. The one new direction is the explicit controlled-reload call `boop_bootstrap -> boop_stats`; canonical Rage ownership makes the existing `boop_attacks -> boop_rage` direction owned-data as well, and the persistence availability check makes the existing `boop_stats -> boop_db` direction owned-data as well as executable. The graph still has 23 reciprocal pairs, the same 19-member SCC, and the same sole composition root. No target-architecture boundary changed.
 
+The Phase-3 `0.1.494` working tree contains **22 modules** and **126 unique directions**: 115 executable/API and 48 owned-data, with 37 directions in both sets. It has **21 reciprocal pairs** and one non-trivial SCC of size **20**; the SCC growth is expected because Combat joins the existing staged component. `boop_bootstrap` remains the sole composition root, with zero unresolved direct references and zero duplicate exports. Phase 3 closes `runtime ↔ attacks`, `runtime ↔ safety`, and `runtime ↔ walk`, removes Runtime's one-way Gag edge, and adds the approved temporary `events ↔ combat` pair.
+
 Terminology used below:
 
-- **Directly reciprocal pair (`A ↔ B`)** — both `A → B` and `B → A` exist. There are **twenty-three**.
+- **Directly reciprocal pair (`A ↔ B`)** — both `A → B` and `B → A` exist. There are currently **twenty-one**.
 - **Directed cycle** — any closed path of arbitrary length. The SCC implies a very large number; they are not enumerated.
-- **SCC** — the maximal set of mutually reachable modules. There is one non-trivial SCC, of size 19.
+- **SCC** — the maximal set of mutually reachable modules. There is one non-trivial SCC, currently of size 20.
 
-### The twenty-three directly reciprocal pairs
+### The twenty-one directly reciprocal pairs
 
 Pairs marked **(data)** exist only because of a shared-data reference and are invisible to an executable-only graph.
 
 | Pair | Reverse edge caused by | Closed by |
 |---|---|---|
-| `runtime ↔ attacks` | `tickStep` calls `attacks.choose` (`boop_runtime.lua:4039`), `applyEffects` calls `attacks.execute` (`:4151`) | Phase 3 |
-| `runtime ↔ targets` | `tickStep` calls `targets.choose` (`:3959`), `applyEffects` calls `setTarget` (`:4144`) | Phase 3 |
-| `runtime ↔ safety` | `tickStep` calls `safety.shouldFlee` (`:3906`, `:3954`), `applyEffects` calls `safety.flee` (`:4140`) | Phase 3 |
-| `runtime ↔ walk` | `applyEffects` calls `walk.maybeAdvance` (`:4133`) | Phase 3 |
-| `events ↔ targets` | `boop_targets` calls the top-level `boop.tick` and `boop.refreshPrequeuedStandard` | Phase 3 |
+| `runtime ↔ targets` | Runtime retains six target-lifecycle references in responsibilities such as `beginConnectionLifecycle` and `clearAttackIntent`; Targets calls Runtime state/authority APIs | Phase 5 |
+| `events ↔ targets` | `boop_targets` calls the Events-owned `boop.tick` and `boop.refreshPrequeuedStandard` facades | Phase 8 |
+| `events ↔ combat` | Events calls `boop.combat.evaluateGates`, `tick`, and `prompt`; Combat calls the Events-owned `boop.maybeFlushPendingGold` and `boop.flushPendingGold` | Phase 8 Gold extraction/facade retirement |
 | `init ↔ ui` | init→ui 2: `boop.bootstrap()` calls `ui.status("ready")` (`boop_init.lua:207–208`). ui→init: `boop.triggers.syncEnabled()` (`boop_ui.lua:1266–1267`) plus the top-level `boop.getShieldMode` | Phase 4a |
 | `events ↔ init` | events calls the top-level `boop.requestCoreSupports` and `boop.resetShieldMode`; init calls the top-level `boop.reconcileIreSupport` and `boop.events.register` from `boop.bootstrap()` | Phase 4a |
 | **`db ↔ init` (data)** | db→init: reads `boop.defaults` to cast persisted config values. init→db: `boop.db.init()` from `boop.bootstrap()` | Phase 4a |
@@ -133,25 +134,25 @@ Pairs marked **(data)** exist only because of a shared-data reference and are in
 | `db ↔ stats` | db→stats 37 (`loadStats` writes `boop.stats.lifetime` directly); stats→db 8 | Phase 4f |
 | **`db ↔ targets` (data)** | db→targets: `loadLists()` writes `boop.lists` directly. targets→db: `boop.db.saveList` | Phase 4f |
 | `events ↔ walk` | `boop_walk` calls the top-level `boop.requestRoomItemsOnce` | Phase 5 |
-| `attacks ↔ events` | `boop_attacks` calls the top-level `boop.canAct`, `boop.canUseRage`, and `boop.getWieldedItem` | Phase 8 |
+| `attacks ↔ events` | `boop_attacks` calls the top-level `boop.getWieldedItem` inventory adapter | Phase 8 |
 | `events ↔ runtime` | `boop_runtime` calls the top-level `boop.tick`, `boop.retryStandardDispatch`, `boop.onStandardLifecycleTerminal`, and `boop.tryVenomConfusionDiag` | Phase 8 |
 | `events ↔ safety` | `boop_safety` calls the top-level `boop.clearGoldQueueIntent` | Phase 8 |
 | `events ↔ ui` | `boop_ui` calls the top-level `boop.tick`, `boop.schedulePrequeue`, `boop.refreshPrequeuedStandard`, `boop.clearGoldQueueIntent`, and `boop.displaceGoldQueueIntent` | Phase 8 |
 | **`stats ↔ targets` (data)** | stats→targets: one read of `state.targeting.currentTargetId` (`boop_stats.lua:1501`). targets→stats: `onTargetSet` push (`:484`) plus two `formatMobXp` calls in list rendering (`:1597`, `:1643`) | Phase 8 |
 
-Phase 3 closes five, Phase 4 twelve, Phase 5 one, and **Phase 8 the final five** — at which point the graph is acyclic. The last pairs depend on the cohesive gold, inventory, and interrupt extraction, because that is what gives the remaining top-level `boop_events` functions an owner. See `REFACTOR-ROADMAP.md`.
+From the 0.1.493 baseline, Phase 3 closes three pairs and adds temporary `events ↔ combat`, yielding 21. Phase 4 closes twelve original pairs, Phase 5 closes `events ↔ walk` and `runtime ↔ targets`, and **Phase 8 closes the remaining six original pairs plus the temporary pair** — at which point the graph is acyclic. See `REFACTOR-ROADMAP.md`.
 
 `boop_events` references `boop.runtime.*` **181 times**. The two files are one tangled subsystem separated by history rather than by design.
 
-**Not a cycle:** `runtime → gag` exists (`applyEffects` calls `gag.onPrompt` at `:4161`) but is one-way — `boop_gag.lua` contains no reference to `boop.runtime`.
+**Removed one-way edge:** Runtime no longer references Gag; `gag.onPrompt` effect application moved to Combat.
 
 ### Top-level symbol ownership
 
-Fifty top-level `boop.<function>` symbols exist, and twenty are called across module boundaries. `boop_events` owns 42 of the 50, which is why it participates in six of the twenty-three pairs.
+The guard currently resolves 51 top-level `boop.<function>` symbols. `boop_events` owns 42; the moved limiters are now namespaced under `boop.combat` and are not top-level compatibility shims.
 
 | Owner | Count | Cross-module examples |
 |---|---|---|
-| `boop_events` | 42 | `tick`, `onPrompt`, `canAct`, `canUseRage`, `schedulePrequeue`, `refreshPrequeuedStandard`, `getWieldedItem`, `clearGoldQueueIntent`, `displaceGoldQueueIntent`, `requestRoomItemsOnce`, `reconcileIreSupport`, `tryVenomConfusionDiag`, `retryStandardDispatch`, `onStandardLifecycleTerminal` |
+| `boop_events` | 42 | `tick`, `onPrompt`, `schedulePrequeue`, `prequeueStandard`, `refreshPrequeuedStandard`, `getWieldedItem`, Gold facades, `requestRoomItemsOnce`, `reconcileIreSupport`, `tryVenomConfusionDiag`, `retryStandardDispatch`, `onStandardLifecycleTerminal` |
 | `boop_init` | 3 | `getShieldMode`, `resetShieldMode`, `requestCoreSupports` |
 | `boop_skills` | 3 | `onSkillsGroups`, `onSkillsList`, `onSkillsInfo` |
 | `boop_util` | 2 | `executeAction`, `executeRageAction` |
@@ -254,7 +255,7 @@ This list is **closed and versioned**. Adding to it requires editing this sectio
 | Prefix | Semantic owner | Writers today |
 |---|---|---|
 | `boop.state` *(schema only)* | `boop.runtime` | — |
-| `boop.state.combat` | `boop.runtime` | runtime 19, attacks 11, events 8, ui 3, stats |
+| `boop.state.combat` | `boop.runtime` (broad residual declaration during staged schema/lifecycle migration) | runtime owns blockers/schema/reset paths; Combat writes `attacking` and `limiters`; attacks, events, safety, rage, ui, and stats retain narrower current responsibilities |
 | `boop.state.combat.openerUsedByClass`, `.temporaryAttackPreferences` | `boop.attacks` | attacks |
 | `boop.state.lifecycle` | `boop.runtime` | events 1 |
 | `boop.state.targeting` | `boop.targets` | targets 27, runtime 14, events 6, rage 1 |
@@ -379,22 +380,26 @@ A further textual match at `boop_targets.lua:925` is an error-message string (`"
 gmcp.Char.Vitals ─→ boop.onVitals()  ─┐
                                        ├─→ boop.tick(authority, opts)
 prompt trigger ──→ boop.onPrompt() ───┘        │
-                        │                       ├─ runtime.context()        [build]
-                        ├─ rage.onPrompt()      ├─ runtime.step{type=tick}  [decide]
-                        ├─ reconcileGoldPickup  │    └─ tickStep:
-                        ├─ reconcileStandard    │        gates → targets.choose()
-                        └─ step{type=prompt}    │        → attacks.choose()
-                             └─ gag_prompt      │           = plan + modifiers
-                                                └─ runtime.applyEffects()   [execute]
-                                                     └─ attacks.execute()
-                                                          └─ boop.executeAction() → send()
+                        │                       ├─ claim/apply pending room work [Events]
+                        ├─ rage.onPrompt()      └─ combat.tick()
+                        ├─ reconcileGoldPickup       ├─ runtime.context()       [build]
+                        ├─ reconcileStandard         ├─ combat.evaluateGates() [decide]
+                        └─ combat.prompt()           ├─ targets.choose()
+                             └─ gag_prompt           ├─ attacks.choose()
+                                                     └─ combat.applyEffects() [execute]
+                                                          └─ combat.execute()
+                                                               └─ boop.executeAction() → send()
 ```
 
-`boop.onVitals()` parses `gmcp.Char.Vitals.charstats` once into canonical `state.rage.amount` and `state.combat.spec`, even while Boop is disabled. It then returns before combat decision work when disabled; otherwise it follows the unchanged Vitals tick path. `boop.onPrompt()` guards on `enabled`, builds a context for `promptStep`, then ticks again if `promptStep` returns `runTick`. The `boop.canAct()` 0.4 s limiter still suppresses a duplicate *dispatch* but not the duplicate enabled decision work; tick coalescing remains deferred.
+`boop.onVitals()` parses `gmcp.Char.Vitals.charstats` once into canonical `state.rage.amount` and `state.combat.spec`, even while Boop is disabled. It then returns before combat decision work when disabled; otherwise it follows the unchanged Vitals tick path. `boop.onPrompt()` guards on `enabled`, reconciles Gold and Standard lifecycle in their current owners, delegates prompt decision/effects to Combat, then ticks again if `promptStep` returns `runTick`. `boop.combat.canAct()`'s 0.4 s limiter still suppresses a duplicate *dispatch* but not duplicate enabled decision work; tick coalescing remains deferred.
+
+`boop.tick` is intentionally **not** a direct forwarder in Phase 3. Events first checks and may claim a pending room application, preserving current recursive/re-entrant Room/Targeting/Gold/Walk behavior; only then does it call `boop.combat.tick`. Runtime permanently owns `boop.runtime.context()`, which Combat consumes. The same projection remains available directly to UI and to bare `boop.attacks.choose()`; no Combat context copy exists.
+
+`applyEffects` moved intact. Its two Gold calls — `boop.maybeFlushPendingGold` during gate evaluation and `boop.flushPendingGold` during effect application — are the exact Combat → Events half of the approved temporary `events ↔ combat` pair. Phase 8 Gold extraction removes them and retires the Events facade.
 
 ### Prequeue flow
 
-`boop.onBalanceUsed(kind, seconds)` — driven by the balance/equilibrium trigger — records `balanceReadyAt`/`equilibriumReadyAt`, then `boop.schedulePrequeue()` sets a `tempTimer` for `readyAt − attackLeadSeconds`. On fire, `boop.prequeueStandard()` re-runs the gate sequence, `targets.choose()`, and `attacks.choose()`, then calls `boop.executeAction(action, forceQueue=true)`, which emits `setalias BOOP_ATTACK <cmd>` followed by `queue addclearfull freestand BOOP_ATTACK`. `boop.refreshPrequeuedStandard()` rebuilds the alias if the target gains a shield before the queued standard fires.
+`boop.onBalanceUsed(kind, seconds)` — driven by the balance/equilibrium trigger — records `balanceReadyAt`/`equilibriumReadyAt`, then `boop.schedulePrequeue()` sets a `tempTimer` for `readyAt − attackLeadSeconds`. On fire, the Events-owned `boop.prequeueStandard()` consumes `boop.combat.evaluateGates({kind="prequeue"})`, preserves target synchronization ordering, obtains its plan from Combat's shared target-adjusted planning path, then calls `boop.executeAction(action, forceQueue=true)`. `boop.refreshPrequeuedStandard()` uses the explicit `refresh` intent, which intentionally omits ordinary prequeue's flee check and adds current-target/shieldbreak requirements. It rebuilds the alias if the target gains a shield before the queued standard fires.
 
 ### Target lifecycle
 

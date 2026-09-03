@@ -8,17 +8,17 @@ This is **not a rewrite**. Every module below is formed by moving existing funct
 
 ## 1. What problem this solves
 
-`ARCHITECTURE.md` §3 records the measured state. Of the 20 script modules, `boop_bootstrap` is the composition root with zero incoming edges; the other **19 form a single strongly-connected component** across **108 unique dependency edges**, containing **twenty-three directly reciprocal pairs** (`A ↔ B`) and a large number of longer directed cycles.
+The committed `0.1.493` baseline recorded in `ARCHITECTURE.md` §3 has 21 script modules, 118 unique dependency edges, twenty-three directly reciprocal pairs (`A ↔ B`), and a 19-module strongly-connected component. Phase 3 adds Combat to that component intentionally; SCC shrinkage is not a pre-Phase-8 invariant.
 
 Three modules concentrate the problem:
 
-- **`boop_runtime`** holds the combat loop (`context`, `step`, `applyEffects`, `tickStep`), so the state module calls outward into `attacks`, `targets`, `safety`, and `walk` — each of which calls back.
+- **`boop_runtime`** held combat decision/execution (`step`, `applyEffects`, `tickStep`) beside its permanent composite `context` projection, so the state module called outward into `attacks`, `safety`, and `walk` — each of which called back. Runtime still has target-lifecycle responsibilities until Phase 5.
 - **`boop_util`** holds the command dispatcher (`executeAction`), so the string-helpers module calls into `runtime`, `gag`, and `rage`.
 - **`boop_events`** owns 42 top-level `boop.<function>` symbols — `tick`, `canAct`, `getWieldedItem`, `clearGoldQueueIntent`, `requestRoomItemsOnce` and the rest — which six other modules call directly. This alone accounts for six reciprocal pairs.
 
 A fourth source is not a module but a missing rule: **shared data**. Four pairs exist only because one module reads or writes another's state or lists — `db ↔ init`, `db ↔ targets`, `stats ↔ targets`, `targets ↔ util`. They are invisible to an executable-only graph, which is why data references are part of the dependency model (§3) and why ownership is declared explicitly rather than inferred from assignment order.
 
-Closing them is staged across four phases: Phase 3 closes five, Phase 4 twelve, Phase 5 one, and **Phase 8 the final five**. The last group depends on the cohesive gold, inventory, and interrupt extraction, because that is what gives the remaining `boop_events` top-level functions an owner. **Phase 8 is therefore the point at which the graph becomes acyclic** — not Phase 4.
+Closing them is staged across four phases. Phase 3 closes three existing pairs and adds the temporary `events ↔ combat` migration seam, for 23 → 21. Phase 4 closes twelve, Phase 5 closes `events ↔ walk` and the deferred `runtime ↔ targets`, and **Phase 8 closes the remaining six original pairs plus `events ↔ combat`**. The last group depends on cohesive Gold, Inventory, and Interrupt extraction and retirement of the Events combat facade. **Phase 8 remains the point at which the graph becomes acyclic** — not Phase 4.
 
 The target is a directed acyclic graph with one owner per concept.
 
@@ -49,6 +49,7 @@ This is a repository subset, not a claim about arbitrary valid Lua. Cross-module
 Forbidden edges:
 
 - `runtime` -> any decision, orchestration, or presentation module
+- `attacks` -> `combat` (decision never depends on orchestration)
 - `db` -> `stats`
 - `stats` -> `ui`
 - `gag` -> `ui`
@@ -108,7 +109,7 @@ New modules are marked *. Provenance lets each move be traced to its source.
 
 | Module | New | From | Responsibility | Owned state | Justification |
 |---|---|---|---|---|---|
-| `boop.runtime` | | `boop_runtime` (residual) | **The state API namespace**: `ensureState`, canonical accessors (`currentRoomId`, `currentClass`, `currentSpec`), snapshot builders. **`boop.state` stays a pure data tree — no service functions attached to it** | the `boop.state.*` tree | **State ownership.** Calls no decision module; this is what breaks four cycles |
+| `boop.runtime` | | `boop_runtime` (residual) | **The state API namespace**: `ensureState`, the permanent canonical composite `context()` projection, canonical accessors (`currentRoomId`, `currentClass`, `currentSpec`), and other snapshot builders. **`boop.state` stays a pure data tree — no service functions attached to it** | the `boop.state.*` tree | **State ownership.** Combat, Attacks, and UI consume Runtime context; Runtime never depends on Combat |
 | `boop.room` | * | `boop_runtime` | Room observation, response fences, applications, movement intent, source-authority validation | `state.targeting.roomObservation`, `movementIntent` | **Dependency seam** — every dispatch path asks "is this decision still valid for the room I am in?" — plus one coherent generation invariant |
 | `boop.locks` | * | `boop_runtime` | Operation locks, blockers, priority ordering, `operationHolds`/`shouldHold`, interrupt admission tiers | `state.combat.blockersByOwner` | **Reusable policy** — admission control consumed by gold, interrupt, walk, and combat |
 
@@ -147,7 +148,7 @@ New modules are marked *. Provenance lets each move be traced to its source.
 
 | Module | New | From | Responsibility | Owned state | Justification |
 |---|---|---|---|---|---|
-| `boop.combat` | * | `boop_runtime` (`context`/`step`/`applyEffects`/`tickStep`/`promptStep`) + `boop_events` (prequeue, standard retry) + `boop_attacks.execute` | The combat loop: build context, evaluate gates once, choose target, build plan, dispatch, schedule prequeue | `state.combat`, `state.queue` (coordination) | **Lifecycle ownership**, and the module whose existence makes the graph acyclic |
+| `boop.combat` | * | `boop_runtime` (`step`/`applyEffects`/`tickStep`/`promptStep`) + `boop_events` (`canAct`/`canUseRage`) + `boop_attacks.execute` | The combat loop: consume Runtime context, evaluate gates, choose target, build a target-adjusted plan, and dispatch. Through Phase 7, Events keeps the room-aware `boop.tick` and prequeue facades. | `state.combat` execution coordination; `state.queue` prequeue coordination after the Phase-8 facade retirement | **Lifecycle ownership.** It depends on Attacks; Attacks never depends on it |
 | `boop.gold` | * | `boop_events` + pack quarantine from `boop_runtime` | Pickup and pack pipeline, retries, quarantine | `state.gold` | State + lifecycle ownership |
 | `boop.interrupt` | * | `boop_ui` + interrupt terminals and diag evidence from `boop_runtime` | `diag`/`matic`/`catarin`/`fly`/`leap`/`pull` admission, generations, timeouts, terminals | `state.diag`, `state.combat.pullState` | State + lifecycle ownership |
 | `boop.walk` | | `boop_walk` | External walker adapter. **Owns the `mmp.currentroom` fallback** | `state.walk` | **Transport boundary** (external package) |
@@ -210,7 +211,7 @@ Current owners are recorded in `ARCHITECTURE.md` §4; this table is the target, 
 | `targeting.incomingWhitelistShares` | `boop.share` | P12 | read |
 | `queue.standard*` | `boop.standard` | P6 | read |
 | `queue.outbound*` | `boop.wire` | P4e | read |
-| `queue.prequeue*`, `.balanceReadyAt`, `.equilibriumReadyAt`, `.alias*` | `boop.combat` | P3 | read |
+| `queue.prequeue*`, `.balanceReadyAt`, `.equilibriumReadyAt`, `.alias*` | `boop.combat` | P8 facade retirement | read |
 | `gold.*` | `boop.gold` | P8 | read |
 | `diag.*` | `boop.interrupt` | P8 | read |
 | `walk.*` | `boop.walk` | already (runtime writes today) | read |
@@ -246,7 +247,7 @@ Data outside `boop.state` follows the same model:
 | The data | `boop.state.<domain>.*` |
 | Hydration, schema version, integrity repair | `boop.runtime.ensureState()` |
 | Canonical accessors | `boop.runtime.currentRoomId()`, `currentClass()`, `currentSpec()` |
-| Snapshots | `boop.runtime.*Snapshot()`, `boop.room.*Snapshot()`, `boop.locks.*Snapshot()` |
+| Snapshots | `boop.runtime.context()`, `boop.runtime.*Snapshot()`, `boop.room.*Snapshot()`, `boop.locks.*Snapshot()` |
 | Ingestion APIs for adapter-supplied evidence | the semantic owner of the target subtree |
 
 Phase 4 retires `boop_state.lua` and adds a test asserting no function value is reachable under `boop.state`.
@@ -259,6 +260,9 @@ The externally supported subset is the S1 state-field allowlist in `ARCHITECTURE
 - Engines read canonical state. No `gmcp.*` access in decision code. `charstats` is parsed once per Vitals event and handed to the owners of `state.rage.amount` and `state.combat.spec`.
 - Decisions produce data; execution consumes it.
 - One gate evaluator, `boop.combat.evaluateGates(intent)`, shared by tick, prequeue, and prequeue-refresh.
+- **Runtime builds canonical context; Combat consumes it.** `boop.runtime.context()` remains the permanent composite projection used by Combat, the bare `boop.attacks.choose()` fallback, and UI. There is no `boop.combat.context()` compatibility copy.
+- Through Phase 7, `boop.tick` remains an Events-owned facade: it claims and applies pending room work before delegating only the combat decision portion to `boop.combat.tick`. Phase 8 retires that facade after Room, Gold, and related ownership is available.
+- Through Phase 7, `boop.combat` calls exactly the Events-owned Gold orchestration symbols `boop.maybeFlushPendingGold` and `boop.flushPendingGold`, while Events calls Combat. This approved temporary `events ↔ combat` seam is removed by Phase 8 Gold extraction; it must not be disguised with callbacks or indirection.
 - **`send()` only from `boop.wire`. No second sanctioned sender**, including `boop.safety`.
 - **`sendGMCP()` is part of the Wire invariant**, alongside `send()`. Both are outbound egress and both route through `boop.wire` as of Phase 6. The eight current call sites are listed in `ARCHITECTURE.md` §6. If a Mudlet constraint later argues for an exception, it must be documented here with the specific constraint.
 - `boop.state` is data; service functions live on `boop.runtime`.

@@ -185,7 +185,7 @@ describe("boop rage ingestion", function()
 
   local function emitRage(command, abilityName)
     boop.state.combat.limiters.rage = false
-    return boop.attacks.execute({
+    return boop.combat.execute({
       class = "test",
       rage = command,
       rageAbility = {
@@ -285,7 +285,7 @@ describe("boop rage ingestion", function()
     assert.is_false(boop.rage.isGlobalCooldownOpen())
 
     boop.state.combat.limiters.rage = false
-    assert.is_false(boop.canUseRage())
+    assert.is_false(boop.combat.canUseRage())
     assert.is_false(boop.state.combat.limiters.rage)
   end)
 

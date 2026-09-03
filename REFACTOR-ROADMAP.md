@@ -12,7 +12,7 @@ Every phase ends with a green full Mudlet Busted run and **no unapproved observa
 
 1. **Measure first** (Phase 1) — nothing is optimized before it can be observed.
 2. **Remove proven waste** (Phase 2) — the two findings that need no structural change.
-3. **Break the runtime cycles** (Phase 3) — the four reciprocal pairs caused by the combat loop living in the state module.
+3. **Extract the combat loop** (Phase 3) — close the three reciprocal pairs caused by Runtime's decision/execution code while leaving Runtime's target lifecycle in place.
 4. **Composition, presentation, and persistence seams** (Phase 4) — twelve more pairs, and the composition root.
 5. **Draw the remaining boundaries** (Phases 5-7) — room authority, egress, canonical accessors.
 6. **Extract feature subsystems** (Phase 8) — **the graph becomes acyclic here**; Phase 9 adds the combatlog seam.
@@ -20,7 +20,7 @@ Every phase ends with a green full Mudlet Busted run and **no unapproved observa
 
 ### Suggested stopping points
 
-- **Phases 1-4** deliver measurement, proven waste removal, the composition root, and seventeen of twenty-three reciprocal pairs closed. A useful intermediate milestone — but the graph is **not** acyclic here, and stopping leaves six pairs and a residual SCC.
+- **Phases 1-4** deliver measurement, proven waste removal, the composition root, and fifteen of the original twenty-three reciprocal pairs closed. Phase 3 also adds one approved temporary pair, so stopping after Phase 4 leaves nine pairs and a residual SCC.
 - **Phase 8 is the architecture stopping point.** It is where the supported direct-reference graph becomes acyclic and cycle enforcement becomes unconditional. Everything structural is in place.
 - **Phases 9-13** are cohesion and data hygiene, safely deferrable past 1.0.
 
@@ -100,19 +100,21 @@ Discovered during the audit. Each is a deliberate, approved change, isolated int
 
 ### Phase 3 — Break the runtime/decision cycles
 
-**Invariant established:** `boop.runtime` calls no decision module, and the combat loop has one home and one gate evaluator. **This is the centrepiece of the roadmap.**
+**Invariant established:** `boop.runtime` no longer owns combat decision/execution and contains zero references to Attacks, Safety, Walk, or Gag. Runtime permanently retains the canonical composite `context()` projection and its current target/Standard lifecycle responsibilities. Combat has one home and one gate evaluator. **This is the centrepiece of the roadmap.**
 
-**3a** — move `context`, `step`, `applyEffects`, `tickStep`, and `promptStep` from `boop_runtime.lua`, and the prequeue engine plus standard retry/recovery from `boop_events.lua`, into new `boop_combat.lua`. Move `boop.attacks.execute` there as well — it is dispatch, not decision.
+**3a** — move `step`, `applyEffects`, `tickStep`, and `promptStep` from `boop_runtime.lua`; `boop.attacks.execute`; and Events' `canAct`/`canUseRage` implementations into new `boop_combat.lua`. `boop.runtime.context()` does **not** move: Runtime builds canonical context and Combat consumes it. Detailed Standard terminalization, grace, evidence, candidate correlation, retry/recovery, and lifecycle hooks also remain in Runtime/current ownership until the later Standard phase.
 
 **3b** — collapse the three duplicated gate sequences into one `boop.combat.evaluateGates(intent)` returning `{allowed, code, label}`, consumed by tick, prequeue, and prequeue-refresh. Removes the duplicated `planContext` rebuild at `boop_runtime.lua:4012-4036`. Folds F5.
 
-`boop.tick` is retained as a forwarder.
+`boop.tick` remains an Events-owned room/orchestration facade through Phase 7. It first claims and may apply pending room work, preserving the existing recursive/re-entrant behavior, and then delegates the combat decision portion to `boop.combat.tick`. Prequeue scheduling, dispatch timing, target synchronization, and refresh entry points likewise remain in Events while consuming Combat's gate evaluator.
+
+Moving `applyEffects` intact creates an approved temporary `events ↔ combat` seam. Combat calls the Events-owned `boop.maybeFlushPendingGold` and `boop.flushPendingGold`; Events calls Combat. Phase 8 Gold extraction and facade retirement remove the pair. No callback, dependency injection, or forwarding indirection is introduced to hide it.
 
 **Tests protecting it** — `boop_tick_spec`, `boop_prequeue_spec` (1,255 lines — the primary contract), `boop_runtime_spec`, `boop_planner_spec`, `boop_shields_spec`, `boop_interrupt_spec`, `boop_diag_spec`, `boop_event_transitions_spec`.
 
-**New tests** — a table-driven spec asserting tick and prequeue reach the **same** gate verdict across a matrix of seeded states (diag hold, gold pending, operation lock, target shielded, no target, flee threshold) · a guardrail assertion that `boop_runtime.lua` references none of `boop.targets`, `boop.attacks`, `boop.safety`, `boop.walk`, or `boop.gag`.
+**New tests** — a table-driven spec with independent expected tick/prequeue verdicts across diag hold, Gold pending/operation, operation lock, shielded target, no target, flee threshold, Standard pending, readiness failure, and unavailable planning; explicit tests for legitimate refresh differences; room-before-Combat delegation; canonical Runtime context and bare Attacks fallback; limiter timings; F5; and a guardrail assertion that `boop_runtime.lua` references none of `boop.attacks`, `boop.safety`, `boop.walk`, or `boop.gag`.
 
-**Acceptance** — identical command output across the suite · **five reciprocal pairs closed**: the four `runtime` pairs plus `events ↔ targets`, since `boop.tick` and `boop.refreshPrequeuedStandard` move to `boop.combat` and `boop_targets` migrates to the namespaced owner · SCC size has strictly decreased · the gate sequence exists in exactly one place.
+**Acceptance** — identical command output across the suite · measured graph moves from 21 to 22 modules and from 23 to **21 reciprocal pairs**: `runtime ↔ attacks`, `runtime ↔ safety`, and `runtime ↔ walk` close, while temporary `events ↔ combat` is added · `runtime ↔ targets` remains for Phase 5 · `events ↔ targets` remains for Phase 8 · the SCC is expected and permitted to grow from 19 to 20 because Combat joins the staged cyclic component · no SCC-monotonicity criterion applies before the Phase-8 DAG milestone · edge counts come only from measured guard output.
 
 ---
 
@@ -120,7 +122,7 @@ Discovered during the audit. Each is a deliberate, approved change, isolated int
 
 **Invariant established:** package composition happens in one place; presentation primitives are shared without a dependency on `boop.ui`; persistence exchanges plain tables; and **no function is reachable under `boop.state`**.
 
-This phase closes **twelve** of the twenty-three reciprocal pairs. It does **not** produce a DAG — five pairs survive until Phase 8, which is where the graph becomes acyclic.
+This phase closes **twelve** of the original twenty-three reciprocal pairs. It does **not** produce a DAG — Phase 3 leaves 21 current pairs, and nine survive after this phase until the remaining boundary work, including the approved temporary pair, completes at Phase 8.
 
 **4a — composition root (`init ↔ ui`, `events ↔ init`).** F6 approved. Move the `boop.ui.status("ready")` notification out of `boop_init.lua:207-208`, and relocate the wiring body of `boop.bootstrap()` — the ordered `init` calls into db, state, afflictions, rage, ih, triggers, skills, stats, and `boop.events.register()` — into `boop_bootstrap.lua`, the composition root. `boop_init.lua` keeps `boop.defaults`, the trigger-folder helpers, and the GMCP support announcement. **Observable package-load behaviour is preserved**: the same sequence runs in the same order and the same ready message appears at the same point.
 
@@ -159,7 +161,7 @@ Also in 4a: **`boop_init` writes `boop.skills.desiredGroups`**, another module's
 
 **New tests** — package load produces the same sequence and the same ready output · `boop.registry.attachUiConfigRegistries()` is invoked exactly once · registry data is complete with no `boop.ui` edge from the registry · every screen renders identically through `boop.render` · gag colour screens behave identically from their new home · the stats dashboard enable row still enables hunting · `boop.db.loadStats()` returns a table and mutates no `boop.stats` field · **no function value is reachable under `boop.state`** · the test helper's initialization path matches production's.
 
-**Acceptance** — identical observable behaviour including package-load output · twelve reciprocal pairs closed (`init ↔ ui`, `events ↔ init`, `db ↔ init`, `ui ↔ ui_registry`, `gag ↔ ui`, `stats ↔ ui`, `runtime ↔ util`, `rage ↔ util`, `gag ↔ util`, `targets ↔ util`, `db ↔ stats`, `db ↔ targets`) · zero mutation violations remaining in `boop_init` · SCC size strictly decreased · `boop_state.lua` no longer exists · **the graph is not yet acyclic; staged enforcement continues**.
+**Acceptance** — identical observable behaviour including package-load output · twelve reciprocal pairs closed (`init ↔ ui`, `events ↔ init`, `db ↔ init`, `ui ↔ ui_registry`, `gag ↔ ui`, `stats ↔ ui`, `runtime ↔ util`, `rage ↔ util`, `gag ↔ util`, `targets ↔ util`, `db ↔ stats`, `db ↔ targets`) · zero mutation violations remaining in `boop_init` · `boop_state.lua` no longer exists · measured SCC evidence reported without a monotonicity gate · **the graph is not yet acyclic; staged enforcement continues**.
 
 ---
 
@@ -173,7 +175,7 @@ Also in 4a: **`boop_init` writes `boop.skills.desiredGroups`**, another module's
 
 **New tests** — room-authority validation and lock admission each exercised without loading the combat loop · **no function value is reachable under `boop.state`**.
 
-**Acceptance** — identical behaviour · `boop.runtime` depends only on `util` and `trace` · **`events ↔ walk` closed**, since `boop.requestRoomItemsOnce` moves to `boop.room` and `boop_walk` migrates with it · SCC size strictly decreased · forbidden-edge list extended.
+**Acceptance** — identical behaviour · `boop.runtime` depends only on its allowed state/authority foundations · **`events ↔ walk` closes**, since `boop.requestRoomItemsOnce` moves to `boop.room` and `boop_walk` migrates with it · **`runtime ↔ targets` closes here**, when `beginConnectionLifecycle`, `clearAttackIntent`, and the remaining target-lifecycle seams migrate to their approved owners · forbidden-edge list extended. SCC size is measured and reported, not ratcheted before Phase 8.
 
 ---
 
@@ -208,7 +210,7 @@ Carries the **F4 investigation** (no behaviour change): determine whether the tr
 
 **Tests** — `boop_prequeue_spec`, `boop_assist_spec`, `boop_tick_spec`, `boop_interrupt_spec`, `boop_pull_spec`, `boop_gold_spec`, `boop_safety_spec`, `boop_target_call_spec`, `boop_whitelist_share_spec`, `boop_rage_ingestion_spec`, `boop_event_transitions_spec`, `boop_trace_spec`.
 
-**Acceptance** — byte-identical wire output for every spec · exactly one `send(` and one `sendGMCP(` in production source · SCC size unchanged or decreased. (The `util` reciprocal pairs were closed in Phase 4 when the dispatcher moved; this phase completes the egress invariant.)
+**Acceptance** — byte-identical wire output for every spec · exactly one `send(` and one `sendGMCP(` in production source · measured SCC evidence reported without a monotonicity gate. (The `util` reciprocal pairs were closed in Phase 4 when the dispatcher moved; this phase completes the egress invariant.)
 
 ---
 
@@ -236,7 +238,7 @@ Carries the **F4 investigation** (no behaviour change): determine whether the tr
 
 **Invariant established:** each stateful feature machine owns its own state domain in its own module, **and the module dependency graph contains no non-trivial SCC**.
 
-This phase closes the last five reciprocal pairs. Four of them depend on the cohesive gold, inventory, and interrupt extraction, which is what finally gives the remaining top-level `boop_events` functions an owner; the fifth is a data pair pulled forward so the milestone actually holds:
+This phase closes the last seven reciprocal pairs: six surviving baseline pairs plus the temporary Phase-3 `events ↔ combat` seam. They depend on cohesive Gold, Inventory, and Interrupt extraction and retirement of the Events combat/prequeue facades; the stats/targets data pair is pulled forward so the milestone actually holds:
 
 | Pair | Closed by moving |
 |---|---|
@@ -244,6 +246,8 @@ This phase closes the last five reciprocal pairs. Four of them depend on the coh
 | `events ↔ safety` | `boop.clearGoldQueueIntent` → `boop.gold` |
 | `events ↔ ui` | `boop.clearGoldQueueIntent`, `boop.displaceGoldQueueIntent` → `boop.gold` |
 | `events ↔ runtime` | `boop.tryVenomConfusionDiag` → `boop.interrupt` |
+| `events ↔ targets` | retire the Events-owned `boop.tick`/prequeue facades and migrate their target-facing callers to final owners |
+| `events ↔ combat` | `boop.maybeFlushPendingGold` and `boop.flushPendingGold` → `boop.gold`; retire the Events Combat facade |
 | `stats ↔ targets` | **G1**, two parts — see below |
 
 **G1** is a data pair, pulled forward from Phases 10 and 12 so that Phase 8 genuinely produces a DAG:

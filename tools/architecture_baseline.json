@@ -1,23 +1,19 @@
 {
   "format_version": 2,
   "model": "convention-based-direct-references",
-  "stage": "phase-1-pre-dag",
+  "stage": "phase-3-pre-dag",
   "expected_modules": [
     "boop_init", "boop_util", "boop_perf", "boop_theme", "boop_skills",
     "boop_db", "boop_runtime", "boop_state", "boop_afflictions", "boop_rage",
     "boop_ih", "boop_targets", "boop_gag", "boop_attacks", "boop_safety",
-    "boop_stats", "boop_walk", "boop_ui_registry", "boop_ui", "boop_events",
+    "boop_stats", "boop_walk", "boop_combat", "boop_ui_registry", "boop_ui", "boop_events",
     "boop_bootstrap"
   ],
   "reviewed_forbidden_edges": [
     ["boop_db", "boop_stats"],
     ["boop_gag", "boop_ui"],
-    ["boop_runtime", "boop_attacks"],
     ["boop_runtime", "boop_events"],
-    ["boop_runtime", "boop_gag"],
-    ["boop_runtime", "boop_safety"],
     ["boop_runtime", "boop_targets"],
-    ["boop_runtime", "boop_walk"],
     ["boop_stats", "boop_ui"],
     ["boop_ui_registry", "boop_gag"],
     ["boop_ui_registry", "boop_targets"],
@@ -31,6 +27,7 @@
   ],
   "reviewed_mutation_edges": [
     ["boop_attacks", "boop_runtime"],
+    ["boop_combat", "boop_runtime"],
     ["boop_db", "boop_stats"],
     ["boop_db", "boop_targets"],
     ["boop_events", "boop_runtime"],
@@ -54,7 +51,7 @@
     {"kind":"dynamic-owned-write","path":"src/scripts/boop/boop_ui.lua","symbol":"boop.lists.whitelist"},
     {"kind":"foreign-data-alias-write","path":"src/scripts/boop/boop_events.lua","symbol":"boop.state.combat"},
     {"kind":"foreign-data-alias-write","path":"src/scripts/boop/boop_events.lua","symbol":"boop.state.targeting"},
-    {"kind":"forwarder-capture","path":"src/scripts/boop/boop_attacks.lua","symbol":"boop.executeAction"},
+    {"kind":"forwarder-capture","path":"src/scripts/boop/boop_combat.lua","symbol":"boop.executeAction"},
     {"kind":"function-capture","path":"src/scripts/boop/boop_stats.lua","symbol":"boop.ui.printFooter"},
     {"kind":"function-capture","path":"src/scripts/boop/boop_stats.lua","symbol":"boop.ui.printHeader"},
     {"kind":"function-capture","path":"src/scripts/boop/boop_stats.lua","symbol":"boop.ui.printRow"},
@@ -77,7 +74,7 @@
     {"symbol":"sendGMCP","path":"src/scripts/boop/boop_skills.lua","count":3}
   ],
   "forwarder_sites": [
-    {"symbol":"boop.executeAction","path":"src/scripts/boop/boop_attacks.lua","count":1},
+    {"symbol":"boop.executeAction","path":"src/scripts/boop/boop_combat.lua","count":1},
     {"symbol":"boop.executeAction","path":"src/scripts/boop/boop_events.lua","count":3},
     {"symbol":"boop.executeAction","path":"src/scripts/boop/boop_safety.lua","count":1},
     {"symbol":"boop.executeAction","path":"src/scripts/boop/boop_util.lua","count":1},

@@ -36,6 +36,8 @@ The run recorded 43 `stats_flushes` and 99,337 `deepcopy_items` over 6,026 conte
 
 Duplicate work remains observable — 1,390 Vitals ticks, 1,379 prompt ticks, and 1,392 `prompt_total` samples — but the work is now cheap. Tick coalescing remains deferred exactly as described in §5.
 
+Beginning with `0.1.494`, the `tick` probe measures `boop.combat.tick`, not the complete Events-owned `boop.tick` facade. Pending room-application work and facade-level rejected ticks are excluded, so Phase-2/`0.1.493` and Phase-3/`0.1.494` tick sample counts and means are not strictly directly comparable.
+
 ---
 
 ## 1. The hot-path model
@@ -59,7 +61,7 @@ The per-line tier is the only one whose cost is unbounded in the codebase's own 
 
 Before Phase 2, `boop.onVitals()` had no `enabled` guard and called `boop.tick()` unconditionally. Phase 2 retains Vitals observation while disabled but now returns before the tick. `boop.onPrompt()` still guards on `enabled`, builds a context for `promptStep`, then calls `boop.tick()` again if `promptStep` returns `runTick`.
 
-Phase-1 source counts confirmed that `gmcp.Char.Vitals` usually fires alongside each prompt, producing roughly two full tick decisions per prompt. `boop.canAct()`'s 0.4 s limiter suppresses the second *dispatch*, but not the decision work behind it. The measured means remain below the reopen threshold, so tick coalescing is still deferred.
+Phase-1 source counts confirmed that `gmcp.Char.Vitals` usually fires alongside each prompt, producing roughly two full tick decisions per prompt. `boop.combat.canAct()`'s 0.4 s limiter suppresses the second *dispatch*, but not the decision work behind it. The measured means remain below the reopen threshold, so tick coalescing is still deferred.
 
 ### `boop.runtime.context()`
 
@@ -117,7 +119,7 @@ Plausibly significant; cannot be settled by reading the code.
 
 **M1 — 885 regex patterns across 512 triggers, all enabled together.** Gag 277 triggers / 503 patterns, Shield 116 / 214, Rage 102 / 126. For any given character roughly 95% of the pattern set is class-irrelevant, yet every pattern is evaluated against every line of game output. This runs in Mudlet's C++ engine and is invisible to Lua profiling. It is the largest *unbounded* cost in the system: it grows with every class boop supports. Deferred — see §5.
 
-**M2 — timer churn from `canAct` and `canUseRage`.** Each creates a `tempTimer` per successful call (0.4 s and 0.6 s respectively). At combat cadence that is a steady trickle of Mudlet timer objects. Both are also query-shaped names with mutating side effects, which is a clarity problem independent of cost.
+**M2 — timer churn from `boop.combat.canAct` and `boop.combat.canUseRage`.** Each creates a `tempTimer` per successful call (0.4 s and 0.6 s respectively). At combat cadence that is a steady trickle of Mudlet timer objects. Both are also query-shaped names with mutating side effects, which is a clarity problem independent of cost.
 
 **M3 — `charstats` scanned three times per Vitals event (addressed in Phase 2).** The Vitals event now scans once and writes `state.rage.amount` and `state.combat.spec`; attacks and context consume those canonical values.
 
@@ -262,7 +264,8 @@ Probes are named for the **concern**, not the current file, so the same name sur
 |---|---|---|
 | `tick` | `boop.tick` in `boop_events` | `boop.combat.tick` |
 | `context` | `boop.runtime.context` | unchanged |
-| `prequeue.*` | `boop_events` | `boop.combat` |
+| `prequeue.*` | `boop_events` | unchanged through Phase 7; the shared gate work runs in `boop.combat` beneath the same probe |
+| `applyEffects` | `boop.runtime` | `boop.combat` |
 | `wire.send` | `boop.executeAction` in `boop_util` | `boop.wire` (Phase 4e) |
 | `combatlog.line` | the parse half of `boop.gag.onAttackLine` | `boop.combatlog` (Phase 9) |
 | `db.*` | `boop.db` | unchanged |

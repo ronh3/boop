@@ -10,12 +10,14 @@ Rules for anyone — human or agent — changing boop. Short by design. The reas
 2. **Cross-module architecture must be direct and statically visible.** Use forms such as `boop.targets.choose()` and `boop.state.targeting.currentTargetId`. Do not alias `boop`, capture another module's function, parenthesize the root to evade matching, use `boop[dynamic]`, alias `send`/`sendGMCP` or compatibility forwarders, or mutate owned data through aliases/`rawset`. The one sanctioned string form is a literal `"boop.<symbol>"` passed through `boop.events.register()`'s existing local Mudlet event-registration helper; unknown callback symbols fail closed. The guard implements this repository convention, not general Lua or string analysis. Fourteen path-and-symbol legacy indirections may not widen; Runtime's exact line-scoped schema-custody `rawset` is recorded separately as permanent.
 3. **These edges are forbidden outright:**
    - `runtime` -> any decision, orchestration, or presentation module
+   - `attacks` -> `combat` (decision never depends on orchestration)
    - `db` -> `stats`
    - `stats` -> `ui`
    - `gag` -> `ui`
    - `registry` -> any other module
    - `util` -> any boop module except `theme`
    - before Phase 6, any new or expanded direct `send()`/`sendGMCP()` site outside the reviewed baseline; from Phase 6 onward, either call outside `boop.wire`
+   - Phase 3's concrete Runtime invariant is zero references to Attacks, Safety, Walk, Gag, or Combat. The surviving target-lifecycle references are deferred to Phase 5.
 4. **Adapters normalize and hand off; they do not freely mutate.** An external adapter converts raw input into normalized values and calls the **ingestion API of the target subtree's semantic owner**. It may write only state it owns. Never write another subsystem's invariant-bearing state directly — generations, locks, dispatch identity, observation fences — even when the value looks obviously right. No `gmcp.*` access in decision code.
 5. **`boop_bootstrap.lua` is the composition root.** It is the one place that wires modules together after they are all loaded — the ready notification, registry attachment, and anything of the same shape. Nothing may reference it. When a lower module seems to need a higher one, move the wiring here instead of adding the edge.
 6. **Shared presentation primitives live in `boop.render`, not `boop.ui`.** Anything that renders — screens, gag summaries, stats reports — depends on `boop.render`. Only screens and dashboards depend on `boop.ui`.
@@ -36,6 +38,7 @@ Rules for anyone — human or agent — changing boop. Short by design. The reas
 18. **`mmp` is referenced only in `boop_walk.lua`**, as a mapper fallback and not as game state.
 19. **Stats and trace observe; they never control.** No telemetry function may return a value that changes a combat decision.
 20. **Persistence exchanges plain tables.** `boop.db` never reaches into another module's internals.
+    - `boop.runtime.context()` permanently remains Runtime's canonical composite projection. Combat consumes it, Attacks retains its bare-call fallback to it, and no `boop.combat.context()` copy or forwarder is permitted.
 
 ## Compatibility
 
@@ -46,6 +49,8 @@ Rules for anyone — human or agent — changing boop. Short by design. The reas
 22. **Output formats are not automatically S1.** Wording, colour, spacing, and presentation may change. Only formats explicitly designated stable or machine-consumed carry a commitment.
 23. **New S1 state requires deliberate promotion**, recorded in `ARCHITECTURE.md` in the same commit. State not on the allowlist is internal, including whole domains.
 24. **Add a compatibility forwarder only for a real need.** Today that means `boop.tick` and `boop.executeAction`.
+    - Through Phase 7, `boop.tick` is an Events-owned room-aware facade, not a direct Combat forwarder. It performs pending-room application work before delegating the combat portion.
+    - The Phase-3 `events ↔ combat` pair is an approved, visible migration seam: Combat calls only the Events-owned Gold symbols `boop.maybeFlushPendingGold` and `boop.flushPendingGold`; Events invokes Combat. Phase 8 removes the pair. Do not hide it behind callbacks, dynamic lookup, or dependency injection.
 
 ## Change discipline
 

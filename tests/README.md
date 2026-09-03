@@ -28,6 +28,8 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
   Confirms `openerAt100` behavior for all profiles that define one.
 - `boop_tick_spec.lua`
   Confirms `boop.tick()` sets target and sends the expected actions.
+- `boop_combat_spec.lua`
+  Confirms Combat owns decision/execution and limiter APIs, Runtime remains the canonical context owner, the Events tick facade delegates after room work, target-adjusted planning preserves its inputs, and independently expected gate verdicts cover diagnostic, Gold, operation, target, flee, Standard, readiness, shield, and planning cases.
 - `boop_runtime_spec.lua`
   Confirms computed lifecycle/room readiness, operation-only holds, compatibility migration, tick effects, and prompt/diag operation effects.
 - `boop_state_contract_spec.lua`

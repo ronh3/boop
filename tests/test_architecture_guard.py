@@ -216,6 +216,23 @@ class DirectDependencyTests(unittest.TestCase):
         errors, _ = validate_graph(graph, require_composition_root=False)
         self.assertTrue(any("hard-forbidden dependency edge" in error for error in errors))
 
+    def test_attack_decision_layer_cannot_depend_on_combat(self) -> None:
+        graph = analyze_sources(
+            {
+                "boop_attacks": "boop.combat.evaluateGates({})",
+                "boop_combat": "function boop.combat.evaluateGates() end",
+            },
+            ["boop_attacks", "boop_combat"],
+        )
+        errors, _ = validate_graph(
+            graph,
+            require_composition_root=False,
+        )
+        self.assertTrue(any(
+            "hard-forbidden dependency edge" in error
+            for error in errors
+        ))
+
 
 class ConventionTests(unittest.TestCase):
     def violations(self, source: str) -> list[str]:
@@ -320,22 +337,52 @@ class ProductionGuardTests(unittest.TestCase):
 
     def test_repository_graph_and_complete_check_match_accepted_facts(self) -> None:
         graph = load_repository_graph(ROOT)
-        self.assertEqual(21, len(graph.modules))
-        self.assertEqual(118, len(graph.edges))
-        self.assertEqual(108, len(graph.executable_edges))
-        self.assertEqual(46, len(graph.data_edges))
-        self.assertEqual(36, len(graph.executable_edges & graph.data_edges))
-        self.assertEqual(23, len(graph.reciprocal_pairs()))
-        self.assertEqual([19], sorted(len(value) for value in graph.nontrivial_sccs()))
+        self.assertEqual(22, len(graph.modules))
+        self.assertEqual(126, len(graph.edges))
+        self.assertEqual(115, len(graph.executable_edges))
+        self.assertEqual(48, len(graph.data_edges))
+        self.assertEqual(37, len(graph.executable_edges & graph.data_edges))
+        self.assertEqual(21, len(graph.reciprocal_pairs()))
+        self.assertEqual([20], sorted(len(value) for value in graph.nontrivial_sccs()))
         self.assertEqual(["boop_bootstrap"], graph.composition_roots())
         self.assertEqual([], graph.unresolved_references)
         self.assertEqual({}, graph.duplicate_exports)
 
         errors, summary = check_repository_architecture(ROOT)
         self.assertEqual([], errors)
-        self.assertEqual(118, summary["edges"])
+        self.assertEqual(126, summary["edges"])
         self.assertEqual(14, summary["legacy_indirection_exceptions"])
         self.assertEqual(1, summary["schema_custody_exceptions"])
+
+    def test_phase_three_combat_ownership_and_runtime_invariant(self) -> None:
+        graph = load_repository_graph(ROOT)
+        self.assertEqual(
+            "boop_runtime",
+            graph.executable_owners[("runtime", "context")],
+        )
+        for symbol in (
+            "tickStep", "promptStep", "step", "applyEffects",
+            "execute", "canAct", "canUseRage",
+        ):
+            self.assertEqual(
+                "boop_combat",
+                graph.executable_owners[("combat", symbol)],
+            )
+        self.assertNotIn(("attacks", "execute"), graph.executable_owners)
+
+        runtime = (
+            ROOT / "src/scripts/boop/boop_runtime.lua"
+        ).read_text()
+        for symbol in (
+            "boop.attacks", "boop.safety", "boop.walk", "boop.gag",
+        ):
+            self.assertNotIn(symbol, runtime)
+
+        for path in (
+            ROOT / "src/scripts/boop/boop_attacks.lua",
+            ROOT / "src/scripts/boop/boop_ui.lua",
+        ):
+            self.assertNotIn("boop.combat", path.read_text())
 
 
 if __name__ == "__main__":

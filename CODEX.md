@@ -36,6 +36,12 @@ Guidance for Codex when working in this repository.
   - `mfile.title` as `boop Hunter <version>`
   - `src/scripts/boop/boop_init.lua` `boop.version`
   - this file's `Current synchronized package version` checkpoint
+- Pre-1.0 hardening phases use a numeric corrective-build convention:
+  - the base phase increments the third component, for example `0.1.494`
+  - reviewed and tested corrective rebuilds of that same phase increment a fourth component, for example `0.1.494.1`, then `0.1.494.2`
+  - the next phase increments the third component again, for example `0.1.495`
+  - do not use letter suffixes such as `a` or `b`
+- Every package-affecting commit must still increase monotonically and synchronize all four checkpoints.
 - Never commit or push with those version fields mismatched.
 - Run the local release gate before pushing:
   - `python3 tools/check_release_gates.py`
@@ -107,7 +113,7 @@ Guidance for Codex when working in this repository.
 ## Session Checkpoint
 - Branch to continue from: `codex/pre-1.0-hardening-pass`
 - The branch tip moves with normal hardening commits; rely on git history rather than this file for the exact latest hash.
-- Current synchronized package version: `0.1.493`
+- Current synchronized package version: `0.1.494.1`
 - The purposeful pre-1.0 hardening work that is currently in this branch:
   - runtime/state ownership and coordinator path
   - combat planner split from execution
