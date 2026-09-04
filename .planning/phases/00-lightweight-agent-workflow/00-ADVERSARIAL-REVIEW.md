@@ -1593,3 +1593,253 @@ STATE, including `independent_review` and all human-owned gates, is untouched.
 Human/Neon must perform or explicitly authorize the separate arbitration gate
 write; live determination, closure and merge authorization remain human-owned.
 This appendix neither closes Phase 00 nor authorizes or performs a merge.
+
+
+---
+
+## Claude final narrow re-review — 2026-09-04
+
+**Reviewed final SHA:** `80e38aa655672f102745d4c0dbdbf5ad5d0b492c`
+**Substantive correction SHA:** `887a4ff64292ed784dd8f48d4c3c03f8bd20f632`
+**Prior Claude re-review commit:** `5b4417be62e31800e4f348d14a1948ce95f46112`
+**Branch:** `phase/00-lightweight-agent-workflow`
+**Reviewer:** Claude (independent adversarial reviewer, `AGENTS.md` Roles And
+Authority)
+**Disposition:** Narrow factual re-review only. This entry records verification
+results against the named SHAs. It does not arbitrate policy, determine live
+applicability, authorize a merge, or close Phase 00. Codex's proposed
+dispositions were not accepted because Codex agreed with a finding; each was
+re-derived by executing the guards against constructed violations.
+
+### Scope of this pass
+
+This is **not** another full Phase 00 review. It is restricted to:
+
+- **N-01**, **N-02**, **N-03**;
+- **M-06** and **M-08** only insofar as their PARTIALLY FIXED status depended
+  on N-01;
+- whether the N-01/N-02/N-03 corrections introduced a directly related new
+  defect.
+
+Every other finding, superseded sub-premise, and arbitration item retains the
+classification recorded in the previous re-review entry above. Nothing in this
+entry revisits, reopens, or re-closes them.
+
+Reviewed `5b4417be..887a4ff` (11 files, +316/-13) and `887a4ff..80e38aa`
+(2 files, +67/-0, planning-only), plus the full current text of
+`tools/workflow_guard.py`, `tools/check_release_gates.py`,
+`tests/test_workflow_gates.py`, `.gitignore`, `.github/workflows/main.yml`,
+`AGENTS.md`, `CODEX.md`, `.planning/STATE.md`, `00-CONTEXT.md`,
+`00-VERIFICATION.md`, and `00-UAT.md`. Green CI was again not treated as
+evidence that the corrections are correct.
+
+### Independently reproduced facts
+
+| Check | Result |
+|---|---|
+| Local `HEAD` and `origin/phase/00-lightweight-agent-workflow` | both `80e38aa6…`; worktree clean |
+| `refs/remotes/origin/main` | `a345a34e…` — unchanged; `main` has not moved |
+| Declared `main_baseline` `a345a34e…` | ancestor of `refs/remotes/origin/main` **and** of phase HEAD |
+| `python3 tools/check_release_gates.py` at `80e38aa` | `[OK]` versions, version-bump, workflow, manifests, state-drift, architecture |
+| `python3 tests/test_workflow_gates.py` | **30 tests pass** (25 `WorkflowTests` + 5 `ExactCITests`) |
+| `python3 tests/test_architecture_guard.py` | 25 tests pass (25 modules / 141 edges, root `boop_bootstrap`) |
+| Version chain | `0.1.496.4` → `0.1.496.5` at `887a4ff` (package-affecting: `.gitignore`, `mfile`, `boop_init.lua`, `CODEX.md`, guard, tests); preserved at `80e38aa` (planning-only) |
+| Exact-SHA CI for `887a4ff` | run `33926389525`, attempt 1, `main.yml`, event `push`, branch `phase/00-lightweight-agent-workflow`, exact headSha, conclusion `success` — re-fetched independently; matches `00-VERIFICATION.md` |
+| Exact-SHA CI for `80e38aa` | run `33926763652`, attempt 1, `main.yml`, event `push`, branch `phase/00-lightweight-agent-workflow`, exact headSha, conclusion `success` — re-fetched independently; not committed at that tip, which A-5 expressly permits |
+| Append discipline of `887a4ff` | `00-UAT.md` (+18), `00-VERIFICATION.md` (+35), `00-ADVERSARIAL-REVIEW.md` (+88) are pure trailing appends; no prior byte altered |
+| Append discipline of `80e38aa` | `00-ADVERSARIAL-REVIEW.md` (+24), `00-VERIFICATION.md` (+43) are pure trailing appends |
+| Protected STATE gates | `.planning/STATE.md` is **byte-identical** across `5b4417b..80e38aa`; `independent_review`, `human_arbitration`, `live_mudlet_validation`, `phase_closure`, and `merge_authorization` are all unadvanced by Codex |
+| CI availability of the new dependency | `.github/workflows/main.yml` checks out with `fetch-depth: 0`, so `refs/remotes/origin/main` is present; run `33926389525` passing with the new guard active is live proof |
+
+Codex again advanced no gate it does not own and fabricated no human decision.
+
+### Adversarial probes executed against the corrected guards
+
+Executed in a throwaway full-history `git clone --no-local` of `80e38aa`,
+discarded afterwards; the working repository was not mutated. Numbering
+continues from the previous entry's probes 1–12.
+
+| # | Construction | Result |
+|---|---|---|
+| 13 | Untouched clone at `80e38aa`, legitimate baseline | all six `[OK]` — the honest case still passes |
+| 14 | Unbumped `src/` commit, then `main_baseline` advanced to that phase commit (**exact repeat of probe 10**) | `[FAIL] version-bump` **and** `[FAIL] workflow`, both "must be an ancestor of `refs/remotes/origin/main`" |
+| 15 | In-place downgrade of all 10 `Blocker`/severity lines in this artifact, then baseline advanced past the tampering commit | `[FAIL] workflow` before the advance; `[FAIL]` on **both** guards after it |
+| 16 | Fabricated `not_applicable` live decision and a forged exact-SHA merge authorization written into `00-UAT.md`'s pending fields (**exact repeat of probe 11**) | `[FAIL] workflow` — "recorded evidence must remain an unchanged prefix" |
+| 17 | (a) `00-VERIFICATION.md` rewritten in place (`success`→`failure`); (b) `00-UAT.md` deleted | (a) `[FAIL]` unchanged prefix; (b) `[FAIL]` "recorded evidence must not be deleted" |
+| 18 | `00-UAT.md` tampered, then byte-restored in a later commit | `[FAIL]` naming **both** the tampering and the restoring commit |
+| 19 | Dated entries appended to `00-UAT.md` **and** `00-VERIFICATION.md` | all six `[OK]` — the human's and Codex's recording path still works |
+| 20 | `refs/remotes/origin/main` deleted while a local `main` remains at the same SHA | `[FAIL]` on both guards: "authoritative `refs/remotes/origin/main` unavailable; fetch full origin history" |
+| 21 | Newer `origin/main` tip created, merged into the phase, and declared as `main_baseline` (the only baseline advance the new rule permits) | the phase-only violation remains inside `M..HEAD` and is still reported `[FAIL]` — **no narrowing vector** |
+| 22 | Caller-supplied baseline override | `TypeError`; both entry points now take `root` only |
+
+Probes 14, 15 and 16 are the precise constructions that previously returned all
+six `[OK]`. Each is now rejected.
+
+### Results
+
+#### N-01 — VERIFIED FIXED
+
+`tools/workflow_guard.py:61-79` now requires the declared full SHA to be an
+ancestor of **both** `refs/remotes/origin/main` and phase HEAD, and raises
+`ValueError` when the remote-tracking ref or its history is absent. Each
+required property was confirmed independently:
+
+- **Legitimate baseline passes.** Probe 13; `a345a34e…` satisfies both ancestry
+  assertions against the real repository.
+- **Baseline must be an ancestor of authoritative main history.** Probes 14 and
+  15 — the two concealment scenarios I originally reported, an omitted version
+  bump and review-artifact tampering, are both rejected with the specific
+  ancestry message on both consuming gates.
+- **Baseline must remain an ancestor of phase HEAD.** The pre-existing
+  `merge-base --is-ancestor base HEAD` assertion is retained at `:78`, and
+  `test_main_baseline_must_also_be_ancestor_of_head` pins it against a main-only
+  commit.
+- **Missing authoritative history fails closed.** Probe 20 — a local `main` at
+  the identical SHA is explicitly not a fallback; both gates hard-fail rather
+  than degrade. `check_version_history` and `check_workflow` catch the raised
+  `ValueError` and surface it as a failure, so no path returns an empty
+  (passing) error list on a missing baseline.
+- **Callers cannot bypass the declared baseline.** The `base: str | None = None`
+  parameter is removed from both entry points (probe 22); the sole production
+  caller, `tools/check_release_gates.py:352-353`, passes `ROOT` alone.
+- **Focused tests genuinely exercise these cases.** The 11 new tests assert the
+  *specific* rejection string `must be an ancestor of refs/remotes/origin/main`
+  rather than mere truthiness, drive real temporary Git histories, and cover the
+  worktree, staged, and committed forms of the advance
+  (`test_phase_only_baseline_rejected_in_worktree_index_and_history`), the two
+  concealment scenarios, the deleted-`origin/main` case with a local `main`
+  present, and the HEAD-ancestry direction.
+
+I additionally probed the one narrowing vector the new rule leaves nominally
+reachable — waiting for `origin/main` to advance, merging it into the phase, and
+declaring that newer main tip as the baseline. Probe 21 shows it does not work:
+`rev-list <base>..HEAD` still contains every phase-only commit, because no commit
+reachable from `main` can make a phase-only commit reachable. The invariant
+`AGENTS.md` now states — "A commit reachable only from the phase cannot set the
+coverage boundary" — holds in the strong form. A baseline moved *backwards* only
+widens coverage.
+
+#### N-02 — VERIFIED FIXED
+
+`check_review_transition` (`tools/workflow_guard.py:101-116`) now matches
+`-ADVERSARIAL-REVIEW.md`, `-UAT.md`, and `-VERIFICATION.md` under
+`.planning/phases/`, and is run over every commit since the baseline, every merge
+parent, and the staged snapshot (`:130-144`).
+
+- **Existing content cannot be rewritten.** Probes 16 and 17(a): the forged UAT
+  decision and the falsified verification outcome are both rejected on the
+  unchanged-byte-prefix rule.
+- **Existing content cannot be deleted.** Probe 17(b). The previous code
+  coerced a missing blob to `""`, which then trivially satisfied
+  `new.startswith(old)` whenever the old file was empty; deletion is now an
+  explicit error, and `test_even_empty_created_artifacts_cannot_be_deleted`
+  pins the empty-file case for all three artifact types.
+- **Later restoration does not hide earlier tampering.** Probe 18 reports the
+  tampering commit as well as the restoring one, because each transition is
+  evaluated on its own.
+- **Appended dated entries remain allowed.** Probe 19; also
+  `test_existing_human_decision_cannot_be_replaced`, which shows a synthetic
+  prior human decision cannot be edited but can be superseded by an appended
+  dated entry.
+- **The Phase 00 UAT scaffold remains usable.** `00-UAT.md`'s original text,
+  including every `pending` placeholder, is retained byte-for-byte, and
+  `887a4ff` appended a dated recording-instruction block stating that the
+  earlier "fill these decisions" instruction is now carried out by appending.
+  `AGENTS.md` carries the same model generally. The human's live-applicability,
+  closure, and exact-SHA merge decisions are therefore recordable as appended
+  dated entries, which probe 19 confirms the gate accepts.
+
+Per the task and A-1, the absence of cryptographic human identity is **not**
+counted against this fix. `AGENTS.md` states the limit in the same paragraph
+("Prefix preservation cannot authenticate the author of a new entry; the role
+contract still applies"), which is accurate rather than overclaiming.
+
+#### N-03 — VERIFIED FIXED
+
+`.gitignore` gained `__pycache__/` and `*.pyc` (and the missing trailing newline
+was repaired). Verified by execution in the real checkout rather than by
+inspection:
+
+- `git check-ignore -v` matches `tools/__pycache__/*.pyc`, the directory form,
+  and a top-level `__pycache__/x.pyc`, all on `.gitignore:8`.
+- Running the mandated `python3 tools/check_release_gates.py` created both
+  `tools/__pycache__/architecture_guard.cpython-314.pyc` and
+  `workflow_guard.cpython-314.pyc`, after which
+  `git status --porcelain --untracked-files=all` was **empty**.
+- The documented clean-worktree sequence is therefore executable as written:
+  the cleanliness precondition of `tools/wait_for_exact_ci.sh:19` holds with the
+  caches retained, with no manual deletion step and no temptation to commit the
+  caches. Codex's independent fresh-clone reproduction in `00-VERIFICATION.md`
+  agrees with what I observed here.
+
+#### M-06 — VERIFIED FIXED (upgraded from PARTIALLY FIXED)
+
+The enforcement itself was already verified in the previous entry: per-commit
+and per-merge-parent checking from the baseline plus the staged snapshot, wired
+as the default `version-bump` gate and run in CI against the real branch head.
+Its sole remaining qualification was that the coverage window could be switched
+off by advancing `main_baseline` — that is, N-01. With N-01 verified fixed, and
+with probes 14 and 21 confirming that neither an illegitimate nor the maximal
+legitimate baseline can exclude a phase commit, the conditional is discharged.
+
+#### M-08 — VERIFIED FIXED (upgraded from PARTIALLY FIXED)
+
+Identical reasoning. The append-only enforcement was already verified; it was
+held at PARTIALLY FIXED only because probe 10 disabled it. Probe 15 is the
+direct retest — the same ten-severity downgrade, followed by the same baseline
+advance — and it now fails on both guards. The protection has additionally been
+widened by N-02 to the UAT and VERIFICATION artifacts.
+
+### Directly related new defects
+
+**None found.** Two bounded residuals are recorded as observations, with the
+reasoning for why neither is a defect. Neither is offered as a new finding and
+neither requires correction.
+
+- **O-1 — the baseline is read from the working tree, not the index.**
+  `phase_baseline` reads `.planning/STATE.md` from the working tree, while
+  `check_staged_branch` reads it from the index (`snapshot(root, ":", …)`). The
+  inconsistency is not exploitable: any substitute baseline must still be an
+  ancestor of `refs/remotes/origin/main`, every such commit widens rather than
+  narrows the window (probe 21), CI reads the committed file, and
+  `wait_for_exact_ci.sh` independently requires a clean worktree. Probe 14
+  confirms the rejection occurs in the worktree, staged, and committed forms
+  alike.
+- **O-2 — the UAT scaffold now reads top-down against its own rule.**
+  `00-UAT.md` opens with `Human decision — pending` fields that a human reading
+  top-down would naturally try to fill in place, while the instruction that they
+  must instead be appended sits at the foot of the file. This is a legibility
+  foot-gun, not a correctness gap: the human explicitly chose this trade-off in
+  A-2, the guard fails closed with a message naming the file, and the original
+  text could not have been amended in place without violating the very rule
+  being introduced.
+
+### Re-review status
+
+- **Reviewed final SHA:** `80e38aa655672f102745d4c0dbdbf5ad5d0b492c`
+- **Substantive correction SHA:** `887a4ff64292ed784dd8f48d4c3c03f8bd20f632`
+- **N-01:** VERIFIED FIXED
+- **N-02:** VERIFIED FIXED
+- **N-03:** VERIFIED FIXED
+- **M-06:** VERIFIED FIXED (upgraded from PARTIALLY FIXED; its only condition
+  was N-01)
+- **M-08:** VERIFIED FIXED (upgraded from PARTIALLY FIXED; same condition)
+- **New findings:** none. Observations O-1 and O-2 are recorded above as
+  bounded residuals, not defects.
+- **Codex conduct check:** all three prior evidence artifacts are unchanged byte
+  prefixes, `.planning/STATE.md` is byte-identical across the correction and
+  evidence commits, no protected gate was advanced, no human decision was
+  fabricated, and every N-finding disposition is labelled a Codex proposal.
+- **Findings outside this narrow scope:** unchanged from the previous re-review
+  entry; not revisited here.
+- **Human arbitration:** A-1 … A-7 are recorded as human policy above. Claude
+  performs no arbitration and confirms none.
+- **Live Mudlet applicability or validation:** pending human determination.
+  Nothing in this entry determines applicability.
+- **Phase closure and merge to `main`:** pending explicit human authorization.
+- **Phase 00 is not complete.** Nothing in this entry accepts, closes, or
+  authorizes anything.
+
+This re-review commit mutates the repository and therefore invalidates the
+exact-SHA CI evidence for `80e38aa` recorded above; per `AGENTS.md` the gate must
+be run again by Codex against the new final HEAD.
