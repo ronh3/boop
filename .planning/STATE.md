@@ -6,12 +6,12 @@ active_phase: "00"
 active_phase_name: lightweight-agent-workflow
 active_branch: phase/00-lightweight-agent-workflow
 active_specification: .planning/phases/00-lightweight-agent-workflow/00-CONTEXT.md
-status: corrections_awaiting_rereview
+status: phase_closed_awaiting_exact_sha_merge_authorization
 independent_review: "narrow_rereview_complete_no_open_findings — Claude, 2026-09-04; final narrow re-review of 80e38aa655672f102745d4c0dbdbf5ad5d0b492c against correction 887a4ff64292ed784dd8f48d4c3c03f8bd20f632 recorded in 00-ADVERSARIAL-REVIEW.md; N-01, N-02, N-03 verified fixed, M-06 and M-08 upgraded from partially fixed to verified fixed, no new findings; supersedes the 57d98dc re-review gate value; not an acceptance and not phase closure"
-human_arbitration: pending
-live_mudlet_validation: pending_human_determination
-phase_closure: pending_human_authorization
-merge_authorization: pending_human_authorization
+human_arbitration: "complete — Human, 2026-09-04; A-1 through A-7 approved exactly as recorded in the dated Human + ChatGPT/Neon arbitration entry in 00-ADVERSARIAL-REVIEW.md; mechanically transcribed in the dated 00-UAT.md closure entry"
+live_mudlet_validation: "not_applicable — Human, 2026-09-04; process-only Phase 00 requires no live gameplay gate; rationale and applicable reviewed SHA f244be0eec92057e35e730c5c32db9b2acdc3312 recorded in the dated 00-UAT.md closure entry"
+phase_closure: "approved — Human, 2026-09-04; accepted independently reviewed SHA f244be0eec92057e35e730c5c32db9b2acdc3312; recorded in the dated 00-UAT.md closure entry"
+merge_authorization: pending_external_exact_sha_authorization_via_phase-00-approved_tag
 main_baseline: a345a34ea0da2eed6f5bfe1c5e586488749a3e22
 last_updated: "2026-09-04"
 ---
