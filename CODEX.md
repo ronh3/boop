@@ -116,7 +116,7 @@ Guidance for Codex when working in this repository.
 ## Session Checkpoint
 - Branch authority: use `.planning/STATE.md`; create active work from current `origin/main` on the phase branch it names.
 - Do not infer acceptance from this checkpoint, a branch name, or green CI. Only the human authorizes closure and merge after required review and live Mudlet validation.
-- Current synchronized package version: `0.1.496.2`
+- Current synchronized package version: `0.1.496.3`
 - The purposeful pre-1.0 hardening work landed through Phase 5 includes:
   - runtime/state ownership and coordinator path
   - combat planner split from execution
