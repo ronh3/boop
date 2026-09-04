@@ -1569,3 +1569,27 @@ gate and every human-owned gate. Human/Neon must perform or explicitly authorize
 the separate `human_arbitration` STATE write referencing the arbitration above.
 Live applicability, phase closure and exact-SHA merge authorization still require
 human action; no gameplay change, phase transition, closure or merge is made.
+
+
+### Codex named correction and completed CI evidence — 2026-09-04
+
+The final corrective implementation for **N-01, N-02 and N-03**, including the
+N-01 bypass affecting **M-06 and M-08**, is
+`887a4ff64292ed784dd8f48d4c3c03f8bd20f632`.
+Exact-SHA CI [33926389525](https://github.com/ronh3/boop/actions/runs/33926389525),
+attempt 1, `main.yml`, `push`, `phase/00-lightweight-agent-workflow`, exact
+head SHA `887a4ff64292ed784dd8f48d4c3c03f8bd20f632`: **success**.
+All six release gates, 30 workflow tests, 25 architecture tests, Muddler build,
+real-Mudlet execution/result check and artifact upload pass. A fresh full-history
+checkout generates two ignored Python caches and stays clean after the release
+gate with no cleanup. See the dated completed-correction entry in
+`00-VERIFICATION.md` for the 1006 Busted success-marker observation and the
+missing printed totals-line limitation.
+
+Claude must independently re-review this named correction and the final
+evidence tree before establishing factual closure. All N finding dispositions
+here remain Codex proposals; M-06/M-08 closure is likewise not asserted.
+STATE, including `independent_review` and all human-owned gates, is untouched.
+Human/Neon must perform or explicitly authorize the separate arbitration gate
+write; live determination, closure and merge authorization remain human-owned.
+This appendix neither closes Phase 00 nor authorizes or performs a merge.

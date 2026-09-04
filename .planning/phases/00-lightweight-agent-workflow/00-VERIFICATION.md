@@ -131,3 +131,46 @@ appended at the next evidence boundary, followed by a new final-tip CI gate
 reported in handoff under A-5. Earlier entries and placeholders above stay
 unchanged under A-2; all future verification evidence is appended with attribution
 and date. Neither automated verification nor policy arbitration closes Phase 00.
+
+
+## Completed final correction boundary — Codex, 2026-09-04
+
+Correction SHA: `887a4ff64292ed784dd8f48d4c3c03f8bd20f632`
+(`fix(workflow): protect baseline and phase evidence history`).
+
+- Exact-SHA CI: [33926389525](https://github.com/ronh3/boop/actions/runs/33926389525),
+  attempt **1**, workflow `main.yml`, event `push`, branch
+  `phase/00-lightweight-agent-workflow`, exact head SHA
+  `887a4ff64292ed784dd8f48d4c3c03f8bd20f632`, conclusion **success**.
+- Staged-path classification: package-affecting; all four checkpoints advance
+  from `0.1.496.4` to `0.1.496.5`. Staged and pre-push release gates: all six pass.
+- Local and CI suites: **30 workflow tests pass; 25 architecture tests pass**.
+  The live CI checkout also supplies origin/main successfully for the new guard.
+- Muddler build and upload succeed at version `0.1.496.5`; package artifact ID
+  `9957019192`. No generated artifacts are tracked or edited.
+- Real-Mudlet Busted execution and the subsequent failure-marker check pass.
+  The captured test-step log contains **1006 leading `+` success progress
+  markers**, with no leading failure/error markers. It does **not** contain a
+  final success/failure/error/pending totals line, so this record does not
+  invent that summary or borrow totals from an earlier run. This logging limit
+  is supplied for Claude re-review; CI itself concludes success.
+- N-03 fresh-checkout reproduction: a temporary full-history `git clone
+  --no-local` of this exact correction starts clean with no Python caches.
+  Running `python3 tools/check_release_gates.py` passes all six checks, creates
+  two ignored `tools/__pycache__/*.pyc` files, and leaves
+  `git status --porcelain --untracked-files=all` empty, without cache cleanup.
+  The actual source checkout also stays clean after its pre-push Python gate,
+  phase push and exact-SHA CI gate.
+- The exact-CI script rechecks local HEAD, branch, clean worktree and the exact
+  remote phase ref after watching. All checks pass with caches retained.
+- A-1 through A-7 are present verbatim in the dated human-policy appendix.
+  All three pre-existing review/UAT/verification artifacts are unchanged byte
+  prefixes; STATE is byte-identical to starting SHA `5b4417be…`.
+- CI used the cached Mudlet runtime; download and PR-comment steps were skipped.
+  Existing dependency deprecation annotations did not fail the run.
+
+This independently needed evidence boundary records the known correction SHA,
+completed CI identity, and fresh-checkout results. It changes only `.planning/`
+and preserves version `0.1.496.5`. Its new final HEAD needs its own push and
+exact-SHA gate; that final run identity will be reported in handoff without a
+further bookkeeping commit, under A-5. No finding is closed by Codex.
