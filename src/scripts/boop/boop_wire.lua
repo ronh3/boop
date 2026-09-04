@@ -89,9 +89,9 @@ local function dispatchAuthorityCurrent(options, boundary)
   end
   local authority = copySourceAuthority(options.sourceAuthority)
   local valid = authority
-    and boop.runtime
-    and boop.runtime.validateRoomSourceAuthority
-    and boop.runtime.validateRoomSourceAuthority(authority)
+    and boop.room
+    and boop.room.validateRoomSourceAuthority
+    and boop.room.validateRoomSourceAuthority(authority)
     or false
   if not valid and boop.trace and boop.trace.log then
     boop.trace.log(string.format(

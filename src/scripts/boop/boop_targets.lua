@@ -92,6 +92,48 @@ function boop.targets.resetGameTargetSync(reason)
   return active
 end
 
+function boop.targets.clearAttackIntent(reason, opts)
+  opts = type(opts) == "table" and opts or {}
+  if not (boop.runtime and boop.runtime.clearAttackIntent) then
+    return false
+  end
+
+  boop.state.targeting.calledTargetId = ""
+  boop.state.targeting.calledTargetRoom = ""
+  boop.state.targeting.calledTargetBy = ""
+  boop.state.targeting.calledTargetAt = nil
+
+  local cleared, disposition = boop.runtime.clearAttackIntent(reason, {
+    suppressTrace = true,
+    standardDisposition = opts.standardDisposition,
+  })
+  if not cleared then
+    return false
+  end
+
+  local reasonText = tostring(reason or "")
+  if disposition ~= "quarantined"
+      and (opts.clearTarget == true or reasonText == "target_lost") then
+    boop.targets.resetGameTargetSync(
+      reasonText ~= "" and reasonText or "target cleared"
+    )
+    boop.state.targeting.currentTargetId = ""
+    boop.state.targeting.targetName = ""
+    boop.targets.clearTargetShield(reason or "target cleared")
+  end
+
+  if not opts.suppressTrace and boop.trace and boop.trace.log then
+    if disposition == "quarantined" then
+      boop.trace.log("attack intent quarantined: " .. reasonText)
+    else
+      boop.trace.log(
+        "attack intent cleared: " .. tostring(reason or "unspecified")
+      )
+    end
+  end
+  return true, disposition
+end
+
 local function acknowledgeGameTargetSync(id, source)
   local observedId = boop.util.trim(tostring(id or ""))
   if observedId == "" then return false end
@@ -242,9 +284,9 @@ local function targetAuthorityCurrent(opts, boundary)
   end
   local authority = copySourceAuthority(opts.sourceAuthority)
   local valid = authority
-    and boop.runtime
-    and boop.runtime.validateRoomSourceAuthority
-    and boop.runtime.validateRoomSourceAuthority(authority)
+    and boop.room
+    and boop.room.validateRoomSourceAuthority
+    and boop.room.validateRoomSourceAuthority(authority)
     or false
   if not valid and boop.trace and boop.trace.log then
     boop.trace.log(string.format(
@@ -263,10 +305,10 @@ local function targetAuthorityCurrent(opts, boundary)
 end
 
 local function currentRoomSourceAuthority()
-  if boop.runtime
-      and boop.runtime.currentRoomSourceAuthority then
+  if boop.room
+      and boop.room.currentRoomSourceAuthority then
     return copySourceAuthority(
-      boop.runtime.currentRoomSourceAuthority()
+      boop.room.currentRoomSourceAuthority()
     )
   end
   return false
@@ -1426,8 +1468,8 @@ function boop.targets.reconcileCurrentTarget(reason, opts)
     return false
   end
 
-  if boop.runtime and boop.runtime.clearAttackIntent then
-    boop.runtime.clearAttackIntent(
+  if boop.targets and boop.targets.clearAttackIntent then
+    boop.targets.clearAttackIntent(
       tostring(reason or "target no longer eligible"),
       {
         clearTarget = true,

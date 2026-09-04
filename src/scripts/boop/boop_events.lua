@@ -29,10 +29,10 @@ local function copySourceAuthority(authority)
 end
 
 local function currentRoomSourceAuthority()
-  if boop.runtime
-      and boop.runtime.currentRoomSourceAuthority then
+  if boop.room
+      and boop.room.currentRoomSourceAuthority then
     return copySourceAuthority(
-      boop.runtime.currentRoomSourceAuthority()
+      boop.room.currentRoomSourceAuthority()
     )
   end
   return false
@@ -43,9 +43,9 @@ local function roomAuthorityCurrent(authority, boundary)
   if not captured then
     return true
   end
-  local valid = boop.runtime
-    and boop.runtime.validateRoomSourceAuthority
-    and boop.runtime.validateRoomSourceAuthority(captured)
+  local valid = boop.room
+    and boop.room.validateRoomSourceAuthority
+    and boop.room.validateRoomSourceAuthority(captured)
     or false
   if not valid and boop.trace and boop.trace.log then
     boop.trace.log(string.format(
@@ -95,7 +95,6 @@ local function findRoomGoldItem(items, expectedId)
 end
 
 local AUTO_GOLD_FLUSH_SECONDS = 0.35
-local ROOM_RESPONSE_FENCE_WARNING_SECONDS = 8.0
 local MOVEMENT_DIRECTIONS = {
   n = true,
   north = true,
@@ -213,9 +212,9 @@ local function traceRoomItemsResponse(list, transition)
   if not boop.config or not boop.config.traceEnabled then return end
   if type(list) ~= "table" or type(transition) ~= "table" then return end
 
-  local observation = boop.runtime
-    and boop.runtime.roomObservationSnapshot
-    and boop.runtime.roomObservationSnapshot()
+  local observation = boop.room
+    and boop.room.roomObservationSnapshot
+    and boop.room.roomObservationSnapshot()
     or {}
   local fenceId = tonumber(transition.fenceId)
   local fence = false
@@ -270,9 +269,9 @@ local function traceRoomItemEvent(kind, item)
 end
 
 local function recordPendingRoomDelta(kind, item)
-  local result = boop.runtime
-      and boop.runtime.observeRoomItemDelta
-      and boop.runtime.observeRoomItemDelta(kind, item)
+  local result = boop.room
+      and boop.room.observeRoomItemDelta
+      and boop.room.observeRoomItemDelta(kind, item)
     or { status = "ignored" }
   if result.status == "recorded"
       and boop.trace
@@ -297,15 +296,15 @@ local function runtime()
 end
 
 local function operationSnapshot()
-  if runtime() and boop.runtime.operationLockSnapshot then
-    return boop.runtime.operationLockSnapshot()
+  if boop.locks and boop.locks.operationLockSnapshot then
+    return boop.locks.operationLockSnapshot()
   end
   return { owner = "", code = "", systems = {}, waitsFor = {}, observed = {}, additionalCount = 0 }
 end
 
 local function setOperationLock(owner, code, label, systems, waitsFor, opts)
-  if runtime() and boop.runtime.setOperationLock then
-    return boop.runtime.setOperationLock(
+  if boop.locks and boop.locks.setOperationLock then
+    return boop.locks.setOperationLock(
       owner,
       code,
       label,
@@ -318,9 +317,9 @@ local function setOperationLock(owner, code, label, systems, waitsFor, opts)
 end
 
 local function operationHolds(system, exceptOwner)
-  return runtime()
-    and boop.runtime.operationHolds
-    and boop.runtime.operationHolds(system, exceptOwner)
+  return boop.locks
+    and boop.locks.operationHolds
+    and boop.locks.operationHolds(system, exceptOwner)
 end
 
 local function readinessAllows(requireRoom)
@@ -398,6 +397,22 @@ local function requestCoreSupportsThrottled(forceNow)
   return true
 end
 
+function boop.events.beginConnectionLifecycle(source)
+  if boop.runtime and boop.runtime.resolvePackQuarantine then
+    boop.runtime.resolvePackQuarantine("connection")
+  end
+  if boop.runtime and boop.runtime.ensureState then
+    boop.runtime.ensureState()
+  end
+  if boop.targets and boop.targets.resetGameTargetSync then
+    boop.targets.resetGameTargetSync("connection")
+  end
+  if boop.room and boop.room.resetConnectionMovementIntent then
+    boop.room.resetConnectionMovementIntent()
+  end
+  return boop.runtime.beginConnectionLifecycle(source)
+end
+
 function boop.reconcileIreSupport(source, options)
   options = type(options) == "table" and options or {}
   source = tostring(source or "ire")
@@ -406,7 +421,7 @@ function boop.reconcileIreSupport(source, options)
     requestIfMissing = true
   end
   if source == "connection" or options.reset == true then
-    boop.runtime.beginConnectionLifecycle(source)
+    boop.events.beginConnectionLifecycle(source)
   end
   local before = boop.runtime.lifecycleSnapshot()
   if source == "prompt" then
@@ -460,66 +475,6 @@ local function roomInfoIsPartial(info)
   return not info or not info.num or type(info.exits) ~= "table"
 end
 
-local function warnRoomResponseFence(fence, timerId)
-  if not (boop.runtime and boop.runtime.timeoutRoomResponseFence)
-      or not boop.runtime.timeoutRoomResponseFence(fence.fenceId, timerId) then
-    return false
-  end
-  if boop.trace and boop.trace.log then
-    boop.trace.log(string.format(
-      "room response fence timeout: generation=%s room=%s fence=%s",
-      tostring(fence.generation),
-      tostring(fence.roomId),
-      tostring(fence.fenceId)
-    ))
-  end
-  if boop.util and boop.util.warn then
-    boop.util.warn("room_partial -- room response fence incomplete")
-  end
-  return true
-end
-
-local function sendGmcpRequestWithFlush(command)
-  if not sendGMCP or not send then
-    return false
-  end
-  sendGMCP(command)
-  send(" ")
-  return true
-end
-
-local function requestRoomItemsForFence(reason, opts)
-  if not (runtime() and boop.runtime.beginRoomResponseFence) then
-    return false
-  end
-  local fence = boop.runtime.beginRoomResponseFence(reason, opts)
-  if not fence then return false end
-
-  local timerId = false
-  if tempTimer then
-    timerId = tempTimer(ROOM_RESPONSE_FENCE_WARNING_SECONDS, function()
-      warnRoomResponseFence(fence, timerId)
-    end)
-    boop.runtime.setRoomResponseFenceTimer(fence.fenceId, timerId)
-  end
-
-  if sendGMCP and send then
-    if not fence.roomOnly then
-      sendGmcpRequestWithFlush([[Char.Items.Inv ""]])
-    end
-    sendGmcpRequestWithFlush([[Char.Items.Room ""]])
-  else
-    if timerId and killTimer then killTimer(timerId) end
-    boop.runtime.setRoomResponseFenceTimer(fence.fenceId, false)
-    warnRoomResponseFence(fence, false)
-  end
-  return fence
-end
-
-function boop.requestRoomItemsOnce(reason)
-  return requestRoomItemsForFence(reason) and true or false
-end
-
 local function denizenNameById(id)
   local wanted = tostring(id or "")
   if wanted == "" or not boop.state or not boop.state.targeting then
@@ -545,7 +500,7 @@ local function warnTargetLost()
 end
 
 local function clearLostTargetIntent()
-  boop.runtime.clearAttackIntent("target_lost", {
+  boop.targets.clearAttackIntent("target_lost", {
     clearTarget = true,
   })
   if boop.afflictions and boop.afflictions.clearTarget then
@@ -754,7 +709,7 @@ local function requestGoldRoomRevalidation(operation, observation)
 
   operation.revalidationAttempted = true
   operation.revalidationFenceId = false
-  local fence = requestRoomItemsForFence(
+  local fence = boop.room.requestRoomItemsForFence(
     "gold Add awaiting current room revalidation",
     {
       roomOnly = true,
@@ -819,9 +774,9 @@ local function goldDispatchAuthorized(operation)
     return false
   end
 
-  local observation = runtime()
-    and boop.runtime.roomObservationSnapshot
-    and boop.runtime.roomObservationSnapshot()
+  local observation = boop.room
+    and boop.room.roomObservationSnapshot
+    and boop.room.roomObservationSnapshot()
     or {}
   if operation.phase ~= GOLD_PHASE.DEFERRED_ROOM
       and operation.phase ~= GOLD_PHASE.PICKUP_PENDING then
@@ -1270,8 +1225,8 @@ completeGoldOperation = function(generation, terminalReason)
   operation.timeoutTimer = false
   if flushTimer and killTimer then killTimer(flushTimer) end
   if timeoutTimer and killTimer then killTimer(timeoutTimer) end
-  if runtime() and boop.runtime.clearOperationLock then
-    boop.runtime.clearOperationLock(owner, reason)
+  if boop.locks and boop.locks.clearOperationLock then
+    boop.locks.clearOperationLock(owner, reason)
   end
 
   local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
@@ -1343,9 +1298,9 @@ startGoldOperation = function(source, observation, packTarget)
   end
   local state = runtime() and boop.runtime.state and boop.runtime.state() or boop.state
   observation = observation or (
-    runtime()
-      and boop.runtime.roomObservationSnapshot
-      and boop.runtime.roomObservationSnapshot()
+    boop.room
+      and boop.room.roomObservationSnapshot
+      and boop.room.roomObservationSnapshot()
       or {}
   )
   local roomId = tostring(observation.roomId or "")
@@ -1448,8 +1403,8 @@ startGoldOperation = function(source, observation, packTarget)
       },
     })
     boop.markGoldQueueIntent(operation.packTarget)
-    if boop.requestRoomItemsOnce then
-      boop.requestRoomItemsOnce("gold awaiting complete room evidence")
+    if boop.room.requestRoomItemsOnce then
+      boop.room.requestRoomItemsOnce("gold awaiting complete room evidence")
     end
     if tempTimer then
       local timerId = false
@@ -1592,14 +1547,14 @@ function boop.tryPackQuarantinedGold(source)
         and boop.runtime.standardPending())
       or (boop.runtime.standardRecoveryPending
         and boop.runtime.standardRecoveryPending())
-      or (boop.runtime.shouldHold
-        and boop.runtime.shouldHold("combat"))
-      or (boop.runtime.shouldHold
-        and boop.runtime.shouldHold("queue"))
-      or (boop.runtime.shouldHold
-        and boop.runtime.shouldHold("gold"))
-      or (boop.runtime.shouldHold
-        and boop.runtime.shouldHold("walk")) then
+      or (boop.locks.shouldHold
+        and boop.locks.shouldHold("combat"))
+      or (boop.locks.shouldHold
+        and boop.locks.shouldHold("queue"))
+      or (boop.locks.shouldHold
+        and boop.locks.shouldHold("gold"))
+      or (boop.locks.shouldHold
+        and boop.locks.shouldHold("walk")) then
     return false
   end
 
@@ -1643,8 +1598,8 @@ local function maybeFlushPendingGold(reason)
     return false
   end
   if operation.phase == GOLD_PHASE.DEFERRED_ROOM then
-    if boop.requestRoomItemsOnce then
-      boop.requestRoomItemsOnce(reason or "gold awaiting room evidence")
+    if boop.room.requestRoomItemsOnce then
+      boop.room.requestRoomItemsOnce(reason or "gold awaiting room evidence")
     end
     return false
   end
@@ -1660,9 +1615,9 @@ end
 local function onGoldDetected(source, item, opts)
   if not boop.config.enabled or not boop.config.autoGrabGold then return end
   opts = type(opts) == "table" and opts or {}
-  local observation = runtime()
-    and boop.runtime.roomObservationSnapshot
-    and boop.runtime.roomObservationSnapshot()
+  local observation = boop.room
+    and boop.room.roomObservationSnapshot
+    and boop.room.roomObservationSnapshot()
     or {}
   observation.goldItemId = tostring(item and item.id or "")
   observation.sourceAuthority = copySourceAuthority(opts.sourceAuthority)
@@ -2083,10 +2038,10 @@ function boop.onDataSendRequest(_, command)
   end
   local direction = movementDirection(command)
   if not direction
-      or not (runtime() and boop.runtime.noteMovementIntent) then
+      or not (boop.room and boop.room.noteMovementIntent) then
     return false
   end
-  local intent = boop.runtime.noteMovementIntent(direction)
+  local intent = boop.room.noteMovementIntent(direction)
   if not intent then
     return false
   end
@@ -2177,10 +2132,10 @@ local function applyRoomApplication(
   timerId,
   claimSource
 )
-  if not (runtime() and boop.runtime.claimRoomApplication) then
+  if not (boop.room and boop.room.claimRoomApplication) then
     return false
   end
-  local application = boop.runtime.claimRoomApplication(
+  local application = boop.room.claimRoomApplication(
     applicationId,
     sourceAuthority,
     timerId
@@ -2259,7 +2214,7 @@ local function scheduleRoomApplication(transition)
   timerId = tempTimer(0, function()
     applyRoomApplication(applicationId, authority, timerId, "timer")
   end)
-  if not boop.runtime.setRoomApplicationTimer(
+  if not boop.room.setRoomApplicationTimer(
       applicationId,
       timerId
     ) then
@@ -2272,10 +2227,10 @@ local function scheduleRoomApplication(transition)
 end
 
 local function applyPendingRoomApplicationFromTick()
-  if not (runtime() and boop.runtime.roomApplicationSnapshot) then
+  if not (boop.room and boop.room.roomApplicationSnapshot) then
     return false
   end
-  local application = boop.runtime.roomApplicationSnapshot()
+  local application = boop.room.roomApplicationSnapshot()
   if type(application) ~= "table"
       or not application.valid
       or application.claimed
@@ -2299,17 +2254,17 @@ end
 function boop.onRoomItemsList()
   if not gmcp or not gmcp.Char or not gmcp.Char.Items or not gmcp.Char.Items.List then return end
   local list = deepCopy(gmcp.Char.Items.List)
-  local transition = runtime()
-    and boop.runtime.observeRoomItemsList
-    and boop.runtime.observeRoomItemsList(list.location, list.items)
+  local transition = boop.room
+    and boop.room.observeRoomItemsList
+    and boop.room.observeRoomItemsList(list.location, list.items)
     or { status = "ignored" }
   traceRoomItemsResponse(list, transition)
   if tostring(list.location or ""):lower() == "room"
       and (transition.status == "duplicate"
         or transition.status == "orphan")
-      and runtime()
-      and boop.runtime.captureMovementRoomItems then
-    local movement = boop.runtime.captureMovementRoomItems(
+      and boop.room
+      and boop.room.captureMovementRoomItems then
+    local movement = boop.room.captureMovementRoomItems(
       transition.items or list.items,
       transition
     )
@@ -2509,15 +2464,18 @@ function boop.onItemsUpdate()
 end
 
 function boop.onRoomInfo()
+  if boop.runtime and boop.runtime.ensureState then
+    boop.runtime.ensureState()
+  end
   if not gmcp or not gmcp.Room or not gmcp.Room.Info then
-    if boop.runtime and boop.runtime.clearAttackIntent then
-      boop.runtime.clearAttackIntent("missing_room", {
+    if boop.targets and boop.targets.clearAttackIntent then
+      boop.targets.clearAttackIntent("missing_room", {
         source = "Room.Info",
         clearTarget = true,
       })
     end
-    if boop.runtime and boop.runtime.startRoomObservation then
-      boop.runtime.startRoomObservation("", {
+    if boop.room and boop.room.startRoomObservation then
+      boop.room.startRoomObservation("", {
         boundary = "fresh_start",
         infoSeen = false,
         reason = "missing room state",
@@ -2525,23 +2483,20 @@ function boop.onRoomInfo()
     end
     return
   end
-  if boop.runtime and boop.runtime.ensureState then
-    boop.runtime.ensureState()
-  end
   boop.state = boop.state or {}
   boop.state.targeting = boop.state.targeting or {}
   boop.state.combat = boop.state.combat or {}
 
   local info = deepCopy(gmcp.Room.Info)
   if roomInfoIsPartial(info) then
-    if boop.runtime and boop.runtime.clearAttackIntent then
-      boop.runtime.clearAttackIntent("room_partial", {
+    if boop.targets and boop.targets.clearAttackIntent then
+      boop.targets.clearAttackIntent("room_partial", {
         source = "Room.Info",
         clearTarget = true,
       })
     end
-    if boop.runtime and boop.runtime.startRoomObservation then
-      boop.runtime.startRoomObservation(
+    if boop.room and boop.room.startRoomObservation then
+      boop.room.startRoomObservation(
         tostring(info and info.num or ""),
         {
           boundary = "fresh_start",
@@ -2558,59 +2513,59 @@ function boop.onRoomInfo()
   local previousRoom = targeting.room
   local previousRoomText = boop.util.trim(tostring(previousRoom or ""))
   local currentRoomText = boop.util.trim(tostring(info.num or ""))
-  local priorObservation = boop.runtime
-    and boop.runtime.roomObservationSnapshot
-    and boop.runtime.roomObservationSnapshot()
+  local priorObservation = boop.room
+    and boop.room.roomObservationSnapshot
+    and boop.room.roomObservationSnapshot()
     or {}
   local sameTrackedRoom = previousRoomText ~= ""
     and previousRoomText == currentRoomText
     and tostring(priorObservation.roomId or "") == currentRoomText
   if sameTrackedRoom
-      and runtime()
-      and boop.runtime.clearMovementIntent then
-    local intent = boop.runtime.movementIntentSnapshot
-      and boop.runtime.movementIntentSnapshot()
+      and boop.room
+      and boop.room.clearMovementIntent then
+    local intent = boop.room.movementIntentSnapshot
+      and boop.room.movementIntentSnapshot()
       or false
     if intent and intent.active then
-      boop.runtime.clearMovementIntent("same-room Room.Info")
+      boop.room.clearMovementIntent("same-room Room.Info")
     end
   end
   if sameTrackedRoom and priorObservation.infoSeen and priorObservation.itemsSeen then
     return
   end
   if sameTrackedRoom then
-    boop.requestRoomItemsOnce("same-room info awaiting complete item list")
+    boop.room.requestRoomItemsOnce("same-room info awaiting complete item list")
     return
   end
 
   local movedRooms = previousRoomText ~= currentRoomText
   local provisionalMovement = false
   if movedRooms
-      and runtime()
-      and boop.runtime.consumeMovementRoomItems then
+      and boop.room
+      and boop.room.consumeMovementRoomItems then
     provisionalMovement =
-      boop.runtime.consumeMovementRoomItems(currentRoomText)
+      boop.room.consumeMovementRoomItems(currentRoomText)
   end
   if movedRooms then
-    if boop.runtime and boop.runtime.invalidateRoomApplication then
-      boop.runtime.invalidateRoomApplication(nil, "room changed")
+    if boop.room and boop.room.invalidateRoomApplication then
+      boop.room.invalidateRoomApplication(nil, "room changed")
     end
     local pull = combat.pullState
     local preservePullIntent = type(pull) == "table"
       and pull.active
       and not pull.terminal
     if not preservePullIntent
-        and boop.runtime
-        and boop.runtime.clearAttackIntent then
-      boop.runtime.clearAttackIntent("room_changed", {
+        and boop.targets
+        and boop.targets.clearAttackIntent then
+      boop.targets.clearAttackIntent("room_changed", {
         source = "Room.Info",
         clearTarget = true,
       })
     end
   end
-  local observation = boop.runtime
-    and boop.runtime.observeRoomInfo
-    and boop.runtime.observeRoomInfo(info.num, {
+  local observation = boop.room
+    and boop.room.observeRoomInfo
+    and boop.room.observeRoomInfo(info.num, {
       movedRooms = movedRooms,
       freshStart = not movedRooms,
       boundary = movedRooms and "room_change" or "fresh_start",
@@ -2707,7 +2662,7 @@ function boop.onRoomInfo()
     end
   end
 
-  boop.requestRoomItemsOnce("room info awaiting complete item list")
+  boop.room.requestRoomItemsOnce("room info awaiting complete item list")
   if provisionalMovement then
     applyMovementProvisionalCombat(provisionalMovement)
   end
@@ -2758,7 +2713,7 @@ function boop.onTargetSet()
       boop.runtime.markStandardTargetInvalid("target gmcp cleared")
       return true
     end
-    boop.runtime.clearAttackIntent("explicit retarget", {
+    boop.targets.clearAttackIntent("explicit retarget", {
       clearTarget = false,
     })
   end
@@ -2814,7 +2769,7 @@ function boop.onTargetInfo()
         )
         return true
       end
-      boop.runtime.clearAttackIntent("explicit retarget", {
+      boop.targets.clearAttackIntent("explicit retarget", {
         clearTarget = false,
       })
     end

@@ -72,7 +72,7 @@ describe("boop queued interrupts", function()
   end
 
   local function blockerFor(owner)
-    for _, blocker in ipairs(boop.runtime.blockersSnapshot()) do
+    for _, blocker in ipairs(boop.locks.blockersSnapshot()) do
       if blocker.owner == owner then
         return blocker
       end
@@ -227,7 +227,7 @@ describe("boop queued interrupts", function()
       },
     }
     for _, row in ipairs(cases) do
-      local result = boop.runtime.interruptAdmission(
+      local result = boop.locks.interruptAdmission(
         row.active,
         row.incoming
       )

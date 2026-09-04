@@ -34,8 +34,8 @@ local function operationSnapshot(context)
   if context and type(context.blocker) == "table" then
     return context.blocker
   end
-  if boop.runtime and boop.runtime.operationLockSnapshot then
-    return boop.runtime.operationLockSnapshot()
+  if boop.locks and boop.locks.operationLockSnapshot then
+    return boop.locks.operationLockSnapshot()
   end
   return {}
 end
@@ -215,9 +215,9 @@ function boop.combat.evaluateGates(intent)
       return verdict(false, "standard_pending", "exact standard lifecycle pending")
     end
     for _, system in ipairs({ "queue", "target", "combat", "gold" }) do
-      if boop.runtime
-          and boop.runtime.operationHolds
-          and boop.runtime.operationHolds(system) then
+      if boop.locks
+          and boop.locks.operationHolds
+          and boop.locks.operationHolds(system) then
         return operationHeld(context)
       end
     end
@@ -247,10 +247,10 @@ function boop.combat.evaluateGates(intent)
         })
       end
       local owner = tostring(goldOperation.blockerOwner or "")
-      if boop.runtime.operationHolds("combat", owner)
-          or boop.runtime.operationHolds("queue", owner)
-          or boop.runtime.operationHolds("gold", owner)
-          or boop.runtime.operationHolds("walk", owner) then
+      if boop.locks.operationHolds("combat", owner)
+          or boop.locks.operationHolds("queue", owner)
+          or boop.locks.operationHolds("gold", owner)
+          or boop.locks.operationHolds("walk", owner) then
         local held = operationHeld(context)
         held.goldOperation = goldOperation
         held.goldHold = true
@@ -267,9 +267,9 @@ function boop.combat.evaluateGates(intent)
     for _, system in ipairs({
       "target", "combat", "queue", "gold", "walk",
     }) do
-      if boop.runtime
-          and boop.runtime.operationHolds
-          and boop.runtime.operationHolds(system) then
+      if boop.locks
+          and boop.locks.operationHolds
+          and boop.locks.operationHolds(system) then
         return operationHeld(context)
       end
     end
@@ -592,9 +592,9 @@ local function attackAuthorityCurrent(authority, boundary)
   if not authority then
     return true
   end
-  local valid = boop.runtime
-    and boop.runtime.validateRoomSourceAuthority
-    and boop.runtime.validateRoomSourceAuthority(authority)
+  local valid = boop.room
+    and boop.room.validateRoomSourceAuthority
+    and boop.room.validateRoomSourceAuthority(authority)
     or false
   if not valid then
     trace(string.format(
@@ -793,8 +793,8 @@ function boop.combat.applyEffects(result, context)
     local roomOwned = effect.roomOwned == true
     local authorized = not roomOwned
       or sourceAuthority
-        and boop.runtime.validateRoomSourceAuthority
-        and boop.runtime.validateRoomSourceAuthority(sourceAuthority)
+        and boop.room.validateRoomSourceAuthority
+        and boop.room.validateRoomSourceAuthority(sourceAuthority)
     if roomOwned and not authorized then
       trace(string.format(
         "room effect rejected: %s | application=%s | room=%s | generation=%s",

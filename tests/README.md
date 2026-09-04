@@ -32,6 +32,12 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
   Confirms Combat owns decision/execution and limiter APIs, Runtime remains the canonical context owner, the Events tick facade delegates after room work, target-adjusted planning preserves its inputs, and independently expected gate verdicts cover diagnostic, Gold, operation, target, flee, Standard, readiness, shield, and planning cases.
 - `boop_runtime_spec.lua`
   Confirms computed lifecycle/room readiness, operation-only holds, compatibility migration, tick effects, and prompt/diag operation effects.
+- `boop_room_spec.lua`
+  Confirms Room-owned observation generations, response fences, application claim/consume identity, source authority, same-room supersession, stale invalidation, provisional movement capture, deduplicated requests, Walk ownership direction, and standalone use without Combat.
+- `boop_locks_spec.lua`
+  Confirms the empty-map fast path, blocker priority/ties, owner replacement/release, snapshots and holds, prompt/GMCP/arbitrary evidence clearing, stale-owner rejection, interrupt admission tiers, and standalone use without Combat.
+- `boop_target_lifecycle_spec.lua`
+  Confirms real reconnect composition order/final state and the split Runtime/Targets attack-intent path, including retained/cleared targets, target-lost quarantine, shield/sync boundaries, Standard revoke, and trace behavior.
 - `boop_state_contract_spec.lua`
   Confirms owned runtime domain defaults and runtime context mapping for high-risk state-contract drift.
 - `boop_bootstrap_spec.lua`

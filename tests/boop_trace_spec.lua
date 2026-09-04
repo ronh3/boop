@@ -33,8 +33,8 @@ describe("boop trace gmcp events", function()
   end
 
   local function setOperation(operation)
-    assert.is_function(boop.runtime.setOperationLock)
-    boop.runtime.setOperationLock(
+    assert.is_function(boop.locks.setOperationLock)
+    boop.locks.setOperationLock(
       operation.owner,
       operation.code,
       operation.label,
@@ -47,8 +47,8 @@ describe("boop trace gmcp events", function()
   end
 
   local function clearOperation(owner, reason)
-    assert.is_function(boop.runtime.clearOperationLock)
-    boop.runtime.clearOperationLock(owner, reason)
+    assert.is_function(boop.locks.clearOperationLock)
+    boop.locks.clearOperationLock(owner, reason)
   end
 
   local function countTraceOccurrences(expected)
@@ -66,15 +66,15 @@ describe("boop trace gmcp events", function()
   end
 
   local function publishAcceptedRoomList(items)
-    local observation = boop.runtime.roomObservationSnapshot()
+    local observation = boop.room.roomObservationSnapshot()
     if observation.itemsSeen and not observation.activeFenceId then
-      boop.runtime.startRoomObservation(observation.roomId, {
+      boop.room.startRoomObservation(observation.roomId, {
         boundary = "fresh_start",
       })
-      observation = boop.runtime.roomObservationSnapshot()
+      observation = boop.room.roomObservationSnapshot()
     end
     if not observation.refreshAttempted then
-      assert.is_true(boop.requestRoomItemsOnce("trace test room response"))
+      assert.is_true(boop.room.requestRoomItemsOnce("trace test room response"))
     end
 
     gmcp.Char.Items.List = {
@@ -133,10 +133,10 @@ describe("boop trace gmcp events", function()
   end)
 
   it("logs pending room deltas and the reconciled denizen count", function()
-    boop.runtime.startRoomObservation("1", {
+    boop.room.startRoomObservation("1", {
       boundary = "fresh_start",
     })
-    assert.is_true(boop.requestRoomItemsOnce(
+    assert.is_true(boop.room.requestRoomItemsOnce(
       "trace pending room delta"
     ))
 
@@ -187,10 +187,10 @@ describe("boop trace gmcp events", function()
   end)
 
   it("logs a room-first response waiting for the inventory barrier", function()
-    boop.runtime.startRoomObservation("1", {
+    boop.room.startRoomObservation("1", {
       boundary = "fresh_start",
     })
-    assert.is_true(boop.requestRoomItemsOnce(
+    assert.is_true(boop.room.requestRoomItemsOnce(
       "trace room-first response"
     ))
 
@@ -218,10 +218,10 @@ describe("boop trace gmcp events", function()
   end)
 
   it("logs an inventory-first response waiting for the room snapshot", function()
-    boop.runtime.startRoomObservation("1", {
+    boop.room.startRoomObservation("1", {
       boundary = "fresh_start",
     })
-    assert.is_true(boop.requestRoomItemsOnce(
+    assert.is_true(boop.room.requestRoomItemsOnce(
       "trace inventory-first response"
     ))
 
@@ -333,8 +333,8 @@ describe("boop trace gmcp events", function()
       target = "a first denizen",
     }
 
-    assert.is_function(boop.runtime.clearAutomationIntent)
-    boop.runtime.clearAutomationIntent("flee", {
+    assert.is_function(boop.safety.clearAutomationIntent)
+    boop.safety.clearAutomationIntent("flee", {
       source = "auto-flee",
     })
 
@@ -376,13 +376,13 @@ describe("boop trace gmcp events", function()
     assert.is_true(trace:find("automation intent cleared: flee | source=auto-flee | target=42 | queue=prequeued aliasDirty=false | walk=active moveQueued=true | gold=get,put | diag=hold:diag | gag=pending:self/hound/a first denizen", 1, true) ~= nil)
     assert.is_true(trace:find("operation enter: pull:4 | pull_away -- pull in progress | systems: combat, target, walk | waits: room | observed: currentRoom:2,originRoom:1", 1, true) ~= nil)
     assert.is_true(trace:find("operation enter: interrupt:5 | interrupt_pending -- interrupt pending | systems: combat, queue | waits: prompt | observed: command:diagnose", 1, true) ~= nil)
-    local blockers = boop.runtime.operationLocksSnapshot()
+    local blockers = boop.locks.operationLocksSnapshot()
     assert.are.equal("pull:4", blockers[1].owner)
     assert.are.equal("interrupt:5", blockers[2].owner)
 
     clearOperation("pull:4", "returned")
 
-    blockers = boop.runtime.operationLocksSnapshot()
+    blockers = boop.locks.operationLocksSnapshot()
     assert.are.equal(1, #blockers)
     assert.are.equal("interrupt:5", blockers[1].owner)
     assertTraceContains("operation exit: pull:4 | pull_away -- pull in progress | reason=returned")
@@ -425,7 +425,7 @@ describe("boop trace gmcp events", function()
       waitsFor = { prompt = true },
     })
 
-    local blockers = boop.runtime.operationLocksSnapshot()
+    local blockers = boop.locks.operationLocksSnapshot()
     assert.are.same({
       "pull:1",
       "interrupt:2",
@@ -437,13 +437,13 @@ describe("boop trace gmcp events", function()
       blockers[3].owner,
       blockers[4].owner,
     })
-    local primary = boop.runtime.operationLockSnapshot()
+    local primary = boop.locks.operationLockSnapshot()
     assert.are.equal("pull:1", primary.owner)
     assert.are.equal(3, primary.additionalCount)
 
     clearOperation("interrupt:9", "non-primary complete")
 
-    primary = boop.runtime.operationLockSnapshot()
+    primary = boop.locks.operationLockSnapshot()
     assert.are.equal("pull:1", primary.owner)
     assert.are.equal(2, primary.additionalCount)
     assert.are.equal(
@@ -456,7 +456,7 @@ describe("boop trace gmcp events", function()
 
     clearOperation("pull:1", "primary recovered")
 
-    primary = boop.runtime.operationLockSnapshot()
+    primary = boop.locks.operationLockSnapshot()
     assert.are.equal("interrupt:2", primary.owner)
     assert.are.equal("interrupt_pending", primary.code)
     assert.are.equal(1, primary.additionalCount)

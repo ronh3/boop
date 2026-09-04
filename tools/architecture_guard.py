@@ -92,8 +92,12 @@ OWNED_DATA: dict[tuple[str, ...], str] = {
     ("state", "combat", "temporaryAttackPreferences"): "boop_attacks",
     ("state", "lifecycle"): "boop_runtime",
     ("state", "targeting"): "boop_targets",
-    ("state", "targeting", "roomObservation"): "boop_runtime",
-    ("state", "targeting", "movementIntent"): "boop_runtime",
+    ("state", "combat", "blockersByOwner"): "boop_locks",
+    ("state", "combat", "operationLocksByOwner"): "boop_locks",
+    ("state", "combat", "operationLock"): "boop_locks",
+    ("state", "combat", "blocker"): "boop_locks",
+    ("state", "targeting", "roomObservation"): "boop_room",
+    ("state", "targeting", "movementIntent"): "boop_room",
     ("state", "gold"): "boop_events",
     ("state", "queue"): "boop_runtime",
     ("state", "walk"): "boop_walk",
@@ -124,6 +128,7 @@ MODULE_DATA_ROOTS: dict[tuple[str, ...], str] = {
     ("rage",): "boop_rage",
     ("render",): "boop_render",
     ("registry",): "boop_ui_registry",
+    ("room",): "boop_room",
     ("runtime",): "boop_runtime",
     ("safety",): "boop_safety",
     ("skills",): "boop_skills",
@@ -136,6 +141,7 @@ MODULE_DATA_ROOTS: dict[tuple[str, ...], str] = {
     ("util",): "boop_util",
     ("walk",): "boop_walk",
     ("wire",): "boop_wire",
+    ("locks",): "boop_locks",
     ("perf",): "boop_perf",
 }
 
@@ -820,6 +826,16 @@ def is_hard_forbidden(source: str, target: str) -> bool:
     if source == "boop_render" and target not in {"boop_render", "boop_theme", "boop_util"}:
         return True
     if source == "boop_wire" and target == "boop_targets":
+        return True
+    if source == "boop_walk" and target == "boop_events":
+        return True
+    if source == "boop_room" and target not in {
+        "boop_perf", "boop_room", "boop_util",
+    }:
+        return True
+    if source == "boop_locks" and target not in {
+        "boop_locks", "boop_util",
+    }:
         return True
     return False
 

@@ -112,7 +112,7 @@ describe("boop walk integration", function()
       refreshTimer = walk.refreshTimer,
       emitterTimer = walk.emitterTimer,
       refreshWarned = walk.refreshWarned,
-      blockers = boop.runtime.blockersSnapshot(),
+      blockers = boop.locks.blockersSnapshot(),
     }
   end
 
@@ -183,7 +183,7 @@ describe("boop walk integration", function()
   end
 
   local function runCurrentRoomApplication()
-    local application = boop.runtime.roomApplicationSnapshot()
+    local application = boop.room.roomApplicationSnapshot()
     assert.is_table(application)
     assert.is_number(application.applicationId)
     assert.are.equal(
@@ -193,7 +193,7 @@ describe("boop walk integration", function()
     assert.are.equal("1", application.sourceAuthority.roomId)
     assert.are.equal(0, timers.delays[application.pendingTimer])
     timers.run(application.pendingTimer)
-    return boop.runtime.roomApplicationSnapshot(application.applicationId)
+    return boop.room.roomApplicationSnapshot(application.applicationId)
   end
 
   local function startManualWalk()
@@ -476,7 +476,7 @@ describe("boop walk integration", function()
     assert.is_false(state.walk.owned)
     assert.are.equal(1, firstRun)
     assert.are.equal(
-      boop.runtime.roomObservationSnapshot().generation,
+      boop.room.roomObservationSnapshot().generation,
       state.walk.roomGeneration
     )
     assert.is_false(state.walk.roomSettled)
@@ -489,10 +489,10 @@ describe("boop walk integration", function()
     local readiness = boop.runtime.readinessSnapshot()
     assert.is_false(readiness.room.ready)
     assert.are.equal("room_partial", readiness.room.code)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
 
     gmcp.Room.Info.num = 2
-    local observation = boop.runtime.startRoomObservation(2)
+    local observation = boop.room.startRoomObservation(2)
     boop.walk.onRoomChange()
 
     state = boop.runtime.state()
@@ -505,14 +505,14 @@ describe("boop walk integration", function()
     assert.is_false(readiness.room.ready)
     assert.are.equal("2", readiness.room.roomId)
     assert.are.equal(observation.generation, readiness.room.generation)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
   end)
 
   it("uses walk state and reservations without creating operation owners", function()
     assert.is_true(boop.walk.start())
     local state = boop.runtime.state()
 
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
 
     helper.seedRoomObservation(state.walk.arrivalRoom, {
       generation = state.walk.roomGeneration,
@@ -524,7 +524,7 @@ describe("boop walk integration", function()
     assert.is_true(state.walk.moveQueued)
     assert.is_true(state.walk.moveIssuedForRoomGeneration)
     assert.are.equal(1, state.walk.reservationId)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
   end)
 
   it("clears exact unsettled ownership when complete evidence cannot reserve", function()
@@ -567,7 +567,7 @@ describe("boop walk integration", function()
     assert.are.equal(1, state.walk.reservationId)
     assert.is_number(state.walk.emitterTimer)
     assert.is_nil(state.walk.refreshTimer)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
 
     local context = boop.runtime.context()
     assert.are.equal(1, context.walk.reservationId)
@@ -585,19 +585,19 @@ describe("boop walk integration", function()
     assert.are.equal(1, countRaised("demonwalker.move"))
     assert.is_nil(state.walk.emitterTimer)
     assert.is_true(state.walk.moveQueued)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
 
     timers.run(firstEmitter)
     assert.are.equal(1, countRaised("demonwalker.move"))
 
     gmcp.Room.Info.num = 2
-    local nextObservation = boop.runtime.startRoomObservation(2)
+    local nextObservation = boop.room.startRoomObservation(2)
     boop.walk.onRoomChange()
     assert.is_false(state.walk.moveQueued)
     assert.is_false(state.walk.moveIssuedForRoomGeneration)
     assert.are.equal(nextObservation.generation, state.walk.roomGeneration)
     assert.is_false(boop.runtime.readinessSnapshot().room.ready)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
 
     helper.seedRoomObservation(2, {
       generation = state.walk.roomGeneration,
@@ -628,9 +628,9 @@ describe("boop walk integration", function()
       },
     }
     helper.seedRoomObservation(
-      boop.runtime.roomObservationSnapshot().roomId,
+      boop.room.roomObservationSnapshot().roomId,
       {
-        generation = boop.runtime.roomObservationSnapshot().generation,
+        generation = boop.room.roomObservationSnapshot().generation,
         infoSeen = true,
         itemsSeen = true,
         acceptedItems = gmcp.Char.Items.List.items,
@@ -686,7 +686,7 @@ describe("boop walk integration", function()
     assert.are.equal(0, state.walk.reservationId)
     assert.are.equal(0, countRaised("demonwalker.move"))
 
-    assert.is_true(boop.runtime.clearBlocker(
+    assert.is_true(boop.locks.clearBlocker(
       "interrupt:timeout-hold",
       "timeout-under-owner released"
     ))
@@ -773,7 +773,7 @@ describe("boop walk integration", function()
     local state = seedReadyWalk()
     assert.is_true(boop.walk.maybeAdvance("reserve with unrelated owner"))
     local emitter = state.walk.emitterTimer
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
 
     helper.setRuntimeBlocker({
       owner = "interrupt:99",
@@ -819,7 +819,7 @@ describe("boop walk integration", function()
       1,
       countContaining(trace_lines, "external_lost") - invalidationCount
     )
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
     assert.are.equal(0, #walker.installCalls)
     assert.are.equal(0, #walker.updateCalls)
 
@@ -1034,7 +1034,7 @@ describe("boop walk integration", function()
     assert.is_nil(state.walk.emitterTimer)
     assert.are.equal(0, countRaised("demonwalker.move"))
 
-    assert.is_true(boop.runtime.clearBlocker(
+    assert.is_true(boop.locks.clearBlocker(
       "interrupt:manual-auto",
       "exact owner released"
     ))
@@ -1200,7 +1200,7 @@ describe("boop walk integration", function()
     assert.is_true(boop.walk.start())
 
     local newRun = state.walk.generation
-    local observation = boop.runtime.roomObservationSnapshot()
+    local observation = boop.room.roomObservationSnapshot()
     assert.is_true(newRun > oldRun)
     assert.is_true(observation.generation > oldRoomGeneration)
     assert.is_true(observation.infoSeen)
@@ -1210,7 +1210,7 @@ describe("boop walk integration", function()
     assert.is_false(state.walk.moveQueued)
     assert.is_false(state.walk.moveIssuedForRoomGeneration)
     assert.are.equal(oldReservation, state.walk.reservationId)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
 
     local before = walkStateSnapshot()
     timers.run(oldEmitter)
@@ -1227,7 +1227,7 @@ describe("boop walk integration", function()
     })
     boop.state.targeting.room = "101"
     local before = {
-      observation = boop.runtime.roomObservationSnapshot(),
+      observation = boop.room.roomObservationSnapshot(),
       walk = walkStateSnapshot(),
       denizens = boop.state.targeting.denizens,
       requests = #sent_gmcp,
@@ -1242,7 +1242,7 @@ describe("boop walk integration", function()
     local syntheticArrival = boop.onWalkArrived(999, 999)
 
     local after = {
-      observation = boop.runtime.roomObservationSnapshot(),
+      observation = boop.room.roomObservationSnapshot(),
       walk = walkStateSnapshot(),
       denizens = boop.state.targeting.denizens,
       requests = #sent_gmcp,
@@ -1282,13 +1282,13 @@ describe("boop walk integration", function()
     local firstStart = boop.walk.start()
     local state = boop.runtime.state()
     local oldRun = state.walk.generation
-    local oldObservation = boop.runtime.roomObservationSnapshot()
+    local oldObservation = boop.room.roomObservationSnapshot()
     local oldFenceTimer = oldObservation.refreshTimeoutTimer
     local oldArrivalTimer = state.walk.refreshTimer
 
     boop.walk.stop(true, false)
     local stoppedBeforeArrival = {
-      observation = boop.runtime.roomObservationSnapshot(),
+      observation = boop.room.roomObservationSnapshot(),
       walk = walkStateSnapshot(),
       requests = #sent_gmcp,
       timers = timers.nextId,
@@ -1296,7 +1296,7 @@ describe("boop walk integration", function()
     }
     local stoppedArrival = boop.onWalkArrived("demonwalker.arrived")
     local stoppedAfterArrival = {
-      observation = boop.runtime.roomObservationSnapshot(),
+      observation = boop.room.roomObservationSnapshot(),
       walk = walkStateSnapshot(),
       requests = #sent_gmcp,
       timers = timers.nextId,
@@ -1306,7 +1306,7 @@ describe("boop walk integration", function()
     walker.setAttached(false)
     local secondStart = boop.walk.start()
     local newRun = state.walk.generation
-    local newObservation = boop.runtime.roomObservationSnapshot()
+    local newObservation = boop.room.roomObservationSnapshot()
     local newFenceTimer = newObservation.refreshTimeoutTimer
     local newArrivalTimer = state.walk.refreshTimer
     local restartArrival = boop.onWalkArrived("demonwalker.arrived")
@@ -1318,8 +1318,8 @@ describe("boop walk integration", function()
       { id = "201", name = "old room response", attrib = "m" },
     })
     local afterOldResponses = {
-      itemsSeen = boop.runtime.roomObservationSnapshot().itemsSeen,
-      queueDepth = #boop.runtime.roomObservationSnapshot().fenceQueue,
+      itemsSeen = boop.room.roomObservationSnapshot().itemsSeen,
+      queueDepth = #boop.room.roomObservationSnapshot().fenceQueue,
       reservationId = state.walk.reservationId,
       moveQueued = state.walk.moveQueued,
       moveCount = countRaised("demonwalker.move"),
@@ -1329,7 +1329,7 @@ describe("boop walk integration", function()
       { id = "7102", name = "new inventory response", attrib = "l" },
     })
     publishItemsList("room", {})
-    local currentApplication = boop.runtime.roomApplicationSnapshot()
+    local currentApplication = boop.room.roomApplicationSnapshot()
     assert.is_table(currentApplication)
     assert.are.equal(
       0,
@@ -1361,7 +1361,7 @@ describe("boop walk integration", function()
       { id = "999", name = "duplicate room response", attrib = "m" },
     })
 
-    local finalObservation = boop.runtime.roomObservationSnapshot()
+    local finalObservation = boop.room.roomObservationSnapshot()
     local finalOwner = state.combat.blockersByOwner[
       "walk:" .. tostring(state.walk.generation)
     ]
@@ -1474,7 +1474,7 @@ describe("boop walk integration", function()
     local state = boop.runtime.state()
     local owner = currentWalkOwner()
     local refreshTimer =
-      boop.runtime.roomObservationSnapshot().refreshTimeoutTimer
+      boop.room.roomObservationSnapshot().refreshTimeoutTimer
     assert.is_number(refreshTimer)
     assert.is_nil(state.walk.refreshTimer)
     assert.are.equal(2, #sent_gmcp)
@@ -1486,7 +1486,7 @@ describe("boop walk integration", function()
     assert.is_false(state.walk.roomSettled)
     assert.is_false(state.walk.moveQueued)
     assert.is_nil(state.walk.refreshTimer)
-    assert.is_true(boop.runtime.roomObservationSnapshot().warned)
+    assert.is_true(boop.room.roomObservationSnapshot().warned)
     assert.are.equal(0, countRaised("demonwalker.move"))
     assert.are.equal(2, #sent_gmcp)
     assert.are.equal(1, #feedback.warn - warningCount)
@@ -1502,7 +1502,7 @@ describe("boop walk integration", function()
       countContaining(trace_lines, "room response fence timeout") - traceCount
     )
     assert.is_false(boop.runtime.readinessSnapshot().room.ready)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
 
     timers.run(refreshTimer)
     assert.are.equal(1, #feedback.warn - warningCount)

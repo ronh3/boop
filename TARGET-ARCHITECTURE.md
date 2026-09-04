@@ -12,13 +12,13 @@ The committed `0.1.493` baseline recorded in `ARCHITECTURE.md` §3 has 21 script
 
 Three modules concentrate the problem:
 
-- **`boop_runtime`** held combat decision/execution (`step`, `applyEffects`, `tickStep`) beside its permanent composite `context` projection, so the state module called outward into `attacks`, `safety`, and `walk` — each of which called back. Runtime still has target-lifecycle responsibilities until Phase 5.
+- **`boop_runtime`** held combat decision/execution (`step`, `applyEffects`, `tickStep`) beside its permanent composite `context` projection, so the state module called outward into `attacks`, `safety`, and `walk` — each of which called back. Phases 3–5 removed those responsibilities plus Room, Locks, and target-domain lifecycle orchestration; Runtime now retains schema/context and the lifecycle concerns scheduled for later extraction.
 - **`boop_util`** held the command dispatcher through Phase 3. Phase 4 moved it to `boop.wire`, leaving string/output helpers and the Trace code scheduled for Phase 7.
-- **`boop_events`** owns 42 top-level `boop.<function>` symbols — `tick`, `canAct`, `getWieldedItem`, `clearGoldQueueIntent`, `requestRoomItemsOnce` and the rest — which six other modules call directly. This alone accounts for six reciprocal pairs.
+- **`boop_events`** owns 41 top-level `boop.<function>` symbols — `tick`, `getWieldedItem`, `clearGoldQueueIntent` and the rest — which other modules call directly. Phase 5 moved `requestRoomItemsOnce` to Room and closed the Walk reciprocal direction; the remaining facades are retired in later phases.
 
 A fourth source is not a module but a missing rule: **shared data**. Four pairs exist only because one module reads or writes another's state or lists — `db ↔ init`, `db ↔ targets`, `stats ↔ targets`, `targets ↔ util`. They are invisible to an executable-only graph, which is why data references are part of the dependency model (§3) and why ownership is declared explicitly rather than inferred from assignment order.
 
-Closing them is staged across four phases. Phase 3 closed three existing pairs and added the temporary `events ↔ combat` migration seam, for 23 → 21. Phase 4 closed twelve more and left the measured tree at nine reciprocal pairs. Phase 5 closes `events ↔ walk` and the deferred `runtime ↔ targets`, and **Phase 8 closes the remaining six original pairs plus `events ↔ combat`**. The last group depends on cohesive Gold, Inventory, and Interrupt extraction and retirement of the Events combat facade. **Phase 8 remains the point at which the graph becomes acyclic** — not Phase 4.
+Closing them is staged across four phases. Phase 3 closed three existing pairs and added the temporary `events ↔ combat` migration seam, for 23 → 21. Phase 4 closed twelve more and left the measured tree at nine reciprocal pairs. Phase 5 closed `events ↔ walk` and the deferred `runtime ↔ targets`, leaving seven measured reciprocal pairs, and **Phase 8 closes the remaining six original pairs plus `events ↔ combat`**. The last group depends on cohesive Gold, Inventory, and Interrupt extraction and retirement of the Events combat facade. **Phase 8 remains the point at which the graph becomes acyclic** — not Phase 4.
 
 The target is a directed acyclic graph with one owner per concept.
 

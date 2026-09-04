@@ -30,15 +30,16 @@ from tools.architecture_guard import (
 
 EXPECTED_OUTBOUND = Counter({
     ("send", "src/aliases/boop/Targeting/IH.lua"): 1,
-    ("send", "src/scripts/boop/boop_events.lua"): 2,
+    ("send", "src/scripts/boop/boop_events.lua"): 1,
     ("send", "src/scripts/boop/boop_rage.lua"): 1,
+    ("send", "src/scripts/boop/boop_room.lua"): 1,
     ("send", "src/scripts/boop/boop_runtime.lua"): 1,
     ("send", "src/scripts/boop/boop_safety.lua"): 1,
     ("send", "src/scripts/boop/boop_targets.lua"): 5,
     ("send", "src/scripts/boop/boop_ui.lua"): 4,
     ("send", "src/scripts/boop/boop_wire.lua"): 1,
-    ("sendGMCP", "src/scripts/boop/boop_events.lua"): 1,
     ("sendGMCP", "src/scripts/boop/boop_init.lua"): 4,
+    ("sendGMCP", "src/scripts/boop/boop_room.lua"): 1,
     ("sendGMCP", "src/scripts/boop/boop_skills.lua"): 3,
 })
 
@@ -233,6 +234,59 @@ class DirectDependencyTests(unittest.TestCase):
             for error in errors
         ))
 
+    def test_phase_five_closed_directions_are_hard_forbidden(self) -> None:
+        cases = (
+            (
+                "boop_runtime", "boop_targets",
+                "boop.targets.resetGameTargetSync()",
+                "function boop.targets.resetGameTargetSync() end",
+            ),
+            (
+                "boop_walk", "boop_events",
+                "boop.events.requestRoomItemsOnce()",
+                "function boop.events.requestRoomItemsOnce() end",
+            ),
+            (
+                "boop_room", "boop_runtime",
+                "boop.runtime.state()",
+                "function boop.runtime.state() end",
+            ),
+            (
+                "boop_locks", "boop_combat",
+                "boop.combat.step()",
+                "function boop.combat.step() end",
+            ),
+            (
+                "boop_room", "boop_ui",
+                "boop.ui.render()",
+                "function boop.ui.render() end",
+            ),
+            (
+                "boop_room", "boop_targets",
+                "boop.targets.choose()",
+                "function boop.targets.choose() end",
+            ),
+            (
+                "boop_locks", "boop_wire",
+                "boop.wire.executeAction()",
+                "function boop.wire.executeAction() end",
+            ),
+        )
+        for source, target, call, definition in cases:
+            with self.subTest(source=source, target=target):
+                graph = analyze_sources(
+                    {source: call, target: definition},
+                    [source, target],
+                )
+                errors, _ = validate_graph(
+                    graph,
+                    require_composition_root=False,
+                )
+                self.assertTrue(any(
+                    "hard-forbidden dependency edge" in error
+                    for error in errors
+                ))
+
 
 class ConventionTests(unittest.TestCase):
     def violations(self, source: str) -> list[str]:
@@ -290,10 +344,10 @@ class ConventionTests(unittest.TestCase):
 
     def test_runtime_schema_rawset_exception_is_exactly_site_scoped(self) -> None:
         exact = ConventionViolation(
-            "rawset", "src/scripts/boop/boop_runtime.lua", "rawset", 283
+            "rawset", "src/scripts/boop/boop_runtime.lua", "rawset", 276
         )
         shifted = ConventionViolation(
-            "rawset", "src/scripts/boop/boop_runtime.lua", "rawset", 284
+            "rawset", "src/scripts/boop/boop_runtime.lua", "rawset", 277
         )
         self.assertIn(exact.exact_key, SCHEMA_CUSTODY_EXCEPTIONS)
         self.assertNotIn(shifted.exact_key, SCHEMA_CUSTODY_EXCEPTIONS)
@@ -337,24 +391,24 @@ class ProductionGuardTests(unittest.TestCase):
 
     def test_repository_graph_and_complete_check_match_accepted_facts(self) -> None:
         graph = load_repository_graph(ROOT)
-        self.assertEqual(23, len(graph.modules))
-        self.assertEqual(127, len(graph.edges))
-        self.assertEqual(119, len(graph.executable_edges))
-        self.assertEqual(41, len(graph.data_edges))
-        self.assertEqual(33, len(graph.executable_edges & graph.data_edges))
-        self.assertEqual(9, len(graph.reciprocal_pairs()))
-        self.assertEqual([20], sorted(len(value) for value in graph.nontrivial_sccs()))
+        self.assertEqual(25, len(graph.modules))
+        self.assertEqual(141, len(graph.edges))
+        self.assertEqual(133, len(graph.executable_edges))
+        self.assertEqual(42, len(graph.data_edges))
+        self.assertEqual(34, len(graph.executable_edges & graph.data_edges))
+        self.assertEqual(7, len(graph.reciprocal_pairs()))
+        self.assertEqual([22], sorted(len(value) for value in graph.nontrivial_sccs()))
         self.assertEqual(["boop_bootstrap"], graph.composition_roots())
         self.assertEqual([], graph.unresolved_references)
         self.assertEqual({}, graph.duplicate_exports)
 
         errors, summary = check_repository_architecture(ROOT)
         self.assertEqual([], errors)
-        self.assertEqual(127, summary["edges"])
+        self.assertEqual(141, summary["edges"])
         self.assertEqual(4, summary["legacy_indirection_exceptions"])
         self.assertEqual(1, summary["schema_custody_exceptions"])
 
-    def test_phase_four_ownership_and_closed_pair_invariants(self) -> None:
+    def test_phase_five_ownership_and_closed_pair_invariants(self) -> None:
         graph = load_repository_graph(ROOT)
         self.assertEqual(
             "boop_runtime",
@@ -369,14 +423,48 @@ class ProductionGuardTests(unittest.TestCase):
                 graph.executable_owners[("combat", symbol)],
             )
         self.assertNotIn(("attacks", "execute"), graph.executable_owners)
+        for symbol in (
+            "startRoomObservation", "observeRoomInfo", "beginRoomResponseFence",
+            "observeRoomItemsList", "claimRoomApplication",
+            "validateRoomSourceAuthority", "currentRoomSourceAuthority",
+            "movementIntentSnapshot", "requestRoomItemsOnce",
+        ):
+            self.assertEqual(
+                "boop_room",
+                graph.executable_owners[("room", symbol)],
+            )
+        for symbol in (
+            "blockersSnapshot", "blockerSnapshot", "setBlocker", "clearBlocker",
+            "shouldHold", "operationLocksSnapshot", "operationLockSnapshot",
+            "operationHolds", "interruptAdmission", "notePromptObserved",
+            "noteGmcpObserved",
+        ):
+            self.assertEqual(
+                "boop_locks",
+                graph.executable_owners[("locks", symbol)],
+            )
 
         runtime = (
             ROOT / "src/scripts/boop/boop_runtime.lua"
         ).read_text()
         for symbol in (
             "boop.attacks", "boop.safety", "boop.walk", "boop.gag",
+            "boop.targets",
         ):
             self.assertNotIn(symbol, runtime)
+
+        room = (ROOT / "src/scripts/boop/boop_room.lua").read_text()
+        locks = (ROOT / "src/scripts/boop/boop_locks.lua").read_text()
+        for source in (room, locks):
+            for symbol in (
+                "boop.runtime", "boop.combat", "boop.events", "boop.gag",
+                "boop.render", "boop.stats", "boop.ui",
+            ):
+                self.assertNotIn(symbol, source)
+
+        walk = (ROOT / "src/scripts/boop/boop_walk.lua").read_text()
+        self.assertIn("boop.room.requestRoomItemsOnce", walk)
+        self.assertNotIn("boop.events", walk)
 
         for path in (
             ROOT / "src/scripts/boop/boop_attacks.lua",
@@ -399,6 +487,8 @@ class ProductionGuardTests(unittest.TestCase):
                 ("boop_targets", "boop_util"),
                 ("boop_db", "boop_stats"),
                 ("boop_db", "boop_targets"),
+                ("boop_runtime", "boop_targets"),
+                ("boop_events", "boop_walk"),
             )
         }
         self.assertTrue(closed_pairs.isdisjoint(graph.reciprocal_pairs()))
@@ -406,6 +496,20 @@ class ProductionGuardTests(unittest.TestCase):
             edge for edge in graph.edges if edge[0] == "boop_ui_registry"
         })
         self.assertNotIn(("boop_wire", "boop_targets"), graph.edges)
+        self.assertIn(("boop_runtime", "boop_room"), graph.edges)
+        self.assertIn(("boop_runtime", "boop_locks"), graph.edges)
+        self.assertNotIn(("boop_room", "boop_runtime"), graph.edges)
+        self.assertNotIn(("boop_locks", "boop_runtime"), graph.edges)
+        self.assertNotIn(("boop_runtime", "boop_targets"), graph.edges)
+        self.assertNotIn(("boop_walk", "boop_events"), graph.edges)
+
+        self.assertEqual({
+            "boop_afflictions", "boop_attacks", "boop_combat", "boop_db",
+            "boop_events", "boop_gag", "boop_ih", "boop_init", "boop_locks",
+            "boop_rage", "boop_render", "boop_room", "boop_runtime",
+            "boop_safety", "boop_skills", "boop_stats", "boop_targets",
+            "boop_theme", "boop_ui", "boop_util", "boop_walk", "boop_wire",
+        }, graph.nontrivial_sccs()[0])
 
         wire = (ROOT / "src/scripts/boop/boop_wire.lua").read_text()
         self.assertNotIn("boop.state.targeting", wire)

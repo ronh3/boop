@@ -316,9 +316,9 @@ end
 
 local function currentBlockerDetails()
   local state = boop.runtime and boop.runtime.state and boop.runtime.state() or boop.state or {}
-  local snapshot = boop.runtime
-    and boop.runtime.operationLockSnapshot
-    and boop.runtime.operationLockSnapshot()
+  local snapshot = boop.locks
+    and boop.locks.operationLockSnapshot
+    and boop.locks.operationLockSnapshot()
     or nil
   if type(snapshot) == "table" and tostring(snapshot.code or "") ~= "" then
     local waits = blockerKeyText(snapshot.waitsFor)
@@ -431,9 +431,9 @@ local function currentBlockerDetails()
 end
 
 local function allBlockerDetails()
-  local snapshots = boop.runtime
-    and boop.runtime.operationLocksSnapshot
-    and boop.runtime.operationLocksSnapshot()
+  local snapshots = boop.locks
+    and boop.locks.operationLocksSnapshot
+    and boop.locks.operationLocksSnapshot()
     or {}
   local details = {}
   for _, snapshot in ipairs(snapshots) do
@@ -1370,7 +1370,7 @@ local function queueInterrupt(label, command, opts)
   local state = boop.runtime.state()
   local active = state.diag.operation
   local name = tostring(label or "interrupt")
-  local admission = boop.runtime.interruptAdmission(active, {
+  local admission = boop.locks.interruptAdmission(active, {
     name = name,
     tier = opts.tier,
     source = opts.source or "operator",
@@ -1427,7 +1427,7 @@ local function queueInterrupt(label, command, opts)
   state.diag.timeoutTimer = nil
   state.diag.label = name
 
-  boop.runtime.setOperationLock(
+  boop.locks.setOperationLock(
     blockerOwner,
     "interrupt_pending",
     name .. " pending",
@@ -1664,7 +1664,7 @@ function boop.ui.completePull(generation, terminalReason, opts)
   pull.phase = "terminal"
   local owner = tostring(pull.blockerOwner or "")
   stopPullTimeout(pull)
-  boop.runtime.clearOperationLock(owner, reason)
+  boop.locks.clearOperationLock(owner, reason)
   state.combat.pullState = false
 
   if reason == "timeout_at_origin" then
@@ -1735,7 +1735,7 @@ local function armPullTimeout(pull)
 
     active.timeoutTimer = nil
     active.phase = "timed_out_away"
-    boop.runtime.setOperationLock(active.blockerOwner, "pull_timeout_away", "pull timed out away from origin", {
+    boop.locks.setOperationLock(active.blockerOwner, "pull_timeout_away", "pull timed out away from origin", {
       combat = true,
       queue = true,
       target = true,
@@ -1954,7 +1954,7 @@ function boop.ui.pullCommand(mobName, direction)
   state.combat.pullGeneration = generation
   state.combat.pullState = pull
 
-  boop.runtime.setOperationLock(blockerOwner, "pull_active", "pull active", {
+  boop.locks.setOperationLock(blockerOwner, "pull_active", "pull active", {
     combat = true,
     queue = true,
     target = true,

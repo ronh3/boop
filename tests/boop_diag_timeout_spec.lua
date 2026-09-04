@@ -28,7 +28,7 @@ describe("boop diagnose timeout", function()
   end
 
   local function blockerFor(owner)
-    for _, blocker in ipairs(boop.runtime.blockersSnapshot()) do
+    for _, blocker in ipairs(boop.locks.blockersSnapshot()) do
       if blocker.owner == owner then
         return blocker
       end

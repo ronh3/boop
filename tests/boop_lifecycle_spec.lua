@@ -50,7 +50,7 @@ describe("boop lifecycle recovery", function()
   end
 
   local function seedUnrelatedOperation()
-    return boop.runtime.setOperationLock(
+    return boop.locks.setOperationLock(
       "interrupt:test-unrelated",
       "interrupt_pending",
       "unrelated test operation",
@@ -188,7 +188,7 @@ describe("boop lifecycle recovery", function()
       },
     }, triggerCalls, marker)
 
-    boop.runtime.beginConnectionLifecycle("enable ordering")
+    boop.events.beginConnectionLifecycle("enable ordering")
     gmcp.IRE = {
       Display = {
         FixedFont = "stop",
@@ -276,7 +276,7 @@ describe("boop lifecycle recovery", function()
     assert.is_true(lifecycle.promptSeen)
     assert.is_true(lifecycle.ready)
     assert.is_nil(blocker("gmcp:ire"))
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
   end)
 
   it("updates canonical Rage and Spec while disabled without running a tick", function()
@@ -497,7 +497,7 @@ describe("boop lifecycle recovery", function()
 
     boop.config.enabled = false
     gmcp.IRE = nil
-    boop.runtime.beginConnectionLifecycle("disabled effects")
+    boop.events.beginConnectionLifecycle("disabled effects")
     local beforeTargeting = copy(boop.state.targeting)
     local beforeGold = copy(boop.state.gold)
     local beforeWalk = copy(boop.state.walk)
@@ -601,12 +601,12 @@ describe("boop lifecycle recovery", function()
       exits = {},
     }
     boop.state.targeting.room = "1"
-    boop.runtime.startRoomObservation("1", {
+    boop.room.startRoomObservation("1", {
       freshStart = true,
       boundary = "fresh_start",
       reason = "accepted response test",
     })
-    assert.is_true(boop.requestRoomItemsOnce("accepted response test"))
+    assert.is_true(boop.room.requestRoomItemsOnce("accepted response test"))
     local acceptedTimeout = timers[#timers]
     assert.are.equal(8.0, acceptedTimeout.delay, marker)
 
@@ -636,12 +636,12 @@ describe("boop lifecycle recovery", function()
       },
     }
     boop.state.targeting.room = "2"
-    boop.runtime.startRoomObservation("2", {
+    boop.room.startRoomObservation("2", {
       movedRooms = true,
       boundary = "room_change",
       reason = "missing response test",
     })
-    assert.is_true(boop.requestRoomItemsOnce("missing response test"))
+    assert.is_true(boop.room.requestRoomItemsOnce("missing response test"))
     local missingTimeout = timers[#timers]
     assert.are.equal(8.0, missingTimeout.delay)
     fakeEpoch = 8000

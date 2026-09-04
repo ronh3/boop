@@ -182,8 +182,8 @@ describe("boop event-driven state transitions", function()
   end
 
   local function blockerSnapshot()
-    assert.is_function(boop.runtime.blockerSnapshot)
-    return boop.runtime.blockerSnapshot()
+    assert.is_function(boop.locks.blockerSnapshot)
+    return boop.locks.blockerSnapshot()
   end
 
   local function countSent(command)
@@ -236,10 +236,10 @@ describe("boop event-driven state transitions", function()
   end
 
   local function runPendingRoomApplication()
-    if not boop.runtime.roomApplicationSnapshot then
+    if not boop.room.roomApplicationSnapshot then
       return false
     end
-    local application = boop.runtime.roomApplicationSnapshot()
+    local application = boop.room.roomApplicationSnapshot()
     local callback = application
       and callbackForTimer(application.pendingTimer)
       or nil
@@ -313,10 +313,10 @@ describe("boop event-driven state transitions", function()
   end
 
   local function publishAcceptedRoomList(items)
-    local observation = boop.runtime.roomObservationSnapshot()
+    local observation = boop.room.roomObservationSnapshot()
     if observation.itemsSeen
         and #observation.fenceQueue == 0 then
-      observation = boop.runtime.startRoomObservation(
+      observation = boop.room.startRoomObservation(
         observation.roomId,
         {
           boundary = "fresh_start",
@@ -325,11 +325,11 @@ describe("boop event-driven state transitions", function()
       )
     end
     if not observation.itemsSeen and not observation.refreshAttempted then
-      boop.requestRoomItemsOnce("test accepted room response")
+      boop.room.requestRoomItemsOnce("test accepted room response")
     end
     local guard = 0
     while true do
-      observation = boop.runtime.roomObservationSnapshot()
+      observation = boop.room.roomObservationSnapshot()
       local fence = observation.fenceQueue[1]
       if not fence then break end
       guard = guard + 1
@@ -337,7 +337,7 @@ describe("boop event-driven state transitions", function()
       if fence.phase == "await_inv" then
         publishItemsList("inv", {})
       end
-      observation = boop.runtime.roomObservationSnapshot()
+      observation = boop.room.roomObservationSnapshot()
       fence = observation.fenceQueue[1]
       if fence and fence.phase == "await_room" then
         local acceptedItems = fence.valid ~= false
@@ -421,18 +421,18 @@ describe("boop event-driven state transitions", function()
   end
 
   local function captureRuntimeBlockerCalls()
-    local originalSetBlocker = boop.runtime.setBlocker
-    local originalClearBlocker = boop.runtime.clearBlocker
-    local originalNoteGmcp = boop.runtime.noteGmcpObserved
-    runtime_set_blocker_stub = stub(boop.runtime, "setBlocker", function(...)
+    local originalSetBlocker = boop.locks.setBlocker
+    local originalClearBlocker = boop.locks.clearBlocker
+    local originalNoteGmcp = boop.locks.noteGmcpObserved
+    runtime_set_blocker_stub = stub(boop.locks, "setBlocker", function(...)
       set_blocker_calls[#set_blocker_calls + 1] = { ... }
       return originalSetBlocker(...)
     end)
-    runtime_clear_blocker_stub = stub(boop.runtime, "clearBlocker", function(...)
+    runtime_clear_blocker_stub = stub(boop.locks, "clearBlocker", function(...)
       clear_blocker_calls[#clear_blocker_calls + 1] = { ... }
       return originalClearBlocker(...)
     end)
-    runtime_note_gmcp_stub = stub(boop.runtime, "noteGmcpObserved", function(...)
+    runtime_note_gmcp_stub = stub(boop.locks, "noteGmcpObserved", function(...)
       note_gmcp_calls[#note_gmcp_calls + 1] = { ... }
       return originalNoteGmcp(...)
     end)
@@ -471,7 +471,7 @@ describe("boop event-driven state transitions", function()
       assert.is_true(lifecycle.promptSeen)
       assert.is_false(lifecycle.ready)
       assert.are.equal(0, #set_blocker_calls)
-      assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+      assert.are.equal(0, #boop.locks.operationLocksSnapshot())
     end)
   end
 
@@ -529,7 +529,7 @@ describe("boop event-driven state transitions", function()
   it("becomes lifecycle-ready after one requested IRE module and a prompt have arrived", function()
     stubCoreSupports()
     boop.config.enabled = true
-    boop.runtime.beginConnectionLifecycle("test reconnect")
+    boop.events.beginConnectionLifecycle("test reconnect")
     gmcp.IRE = nil
     captureRuntimeBlockerCalls()
 
@@ -554,7 +554,7 @@ describe("boop event-driven state transitions", function()
     boop.onPrompt()
 
     assert.is_true(boop.runtime.lifecycleSnapshot().ready)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
     assert.are.equal(0, #set_blocker_calls)
     assert.are.equal(0, #clear_blocker_calls)
   end)
@@ -562,7 +562,7 @@ describe("boop event-driven state transitions", function()
   it("preserves an observed prompt across repeated missing IRE checks", function()
     stubCoreSupports()
     boop.config.enabled = true
-    boop.runtime.beginConnectionLifecycle("test reconnect")
+    boop.events.beginConnectionLifecycle("test reconnect")
     gmcp.IRE = nil
 
     boop.onCharStatus()
@@ -580,7 +580,7 @@ describe("boop event-driven state transitions", function()
     boop.onCharStatus()
 
     assert.is_true(boop.runtime.lifecycleSnapshot().ready)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
   end)
 
   it("computes missing and partial room readiness directly", function()
@@ -606,7 +606,23 @@ describe("boop event-driven state transitions", function()
     assert.are.equal("room_partial", partial.code)
     assert.are.equal("current room evidence is incomplete", partial.label)
     assert.are.equal(0, #set_blocker_calls)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
+  end)
+
+  it("rehydrates targeting before missing-room owner operations", function()
+    boop.state.targeting = nil
+    gmcp.Room.Info = nil
+
+    assert.has_no.errors(function()
+      boop.onRoomInfo()
+    end)
+
+    assert.is_table(boop.state.targeting)
+    assert.are.equal("", boop.state.targeting.currentTargetId)
+    local observation = boop.room.roomObservationSnapshot()
+    assert.are.equal("", observation.roomId)
+    assert.is_false(observation.infoSeen)
+    assert.is_false(observation.itemsSeen)
   end)
 
   it("starts a fresh room observation and caps refresh requests per generation", function()
@@ -628,7 +644,7 @@ describe("boop event-driven state transitions", function()
 
     boop.onRoomInfo()
 
-    local observation = boop.runtime.roomObservationSnapshot()
+    local observation = boop.room.roomObservationSnapshot()
     assert.are.equal(8, observation.generation)
     assert.are.equal("200", observation.roomId)
     assert.is_true(observation.infoSeen)
@@ -639,24 +655,24 @@ describe("boop event-driven state transitions", function()
     local readiness = boop.runtime.readinessSnapshot().room
     assert.is_false(readiness.ready)
     assert.are.equal("room_partial", readiness.code)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
     assert.are.same({ [[Char.Items.Inv ""]], [[Char.Items.Room ""]] }, gmcp_requests)
-    assert.is_false(boop.requestRoomItemsOnce("duplicate refresh"))
+    assert.is_false(boop.room.requestRoomItemsOnce("duplicate refresh"))
     assert.are.same({ [[Char.Items.Inv ""]], [[Char.Items.Room ""]] }, gmcp_requests)
-    assert.is_false(boop.runtime.roomObservationSnapshot().warned)
+    assert.is_false(boop.room.roomObservationSnapshot().warned)
     assert.are.equal(0, #sent_commands)
     assert.are.equal(0, countRaised("demonwalker.move"))
 
-    local immutable = boop.runtime.roomObservationSnapshot()
+    local immutable = boop.room.roomObservationSnapshot()
     immutable.roomId = "mutated"
     immutable.itemsSeen = true
-    assert.are.equal("200", boop.runtime.roomObservationSnapshot().roomId)
-    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.are.equal("200", boop.room.roomObservationSnapshot().roomId)
+    assert.is_false(boop.room.roomObservationSnapshot().itemsSeen)
   end)
 
   it("accepts only a complete room list after the current room info generation", function()
     publishAcceptedRoomList({})
-    local settled = boop.runtime.roomObservationSnapshot()
+    local settled = boop.room.roomObservationSnapshot()
     local settledGeneration = settled.generation
     assert.is_true(settled.itemsSeen)
     gmcp_requests = {}
@@ -672,17 +688,17 @@ describe("boop event-driven state transitions", function()
     }
     boop.onRoomInfo()
     local arrival_callback = scheduled_callback
-    local current = boop.runtime.roomObservationSnapshot()
+    local current = boop.room.roomObservationSnapshot()
     assert.are.equal(settledGeneration + 1, current.generation)
     assert.are.equal("2", current.roomId)
     assert.is_false(current.itemsSeen)
     assert.are.same({ [[Char.Items.Inv ""]], [[Char.Items.Room ""]] }, gmcp_requests)
 
     boop.onPrompt()
-    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.is_false(boop.room.roomObservationSnapshot().itemsSeen)
     assert.is_function(arrival_callback)
     arrival_callback()
-    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.is_false(boop.room.roomObservationSnapshot().itemsSeen)
     assert.are.equal(0, countRaised("demonwalker.move"))
 
     gmcp.Char.Items.List = {
@@ -690,7 +706,7 @@ describe("boop event-driven state transitions", function()
       items = nil,
     }
     boop.onRoomItemsList()
-    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.is_false(boop.room.roomObservationSnapshot().itemsSeen)
     assert.are.same({ [[Char.Items.Inv ""]], [[Char.Items.Room ""]] }, gmcp_requests)
 
     gmcp.Char.Items.List = {
@@ -698,7 +714,7 @@ describe("boop event-driven state transitions", function()
       items = {},
     }
     boop.onRoomItemsList()
-    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.is_false(boop.room.roomObservationSnapshot().itemsSeen)
 
     boop.state.walk.active = false
     gmcp.Char.Items.List = {
@@ -707,7 +723,7 @@ describe("boop event-driven state transitions", function()
     }
     boop.onRoomItemsList()
     assert.is_true(runPendingRoomApplication())
-    local complete = boop.runtime.roomObservationSnapshot()
+    local complete = boop.room.roomObservationSnapshot()
     assert.are.equal(settledGeneration + 1, complete.generation)
     assert.is_true(complete.itemsSeen)
     assert.are.equal("", blockerSnapshot().code)
@@ -715,9 +731,9 @@ describe("boop event-driven state transitions", function()
     boop.onRoomItemsList()
     assert.are.equal(
       settledGeneration + 1,
-      boop.runtime.roomObservationSnapshot().generation
+      boop.room.roomObservationSnapshot().generation
     )
-    assert.is_true(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.is_true(boop.room.roomObservationSnapshot().itemsSeen)
     assert.are.same({ [[Char.Items.Inv ""]], [[Char.Items.Room ""]] }, gmcp_requests)
     assert.are.equal(0, #sent_commands)
     assert.are.equal(0, countRaised("demonwalker.move"))
@@ -738,12 +754,12 @@ describe("boop event-driven state transitions", function()
         "sysDataSendRequest",
         direction
       ))
-      local intent = boop.runtime.movementIntentSnapshot()
+      local intent = boop.room.movementIntentSnapshot()
       assert.is_true(intent.active)
       assert.are.equal(direction, intent.direction)
       assert.are.equal(index, intent.generation)
       assert.are.equal("1", intent.originRoomId)
-      boop.runtime.clearMovementIntent("direction matrix")
+      boop.room.clearMovementIntent("direction matrix")
     end
 
     assert.is_false(boop.onDataSendRequest(
@@ -756,7 +772,7 @@ describe("boop event-driven state transitions", function()
     ))
     assert.are.equal(
       #directions,
-      boop.runtime.movementIntentSnapshot().generation
+      boop.room.movementIntentSnapshot().generation
     )
 
     assert.is_true(boop.onDataSendRequest(
@@ -767,14 +783,14 @@ describe("boop event-driven state transitions", function()
       "sysDataSendRequest",
       "e"
     ))
-    assert.is_false(boop.runtime.movementIntentSnapshot().active)
+    assert.is_false(boop.room.movementIntentSnapshot().active)
 
     assert.is_true(boop.onDataSendRequest(
       "sysDataSendRequest",
       "s"
     ))
     boop.onRoomInfo()
-    assert.is_false(boop.runtime.movementIntentSnapshot().active)
+    assert.is_false(boop.room.movementIntentSnapshot().active)
   end)
 
   it("G-03-20 starts combat from a changed pre-Info list only after movement confirms", function()
@@ -803,7 +819,7 @@ describe("boop event-driven state transitions", function()
       infoSeen = true,
       itemsSeen = false,
     })
-    assert.is_true(boop.requestRoomItemsOnce(
+    assert.is_true(boop.room.requestRoomItemsOnce(
       "G-03-20 origin response in flight"
     ))
 
@@ -821,7 +837,7 @@ describe("boop event-driven state transitions", function()
       goldItem("9042"),
     })
 
-    local pendingIntent = boop.runtime.movementIntentSnapshot()
+    local pendingIntent = boop.room.movementIntentSnapshot()
     assert.is_true(pendingIntent.active)
     assert.are.equal(2, #pendingIntent.candidateItems)
     assert.are.equal(0, #sent_commands)
@@ -834,11 +850,11 @@ describe("boop event-driven state transitions", function()
     }
     boop.onRoomInfo()
 
-    local observation = boop.runtime.roomObservationSnapshot()
+    local observation = boop.room.roomObservationSnapshot()
     assert.are.equal("2", observation.roomId)
     assert.is_false(observation.itemsSeen)
     assert.is_false(boop.runtime.readinessSnapshot().room.ready)
-    assert.is_false(boop.runtime.movementIntentSnapshot().active)
+    assert.is_false(boop.room.movementIntentSnapshot().active)
     assert.are.equal("42", boop.state.targeting.currentTargetId)
     assert.are.equal("a destination denizen", boop.state.targeting.targetName)
     assert.are.equal(1, countSent("settarget 42"))
@@ -885,8 +901,8 @@ describe("boop event-driven state transitions", function()
     }
     boop.onRoomInfo()
 
-    assert.is_false(boop.runtime.movementIntentSnapshot().active)
-    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.is_false(boop.room.movementIntentSnapshot().active)
+    assert.is_false(boop.room.roomObservationSnapshot().itemsSeen)
     assert.is_false(boop.runtime.readinessSnapshot().room.ready)
     assert.are.equal("", boop.state.targeting.currentTargetId)
     assert.are.equal(0, countSent("settarget 43"))
@@ -968,10 +984,10 @@ describe("boop event-driven state transitions", function()
       secondItems[1].name = "mutated after second latch"
 
       assert.is_function(
-        boop.runtime.roomApplicationSnapshot,
+        boop.room.roomApplicationSnapshot,
         "ROOM_RESPONSE_LATCH_MISSING: completed pairs need one application"
       )
-      local application = boop.runtime.roomApplicationSnapshot()
+      local application = boop.room.roomApplicationSnapshot()
       assert.is_table(application)
       assert.are.equal(0, targetUpdates)
       assert.are.equal(0, walkSettlements)
@@ -988,8 +1004,8 @@ describe("boop event-driven state transitions", function()
       applicationCallback()
       applicationCallback()
 
-      local accepted = boop.runtime.roomObservationSnapshot()
-      local acceptedApplication = boop.runtime.roomApplicationSnapshot(
+      local accepted = boop.room.roomObservationSnapshot()
+      local acceptedApplication = boop.room.roomApplicationSnapshot(
         application.applicationId
       )
       local timerCount = #scheduled_callbacks
@@ -1057,11 +1073,11 @@ describe("boop event-driven state transitions", function()
       end
     )
 
-    boop.runtime.startRoomObservation("1", {
+    boop.room.startRoomObservation("1", {
       boundary = "fresh_start",
       reason = "G-03-17 accepted application wake",
     })
-    assert.is_true(boop.requestRoomItemsOnce(
+    assert.is_true(boop.room.requestRoomItemsOnce(
       "G-03-17 accepted application wake"
     ))
     publishItemsList("inv", {})
@@ -1069,7 +1085,7 @@ describe("boop event-driven state transitions", function()
       denizenItem("17", "the current-room denizen"),
     })
 
-    local pending = boop.runtime.roomApplicationSnapshot()
+    local pending = boop.room.roomApplicationSnapshot()
     local pendingCallback = callbackForTimer(pending.pendingTimer)
     assert.is_table(pending)
     assert.is_function(pendingCallback)
@@ -1079,7 +1095,7 @@ describe("boop event-driven state transitions", function()
 
     boop.tick()
 
-    local claimed = boop.runtime.roomApplicationSnapshot(
+    local claimed = boop.room.roomApplicationSnapshot(
       pending.applicationId
     )
     local readiness = boop.runtime.readinessSnapshot()
@@ -1123,7 +1139,7 @@ describe("boop event-driven state transitions", function()
       itemsSeen = false,
       acceptedItems = {},
     })
-    boop.requestRoomItemsOnce("G-03-7 generation 45")
+    boop.room.requestRoomItemsOnce("G-03-7 generation 45")
 
     local targetUpdates = 0
     local walkSettlements = 0
@@ -1152,11 +1168,11 @@ describe("boop event-driven state transitions", function()
     oldRoomItems[1].name = "mutated after generation 45 latch"
 
     assert.is_function(
-      boop.runtime.roomApplicationSnapshot,
+      boop.room.roomApplicationSnapshot,
       "ROOM_APPLICATION_MISSING: accepted evidence escaped synchronously"
     )
-    assert.is_function(boop.runtime.validateRoomSourceAuthority)
-    local oldApplication = boop.runtime.roomApplicationSnapshot()
+    assert.is_function(boop.room.validateRoomSourceAuthority)
+    local oldApplication = boop.room.roomApplicationSnapshot()
     local oldAuthority = sourceAuthority(
       oldApplication.applicationId,
       "4255",
@@ -1194,7 +1210,7 @@ describe("boop event-driven state transitions", function()
       exits = { north = "4255" },
     }
     boop.onRoomInfo()
-    assert.is_false(boop.runtime.validateRoomSourceAuthority(oldAuthority))
+    assert.is_false(boop.room.validateRoomSourceAuthority(oldAuthority))
     assertSourceAuthority(oldAuthority, oldApplication.sourceAuthority)
     assertSourceAuthority(oldAuthority, oldContext.sourceAuthority)
     oldCallback()
@@ -1219,7 +1235,7 @@ describe("boop event-driven state transitions", function()
     publishItemsList("inv", {
       inventoryItem("7460", "generation 46 weapon", "l"),
     })
-    local newApplication = boop.runtime.roomApplicationSnapshot()
+    local newApplication = boop.room.roomApplicationSnapshot()
     local newAuthority = sourceAuthority(
       newApplication.applicationId,
       "4249",
@@ -1232,12 +1248,12 @@ describe("boop event-driven state transitions", function()
     newCallback()
     newCallback()
 
-    local settled = boop.runtime.roomObservationSnapshot()
-    local consumed = boop.runtime.roomApplicationSnapshot(
+    local settled = boop.room.roomObservationSnapshot()
+    local consumed = boop.room.roomApplicationSnapshot(
       newApplication.applicationId
     )
-    assert.is_true(boop.runtime.validateRoomSourceAuthority(newAuthority))
-    assert.is_false(boop.runtime.validateRoomSourceAuthority(oldAuthority))
+    assert.is_true(boop.room.validateRoomSourceAuthority(newAuthority))
+    assert.is_false(boop.room.validateRoomSourceAuthority(oldAuthority))
     assertSourceAuthority(newAuthority, settled.acceptedSourceAuthority)
     assertSourceAuthority(newAuthority, consumed.sourceAuthority)
     assert.are.same({
@@ -1291,13 +1307,13 @@ describe("boop event-driven state transitions", function()
         itemsSeen = false,
         acceptedItems = {},
       })
-      boop.requestRoomItemsOnce(
+      boop.room.requestRoomItemsOnce(
         "G-03-7 accepted authority " .. tostring(generation)
       )
       publishItemsList("inv", {})
       publishItemsList("room", items or {})
 
-      local application = boop.runtime.roomApplicationSnapshot()
+      local application = boop.room.roomApplicationSnapshot()
       assert.is_table(application)
       local callback = callbackForTimer(application.pendingTimer)
       assert.is_function(callback)
@@ -1308,7 +1324,7 @@ describe("boop event-driven state transitions", function()
         roomId,
         generation
       )
-      assert.is_true(boop.runtime.validateRoomSourceAuthority(authority))
+      assert.is_true(boop.room.validateRoomSourceAuthority(authority))
       boop.config.enabled = true
       return authority
     end
@@ -1334,7 +1350,7 @@ describe("boop event-driven state transitions", function()
       })
 
       moveToDestination()
-      assert.is_false(boop.runtime.validateRoomSourceAuthority(authority))
+      assert.is_false(boop.room.validateRoomSourceAuthority(authority))
       sent_commands = {}
 
       local before = {
@@ -1468,10 +1484,10 @@ describe("boop event-driven state transitions", function()
         waitsFor = { timeout = true },
       })
 
-      local originalValidate = boop.runtime.validateRoomSourceAuthority
+      local originalValidate = boop.room.validateRoomSourceAuthority
       local validations = {}
       validate_authority_stub = stub(
-        boop.runtime,
+        boop.room,
         "validateRoomSourceAuthority",
         function(actual)
           validations[#validations + 1] = sourceAuthority(
@@ -1483,10 +1499,10 @@ describe("boop event-driven state transitions", function()
         end
       )
       local originalCurrentAuthority =
-        boop.runtime.currentRoomSourceAuthority
+        boop.room.currentRoomSourceAuthority
       local currentAuthorityCalls = 0
       current_authority_stub = stub(
-        boop.runtime,
+        boop.room,
         "currentRoomSourceAuthority",
         function()
           currentAuthorityCalls = currentAuthorityCalls + 1
@@ -1677,7 +1693,7 @@ describe("boop event-driven state transitions", function()
     publishItemsList("inv", {
       inventoryItem("7102", "room B current inventory", "l"),
     })
-    local roomBApplication = boop.runtime.roomApplicationSnapshot()
+    local roomBApplication = boop.room.roomApplicationSnapshot()
     local roomBCallback = callbackForTimer(
       roomBApplication and roomBApplication.pendingTimer
     )
@@ -1704,7 +1720,7 @@ describe("boop event-driven state transitions", function()
     })
     assert.is_true(runPendingRoomApplication())
 
-    local observation = boop.runtime.roomObservationSnapshot()
+    local observation = boop.room.roomObservationSnapshot()
     assert.are.same({
       requests = {
         [[Char.Items.Inv ""]],
@@ -1778,17 +1794,17 @@ describe("boop event-driven state transitions", function()
     state.walk.arrivalRoom = "1"
     state.walk.generation = 12
     state.walk.roomGeneration =
-      boop.runtime.roomObservationSnapshot().generation
+      boop.room.roomObservationSnapshot().generation
     state.walk.moveIssuedForRoomGeneration = true
     state.walk.reservationId = 5
     state.walk.refreshTimer = 333
     state.walk.emitterTimer = 334
     state.walk.refreshWarned = false
     local beforeSame = {
-      observation = boop.runtime.roomObservationSnapshot(),
+      observation = boop.room.roomObservationSnapshot(),
       denizens = boop.state.targeting.denizens,
       gold = copyGoldOperation(boop.state.gold.operation),
-      blockers = boop.runtime.blockersSnapshot(),
+      blockers = boop.locks.blockersSnapshot(),
       walk = copyWalkState(),
       requests = #gmcp_requests,
       sends = #sent_commands,
@@ -1799,10 +1815,10 @@ describe("boop event-driven state transitions", function()
     boop.onRoomInfo()
 
     local afterSame = {
-      observation = boop.runtime.roomObservationSnapshot(),
+      observation = boop.room.roomObservationSnapshot(),
       denizens = boop.state.targeting.denizens,
       gold = copyGoldOperation(boop.state.gold.operation),
-      blockers = boop.runtime.blockersSnapshot(),
+      blockers = boop.locks.blockersSnapshot(),
       walk = copyWalkState(),
       requests = #gmcp_requests,
       sends = #sent_commands,
@@ -1835,14 +1851,14 @@ describe("boop event-driven state transitions", function()
     publishItemsList("room", {
       denizenItem("99", "an out-of-order room denizen"),
     })
-    local timeoutObservation = boop.runtime.roomObservationSnapshot()
+    local timeoutObservation = boop.room.roomObservationSnapshot()
     local timeoutCallback = callbackForTimer(
       timeoutObservation.refreshTimeoutTimer
     )
     if timeoutCallback then
       timeoutCallback()
     end
-    local missing = boop.runtime.roomObservationSnapshot()
+    local missing = boop.room.roomObservationSnapshot()
     local timeoutTraceCount = 0
     for i = traceBaseline + 1, #traces do
       if traces[i]:find("room response fence", 1, true) then
@@ -1914,9 +1930,9 @@ describe("boop event-driven state transitions", function()
     local state = boop.runtime.state()
     local owner = "walk:" .. tostring(state.walk.generation)
     local afterStart = {
-      observation = boop.runtime.roomObservationSnapshot(),
+      observation = boop.room.roomObservationSnapshot(),
       walk = copyWalkState(),
-      blockers = boop.runtime.blockersSnapshot(),
+      blockers = boop.locks.blockersSnapshot(),
       denizens = boop.state.targeting.denizens,
       requests = #gmcp_requests,
       sends = #sent_commands,
@@ -1925,9 +1941,9 @@ describe("boop event-driven state transitions", function()
 
     publishItemsList("room", {})
     local beforeArrival = {
-      observation = boop.runtime.roomObservationSnapshot(),
+      observation = boop.room.roomObservationSnapshot(),
       walk = copyWalkState(),
-      blockers = boop.runtime.blockersSnapshot(),
+      blockers = boop.locks.blockersSnapshot(),
       denizens = boop.state.targeting.denizens,
       requests = #gmcp_requests,
       sends = #sent_commands,
@@ -1937,9 +1953,9 @@ describe("boop event-driven state transitions", function()
     local eventArrival = boop.onWalkArrived("demonwalker.arrived")
     local numericArrival = boop.onWalkArrived(999, 999)
     local afterArrival = {
-      observation = boop.runtime.roomObservationSnapshot(),
+      observation = boop.room.roomObservationSnapshot(),
       walk = copyWalkState(),
-      blockers = boop.runtime.blockersSnapshot(),
+      blockers = boop.locks.blockersSnapshot(),
       denizens = boop.state.targeting.denizens,
       requests = #gmcp_requests,
       sends = #sent_commands,
@@ -1950,7 +1966,7 @@ describe("boop event-driven state transitions", function()
       inventoryItem("7201", "arrival-fenced weapon", "l"),
     })
     local afterInventory = {
-      itemsSeen = boop.runtime.roomObservationSnapshot().itemsSeen,
+      itemsSeen = boop.room.roomObservationSnapshot().itemsSeen,
       wielded = boop.state.inventory.wieldedLeft
         and boop.state.inventory.wieldedLeft.id
         or false,
@@ -1967,7 +1983,7 @@ describe("boop event-driven state transitions", function()
       emitterCallback()
     end
 
-    local settled = boop.runtime.roomObservationSnapshot()
+    local settled = boop.room.roomObservationSnapshot()
     local walkOwner = blockerFor(owner)
     assert.are.same({
       startOk = true,
@@ -2069,7 +2085,7 @@ describe("boop event-driven state transitions", function()
       { id = "99", name = "some gold sovereigns" },
     })
 
-    assert.is_true(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.is_true(boop.room.roomObservationSnapshot().itemsSeen)
     assert.are.equal(1, countSent("queue add full get sovereigns"))
     assert.are.equal(0, countRaised("demonwalker.move"))
   end)
@@ -2120,7 +2136,7 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(0, flushCalls)
     assert.are.equal(0, countSent("queue add full get sovereigns"))
 
-    boop.runtime.clearBlocker("interrupt:remaining", "final owner released")
+    boop.locks.clearBlocker("interrupt:remaining", "final owner released")
     boop.tick()
 
     assert.are.equal(2, tickCalls)
@@ -2133,11 +2149,11 @@ describe("boop event-driven state transitions", function()
   it("resumes one unchanged gold stage when lifecycle readiness returns", function()
     seedSettledGoldRoom("1", 1)
     boop.config.goldPack = ""
-    boop.runtime.beginConnectionLifecycle("gold reconnect test")
+    boop.events.beginConnectionLifecycle("gold reconnect test")
     gmcp.IRE = nil
     boop.onCharStatus()
     assert.is_false(boop.runtime.lifecycleSnapshot().ready)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
     local operation = copyGoldOperation(boop.state.gold.operation)
     assert.are.equal(0, countGoldSends())
@@ -2360,7 +2376,7 @@ describe("boop event-driven state transitions", function()
     state.walk.arrivalRoom = "1"
     state.walk.generation = 44
     state.walk.roomGeneration =
-      boop.runtime.roomObservationSnapshot().generation
+      boop.room.roomObservationSnapshot().generation
     state.walk.moveIssuedForRoomGeneration = false
     state.walk.reservationId = 7
     captureRuntimeBlockerCalls()
@@ -2419,7 +2435,7 @@ describe("boop event-driven state transitions", function()
     assert.are.equal(0, countRaised("demonwalker.move"))
     assert.are.equal(1, goldOwnerClearCount())
     assert.is_nil(blockerFor("walk:44"))
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
 
     boop.config.useQueueing = true
     assert.is_true(boop.executeAction("warp 42"))
@@ -2521,7 +2537,7 @@ describe("boop event-driven state transitions", function()
 
   it("keeps computed readiness independent from an active operation", function()
     boop.config.enabled = true
-    boop.runtime.beginConnectionLifecycle("event boundary test")
+    boop.events.beginConnectionLifecycle("event boundary test")
     gmcp.IRE = nil
     helper.setRuntimeBlocker({
       owner = "interrupt:88",
@@ -2598,7 +2614,7 @@ describe("boop event-driven state transitions", function()
 
       case.invoke()
 
-      local blockers = boop.runtime.operationLocksSnapshot()
+      local blockers = boop.locks.operationLocksSnapshot()
       assert.are.equal(1, #blockers)
       assert.are.equal("interrupt:88", blockers[1].owner)
       assert.is_nil(blockerFor("target:loss"))
@@ -2648,7 +2664,7 @@ describe("boop event-driven state transitions", function()
     boop.config.targetingMode = "whitelist"
     helper.setWhitelist("Test Area", { "Thierry, the ferryman" })
 
-    boop.runtime.startRoomObservation("1", {
+    boop.room.startRoomObservation("1", {
       boundary = "fresh_start",
       reason = "accepted empty room test",
     })
@@ -2657,7 +2673,7 @@ describe("boop event-driven state transitions", function()
     assert.are.equal("", boop.state.targeting.currentTargetId)
     assert.are.equal("", boop.state.targeting.targetName)
     assert.are.equal(0, #boop.state.targeting.denizens)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
   end)
 
   it("recovers an empty room after target removal without stopping walk or creating a target owner", function()
@@ -3095,7 +3111,7 @@ describe("boop event-driven state transitions", function()
       boop.onRoomItemsRemove()
       assert.are.equal("", boop.state.targeting.currentTargetId)
       assert.is_table(blockerFor(operation.blockerOwner))
-      assert.is_true(boop.runtime.shouldHold("queue"))
+      assert.is_true(boop.locks.shouldHold("queue"))
 
       local retargetCallback = scheduled_callbacks[#scheduled_callbacks].callback
       assert.is_function(retargetCallback)
@@ -3122,7 +3138,7 @@ describe("boop event-driven state transitions", function()
       assert.are.equal(0, countGoldSends())
       assert.are.equal(0, countRaised("demonwalker.move"))
 
-      boop.runtime.clearOperationLock(
+      boop.locks.clearOperationLock(
         "interrupt:retained-audit",
         "real release"
       )
@@ -3137,7 +3153,7 @@ describe("boop event-driven state transitions", function()
       publishGoldAdd("9001")
 
       local operation = copyGoldOperation(boop.state.gold.operation)
-      local oldFence = boop.runtime.roomObservationSnapshot().fenceQueue[1]
+      local oldFence = boop.room.roomObservationSnapshot().fenceQueue[1]
       assert.is_table(oldFence)
       assert.are.equal("await_room", oldFence.phase)
       assert.are.equal(operation.revalidationFenceId, oldFence.fenceId)
@@ -3155,13 +3171,13 @@ describe("boop event-driven state transitions", function()
       assert.is_false(boop.state.gold.operation)
       assert.is_nil(blockerFor(operation.blockerOwner))
       assert.is_table(blockerFor("interrupt:retained-audit"))
-      local moved = boop.runtime.roomObservationSnapshot()
+      local moved = boop.room.roomObservationSnapshot()
       assert.is_false(moved.itemsSeen)
       assert.are.equal(0, boop.runtime.state().walk.reservationId)
 
       publishItemsList("room", { goldItem("9001") })
 
-      local drained = boop.runtime.roomObservationSnapshot()
+      local drained = boop.room.roomObservationSnapshot()
       assert.is_false(drained.itemsSeen)
       assert.is_false(boop.state.gold.operation)
       assert.is_table(blockerFor("interrupt:retained-audit"))
@@ -3343,7 +3359,7 @@ describe("boop event-driven state transitions", function()
     assert.is_false(boop.state.targeting.targetShield)
     assert.stub(kill_timer_stub).was_called_with(55)
     assert.stub(send_stub).was_not_called_with("settarget 77", false)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
   end)
 
   it("clears tracked shield state when gmcp target info changes", function()
@@ -3360,7 +3376,7 @@ describe("boop event-driven state transitions", function()
     assert.is_false(boop.state.targeting.targetShield)
     assert.stub(kill_timer_stub).was_called_with(56)
     assert.stub(send_stub).was_not_called_with("settarget 78", false)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
   end)
 
   it("clears stale target name when gmcp target set clears", function()
@@ -3466,7 +3482,7 @@ describe("boop event-driven state transitions", function()
       end
     end
     assert.is_function(oldEmitterCallback)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
 
     gmcp.Room.Info = {
       num = 2,
@@ -3475,7 +3491,7 @@ describe("boop event-driven state transitions", function()
     }
     boop.onRoomInfo()
 
-    local currentObservation = boop.runtime.roomObservationSnapshot()
+    local currentObservation = boop.room.roomObservationSnapshot()
     assert.are.equal(12, state.walk.generation)
     assert.are.equal(currentObservation.generation, state.walk.roomGeneration)
     assert.is_false(currentObservation.itemsSeen)
@@ -3485,7 +3501,7 @@ describe("boop event-driven state transitions", function()
     assert.is_nil(state.walk.emitterTimer)
     assert.stub(kill_timer_stub).was_called_with(oldEmitter)
     assert.is_false(boop.runtime.readinessSnapshot().room.ready)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
 
     local roomGeneration = state.walk.roomGeneration
     local reservationAfterRoomInfo = state.walk.reservationId
@@ -3497,12 +3513,12 @@ describe("boop event-driven state transitions", function()
 
     publishAcceptedRoomList({})
 
-    assert.is_true(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.is_true(boop.room.roomObservationSnapshot().itemsSeen)
     assert.is_true(state.walk.roomSettled)
     assert.is_true(state.walk.moveQueued)
     assert.is_true(state.walk.moveIssuedForRoomGeneration)
     assert.are.equal(reservationAfterRoomInfo + 1, state.walk.reservationId)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
     local currentEmitter = state.walk.emitterTimer
     local currentEmitterCallback
     for _, entry in ipairs(scheduled_callbacks) do
@@ -3541,7 +3557,7 @@ describe("boop event-driven state transitions", function()
       reservationId = state.walk.reservationId,
       refreshTimer = state.walk.refreshTimer,
       emitterTimer = state.walk.emitterTimer,
-      blocker = boop.runtime.blockersSnapshot(),
+      blocker = boop.locks.blockersSnapshot(),
       scheduled = #scheduled_callbacks,
     }
 
@@ -3555,7 +3571,7 @@ describe("boop event-driven state transitions", function()
       reservationId = state.walk.reservationId,
       refreshTimer = state.walk.refreshTimer,
       emitterTimer = state.walk.emitterTimer,
-      blocker = boop.runtime.blockersSnapshot(),
+      blocker = boop.locks.blockersSnapshot(),
       scheduled = #scheduled_callbacks,
     })
     assert.are.equal(0, countRaised("demonwalker.move"))

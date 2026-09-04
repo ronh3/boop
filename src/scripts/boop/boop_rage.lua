@@ -217,9 +217,9 @@ local function sourceAuthorityCurrent(operation)
   if type(authority) ~= "table" then
     return true
   end
-  return boop.runtime
-    and boop.runtime.validateRoomSourceAuthority
-    and boop.runtime.validateRoomSourceAuthority(authority)
+  return boop.room
+    and boop.room.validateRoomSourceAuthority
+    and boop.room.validateRoomSourceAuthority(authority)
     or false
 end
 

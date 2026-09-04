@@ -74,7 +74,7 @@ describe("boop runtime coordinator", function()
   end
 
   local function assertRetainedOwner(owner)
-    local blockers = boop.runtime.blockersSnapshot()
+    local blockers = boop.locks.blockersSnapshot()
     assert.are.equal(1, #blockers)
     assert.are.equal(owner, blockers[1].owner)
   end
@@ -94,12 +94,12 @@ describe("boop runtime coordinator", function()
       end
       seedTwoBlockers(system)
 
-      assert.is_true(boop.runtime.clearBlocker(order[1], "first owner complete"))
+      assert.is_true(boop.locks.clearBlocker(order[1], "first owner complete"))
       assertRetainedOwner(order[2])
       assertHeld(order)
 
-      assert.is_true(boop.runtime.clearBlocker(order[2], "final owner complete"))
-      assert.are.equal(0, #boop.runtime.blockersSnapshot())
+      assert.is_true(boop.locks.clearBlocker(order[2], "final owner complete"))
+      assert.are.equal(0, #boop.locks.blockersSnapshot())
       assertReleased(order)
     end
   end
@@ -135,7 +135,7 @@ describe("boop runtime coordinator", function()
     assert.are.equal(0, state.combat.pullGeneration)
     assert.is_false(state.combat.pullState)
 
-    local snapshot = boop.runtime.blockerSnapshot()
+    local snapshot = boop.locks.blockerSnapshot()
     assert.are.equal("", snapshot.owner)
     assert.are.equal(0, snapshot.additionalCount)
     assert.are.equal("", snapshot.code)
@@ -223,7 +223,7 @@ describe("boop runtime coordinator", function()
       label = "legacy room hold",
       systems = { combat = true, walk = true },
     })
-    assert.is_table(boop.runtime.setOperationLock(
+    assert.is_table(boop.locks.setOperationLock(
       "interrupt:8",
       "interrupt_pending",
       "interrupt pending",
@@ -231,24 +231,24 @@ describe("boop runtime coordinator", function()
       { prompt = true }
     ))
 
-    assert.are.equal(2, #boop.runtime.blockersSnapshot())
-    local operations = boop.runtime.operationLocksSnapshot()
+    assert.are.equal(2, #boop.locks.blockersSnapshot())
+    local operations = boop.locks.operationLocksSnapshot()
     assert.are.equal(1, #operations)
     assert.are.equal("interrupt:8", operations[1].owner)
     assert.are.equal(
       "interrupt:8",
-      boop.runtime.operationLockSnapshot().owner
+      boop.locks.operationLockSnapshot().owner
     )
-    assert.is_true(boop.runtime.operationHolds("combat"))
-    assert.is_false(boop.runtime.operationHolds("walk"))
+    assert.is_true(boop.locks.operationHolds("combat"))
+    assert.is_false(boop.locks.operationHolds("walk"))
 
-    assert.is_true(boop.runtime.clearOperationLock(
+    assert.is_true(boop.locks.clearOperationLock(
       "interrupt:8",
       "test complete"
     ))
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
-    assert.are.equal("", boop.runtime.operationLockSnapshot().owner)
-    assert.is_false(boop.runtime.operationHolds("combat"))
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
+    assert.are.equal("", boop.locks.operationLockSnapshot().owner)
+    assert.is_false(boop.locks.operationHolds("combat"))
   end)
 
   it("skips blocker sorting on empty hold checks and preserves non-empty behavior", function()
@@ -259,8 +259,8 @@ describe("boop runtime coordinator", function()
       return originalSort(values, comparator)
     end)
 
-    assert.is_false(boop.runtime.shouldHold("combat"))
-    assert.is_false(boop.runtime.operationHolds("combat"))
+    assert.is_false(boop.locks.shouldHold("combat"))
+    assert.is_false(boop.locks.operationHolds("combat"))
     assert.are.equal(0, sortCalls)
 
     helper.setRuntimeBlocker({
@@ -269,7 +269,7 @@ describe("boop runtime coordinator", function()
       systems = { combat = true },
     })
     local callsBeforeHold = sortCalls
-    assert.is_true(boop.runtime.operationHolds("combat"))
+    assert.is_true(boop.locks.operationHolds("combat"))
     assert.is_true(sortCalls > callsBeforeHold)
     sortStub:revert()
   end)
@@ -286,9 +286,9 @@ describe("boop runtime coordinator", function()
       },
     })
 
-    local full = boop.runtime.roomObservationSnapshot()
-    local authority = boop.runtime.currentRoomSourceAuthority()
-    local lightweight = boop.runtime.roomReadinessSnapshot()
+    local full = boop.room.roomObservationSnapshot()
+    local authority = boop.room.currentRoomSourceAuthority()
+    local lightweight = boop.room.roomReadinessSnapshot()
     local readiness = boop.runtime.readinessSnapshot().room
 
     assert.are.equal(authority and true or false, lightweight.ready)
@@ -308,7 +308,7 @@ describe("boop runtime coordinator", function()
       itemsSeen = false,
       acceptedItems = { { id = "2" } },
     })
-    lightweight = boop.runtime.roomReadinessSnapshot()
+    lightweight = boop.room.roomReadinessSnapshot()
     assert.is_false(lightweight.ready)
     assert.are.equal("room_partial", lightweight.code)
     assert.are.equal("44", lightweight.roomId)
@@ -572,10 +572,10 @@ describe("boop runtime coordinator", function()
       systems = { combat = true, queue = true },
     })
 
-    assert.is_false(boop.runtime.shouldHold("combat", "interrupt:7"))
-    assert.is_true(boop.runtime.shouldHold("combat", "interrupt_pending"))
-    assert.is_true(boop.runtime.shouldHold("combat", "interrupt"))
-    assert.is_true(boop.runtime.shouldHold("combat", "combat"))
+    assert.is_false(boop.locks.shouldHold("combat", "interrupt:7"))
+    assert.is_true(boop.locks.shouldHold("combat", "interrupt_pending"))
+    assert.is_true(boop.locks.shouldHold("combat", "interrupt"))
+    assert.is_true(boop.locks.shouldHold("combat", "combat"))
 
     helper.setRuntimeBlocker({
       owner = "pull:9",
@@ -583,8 +583,8 @@ describe("boop runtime coordinator", function()
       systems = { combat = true },
     })
 
-    assert.is_true(boop.runtime.shouldHold("combat", "interrupt:7"))
-    assert.is_true(boop.runtime.shouldHold("combat", "pull:9"))
+    assert.is_true(boop.locks.shouldHold("combat", "interrupt:7"))
+    assert.is_true(boop.locks.shouldHold("combat", "pull:9"))
   end)
 
   it("sorts blocker snapshots by priority, code, and owner without exposing state", function()
@@ -619,14 +619,14 @@ describe("boop runtime coordinator", function()
       })
     end
 
-    local blockers = boop.runtime.blockersSnapshot()
+    local blockers = boop.locks.blockersSnapshot()
     assert.are.equal(#expected, #blockers)
     for index, record in ipairs(expected) do
       assert.are.equal(record.owner, blockers[index].owner)
       assert.are.equal(record.code, blockers[index].code)
     end
 
-    local primary = boop.runtime.blockerSnapshot()
+    local primary = boop.locks.blockerSnapshot()
     assert.are.equal("gmcp:ire", primary.owner)
     assert.are.equal(#expected - 1, primary.additionalCount)
 
@@ -635,8 +635,8 @@ describe("boop runtime coordinator", function()
     primary.owner = "mutated"
     primary.observed.current = false
 
-    local freshBlockers = boop.runtime.blockersSnapshot()
-    local freshPrimary = boop.runtime.blockerSnapshot()
+    local freshBlockers = boop.locks.blockersSnapshot()
+    local freshPrimary = boop.locks.blockerSnapshot()
     assert.are.equal("gmcp_ire_missing", freshBlockers[1].code)
     assert.is_true(freshBlockers[1].systems.combat)
     assert.are.equal("gmcp:ire", freshPrimary.owner)
@@ -743,11 +743,11 @@ describe("boop runtime coordinator", function()
     boop.config.useQueueing = true
     boop.state.gold.autoGrabPending = true
 
-    assert.is_true(boop.runtime.operationHolds("target"))
-    assert.is_true(boop.runtime.operationHolds("combat"))
-    assert.is_true(boop.runtime.operationHolds("queue"))
-    assert.is_true(boop.runtime.operationHolds("gold"))
-    assert.is_true(boop.runtime.operationHolds("walk"))
+    assert.is_true(boop.locks.operationHolds("target"))
+    assert.is_true(boop.locks.operationHolds("combat"))
+    assert.is_true(boop.locks.operationHolds("queue"))
+    assert.is_true(boop.locks.operationHolds("gold"))
+    assert.is_true(boop.locks.operationHolds("walk"))
 
     local result = boop.combat.step({ type = "tick", context = boop.runtime.context() })
     local kinds = effectKinds(result)

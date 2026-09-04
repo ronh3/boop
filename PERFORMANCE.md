@@ -91,7 +91,7 @@ Additionally, the Phase-1 baseline paid these per-context costs:
 
 Phase 2 replaces the readiness caller's full room snapshot with scalar-only readiness data, skips the gold-operation copy when idle, and reads canonical Rage state populated once by the Vitals handler. The full diagnostic room snapshot and active-operation copy semantics remain intact.
 
-`tickStep` then calls `boop.runtime.operationHolds()` five times consecutively (`target`, `combat`, `queue`, `gold`, `walk`) and four more times in the gold branch. At the Phase-1 baseline, each call allocated normalized records and sorted even when `blockersByOwner` was empty. Phase 2 returns immediately for the normal empty map; non-empty priority and normalization behavior is unchanged.
+`tickStep` then calls `boop.locks.operationHolds()` five times consecutively (`target`, `combat`, `queue`, `gold`, `walk`) and four more times in the gold branch. At the Phase-1 baseline, each call allocated normalized records and sorted even when `blockersByOwner` was empty. Phase 2 returns immediately for the normal empty map; Phase 5 moved that exact fast path into Locks without changing non-empty priority or normalization behavior.
 
 `tickStep` also rebuilds a near-complete second copy of the context (`boop_runtime.lua:4012-4036`) whenever the chosen target differs from `context.target.id`, linear-scanning `denizens` to resolve the name — that is, on essentially every retarget.
 
@@ -262,16 +262,18 @@ Probes are named for the **concern**, not the current file, so the same name sur
 
 | Probe | Today | After |
 |---|---|---|
-| `tick` | `boop.tick` in `boop_events` | `boop.combat.tick` |
+| `tick` | `boop.combat.tick` (since Phase 3) | unchanged |
 | `context` | `boop.runtime.context` | unchanged |
 | `prequeue.*` | `boop_events` | unchanged through Phase 7; the shared gate work runs in `boop.combat` beneath the same probe |
-| `applyEffects` | `boop.runtime` | `boop.combat` |
+| `applyEffects` | `boop.combat` (since Phase 3) | unchanged |
 | `wire.send` | `boop.wire.executeAction` (moved from Util in Phase 4e) | unchanged through the remaining sender migration |
 | `combatlog.line` | the parse half of `boop.gag.onAttackLine` | `boop.combatlog` (Phase 9) |
 | `db.*` | `boop.db` | unchanged |
 | `gmcp.<Package>` | `boop_events` handlers | unchanged |
 
 A probe whose owner has not been extracted yet is placed at the current equivalent call site. Moving it with the code is part of that phase's work, and the probe name does not change.
+
+Phase 5 changes no probe name or timing envelope. The `context` probe remains on `boop.runtime.context`; Room.Info/Items remain inside the same Events-owned `gmcp.*` handler envelopes even though their authority/state transitions now call `boop.room`; `applyEffects` and `tick` remain on Combat. No performance improvement is claimed for the extraction.
 
 ### Probe set
 

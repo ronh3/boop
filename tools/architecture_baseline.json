@@ -1,17 +1,16 @@
 {
   "format_version": 2,
   "model": "convention-based-direct-references",
-  "stage": "phase-4-pre-dag",
+  "stage": "phase-5-pre-dag",
   "expected_modules": [
     "boop_init", "boop_util", "boop_perf", "boop_theme", "boop_render", "boop_skills",
-    "boop_db", "boop_runtime", "boop_wire", "boop_afflictions", "boop_rage",
+    "boop_db", "boop_runtime", "boop_room", "boop_locks", "boop_wire", "boop_afflictions", "boop_rage",
     "boop_ih", "boop_targets", "boop_gag", "boop_attacks", "boop_safety",
     "boop_stats", "boop_walk", "boop_combat", "boop_ui_registry", "boop_ui", "boop_events",
     "boop_bootstrap"
   ],
   "reviewed_forbidden_edges": [
-    ["boop_runtime", "boop_events"],
-    ["boop_runtime", "boop_targets"]
+    ["boop_runtime", "boop_events"]
   ],
   "reviewed_mutation_edges": [
     ["boop_attacks", "boop_runtime"],
@@ -30,18 +29,19 @@
     {"kind":"foreign-data-alias-write","path":"src/scripts/boop/boop_events.lua","symbol":"boop.state.targeting"}
   ],
   "schema_custody_exceptions": [
-    {"kind":"rawset","path":"src/scripts/boop/boop_runtime.lua","symbol":"rawset","line":283}
+    {"kind":"rawset","path":"src/scripts/boop/boop_runtime.lua","symbol":"rawset","line":276}
   ],
   "outbound_sites": [
     {"symbol":"send","path":"src/aliases/boop/Targeting/IH.lua","count":1},
-    {"symbol":"send","path":"src/scripts/boop/boop_events.lua","count":2},
+    {"symbol":"send","path":"src/scripts/boop/boop_events.lua","count":1},
+    {"symbol":"send","path":"src/scripts/boop/boop_room.lua","count":1},
     {"symbol":"send","path":"src/scripts/boop/boop_rage.lua","count":1},
     {"symbol":"send","path":"src/scripts/boop/boop_runtime.lua","count":1},
     {"symbol":"send","path":"src/scripts/boop/boop_safety.lua","count":1},
     {"symbol":"send","path":"src/scripts/boop/boop_targets.lua","count":5},
     {"symbol":"send","path":"src/scripts/boop/boop_ui.lua","count":4},
     {"symbol":"send","path":"src/scripts/boop/boop_wire.lua","count":1},
-    {"symbol":"sendGMCP","path":"src/scripts/boop/boop_events.lua","count":1},
+    {"symbol":"sendGMCP","path":"src/scripts/boop/boop_room.lua","count":1},
     {"symbol":"sendGMCP","path":"src/scripts/boop/boop_init.lua","count":4},
     {"symbol":"sendGMCP","path":"src/scripts/boop/boop_skills.lua","count":3}
   ],

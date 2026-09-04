@@ -67,14 +67,14 @@ local function walkState()
 end
 
 local function runtimeWalkOperation(exceptOwner)
-  if not (boop.runtime and boop.runtime.operationHolds) then
+  if not (boop.locks and boop.locks.operationHolds) then
     return nil
   end
-  if not boop.runtime.operationHolds("walk", exceptOwner) then
+  if not boop.locks.operationHolds("walk", exceptOwner) then
     return nil
   end
-  local operations = boop.runtime.operationLocksSnapshot
-      and boop.runtime.operationLocksSnapshot()
+  local operations = boop.locks.operationLocksSnapshot
+      and boop.locks.operationLocksSnapshot()
     or {}
   local excluded = tostring(exceptOwner or "")
   for _, operation in ipairs(operations) do
@@ -171,14 +171,14 @@ end
 
 local function walkSnapshot()
   local _, walk, diag, combat, gold, targeting = stateDomains()
-  local observation = boop.runtime
-      and boop.runtime.roomObservationSnapshot
-      and boop.runtime.roomObservationSnapshot()
+  local observation = boop.room
+      and boop.room.roomObservationSnapshot
+      and boop.room.roomObservationSnapshot()
     or {}
   local roomId = tostring(observation.roomId or "")
-  local authority = boop.runtime
-      and boop.runtime.currentRoomSourceAuthority
-      and boop.runtime.currentRoomSourceAuthority()
+  local authority = boop.room
+      and boop.room.currentRoomSourceAuthority
+      and boop.room.currentRoomSourceAuthority()
     or false
   local roomSettled = authority
     and observation.infoSeen == true
@@ -587,9 +587,9 @@ function boop.walk.start(options)
   end
 
   boop.walk.invalidateCurrentGeneration("restart")
-  local observation = boop.runtime
-    and boop.runtime.startRoomObservation
-    and boop.runtime.startRoomObservation(currentRoomId(), {
+  local observation = boop.room
+    and boop.room.startRoomObservation
+    and boop.room.startRoomObservation(currentRoomId(), {
       boundary = "fresh_start",
       reason = "walk fresh start",
     })
@@ -614,8 +614,8 @@ function boop.walk.start(options)
     boop.util.ok("walk attached to current demonwalker run")
   end
 
-  if boop.requestRoomItemsOnce then
-    boop.requestRoomItemsOnce("walk start awaiting room fence")
+  if boop.room.requestRoomItemsOnce then
+    boop.room.requestRoomItemsOnce("walk start awaiting room fence")
   end
   return true
 end
@@ -672,13 +672,13 @@ function boop.walk.onArrived()
     return false
   end
 
-  local observation = boop.runtime
-      and boop.runtime.roomObservationSnapshot
-      and boop.runtime.roomObservationSnapshot()
+  local observation = boop.room
+      and boop.room.roomObservationSnapshot
+      and boop.room.roomObservationSnapshot()
     or {}
   if observation.infoSeen ~= true or observation.itemsSeen ~= true then
-    if boop.requestRoomItemsOnce then
-      boop.requestRoomItemsOnce(
+    if boop.room.requestRoomItemsOnce then
+      boop.room.requestRoomItemsOnce(
         "tokenless walker arrival awaiting room fence"
       )
     end
@@ -702,13 +702,13 @@ function boop.walk.onRoomSettled(reason, runGeneration, roomGeneration)
     return false, "walk_inactive", WALK_REASON_LABELS.walk_inactive
   end
 
-  local observation = boop.runtime
-      and boop.runtime.roomObservationSnapshot
-      and boop.runtime.roomObservationSnapshot()
+  local observation = boop.room
+      and boop.room.roomObservationSnapshot
+      and boop.room.roomObservationSnapshot()
     or {}
-  local authority = boop.runtime
-      and boop.runtime.currentRoomSourceAuthority
-      and boop.runtime.currentRoomSourceAuthority()
+  local authority = boop.room
+      and boop.room.currentRoomSourceAuthority
+      and boop.room.currentRoomSourceAuthority()
     or false
   local settled = authority
     and observation.infoSeen == true
@@ -731,9 +731,9 @@ end
 
 function boop.walk.onRoomChange(runGeneration, roomGeneration)
   local walk = walkState()
-  local observation = boop.runtime
-    and boop.runtime.roomObservationSnapshot
-    and boop.runtime.roomObservationSnapshot()
+  local observation = boop.room
+    and boop.room.roomObservationSnapshot
+    and boop.room.roomObservationSnapshot()
     or {}
   if not walk.active
       or (

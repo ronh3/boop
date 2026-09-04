@@ -219,7 +219,7 @@ describe("boop ui home", function()
     })
     helper.setTarget("152345", "Thierry, the ferryman", "80%")
     helper.setDenizens({})
-    local observation = boop.runtime.roomObservationSnapshot()
+    local observation = boop.room.roomObservationSnapshot()
     boop.state.walk.active = true
     boop.state.walk.owned = false
     boop.state.walk.arrivalRoom = observation.roomId
@@ -251,7 +251,7 @@ describe("boop ui home", function()
       true
     ) ~= nil)
     assert.is_true(joined:find("attackProfile: MISSING", 1, true) ~= nil)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
   end)
 
   it("makes the home dashboard walk install row clickable when the walker package is missing", function()
@@ -928,7 +928,7 @@ describe("boop ui home", function()
       true
     ) ~= nil)
 
-    assert.is_true(boop.runtime.clearBlocker(
+    assert.is_true(boop.locks.clearBlocker(
       "interrupt:9",
       "non-primary complete"
     ))
@@ -942,7 +942,7 @@ describe("boop ui home", function()
     ) ~= nil)
     assert.is_nil(joined:find("| +2 more", 1, true))
 
-    assert.is_true(boop.runtime.clearBlocker(
+    assert.is_true(boop.locks.clearBlocker(
       "interrupt:2",
       "primary recovered"
     ))
@@ -988,7 +988,7 @@ describe("boop ui home", function()
     ) ~= nil)
 
     gmcp.Room.Info.num = 2
-    local observation = boop.runtime.startRoomObservation(2)
+    local observation = boop.room.startRoomObservation(2)
     assert.is_true(boop.walk.onRoomChange(generation, observation.generation))
     helper.seedRoomObservation(2, {
       generation = state.walk.roomGeneration,
@@ -1036,7 +1036,7 @@ describe("boop ui home", function()
       1,
       true
     ) ~= nil)
-    assert.are.equal(0, #boop.runtime.operationLocksSnapshot())
+    assert.are.equal(0, #boop.locks.operationLocksSnapshot())
   end)
 
   it("routes inactive walk stop through one non-silent info response", function()

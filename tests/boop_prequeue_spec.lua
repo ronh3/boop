@@ -405,7 +405,7 @@ describe("boop prequeue", function()
         assert.are.equal(0, #scheduled)
         assert.are.equal(0, #sent)
 
-        assert.is_true(boop.runtime.clearOperationLock(
+        assert.is_true(boop.locks.clearOperationLock(
           first.owner,
           "first lifecycle complete"
         ))
@@ -417,7 +417,7 @@ describe("boop prequeue", function()
         assert.is_table(blockerFor(second.owner))
         assert.is_false(boop.state.queue.prequeuedStandard)
 
-        assert.is_true(boop.runtime.clearOperationLock(
+        assert.is_true(boop.locks.clearOperationLock(
           second.owner,
           "final lifecycle complete"
         ))
@@ -502,12 +502,12 @@ describe("boop prequeue", function()
         assert.is_nil(blockerFor("interrupt:1"))
         boop.onBalanceUsed("balance", 3)
         assert.are.equal(1, #scheduled)
-        assert.is_true(boop.runtime.clearOperationLock(
+        assert.is_true(boop.locks.clearOperationLock(
           "pull:99",
           "unrelated owner released"
         ))
       else
-        assert.is_true(boop.runtime.clearOperationLock(
+        assert.is_true(boop.locks.clearOperationLock(
           "pull:99",
           "unrelated owner released"
         ))
@@ -583,15 +583,15 @@ describe("boop prequeue", function()
     end
 
     local function currentRoomAuthority()
-      local authority = boop.runtime.currentRoomSourceAuthority()
+      local authority = boop.room.currentRoomSourceAuthority()
       assert.is_table(authority)
       return authority
     end
 
     local function acceptSameRoomApplication(authorityA)
-      local observation = boop.runtime.roomObservationSnapshot()
+      local observation = boop.room.roomObservationSnapshot()
       assert.are.same(authorityA, observation.acceptedSourceAuthority)
-      local fence = boop.runtime.beginRoomResponseFence(
+      local fence = boop.room.beginRoomResponseFence(
         "standard chronology same-room refresh",
         {
           roomOnly = true,
@@ -609,7 +609,7 @@ describe("boop prequeue", function()
       boop.onRoomItemsList()
 
       assert.are.equal(timersBeforeApplication + 1, #scheduled)
-      local applicationB = boop.runtime.roomApplicationSnapshot()
+      local applicationB = boop.room.roomApplicationSnapshot()
       assert.is_table(applicationB)
       assert.are.equal(
         authorityA.applicationId + 1,
@@ -628,7 +628,7 @@ describe("boop prequeue", function()
         observationGeneration = authorityA.observationGeneration,
       }, authorityB)
       assert.is_false(
-        boop.runtime.validateRoomSourceAuthority(authorityA)
+        boop.room.validateRoomSourceAuthority(authorityA)
       )
       return authorityB
     end
@@ -1131,7 +1131,7 @@ describe("boop prequeue", function()
     it("rejects a success candidate after the canonical room changes", function()
       boop.config.traceEnabled = true
       local standard = queueOwnedStandard()
-      local observation = boop.runtime.roomObservationSnapshot()
+      local observation = boop.room.roomObservationSnapshot()
       helper.seedRoomObservation("2", {
         generation = standard.sourceAuthority.observationGeneration,
         itemsSeen = true,
@@ -1152,7 +1152,7 @@ describe("boop prequeue", function()
     it("rejects a success candidate after the room observation generation changes", function()
       boop.config.traceEnabled = true
       local standard = queueOwnedStandard()
-      local observation = boop.runtime.roomObservationSnapshot()
+      local observation = boop.room.roomObservationSnapshot()
       helper.seedRoomObservation(standard.sourceAuthority.roomId, {
         generation = standard.sourceAuthority.observationGeneration + 1,
         itemsSeen = true,

@@ -72,7 +72,7 @@ describe("boop staged gold handling", function()
   end
 
   local function publishRoomList(items)
-    local observation = boop.runtime.roomObservationSnapshot()
+    local observation = boop.room.roomObservationSnapshot()
     local fence = observation.fenceQueue[1]
     if fence and fence.phase == "await_inv" then
       gmcp.Char.Items.List = {
@@ -173,7 +173,7 @@ describe("boop staged gold handling", function()
   end)
 
   it("waits for complete current-room evidence and coalesces duplicate text, Add, and List signals", function()
-    local observation = boop.runtime.startRoomObservation("1", {
+    local observation = boop.room.startRoomObservation("1", {
       boundary = "fresh_start",
     })
     boop.onGoldDropLine("A handful of sovereigns spills onto the ground.")
@@ -371,7 +371,7 @@ describe("boop staged gold handling", function()
       assert.are.equal(0, blocked.getRetries)
       assert.are.equal(0, #sent)
 
-      boop.runtime.clearOperationLock(owner, "test release")
+      boop.locks.clearOperationLock(owner, "test release")
       assert.is_true(boop.flushPendingGold("test release"))
       assert.are.equal(1, #sent)
       assert.are.equal("queue add full get sovereigns", sent[1].command)
@@ -403,7 +403,7 @@ describe("boop staged gold handling", function()
       assert.are.equal(0, blocked.putRetries)
       assert.are.equal(sendsBeforeSuccess, #sent)
 
-      boop.runtime.clearOperationLock(owner, "test release")
+      boop.locks.clearOperationLock(owner, "test release")
       assert.is_true(boop.flushPendingGold("test release"))
       assert.are.equal(sendsBeforeSuccess + 1, #sent)
       assert.are.equal("queue add freestand put sovereigns in pack", sent[#sent].command)
@@ -560,7 +560,7 @@ describe("boop staged gold handling", function()
       publishGoldAdd("9001")
 
       local deferred = currentOperation()
-      local observation = boop.runtime.roomObservationSnapshot()
+      local observation = boop.room.roomObservationSnapshot()
       local fence = observation.fenceQueue[1]
       assert.are.equal(1, deferred.generation)
       assert.are.equal("deferred_room", deferred.phase)
@@ -601,7 +601,7 @@ describe("boop staged gold handling", function()
       }
       boop.onRoomItemsList()
 
-      observation = boop.runtime.roomObservationSnapshot()
+      observation = boop.room.roomObservationSnapshot()
       assert.are.same({ denizen }, observation.acceptedItems)
       assert.are.equal("deferred_room", currentOperation().phase)
       assert.are.equal(0, countSent("queue add full get sovereigns"))
@@ -632,7 +632,7 @@ describe("boop staged gold handling", function()
       assert.is_false(boop.onGoldPutSuccess())
       assert.is_false(boop.state.gold.operation)
 
-      local settled = boop.runtime.roomObservationSnapshot()
+      local settled = boop.room.roomObservationSnapshot()
       helper.seedRoomObservation("1", {
         generation = settled.generation,
         infoSeen = true,

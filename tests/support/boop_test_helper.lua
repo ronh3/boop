@@ -177,8 +177,8 @@ function M.reset()
   boop.state.lifecycle.ireSeen = true
   boop.state.lifecycle.ready = true
   boop.state.lifecycle.source = "test fixture"
-  if boop.runtime and boop.runtime.startRoomObservation then
-    local observation = boop.runtime.startRoomObservation(
+  if boop.room and boop.room.startRoomObservation then
+    local observation = boop.room.startRoomObservation(
       gmcp.Room.Info.num,
       {
       boundary = "fresh_start",
@@ -262,8 +262,8 @@ function M.setDenizens(denizens)
     boop.state.targeting.denizens[#boop.state.targeting.denizens + 1] = item
     acceptedItems[#acceptedItems + 1] = deepCopy(item)
   end
-  if boop.runtime and boop.runtime.roomObservationSnapshot then
-    local observation = boop.runtime.roomObservationSnapshot()
+  if boop.room and boop.room.roomObservationSnapshot then
+    local observation = boop.room.roomObservationSnapshot()
     local roomId = tostring(
       gmcp
         and gmcp.Room
@@ -303,7 +303,7 @@ end
 
 function M.setRuntimeBlocker(blocker)
   blocker = blocker or {}
-  return boop.runtime.setBlocker(
+  return boop.locks.setBlocker(
     tostring(blocker.owner or blocker.code or ""),
     tostring(blocker.code or ""),
     tostring(blocker.label or ""),

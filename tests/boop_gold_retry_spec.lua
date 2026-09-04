@@ -157,7 +157,7 @@ describe("boop generation-owned gold retry handling", function()
       "synthetic native queue replacement"
     ))
     native_queue.apply("clearqueue all")
-    assert.is_true(boop.runtime.clearBlocker(
+    assert.is_true(boop.locks.clearBlocker(
       interruptOwner,
       "synthetic interrupt released"
     ))
@@ -433,7 +433,7 @@ describe("boop generation-owned gold retry handling", function()
       outboundBefore,
       boop.runtime.outboundSnapshot().sequence
     )
-    local observation = boop.runtime.roomObservationSnapshot()
+    local observation = boop.room.roomObservationSnapshot()
     assert.is_number(observation.activeFenceId)
     assert.are.equal(1, #observation.fenceQueue)
     assert.is_true(observation.fenceQueue[1].roomOnly)
@@ -467,7 +467,7 @@ describe("boop generation-owned gold retry handling", function()
       exits = { south = 1 },
     }
     boop.onRoomInfo()
-    local staleObservation = boop.runtime.roomObservationSnapshot()
+    local staleObservation = boop.room.roomObservationSnapshot()
     assert.are.equal("2", staleObservation.roomId)
     assert.is_number(staleObservation.activeFenceId)
     assert.are.equal(1, #staleObservation.fenceQueue)
@@ -485,7 +485,7 @@ describe("boop generation-owned gold retry handling", function()
       exits = { north = 2 },
     }
     boop.onRoomInfo()
-    local currentObservation = boop.runtime.roomObservationSnapshot()
+    local currentObservation = boop.room.roomObservationSnapshot()
     assert.are.equal("3", currentObservation.roomId)
     assert.are.equal(staleObservation.generation + 1, currentObservation.generation)
     assert.is_number(currentObservation.activeFenceId)
@@ -523,20 +523,20 @@ describe("boop generation-owned gold retry handling", function()
 
     publishItemsList("inv", { goldItem("9601") })
     publishItemsList("room", { goldItem("stale-room-gold") })
-    currentObservation = boop.runtime.roomObservationSnapshot()
+    currentObservation = boop.room.roomObservationSnapshot()
     assert.is_false(currentObservation.itemsSeen)
     assert.are.equal(1, #currentObservation.fenceQueue)
     assert.are.equal(currentObservation.activeFenceId, currentObservation.fenceQueue[1].fenceId)
-    assert.is_false(boop.runtime.roomApplicationSnapshot())
+    assert.is_false(boop.room.roomApplicationSnapshot())
     assert.are.equal(0, countSent("queue add full get sovereigns"))
 
     publishItemsList("room", { goldItem("9700") })
     publishItemsList("room", { goldItem("9700") })
-    assert.is_false(boop.runtime.roomObservationSnapshot().itemsSeen)
+    assert.is_false(boop.room.roomObservationSnapshot().itemsSeen)
     assert.are.equal(0, countSent("queue add full get sovereigns"))
     publishItemsList("inv", { goldItem("9701") })
 
-    local application = boop.runtime.roomApplicationSnapshot()
+    local application = boop.room.roomApplicationSnapshot()
     assert.is_table(application)
     assert.are.equal("3", application.sourceAuthority.roomId)
     assert.are.equal(
@@ -558,7 +558,7 @@ describe("boop generation-owned gold retry handling", function()
     assert.is_false(operation.timeoutTimer)
     assert.are.equal(0, operation.getRetries)
     assert.are.equal(1, countSent("queue add full get sovereigns"))
-    local accepted = boop.runtime.roomObservationSnapshot()
+    local accepted = boop.room.roomObservationSnapshot()
     assert.is_true(accepted.itemsSeen)
     assert.is_false(accepted.activeFenceId)
     assert.are.equal(application.applicationId, accepted.acceptedSourceAuthority.applicationId)
@@ -847,7 +847,7 @@ describe("boop generation-owned gold retry handling", function()
       assert.are.equal(scheduledBeforeTimeout, #scheduled)
       assert.are.equal(0, countRaised("demonwalker.move"))
 
-      assert.is_true(boop.runtime.clearBlocker(
+      assert.is_true(boop.locks.clearBlocker(
         "interrupt:timeout-hold",
         "timeout-under-owner released"
       ))
@@ -917,7 +917,7 @@ describe("boop generation-owned gold retry handling", function()
       name = "old timeout before interrupt release",
       run = function(oldTimeout, interruptOwner)
         oldTimeout()
-        assert.is_true(boop.runtime.clearBlocker(
+        assert.is_true(boop.locks.clearBlocker(
           interruptOwner,
           "synthetic interrupt released"
         ))
@@ -927,7 +927,7 @@ describe("boop generation-owned gold retry handling", function()
     {
       name = "interrupt release and replay before old timeout",
       run = function(oldTimeout, interruptOwner)
-        assert.is_true(boop.runtime.clearBlocker(
+        assert.is_true(boop.locks.clearBlocker(
           interruptOwner,
           "synthetic interrupt released"
         ))
@@ -1034,8 +1034,8 @@ describe("boop generation-owned gold retry handling", function()
         assert.are.equal(0, countTrace("reason=pending_timeout"))
 
         local clearCount = 0
-        local originalClearBlocker = boop.runtime.clearBlocker
-        clear_blocker_stub = stub(boop.runtime, "clearBlocker", function(owner, reason)
+        local originalClearBlocker = boop.locks.clearBlocker
+        clear_blocker_stub = stub(boop.locks, "clearBlocker", function(owner, reason)
           local cleared = originalClearBlocker(owner, reason)
           if owner == goldOwner and cleared then
             clearCount = clearCount + 1
@@ -1236,9 +1236,9 @@ describe("boop generation-owned gold retry handling", function()
             assert.are.equal(0, countTrace("reason=pending_timeout"))
 
             local clearCount = 0
-            local originalClearBlocker = boop.runtime.clearBlocker
+            local originalClearBlocker = boop.locks.clearBlocker
             clear_blocker_stub = stub(
-              boop.runtime,
+              boop.locks,
               "clearBlocker",
               function(owner, reason)
                 local cleared = originalClearBlocker(owner, reason)
@@ -1304,7 +1304,7 @@ describe("boop generation-owned gold retry handling", function()
         "synthetic native queue replacement"
       ))
       native_queue.apply("clearqueue all")
-      assert.is_true(boop.runtime.clearBlocker(
+      assert.is_true(boop.locks.clearBlocker(
         interruptOwner,
         "synthetic interrupt released"
       ))
@@ -1376,7 +1376,7 @@ describe("boop generation-owned gold retry handling", function()
       "synthetic native queue replacement"
     ))
     native_queue.apply("clearqueue all")
-    assert.is_true(boop.runtime.clearBlocker(
+    assert.is_true(boop.locks.clearBlocker(
       interruptOwner,
       "synthetic interrupt released"
     ))
@@ -1463,8 +1463,8 @@ describe("boop generation-owned gold retry handling", function()
   it("releases a replay-timed-out pack into one non-owning quarantine", function()
     assert.is_function(boop.runtime.packQuarantineSnapshot)
     local clearCount = 0
-    local originalClearBlocker = boop.runtime.clearBlocker
-    clear_blocker_stub = stub(boop.runtime, "clearBlocker", function(owner, reason)
+    local originalClearBlocker = boop.locks.clearBlocker
+    clear_blocker_stub = stub(boop.locks, "clearBlocker", function(owner, reason)
       local cleared = originalClearBlocker(owner, reason)
       if owner:find("^gold:") and cleared then
         clearCount = clearCount + 1
@@ -1568,10 +1568,10 @@ describe("boop generation-owned gold retry handling", function()
     assert.is_false(quarantine.windowOpenPromptSequence)
     assert.is_false(quarantine.windowClosed)
     assert.is_false(quarantine.graceExpired)
-    assert.is_false(boop.runtime.operationHolds("combat"))
-    assert.is_false(boop.runtime.operationHolds("queue"))
-    assert.is_false(boop.runtime.operationHolds("gold"))
-    assert.is_false(boop.runtime.operationHolds("walk"))
+    assert.is_false(boop.locks.operationHolds("combat"))
+    assert.is_false(boop.locks.operationHolds("queue"))
+    assert.is_false(boop.locks.operationHolds("gold"))
+    assert.is_false(boop.locks.operationHolds("walk"))
     assert.are.equal(sendsAfterRelease, #sent)
 
     gmcp.Char.Vitals.bal = "1"
@@ -1712,7 +1712,7 @@ describe("boop generation-owned gold retry handling", function()
       ))
       assert.is_false(boop.runtime.packQuarantineSnapshot().consumed)
       assert.are.equal(sendsBeforeAttempt, #sent)
-      assert.is_true(boop.runtime.clearBlocker(
+      assert.is_true(boop.locks.clearBlocker(
         owner,
         "test gate released"
       ))
@@ -1728,7 +1728,7 @@ describe("boop generation-owned gold retry handling", function()
     ))
     assert.is_false(boop.runtime.packQuarantineSnapshot().consumed)
     assert.are.equal(sendsBeforeAttempt, #sent)
-    assert.is_true(boop.runtime.clearBlocker(
+    assert.is_true(boop.locks.clearBlocker(
       "readiness:pack-quarantine",
       "test compatibility gate released"
     ))

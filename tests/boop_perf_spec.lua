@@ -286,7 +286,7 @@ describe("boop performance instrumentation", function()
       items = { {}, {}, {}, {} },
     }
 
-    boop.runtime.roomObservationSnapshot()
+    boop.room.roomObservationSnapshot()
     assert.are.equal(17, boop.perf.snapshot().counters.deepcopy_items)
 
     boop.runtime.readinessSnapshot()

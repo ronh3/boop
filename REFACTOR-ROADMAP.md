@@ -169,6 +169,8 @@ Also in 4a: **`boop_init` writes `boop.skills.desiredGroups`**, another module's
 
 ### Phase 5 — Room authority and admission control
 
+**Implementation candidate (`0.1.496`)** — Room and Locks are extracted for review; `runtime ↔ targets` and `events ↔ walk` are mechanically closed. The packaged Mudlet 4.20.1 suite is green; acceptance remains pending review.
+
 **Invariant established:** room-generation authority and operation admission are each owned by one module with one set of invariants, and `boop.state` is a pure data tree behind the `boop.runtime` API.
 
 **Work** — extract `boop_room.lua` (observation, response fences, applications, movement intent, `validateRoomSourceAuthority`, `currentRoomSourceAuthority`) and `boop_locks.lua` (blockers, operation locks, priority, `operationHolds`/`shouldHold`, interrupt admission tiers) from `boop_runtime.lua`.

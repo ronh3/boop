@@ -324,7 +324,7 @@ describe("boop tick", function()
         assert.are.equal(0, #sent)
         assert.are.equal(0, #scheduled)
 
-        assert.is_true(boop.runtime.clearOperationLock(
+        assert.is_true(boop.locks.clearOperationLock(
           first.owner,
           "first lifecycle complete"
         ))
@@ -336,7 +336,7 @@ describe("boop tick", function()
           boop.runtime.state().combat.blockersByOwner[second.owner]
         )
 
-        assert.is_true(boop.runtime.clearOperationLock(
+        assert.is_true(boop.locks.clearOperationLock(
           second.owner,
           "final lifecycle complete"
         ))
@@ -501,7 +501,7 @@ describe("boop tick", function()
         })
 
         boop.tick()
-        boop.runtime.clearOperationLock(
+        boop.locks.clearOperationLock(
           case.owner,
           "real owner released"
         )
@@ -520,7 +520,7 @@ describe("boop tick", function()
         assert.are.equal(0, countSent("command hound at 42"))
         assert.are.equal(0, countSent("harry 42"))
 
-        boop.runtime.clearOperationLock(
+        boop.locks.clearOperationLock(
           "interrupt:remaining",
           "final owner released"
         )

@@ -21,6 +21,23 @@ function boop.safety.shouldFlee()
   return hp > 0 and hp <= threshold
 end
 
+function boop.safety.clearAutomationIntent(reason, opts)
+  opts = type(opts) == "table" and opts or {}
+  local message = boop.runtime.automationIntentTraceMessage(reason, opts)
+  if opts.includeAttack ~= false then
+    boop.targets.clearAttackIntent(reason, {
+      clearTarget = opts.clearTarget == true,
+      suppressTrace = true,
+    })
+  end
+  return boop.runtime.clearAutomationResidualIntent(reason, {
+    includeWalk = opts.includeWalk,
+    includeGold = opts.includeGold,
+    source = opts.source,
+    traceMessage = message,
+  })
+end
+
 function boop.safety.flee()
   local state = boop.runtime.ensureState()
   local keepEnabled = boop.config.fleeKeepEnabled == true
@@ -30,7 +47,7 @@ function boop.safety.flee()
   local interrupted = boop.runtime.cancelActiveInterrupt
     and boop.runtime.cancelActiveInterrupt("flee")
     or false
-  boop.runtime.clearAutomationIntent("flee", {
+  boop.safety.clearAutomationIntent("flee", {
     includeWalk = true,
     includeGold = true,
     includeAttack = true,

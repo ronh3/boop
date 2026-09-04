@@ -163,7 +163,7 @@ describe("boop safety", function()
         tombstone = false,
       },
     }
-    boop.runtime.setOperationLock(
+    boop.locks.setOperationLock(
       "interrupt:7",
       "interrupt_pending",
       "diag pending",
