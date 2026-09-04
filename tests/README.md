@@ -34,6 +34,10 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
   Confirms computed lifecycle/room readiness, operation-only holds, compatibility migration, tick effects, and prompt/diag operation effects.
 - `boop_state_contract_spec.lua`
   Confirms owned runtime domain defaults and runtime context mapping for high-risk state-contract drift.
+- `boop_bootstrap_spec.lua`
+  Confirms the production initialization order, ready notification, desired-skill ingestion, first-boot Registry attachment, and generation-sensitive reload refresh without repeated startup work.
+- `boop_wire_spec.lua`
+  Confirms caller-supplied target identity, external action-forwarder compatibility, Gag notification ownership, queued alias binding/cache semantics, assist prefixing, and distinct queued/direct Wire output.
 - `boop_planner_spec.lua`
   Confirms the combat planner returns unexecuted plan data, applies modifiers separately, and executes a prepared plan.
 - `boop_rage_modes_spec.lua`
@@ -85,7 +89,7 @@ Repository terminal CI authority is the mandatory AGENTS.md/CODEX.md extension: 
 - `boop_persistence_spec.lua`
   Confirms public config, including rage affliction callout settings, with targeting mode, party size, and shield mode intentionally kept session-local, trigger-folder sync for hunting on/off, plus whitelist/blacklist and whitelist-tag edits through the DB hooks.
 - `boop_db_spec.lua`
-  Confirms DB guard paths degrade to warnings instead of throwing when optional Mudlet sheets are missing in an older local profile DB.
+  Confirms DB guard paths degrade to warnings, Stats/list loads return plain data without mutating feature owners, supplied Stats payloads are persisted, and owners apply returned data.
 - `boop_ui_spec.lua`
   Confirms the bare `boop` command shows the home dashboard, `boop status` shows the installed version and computed status, and control, party, roster, and related UI flows remain coherent.
 - `boop_ui_registry_spec.lua`

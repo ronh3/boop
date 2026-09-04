@@ -266,7 +266,7 @@ Probes are named for the **concern**, not the current file, so the same name sur
 | `context` | `boop.runtime.context` | unchanged |
 | `prequeue.*` | `boop_events` | unchanged through Phase 7; the shared gate work runs in `boop.combat` beneath the same probe |
 | `applyEffects` | `boop.runtime` | `boop.combat` |
-| `wire.send` | `boop.executeAction` in `boop_util` | `boop.wire` (Phase 4e) |
+| `wire.send` | `boop.wire.executeAction` (moved from Util in Phase 4e) | unchanged through the remaining sender migration |
 | `combatlog.line` | the parse half of `boop.gag.onAttackLine` | `boop.combatlog` (Phase 9) |
 | `db.*` | `boop.db` | unchanged |
 | `gmcp.<Package>` | `boop_events` handlers | unchanged |

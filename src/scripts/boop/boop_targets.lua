@@ -729,6 +729,17 @@ local function ensureLists()
   return boop.lists
 end
 
+function boop.targets.applyPersistedLists(data)
+  local payload = type(data) == "table" and data or {}
+  boop.lists = {
+    whitelist = type(payload.whitelist) == "table" and payload.whitelist or {},
+    blacklist = type(payload.blacklist) == "table" and payload.blacklist or {},
+    globalBlacklist = type(payload.globalBlacklist) == "table" and payload.globalBlacklist or {},
+    whitelistTags = type(payload.whitelistTags) == "table" and payload.whitelistTags or {},
+  }
+  return boop.lists
+end
+
 local findWhitelistArea
 local resolveWhitelistArea
 

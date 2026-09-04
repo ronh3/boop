@@ -12,6 +12,10 @@ describe("boop stats", function()
   local echoes
   local saved_cecho
   local saved_cecho_link
+  local saved_expand_alias
+  local saved_send
+  local saved_append_cmd_line
+  local saved_clear_cmd_line
 
   before_each(function()
     helper.reset()
@@ -19,6 +23,10 @@ describe("boop stats", function()
     echoes = {}
     saved_cecho = _G.cecho
     saved_cecho_link = _G.cechoLink
+    saved_expand_alias = _G.expandAlias
+    saved_send = _G.send
+    saved_append_cmd_line = _G.appendCmdLine
+    saved_clear_cmd_line = _G.clearCmdLine
     _G.cecho = nil
     _G.cechoLink = nil
 
@@ -65,6 +73,10 @@ describe("boop stats", function()
     end
     _G.cecho = saved_cecho
     _G.cechoLink = saved_cecho_link
+    _G.expandAlias = saved_expand_alias
+    _G.send = saved_send
+    _G.appendCmdLine = saved_append_cmd_line
+    _G.clearCmdLine = saved_clear_cmd_line
     saved_cecho = nil
     saved_cecho_link = nil
   end)
@@ -897,6 +909,45 @@ describe("boop stats", function()
     assert.are.equal("Whitelist for Test Area:", echoes[1])
     assert.is_true(joined:find("a vicious gnoll soldier | xp mean 28500 | median 28500 | mode 28000 (1x) | seen 2 | p1", 1, true) ~= nil)
   end)
+
+  it("seeds the disabled dashboard enable command without executing it", function()
+    local enableAction
+    local expandedCommand
+    local sentCommand
+    local seededCommand
+    local commandLineCleared = false
+    _G.cecho = function(_) end
+    _G.cechoLink = function(_, callback, hint, _)
+      if hint == "Enable hunting and start a session" then
+        enableAction = callback
+      end
+    end
+    _G.expandAlias = function(command)
+      expandedCommand = command
+    end
+    _G.send = function(command)
+      sentCommand = command
+    end
+    _G.clearCmdLine = function()
+      commandLineCleared = true
+    end
+    _G.appendCmdLine = function(command)
+      seededCommand = command
+    end
+    boop.config.enabled = false
+
+    boop.stats.showDashboard()
+
+    if type(enableAction) == "function" then
+      enableAction()
+    end
+
+    assert.is_function(enableAction)
+    assert.is_true(commandLineCleared)
+    assert.are.equal("boop on", seededCommand)
+    assert.is_nil(expandedCommand)
+    assert.is_nil(sentCommand)
+  end)
 end)
 
 describe("boop stats persistence coalescing", function()
@@ -931,12 +982,14 @@ describe("boop stats persistence coalescing", function()
     saveHook = nil
     saves = 0
     savedSnapshots = {}
-    saveStatsFunction = function()
+    saveStatsFunction = function(payload)
       saves = saves + 1
+      assert.is_table(payload)
+      assert.is_table(payload.lifetime)
       savedSnapshots[#savedSnapshots + 1] = {
-        targets = boop.stats.lifetime.targets,
-        flees = boop.stats.lifetime.flees,
-        gold = boop.stats.lifetime.gold,
+        targets = payload.lifetime.targets,
+        flees = payload.lifetime.flees,
+        gold = payload.lifetime.gold,
       }
       if saveHook then
         return saveHook()

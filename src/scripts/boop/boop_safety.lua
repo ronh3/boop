@@ -67,7 +67,7 @@ function boop.safety.flee()
   end
   state.combat.fleeing = true
   local action = "wake/wake/apply mending to legs/stand/" .. dir
-  boop.executeAction(action)
+  boop.wire.executeAction(action, state.targeting.currentTargetId or "")
   local policy = keepEnabled and "boop remains enabled" or "boop disabled"
   boop.util.ok("fleeing " .. dir .. " (" .. policy .. ")")
   if boop.stats and boop.stats.onFlee then

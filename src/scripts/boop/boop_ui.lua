@@ -1,9 +1,7 @@
 boop.ui = boop.ui or {}
 
 local function ensureUiConfigRegistries()
-  if boop.registry and boop.registry.attachUiConfigRegistries then
-    boop.registry.attachUiConfigRegistries()
-  end
+  return boop.registry and boop.registry.config and boop.registry.ui
 end
 
 local function saveConfigValue(key, value)
@@ -101,33 +99,11 @@ end
 boop.ui.assistLeader = assistLeader
 
 local function themeTags()
-  if boop.theme and boop.theme.tags then
-    return boop.theme.tags()
-  end
-  return {
-    accent = "<cyan>",
-    border = "<grey>",
-    text = "<white>",
-    muted = "<light_grey>",
-    ok = "<green>",
-    warn = "<yellow>",
-    err = "<red>",
-    info = "<cyan>",
-    dim = "<dark_grey>",
-    reset = "<reset>",
-  }
+  return boop.render.themeTags()
 end
 
 local function semanticTag(name)
-  local theme = themeTags()
-  local key = tostring(name or "")
-  if theme[key] then
-    return theme[key]
-  end
-  if key ~= "" then
-    return "<" .. key .. ">"
-  end
-  return theme.text
+  return boop.render.semanticTag(name)
 end
 
 local function assistStatusText()
@@ -156,113 +132,14 @@ local function partyRosterMembers()
   return out
 end
 
-local UI_RULE_WIDTH = 56
 local UI_LABEL_COL_WIDTH = 40
 
-local function uiIndexPrefix(index)
-  if index == nil then
-    return ""
-  end
-  return string.format("[%d] ", tonumber(index) or 0)
-end
-
-local function uiPadRight(text, width)
-  text = tostring(text or "")
-  if #text >= width then
-    return text
-  end
-  return text .. string.rep(" ", width - #text)
-end
-
-local function uiRule()
-  return string.rep("-", UI_RULE_WIDTH)
-end
-
-local function uiButtonLabel(value)
-  return "[ " .. boop.util.trim(tostring(value or "")) .. " ]"
-end
-
-local function footerSeedCommand(text)
-  local trimmed = boop.util.trim(tostring(text or ""))
-  if trimmed == "" then
-    return ""
-  end
-  local boopStart = trimmed:find("boop ", 1, true)
-  if not boopStart then
-    return ""
-  end
-  local command = boop.util.trim(trimmed:sub(boopStart))
-  if command == "" then
-    return ""
-  end
-  local seedCommand = boop.registry
-    and boop.registry.ui
-    and boop.registry.ui.helpSeedCommand
-  if seedCommand then
-    return seedCommand(command)
-  end
-  return command
-end
-
-local function footerClickableParts(text)
-  local raw = tostring(text or "")
-  local parts = {}
-  local segments = {}
-  local cursor = 1
-  while cursor <= #raw do
-    local sepStart, sepEnd = raw:find(" | ", cursor, true)
-    if not sepStart then
-      segments[#segments + 1] = raw:sub(cursor)
-      break
-    end
-    segments[#segments + 1] = raw:sub(cursor, sepStart - 1)
-    cursor = sepEnd + 1
-  end
-  if #segments == 0 and raw ~= "" then
-    segments[1] = raw
-  end
-
-  for i, segment in ipairs(segments) do
-    local piece = tostring(segment or "")
-    local seed = footerSeedCommand(piece)
-    local boopStart = piece:find("boop ", 1, true)
-    local prefix = ""
-    local commandText = boop.util.trim(piece)
-    if boopStart and boopStart > 1 then
-      prefix = piece:sub(1, boopStart - 1)
-      commandText = boop.util.trim(piece:sub(boopStart))
-    end
-    parts[#parts + 1] = {
-      prefix = prefix,
-      command = commandText,
-      seed = seed,
-      separator = (i < #segments) and " | " or "",
-    }
-  end
-  return parts
-end
-
 local function uiComputeLabelWidth(rows, minWidth, maxWidth)
-  local width = tonumber(minWidth) or UI_LABEL_COL_WIDTH
-  local hardMax = tonumber(maxWidth) or 140
-  for _, row in ipairs(rows or {}) do
-    local label = tostring((row and row.label) or "")
-    local index = row and row.index or nil
-    local total = #(uiIndexPrefix(index) .. label)
-    if total > width then
-      width = total
-    end
-  end
-  if width > hardMax then
-    width = hardMax
-  end
-  return width
+  return boop.render.computeLabelWidth(rows, minWidth, maxWidth)
 end
 
 local function uiSetCommandLine(prefix)
-  if not appendCmdLine then return end
-  if clearCmdLine then clearCmdLine() end
-  appendCmdLine(prefix or "")
+  return boop.render.setCommandLine(prefix)
 end
 
 local uiPrintHeader
@@ -996,144 +873,36 @@ function boop.ui.controlCommand(raw)
 end
 
 uiPrintHeader = function(title)
-  if cecho then
-    local theme = themeTags()
-    cecho("\n" .. theme.accent .. string.upper(tostring(title or "")) .. theme.reset)
-    cecho("\n" .. theme.border .. uiRule() .. theme.reset)
-  else
-    boop.util.echo(tostring(title) .. " | class: " .. tostring(currentClass()))
-  end
+  return boop.render.printHeader(title, { class = currentClass() })
 end
 
 uiPrintSection = function(title)
-  if cecho then
-    local theme = themeTags()
-    cecho("\n\n" .. theme.info .. string.upper(tostring(title or "")) .. theme.reset)
-  else
-    boop.util.echo(tostring(title) .. ":")
-  end
+  return boop.render.printSection(title)
 end
 
 uiPrintRow = function(index, label, buttonText, buttonColor, onClick, hint, labelWidth)
-  if cecho then
-    local theme = themeTags()
-    local width = tonumber(labelWidth) or UI_LABEL_COL_WIDTH
-    local prefix = uiIndexPrefix(index)
-    local leftRaw = prefix .. tostring(label or "")
-    local left = uiPadRight(leftRaw, width)
-    cecho("\n" .. theme.text .. left .. " " .. theme.reset)
-    local colorTag = semanticTag(tostring(buttonColor or "text"))
-    local coloredButton = colorTag .. uiButtonLabel(buttonText or "") .. theme.reset
-    if cechoLink and onClick then
-      cechoLink(coloredButton, onClick, hint or "", true)
-    else
-      cecho(coloredButton)
-    end
-    return
-  end
-
-  local prefix = index and ("[" .. tostring(index) .. "] ") or ""
-  local row = prefix .. tostring(label or "") .. " " .. uiButtonLabel(buttonText or "")
-  boop.util.echo(row)
+  return boop.render.printRow(index, label, buttonText, buttonColor, onClick, hint, labelWidth)
 end
 
 uiPrintControlRow = function(index, label, currentText, currentColor, actions, labelWidth, valueClick, valueHint)
-  local prefix = uiIndexPrefix(index)
-  local valueText = tostring(currentText or "")
-  local leftRaw = prefix .. tostring(label or "") .. ": " .. valueText
-
-  if cecho then
-    local theme = themeTags()
-    local width = tonumber(labelWidth) or UI_LABEL_COL_WIDTH
-    local valueTag = semanticTag(tostring(currentColor or "text"))
-    cecho("\n" .. theme.text .. uiPadRight(prefix .. tostring(label or "") .. ":", width) .. " ")
-    if cechoLink and valueClick then
-      cechoLink(valueTag .. valueText .. theme.reset, valueClick, valueHint or tostring(label or ""), true)
-    else
-      cecho(valueTag .. valueText .. theme.reset)
-    end
-    for _, action in ipairs(actions or {}) do
-      cecho(" ")
-      local rendered = semanticTag(tostring(action.color or "info")) .. tostring(action.label or "") .. theme.reset
-      if cechoLink and action.onClick then
-        cechoLink(rendered, action.onClick, action.hint or "", true)
-      else
-        cecho(rendered)
-      end
-    end
-    return
-  end
-
-  local parts = { leftRaw }
-  for _, action in ipairs(actions or {}) do
-    parts[#parts + 1] = tostring(action.label or "")
-  end
-  boop.util.echo(table.concat(parts, " "))
+  return boop.render.printControlRow(index, label, currentText, currentColor, actions, labelWidth, valueClick, valueHint)
 end
 
 uiPrintToggleControl = function(index, label, enabled, onClick, hint, labelWidth)
-  uiPrintControlRow(index, label, boolText(not not enabled), boolColor(not not enabled), {
-    { label = "[toggle]", color = "info", onClick = onClick, hint = hint or "Toggle " .. tostring(label or "") },
-  }, labelWidth, onClick, hint or "Toggle " .. tostring(label or ""))
+  return boop.render.printToggleControl(index, label, enabled, onClick, hint, labelWidth)
 end
 
 uiPrintActionControl = function(index, label, currentText, currentColor, actionLabel, actionColor, onClick, hint, labelWidth)
-  uiPrintControlRow(index, label, currentText, currentColor, {
-    { label = tostring(actionLabel or "[open]"), color = tostring(actionColor or "info"), onClick = onClick, hint = hint or tostring(label or "") },
-  }, labelWidth, onClick, hint or tostring(label or ""))
+  return boop.render.printActionControl(index, label, currentText, currentColor, actionLabel, actionColor, onClick, hint, labelWidth)
 end
 
 uiPrintNumberControl = function(index, label, currentText, currentColor, decClick, incClick, labelWidth)
-  uiPrintControlRow(index, label, currentText, currentColor, {
-    { label = "[-]", color = "info", onClick = decClick, hint = "Decrease " .. tostring(label or "") },
-    { label = "[+]", color = "info", onClick = incClick, hint = "Increase " .. tostring(label or "") },
-  }, labelWidth)
+  return boop.render.printNumberControl(index, label, currentText, currentColor, decClick, incClick, labelWidth)
 end
 
 uiPrintFooter = function(text)
-  if cecho then
-    local theme = themeTags()
-    cecho("\n" .. theme.border .. uiRule() .. theme.reset)
-    cecho("\n")
-    local parts = footerClickableParts(text)
-    if cechoLink and #parts > 0 then
-      for _, part in ipairs(parts) do
-        if part.prefix ~= "" then
-          cecho(theme.muted .. part.prefix .. theme.reset)
-        end
-        if part.seed ~= "" then
-          cechoLink(theme.info .. part.command .. theme.reset, function()
-            uiSetCommandLine(part.seed)
-          end, "Prepare command: " .. part.seed, true)
-        else
-          cecho(theme.muted .. part.command .. theme.reset)
-        end
-        if part.separator ~= "" then
-          cecho(theme.muted .. part.separator .. theme.reset)
-        end
-      end
-    else
-      cecho(theme.muted .. tostring(text or "") .. theme.reset)
-    end
-    cecho("\n")
-  else
-    boop.util.echo(text or "")
-  end
+  return boop.render.printFooter(text)
 end
-
-boop.ui.printHeader = uiPrintHeader
-boop.ui.printSection = uiPrintSection
-boop.ui.printRow = uiPrintRow
-boop.ui.printFooter = uiPrintFooter
-boop.ui.printControlRow = uiPrintControlRow
-boop.ui.printToggleControl = uiPrintToggleControl
-boop.ui.printActionControl = uiPrintActionControl
-boop.ui.printNumberControl = uiPrintNumberControl
-boop.ui.computeLabelWidth = uiComputeLabelWidth
-boop.ui._printHeader = uiPrintHeader
-boop.ui._printSection = uiPrintSection
-boop.ui._printRow = uiPrintRow
-boop.ui._printFooter = uiPrintFooter
 
 local function cycleTargetingMode(step, noRefresh)
   local order = { "manual", "whitelist", "blacklist", "auto" }
@@ -2215,6 +1984,168 @@ local function parseBool(raw)
   return nil
 end
 
+local function gagScopeLabel(scope)
+  return ({ own = "own", others = "others", mobs = "mobs" })[scope] or tostring(scope or "")
+end
+
+local function renderGagScopeLinks(currentScope)
+  local theme = themeTags()
+  cecho("\n  " .. theme.text .. "Scope: " .. theme.reset)
+  for _, scope in ipairs({ "own", "others", "mobs" }) do
+    if scope == currentScope then
+      cecho(theme.muted .. "[" .. gagScopeLabel(scope) .. "]" .. theme.reset)
+    else
+      cechoLink(theme.info .. "[" .. gagScopeLabel(scope) .. "]" .. theme.reset, function()
+        boop.ui.showGagColors(scope)
+      end, "Show " .. gagScopeLabel(scope) .. " gag colors", true)
+    end
+    cecho(" ")
+  end
+end
+
+local function renderGagColorRows(scope)
+  local theme = themeTags()
+  for _, role in ipairs(boop.gag.colorRoles()) do
+    local label = boop.gag.colorLabel(role)
+    cecho("\n" .. theme.text .. "  " .. string.format("%-10s", label) .. " " .. theme.reset)
+    cecho(boop.gag.renderColorSample(scope, role))
+    cecho(theme.muted .. "  " .. boop.gag.colorStatus(scope, role) .. theme.reset)
+    cecho(" ")
+    cechoLink(theme.info .. "[color]" .. theme.reset, function()
+      boop.ui.showGagColorPicker(scope, role)
+    end, "Open color picker for " .. label, true)
+    cecho(" ")
+    cechoLink(theme.info .. boop.gag.colorAutoLabel(role) .. theme.reset, function()
+      boop.ui.setGagColor(scope, role, "off")
+    end, boop.gag.colorAutoHint(role), true)
+  end
+end
+
+function boop.ui.showGagColors(scope)
+  local normalizedScope = boop.gag.normalizeColorScope(scope)
+  if normalizedScope == "" then
+    boop.util.warn("gag color scope: use own|others|mobs")
+    return
+  end
+  local sampleWho = normalizedScope == "own" and "You" or normalizedScope == "mobs" and "Mob" or "Someone"
+  local sampleAbility = normalizedScope == "mobs" and "Damage" or "Attack"
+  local sampleTarget = normalizedScope == "mobs" and "You" or "a denizen"
+  local sampleMeta = normalizedScope == "mobs" and " (649 asphyxiation)" or " (1234 cutting - 8xCRIT) (Total: 1234) (Bal: 2.1s)"
+  if cecho then
+    if boop.ui._setScreen then
+      boop.ui._setScreen("gag-colors")
+    end
+    uiPrintHeader("gag colors > " .. normalizedScope)
+    uiPrintSection("sample")
+    cecho(
+      "\n  "
+      .. boop.gag.renderColorSegment(normalizedScope, "who", sampleWho)
+      .. boop.gag.renderColorSegment(normalizedScope, "separator", ": ")
+      .. boop.gag.renderColorSegment(normalizedScope, "ability", sampleAbility)
+      .. boop.gag.renderColorSegment(normalizedScope, "separator", " -> ")
+      .. boop.gag.renderColorSegment(normalizedScope, "target", sampleTarget)
+      .. boop.gag.renderColorSegment(normalizedScope, "meta", sampleMeta)
+    )
+    renderGagScopeLinks(normalizedScope)
+    uiPrintSection("roles")
+    renderGagColorRows(normalizedScope)
+    uiPrintFooter("Type: boop gag colors <own|others|mobs> | boop gag color [own|others|mobs] <role> <color|off> | boop gag color [own|others|mobs] <role> | boop gag color [own|others|mobs] reset")
+    return
+  end
+
+  boop.util.info("gag colors (" .. normalizedScope .. "):")
+  for _, role in ipairs(boop.gag.colorRoles()) do
+    boop.util.echo("  " .. boop.gag.colorLabel(role) .. ": " .. boop.gag.colorConfiguredText(normalizedScope, role))
+  end
+  boop.util.echo("  sample: " .. sampleWho .. ": " .. sampleAbility .. " -> " .. sampleTarget .. sampleMeta)
+end
+
+function boop.ui.showGagColorPicker(scope, role)
+  if role == nil then
+    role = scope
+    scope = "own"
+  end
+  local normalizedScope = boop.gag.normalizeColorScope(scope)
+  local normalizedRole = boop.gag.normalizeColorRole(role)
+  if normalizedScope == "" then
+    boop.util.warn("gag color scope: use own|others|mobs")
+    return
+  end
+  if normalizedRole == "" then
+    boop.util.warn("gag color role: use who|ability|target|meta|separator|bg")
+    return
+  end
+  if not cecho then
+    boop.util.info("Use: boop gag color " .. normalizedScope .. " " .. normalizedRole .. " <color|off>")
+    return
+  end
+  if boop.ui._setScreen then
+    boop.ui._setScreen("gag-color-picker")
+  end
+
+  local theme = themeTags()
+  uiPrintHeader("gag colors > " .. normalizedScope .. " > " .. normalizedRole)
+  uiPrintSection("picker")
+  cecho(theme.text .. "  Scope: " .. normalizedScope .. " | role: " .. normalizedRole .. " | current: " .. boop.gag.colorStatus(normalizedScope, normalizedRole) .. theme.reset)
+  cecho(" ")
+  cechoLink(theme.info .. "[back]" .. theme.reset, function()
+    boop.ui.showGagColors(normalizedScope)
+  end, "Back to gag colors", true)
+  cecho("\n")
+  cecho(theme.text .. "  Sample: " .. theme.reset .. boop.gag.renderColorSample(normalizedScope, normalizedRole) .. "\n")
+  cecho(theme.text .. "  ")
+  cechoLink(theme.info .. boop.gag.colorAutoLabel(normalizedRole) .. theme.reset, function()
+    boop.ui.setGagColor(normalizedScope, normalizedRole, "off")
+  end, boop.gag.colorAutoHint(normalizedRole), true)
+  cecho("\n")
+
+  for _, group in ipairs(boop.gag.colorGroups()) do
+    uiPrintSection(group.label or "colors")
+    cecho(theme.text .. "  " .. theme.reset)
+    local lineLen = 2
+    for _, color in ipairs(group.colors or {}) do
+      local label = tostring(color)
+      local entryLen = #label + 2
+      if lineLen + entryLen > 72 then
+        cecho("\n" .. theme.text .. "  " .. theme.reset)
+        lineLen = 2
+      end
+      cechoLink("<" .. label .. ">[" .. label .. "]<reset>", function()
+        boop.ui.setGagColor(normalizedScope, normalizedRole, label)
+      end, "Set " .. normalizedRole .. " to " .. label, true)
+      cecho("  ")
+      lineLen = lineLen + entryLen
+    end
+    cecho("\n")
+  end
+end
+
+function boop.ui.setGagColor(scope, role, value)
+  local normalizedScope = boop.gag.setColor(scope, role, value)
+  if not normalizedScope then
+    return
+  end
+  local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("debug") or ""
+  if returnScreen == "debug" then
+    boop.ui.config("debug")
+    return
+  end
+  boop.ui.showGagColors(normalizedScope)
+end
+
+function boop.ui.resetGagColors(scope)
+  local normalizedScope = boop.gag.resetColors(scope)
+  if not normalizedScope then
+    return
+  end
+  local returnScreen = boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("debug") or ""
+  if returnScreen == "debug" then
+    boop.ui.config("debug")
+    return
+  end
+  boop.ui.showGagColors(normalizedScope)
+end
+
 function boop.ui.gagCommand(raw)
   local text = boop.util.trim(raw or "")
   local token = boop.util.safeLower(text)
@@ -2269,13 +2200,13 @@ function boop.ui.gagCommand(raw)
   end
 
   if token == "colors" then
-    boop.gag.showColors("own")
+    boop.ui.showGagColors("own")
     return
   end
 
   local colorsScope = token:match("^colors%s+(%S+)$")
   if colorsScope then
-    boop.gag.showColors(colorsScope)
+    boop.ui.showGagColors(colorsScope)
     return
   end
 
@@ -2283,37 +2214,37 @@ function boop.ui.gagCommand(raw)
   if colorArgs then
     local lowerArgs = boop.util.safeLower(boop.util.trim(colorArgs))
     if lowerArgs == "reset" then
-      boop.gag.resetColors("own")
+      boop.ui.resetGagColors("own")
       return
     end
 
     local scopeReset = boop.util.trim(colorArgs):match("^(%S+)%s+reset$")
     if scopeReset then
-      boop.gag.resetColors(scopeReset)
+      boop.ui.resetGagColors(scopeReset)
       return
     end
 
     local scope, role, value = colorArgs:match("^(%S+)%s+(%S+)%s+(.+)$")
     if scope and role and value and (scope == "own" or scope == "self" or scope == "others" or scope == "other" or scope == "mob" or scope == "mobs" or scope == "incoming") then
-      boop.gag.setColor(scope, role, value)
+      boop.ui.setGagColor(scope, role, value)
       return
     end
 
     local pickerScope, pickerRole = colorArgs:match("^(%S+)%s+(%S+)$")
-    if pickerScope and pickerRole and (pickerScope == "own" or pickerScope == "self" or pickerScope == "others" or pickerScope == "other" or pickerScope == "mob" or pickerScope == "mobs" or pickerScope == "incoming") and boop.gag and boop.gag.showColorPicker then
-      boop.gag.showColorPicker(pickerScope, pickerRole)
+    if pickerScope and pickerRole and (pickerScope == "own" or pickerScope == "self" or pickerScope == "others" or pickerScope == "other" or pickerScope == "mob" or pickerScope == "mobs" or pickerScope == "incoming") then
+      boop.ui.showGagColorPicker(pickerScope, pickerRole)
       return
     end
 
     local roleOnly, valueOnly = colorArgs:match("^(%S+)%s+(.+)$")
     if roleOnly and valueOnly then
-      boop.gag.setColor("own", roleOnly, valueOnly)
+      boop.ui.setGagColor("own", roleOnly, valueOnly)
       return
     end
 
     local pickerRoleOnly = boop.util.trim(colorArgs)
-    if pickerRoleOnly ~= "" and boop.gag and boop.gag.showColorPicker then
-      boop.gag.showColorPicker("own", pickerRoleOnly)
+    if pickerRoleOnly ~= "" then
+      boop.ui.showGagColorPicker("own", pickerRoleOnly)
       return
     end
   end
@@ -5543,4 +5474,325 @@ function boop.ui.debugSkillsDump()
   else
     boop.util.echo("debug skills dump | display() not available")
   end
+end
+
+local function registryBoolSetter(opts)
+  return function(raw, ctx)
+    local parsed = ctx.parseBool(raw)
+    if parsed == nil then
+      boop.util.warn(opts.warn or (tostring(opts.key or "value") .. " expects on/off"))
+      return
+    end
+    if opts.apply then
+      opts.apply(parsed, ctx)
+      return
+    end
+    local key = opts.saveKey or opts.key
+    ctx.save(key, parsed)
+    boop.util.ok((opts.okLabel or key) .. ": " .. (parsed and "on" or "off"))
+    if opts.reopen then
+      ctx.reopen(opts.reopen.screen, opts.reopen.prefix)
+    end
+  end
+end
+
+local function registryNumberSetter(opts)
+  return function(raw, ctx)
+    local value = tonumber(boop.util.trim(raw or ""))
+    if not value
+      or (opts.integer and value ~= math.floor(value))
+      or (opts.min ~= nil and value < opts.min)
+      or (opts.strictMin ~= nil and value <= opts.strictMin)
+      or (opts.max ~= nil and value > opts.max)
+    then
+      boop.util.warn(opts.warn)
+      return
+    end
+    ctx.save(opts.saveKey or opts.key, value)
+    if opts.ok then
+      boop.util.ok(opts.ok(value))
+    end
+    if opts.reopen then
+      ctx.reopen(opts.reopen.screen, opts.reopen.prefix)
+    end
+  end
+end
+
+local function registryGagColorSetter(scope, role)
+  return function(raw)
+    boop.ui.setGagColor(scope, role, raw)
+  end
+end
+
+function boop.ui.registerRegistryHandlers()
+  local setters = {
+    enabled = registryBoolSetter({
+      key = "enabled",
+      warn = "enabled expects on/off",
+      apply = function(parsed) boop.ui.setEnabled(parsed) end,
+    }),
+    targetingMode = function(raw) boop.ui.setTargetingMode(raw) end,
+    useQueueing = registryBoolSetter({
+      key = "useQueueing",
+      warn = "useQueueing expects on/off",
+      okLabel = "use queueing",
+    }),
+    prequeueEnabled = registryBoolSetter({
+      key = "prequeueEnabled",
+      warn = "prequeue expects on/off",
+      apply = function(parsed) boop.ui.setPrequeueEnabled(parsed) end,
+    }),
+    attackLeadSeconds = function(raw) boop.ui.setAttackLeadSeconds(raw) end,
+    autoGrabGold = registryBoolSetter({
+      key = "autoGrabGold",
+      warn = "autogold expects on/off",
+      apply = function(parsed) boop.ui.setAutoGrabGold(parsed) end,
+    }),
+    goldPack = function(raw) boop.ui.setGoldPack(raw) end,
+    whitelistPriorityOrder = registryBoolSetter({
+      key = "whitelistPriorityOrder",
+      warn = "whitelistPriorityOrder expects on/off",
+    }),
+    retargetOnPriority = registryBoolSetter({
+      key = "retargetOnPriority",
+      warn = "retargetOnPriority expects on/off",
+    }),
+    targetOrder = function(raw, ctx)
+      local order = boop.util.safeLower(boop.util.trim(raw or ""))
+      if order ~= "order" and order ~= "numeric" and order ~= "reverse" then
+        boop.util.warn("targetOrder expects order|numeric|reverse")
+        return
+      end
+      ctx.save("targetOrder", order)
+      boop.util.ok("targetOrder: " .. order)
+    end,
+    attackMode = function(raw) boop.ui.setRageMode(raw) end,
+    ragePoolThreshold = function(raw) boop.ui.ragePoolCommand(raw) end,
+    pullRageReserve = registryBoolSetter({
+      key = "pullRageReserve",
+      warn = "pullRageReserve expects on/off",
+      okLabel = "pull rage reserve",
+      reopen = { screen = "combat" },
+    }),
+    breakShields = registryBoolSetter({
+      key = "breakShields",
+      warn = "breakShields expects on/off",
+      apply = function(parsed) boop.ui.shieldModeCommand(parsed and "break" or "bypass") end,
+    }),
+    fleeEnabled = registryBoolSetter({
+      key = "fleeEnabled",
+      warn = "flee expects on/off",
+      apply = function(parsed) boop.ui.fleeCommand(parsed and "on" or "off") end,
+    }),
+    fleeKeepEnabled = registryBoolSetter({
+      key = "fleeKeepEnabled",
+      warn = "fleeKeepEnabled expects on/off",
+      okLabel = "keep boop enabled after flee",
+      reopen = { screen = "combat" },
+    }),
+    fleeAt = function(raw) boop.ui.fleeCommand(raw) end,
+    tempoRageWindowSeconds = registryNumberSetter({
+      key = "tempoRageWindowSeconds",
+      warn = "tempoRageWindowSeconds expects number > 0",
+      strictMin = 0,
+      ok = function(value) return string.format("tempo rage window: %.2fs", value) end,
+      reopen = { screen = "combat", prefix = "boop set tempoRageWindowSeconds " },
+    }),
+    tempoSqueezeEtaSeconds = registryNumberSetter({
+      key = "tempoSqueezeEtaSeconds",
+      warn = "tempoSqueezeEtaSeconds expects number >= 0",
+      min = 0,
+      ok = function(value) return string.format("tempo squeeze eta: %.2fs", value) end,
+      reopen = { screen = "combat", prefix = "boop set tempoSqueezeEtaSeconds " },
+    }),
+    focusVerb = function(raw) boop.ui.focusVerbCommand(raw) end,
+    traceEnabled = registryBoolSetter({
+      key = "traceEnabled",
+      warn = "trace expects on/off",
+      apply = function(parsed) boop.ui.setTraceEnabled(parsed) end,
+    }),
+    gagOwnAttacks = registryBoolSetter({
+      key = "gagOwnAttacks",
+      warn = "gagOwnAttacks expects on/off",
+      apply = function(parsed) boop.gag.setOwn(parsed) end,
+    }),
+    gagOthersAttacks = registryBoolSetter({
+      key = "gagOthersAttacks",
+      warn = "gagOthersAttacks expects on/off",
+      apply = function(parsed) boop.gag.setOthers(parsed) end,
+    }),
+    gagMobAttacks = registryBoolSetter({
+      key = "gagMobAttacks",
+      warn = "gagMobAttacks expects on/off",
+      apply = function(parsed) boop.gag.setMobs(parsed) end,
+    }),
+    gagColorWho = registryGagColorSetter("own", "who"),
+    gagColorAbility = registryGagColorSetter("own", "ability"),
+    gagColorTarget = registryGagColorSetter("own", "target"),
+    gagColorMeta = registryGagColorSetter("own", "meta"),
+    gagColorSeparator = registryGagColorSetter("own", "separator"),
+    gagColorBackground = registryGagColorSetter("own", "background"),
+    gagOtherColorWho = registryGagColorSetter("others", "who"),
+    gagOtherColorAbility = registryGagColorSetter("others", "ability"),
+    gagOtherColorTarget = registryGagColorSetter("others", "target"),
+    gagOtherColorMeta = registryGagColorSetter("others", "meta"),
+    gagOtherColorSeparator = registryGagColorSetter("others", "separator"),
+    gagOtherColorBackground = registryGagColorSetter("others", "background"),
+    gagMobColorWho = registryGagColorSetter("mobs", "who"),
+    gagMobColorAbility = registryGagColorSetter("mobs", "ability"),
+    gagMobColorTarget = registryGagColorSetter("mobs", "target"),
+    gagMobColorMeta = registryGagColorSetter("mobs", "meta"),
+    gagMobColorSeparator = registryGagColorSetter("mobs", "separator"),
+    gagMobColorBackground = registryGagColorSetter("mobs", "background"),
+    diagTimeoutSeconds = registryNumberSetter({
+      key = "diagTimeoutSeconds",
+      warn = "diagTimeoutSeconds expects number >= 0",
+      min = 0,
+      ok = function(value) return string.format("diag timeout: %.2fs", value) end,
+      reopen = { screen = "combat", prefix = "boop set diagtimeout " },
+    }),
+    partySize = registryNumberSetter({
+      key = "partySize",
+      warn = "partySize expects integer >= 1",
+      min = 1,
+      integer = true,
+      ok = function(value) return "party size: " .. tostring(value) end,
+    }),
+    partyRoster = function(raw) boop.ui.rosterCommand(raw or "") end,
+    targetCall = function(raw, ctx)
+      local parsed = ctx.parseBool(raw)
+      if parsed == nil then
+        boop.util.warn("targetCall expects on/off")
+        return
+      end
+      if parsed and boop.ui.assistLeader() == "" then
+        boop.util.warn("target call mode needs a leader; use: boop assist <name>")
+        return
+      end
+      ctx.save("targetCall", parsed)
+      if parsed and boop.config.autoTargetCall then
+        ctx.save("autoTargetCall", false)
+      end
+      if not parsed and boop.targets.clearTargetCall then
+        boop.targets.clearTargetCall("target call disabled")
+      end
+      boop.util.ok("leader target call gate: " .. (parsed and "on" or "off"))
+    end,
+    autoTargetCall = function(raw, ctx)
+      local parsed = ctx.parseBool(raw)
+      if parsed == nil then
+        boop.util.warn("autoTargetCall expects on/off")
+        return
+      end
+      local hadTargetCall = not not boop.config.targetCall
+      ctx.save("autoTargetCall", parsed)
+      if parsed and hadTargetCall then
+        ctx.save("targetCall", false)
+        if boop.targets.clearTargetCall then
+          boop.targets.clearTargetCall("auto target call enabled")
+        end
+      end
+      boop.util.ok("auto target calls: " .. (parsed and "on" or "off"))
+    end,
+    assistEnabled = function(raw, ctx)
+      local parsed = ctx.parseBool(raw)
+      if parsed == nil then
+        boop.util.warn("assist expects on/off")
+        return
+      end
+      if parsed and boop.ui.assistLeader() == "" then
+        boop.util.warn("assist needs a leader; use: boop assist <name>")
+        return
+      end
+      ctx.save("assistEnabled", parsed)
+      boop.util.ok("assist: " .. (parsed and "on" or "off"))
+    end,
+    assistLeader = function(raw, ctx)
+      local leader = boop.util.trim(raw or "")
+      ctx.save("assistLeader", leader)
+      if leader == "" then
+        ctx.save("assistEnabled", false)
+        boop.util.ok("assist leader cleared")
+        return
+      end
+      ctx.save("assistEnabled", true)
+      boop.util.ok("assist leader: " .. leader)
+    end,
+    uiTheme = function(raw) boop.ui.themeCommand(raw) end,
+    gameSeparator = function(raw) boop.ui.gameSeparatorCommand(raw) end,
+    rageAffCalloutsEnabled = registryBoolSetter({
+      key = "rageAffCalloutsEnabled",
+      warn = "affcalls expects on/off",
+      okLabel = "rage affliction callouts",
+    }),
+  }
+
+  for key, handler in pairs(setters) do
+    boop.registry.defineConfigSetter(key, handler)
+  end
+
+  local actions = {
+    combat = {
+      [1] = function() boop.ui.setEnabled(not boop.config.enabled, true); return "refresh" end,
+      [2] = function(ctx) ctx.rememberReturn("combat"); boop.ui.showRageModeMenu(); return "handled" end,
+      [3] = function() boop.ui.diag(); return "refresh" end,
+      [4] = function() boop.ui.toggleConfigBool("useQueueing", true); return "refresh" end,
+      [5] = function() boop.ui.setPrequeueEnabled(not boop.config.prequeueEnabled); return "refresh" end,
+      [6] = function(ctx) ctx.seed("combat", "boop lead "); return "seed" end,
+      [7] = function(ctx) ctx.seed("combat", "boop set diagtimeout "); return "seed" end,
+      [8] = function(ctx) ctx.seed("combat", "boop set tempoRageWindowSeconds "); return "seed" end,
+      [9] = function(ctx) ctx.seed("combat", "boop set tempoSqueezeEtaSeconds "); return "seed" end,
+      [10] = function(ctx) ctx.seed("combat", "boop assist "); return "seed" end,
+      [11] = function() boop.ui.toggleConfigBool("rageAffCalloutsEnabled", true); return "refresh" end,
+      [12] = function() boop.ui.toggleConfigBool("pullRageReserve", true); return "refresh" end,
+      [13] = function() boop.ui.shieldModeCommand("toggle"); return "refresh" end,
+      [14] = function() boop.ui.fleeCommand(boop.config.fleeEnabled and "off" or "on"); return "refresh" end,
+      [15] = function(ctx) ctx.seed("combat", "boop flee "); return "seed" end,
+      [16] = function(ctx) ctx.seed("combat", "boop focus "); return "seed" end,
+      [17] = function(ctx) ctx.seed("combat", "boop separator "); return "seed" end,
+      [18] = function(ctx) ctx.seed("combat", "boop ragepool "); return "seed" end,
+      [19] = function() boop.ui.fleeCommand("keepenabled toggle"); return "refresh" end,
+    },
+    targeting = {
+      [1] = function() boop.ui.cycleTargetingMode(1, true); return "refresh" end,
+      [2] = function() boop.ui.toggleConfigBool("whitelistPriorityOrder", true); return "refresh" end,
+      [3] = function() boop.ui.cycleTargetOrder(1, true); return "refresh" end,
+      [4] = function() boop.ui.toggleConfigBool("retargetOnPriority", true); return "refresh" end,
+      [5] = function() boop.ui.targetCallCommand(boop.config.targetCall and "off" or "on"); return "refresh" end,
+      [6] = function() boop.targets.displayWhitelist(); return "handled" end,
+      [7] = function() boop.targets.displayWhitelistBrowse(); return "handled" end,
+      [8] = function() boop.targets.displayBlacklist(); return "handled" end,
+    },
+    loot = {
+      [1] = function() boop.ui.toggleAutoGrabGold(); return "refresh" end,
+      [2] = function(ctx) ctx.seed("loot", "boop pack "); return "seed" end,
+      [3] = function() boop.ui.setGoldPack(""); return "refresh" end,
+      [4] = function() boop.ui.testGoldPack(); return "refresh" end,
+    },
+    debug = {
+      [1] = function() boop.ui.setTraceEnabled(not boop.config.traceEnabled); return "refresh" end,
+      [2] = function() boop.ui.debug(); return "handled" end,
+      [3] = function()
+        if boop.trace and boop.trace.show then boop.trace.show() else boop.util.echo("trace unavailable") end
+        return "handled"
+      end,
+      [4] = function()
+        if boop.trace and boop.trace.clear then boop.trace.clear() else boop.util.echo("trace unavailable") end
+        return "refresh"
+      end,
+      [5] = function() boop.gag.setOwn(not boop.config.gagOwnAttacks); return "refresh" end,
+      [6] = function() boop.gag.setOthers(not boop.config.gagOthersAttacks); return "refresh" end,
+      [7] = function() boop.gag.setMobs(not boop.config.gagMobAttacks); return "refresh" end,
+      [8] = function(ctx) ctx.rememberReturn("debug"); boop.ui.showGagColors("own"); return "handled" end,
+      [9] = function(ctx) ctx.rememberReturn("debug"); boop.ui.showGagColors("others"); return "handled" end,
+      [10] = function(ctx) ctx.rememberReturn("debug"); boop.ui.showGagColors("mobs"); return "handled" end,
+    },
+  }
+
+  for section, sectionActions in pairs(actions) do
+    for index, handler in pairs(sectionActions) do
+      boop.registry.defineConfigAction(section, index, handler)
+    end
+  end
+  return true
 end

@@ -2080,6 +2080,27 @@ function boop.runtime.prepareLeapCausality(generation)
   return deepCopy(registration)
 end
 
+function boop.runtime.standardAliasBinding()
+  local queue = standardQueueState()
+  return {
+    action = tostring(queue.aliasAction or ""),
+    dirty = queue.aliasDirty ~= false,
+  }
+end
+
+function boop.runtime.markStandardAliasDirty()
+  local queue = standardQueueState()
+  queue.aliasDirty = true
+  return true
+end
+
+function boop.runtime.recordStandardAliasBinding(action, dirty)
+  local queue = standardQueueState()
+  queue.aliasAction = tostring(action or "")
+  queue.aliasDirty = dirty ~= false
+  return boop.runtime.standardAliasBinding()
+end
+
 function boop.runtime.beginStandardDispatch(options)
   options = type(options) == "table" and options or {}
   if activeStandard() then

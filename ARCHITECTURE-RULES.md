@@ -7,20 +7,23 @@ Rules for anyone — human or agent — changing boop. Short by design. The reas
 ## Dependencies
 
 1. **The target module graph is a DAG.** `python3 tools/check_release_gates.py --check architecture` builds the current graph from Boop's supported direct-reference subset. Through Phase 7, reciprocal pairs and SCCs are reported for review. **From Phase 8 acceptance, any non-trivial SCC is a permanent hard failure.**
-2. **Cross-module architecture must be direct and statically visible.** Use forms such as `boop.targets.choose()` and `boop.state.targeting.currentTargetId`. Do not alias `boop`, capture another module's function, parenthesize the root to evade matching, use `boop[dynamic]`, alias `send`/`sendGMCP` or compatibility forwarders, or mutate owned data through aliases/`rawset`. The one sanctioned string form is a literal `"boop.<symbol>"` passed through `boop.events.register()`'s existing local Mudlet event-registration helper; unknown callback symbols fail closed. The guard implements this repository convention, not general Lua or string analysis. Fourteen path-and-symbol legacy indirections may not widen; Runtime's exact line-scoped schema-custody `rawset` is recorded separately as permanent.
+2. **Cross-module architecture must be direct and statically visible.** Use forms such as `boop.targets.choose()` and `boop.state.targeting.currentTargetId`. Do not alias `boop`, capture another module's function, parenthesize the root to evade matching, use `boop[dynamic]`, alias `send`/`sendGMCP` or compatibility forwarders, or mutate owned data through aliases/`rawset`. The one sanctioned string form is a literal `"boop.<symbol>"` passed through `boop.events.register()`'s existing local Mudlet event-registration helper; unknown callback symbols fail closed. The guard implements this repository convention, not general Lua or string analysis. Four path-and-symbol legacy indirections may not widen; Runtime's exact line-scoped schema-custody `rawset` is recorded separately as permanent.
 3. **These edges are forbidden outright:**
    - `runtime` -> any decision, orchestration, or presentation module
    - `attacks` -> `combat` (decision never depends on orchestration)
    - `db` -> `stats`
+   - `db` -> `targets`
    - `stats` -> `ui`
    - `gag` -> `ui`
    - `registry` -> any other module
    - `util` -> any boop module except `theme`
+   - `render` -> any boop module except `theme` and `util`
+   - `wire` -> `targets`; Wire receives target identity from its caller and never reads targeting state
    - before Phase 6, any new or expanded direct `send()`/`sendGMCP()` site outside the reviewed baseline; from Phase 6 onward, either call outside `boop.wire`
    - Phase 3's concrete Runtime invariant is zero references to Attacks, Safety, Walk, Gag, or Combat. The surviving target-lifecycle references are deferred to Phase 5.
 4. **Adapters normalize and hand off; they do not freely mutate.** An external adapter converts raw input into normalized values and calls the **ingestion API of the target subtree's semantic owner**. It may write only state it owns. Never write another subsystem's invariant-bearing state directly — generations, locks, dispatch identity, observation fences — even when the value looks obviously right. No `gmcp.*` access in decision code.
 5. **`boop_bootstrap.lua` is the composition root.** It is the one place that wires modules together after they are all loaded — the ready notification, registry attachment, and anything of the same shape. Nothing may reference it. When a lower module seems to need a higher one, move the wiring here instead of adding the edge.
-6. **Shared presentation primitives live in `boop.render`, not `boop.ui`.** Anything that renders — screens, gag summaries, stats reports — depends on `boop.render`. Only screens and dashboards depend on `boop.ui`.
+6. **Shared presentation primitives live in `boop.render`, not `boop.ui`.** Screens and Stats reports depend on `boop.render`; only screens and dashboards depend on `boop.ui`. Gag owns line/palette formatting while UI owns gag-colour screens.
 7. **Registries declare and accept; they never call.** `boop.registry` holds data and a registration API. Handlers register themselves into it. A registry that calls into a handler module is a cycle waiting to happen.
 
 ## Ownership
@@ -56,7 +59,7 @@ Rules for anyone — human or agent — changing boop. Short by design. The reas
 
 25. **No unapproved observable behaviour change.** A behaviour fix discovered while refactoring is proposed separately, isolated into its own commit, tested, and approved before it lands.
 26. **A new module needs a stated justification** from: state ownership, lifecycle ownership, dependency seam, transport boundary, reusable policy, or strong cohesion. **Reducing a line count is not a justification.**
-27. **Load order is a dependency decision.** `src/scripts/boop/scripts.json` is hand-ordered and excluded from `tools/sort_manifests.sh`. Documented initialization, composition, and registration work at load time is allowed and expected — namespace/schema/function definition, profile registration, registry attachment, `boop.perf.register(...)` probe registration, and composition-root startup. Any new behaviorally significant load-time class or site must be explicitly documented and reviewed. See `ARCHITECTURE.md` §1.
+27. **Load order is a dependency decision.** `src/scripts/boop/scripts.json` is hand-ordered and excluded from `tools/sort_manifests.sh`. Documented initialization, composition, and registration work at load time is allowed and expected — namespace/schema/function definition, profile registration, `boop.perf.register(...)` probe registration, and composition-root startup or generation refresh. Registry attachment is part of that sole composition-root flow, not an independent lower-module load-time site. Any new behaviorally significant load-time class or site must be explicitly documented and reviewed. See `ARCHITECTURE.md` §1.
 28. **Triggers go at the narrowest correct ownership scope.** A class-specific pattern belongs in that class's local manifest; a pattern that is genuinely class-agnostic belongs at the shared scope (`General`, `Combat`, `Mobs`, `Core`). Do not force a shared pattern into a class folder, and never flatten class folders back into a parent.
 29. **Run `python3 tools/check_release_gates.py` before every commit and again before every push.** Classify the commit by its staged paths: anything outside `.planning/` is package-affecting and must bump all four version checkpoints together.
 

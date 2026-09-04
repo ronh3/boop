@@ -79,18 +79,9 @@ local function resetDb()
   }) do
     local sheet = handle[sheetName]
     if sheet then
-      local fetched, rows = pcall(function()
-        return db:fetch(sheet, nil)
+      pcall(function()
+        db:delete(sheet, true)
       end)
-      if fetched and rows then
-        for _, row in ipairs(rows) do
-          if row and row._row_id then
-            pcall(function()
-              db:delete(sheet, row._row_id)
-            end)
-          end
-        end
-      end
     end
   end
 end
@@ -112,7 +103,12 @@ end
 
 function M.reset()
   assert(boop, "boop package is not loaded")
-  local desiredGroups = boop.skills and boop.skills.desiredGroups or nil
+  _G.echo = _G.echo or function(_) end
+  _G.send = _G.send or function(_, _) end
+  _G.sendGMCP = _G.sendGMCP or function(_) end
+  _G.tempTimer = _G.tempTimer or function(_, _) return 0 end
+  _G.killTimer = _G.killTimer or function(_) return false end
+  _G.raiseEvent = _G.raiseEvent or function(_, ...) end
 
   resetDb()
 
@@ -161,7 +157,6 @@ function M.reset()
     blacklist = {},
     globalBlacklist = {},
     whitelistTags = {},
-    separator = "/",
   }
 
   if boop.perf then
@@ -170,7 +165,14 @@ function M.reset()
   end
 
   resetTableData(boop.state)
-  boop.state.init()
+  resetTableData(boop.afflictions)
+  resetTableData(boop.stats)
+  resetTableData(boop.ui)
+  resetTableData(boop.skills)
+  boop.handlers = {}
+  boop.bootstrapped = false
+  assert(boop.bootstrap(), "real boop bootstrap failed in test fixture")
+
   boop.state.lifecycle.promptSeen = true
   boop.state.lifecycle.ireSeen = true
   boop.state.lifecycle.ready = true
@@ -193,20 +195,6 @@ function M.reset()
     boop.state.targeting.roomObservation.nextApplicationId = 2
   end
 
-  resetTableData(boop.afflictions)
-  boop.afflictions.init()
-  resetTableData(boop.stats)
-  boop.stats.init()
-  resetTableData(boop.ui)
-  resetTableData(boop.skills)
-  boop.skills.desiredGroups = desiredGroups
-  boop.rage.init()
-  boop.skills.init()
-  if boop.registry and boop.registry.attachUiConfigRegistries then
-    boop.registry.attachUiConfigRegistries()
-  end
-
-  boop.handlers = {}
   resetDb()
 
   return boop

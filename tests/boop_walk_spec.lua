@@ -237,6 +237,10 @@ describe("boop walk integration", function()
     saved_save_config = boop.db.saveConfig
     saved_matches = _G.matches
 
+    resetCase({
+      available = true,
+      attached = true,
+    })
     boop.util.err = function(message)
       feedback.err[#feedback.err + 1] = tostring(message)
     end
@@ -252,11 +256,6 @@ describe("boop walk integration", function()
     boop.trace.log = function(message)
       trace_lines[#trace_lines + 1] = tostring(message)
     end
-
-    resetCase({
-      available = true,
-      attached = true,
-    })
     boop.config.enabled = true
     boop.config.targetingMode = "auto"
   end)

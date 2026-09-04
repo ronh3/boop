@@ -3066,8 +3066,9 @@ function boop.retryStandardDispatch(operation, reason)
       and boop.safety.shouldFlee() then
     return false
   end
-  local emitted = boop.executeAction(
+  local emitted = boop.wire.executeAction(
     operation.action,
+    targetId,
     operation.mode == "queued",
     {
       roomOwned = authority and true or false,
@@ -3076,6 +3077,9 @@ function boop.retryStandardDispatch(operation, reason)
       standardRetryBudget = tonumber(operation.retryBudget) or 0,
     }
   )
+  if emitted and boop.gag and boop.gag.noteStandardIntent then
+    boop.gag.noteStandardIntent(operation.action)
+  end
   if emitted and boop.trace and boop.trace.log then
     boop.trace.log("standard retry dispatched: " .. tostring(reason or "retry"))
   end
@@ -3250,13 +3254,17 @@ function boop.prequeueStandard(sourceAuthority, options)
     return false
   end
   local actions = gate.plan
-  local emitted = boop.executeAction(
+  local emitted = boop.wire.executeAction(
     actions.standard,
+    targetId,
     true,
     automaticDispatchOptions(authority, roomOwned)
   )
   if not emitted then
     return false
+  end
+  if boop.gag and boop.gag.noteStandardIntent then
+    boop.gag.noteStandardIntent(actions.standard)
   end
   if actions.standardIsOpener
       and boop.attacks
@@ -3315,12 +3323,16 @@ function boop.refreshPrequeuedStandard(reason, sourceAuthority, options)
     return false
   end
 
-  if not boop.executeAction(
+  if not boop.wire.executeAction(
       gate.plan.standard,
+      targetId,
       true,
       automaticDispatchOptions(authority, roomOwned)
     ) then
     return false
+  end
+  if boop.gag and boop.gag.noteStandardIntent then
+    boop.gag.noteStandardIntent(gate.plan.standard)
   end
   boop.trace.log("prequeue rebuilt: " .. tostring(reason or "state change"))
   return true

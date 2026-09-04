@@ -355,6 +355,35 @@ function boop.stats.markPersistenceDirty()
   return true
 end
 
+function boop.stats.persistencePayload()
+  local lifetime = ensureScope(boop.stats.lifetime, nowSeconds())
+  local activeSeconds = tonumber(lifetime.activeSeconds) or 0
+  if lifetime.activeSince then
+    local delta = nowSeconds() - lifetime.activeSince
+    if delta > 0 then
+      activeSeconds = activeSeconds + delta
+    end
+  end
+  return {
+    lifetime = {
+      gold = tonumber(lifetime.gold) or 0,
+      experience = tonumber(lifetime.experience) or 0,
+      rawExperience = tonumber(lifetime.rawExperience) or 0,
+      activeSeconds = activeSeconds,
+      kills = tonumber(lifetime.kills) or 0,
+      targets = tonumber(lifetime.targets) or 0,
+      retargets = tonumber(lifetime.retargets) or 0,
+      abandoned = tonumber(lifetime.abandoned) or 0,
+      flees = tonumber(lifetime.flees) or 0,
+      roomMoves = tonumber(lifetime.roomMoves) or 0,
+      totalTtk = tonumber(lifetime.totalTtk) or 0,
+      bestTtk = lifetime.bestTtk ~= nil and tonumber(lifetime.bestTtk) or nil,
+      worstTtk = lifetime.worstTtk ~= nil and tonumber(lifetime.worstTtk) or nil,
+    },
+    mobXp = boop.stats.mobXp or {},
+  }
+end
+
 function boop.stats.flushPersistence(reason, expectedToken)
   local state = persistenceState()
   if expectedToken then
@@ -378,7 +407,7 @@ function boop.stats.flushPersistence(reason, expectedToken)
   local mutationGeneration = state.mutationGeneration
   state.flushing = true
   local ok, saved = pcall(function()
-    return boop.db.saveStats()
+    return boop.db.saveStats(boop.stats.persistencePayload())
   end)
   state.flushing = false
   if ok and saved == true then
@@ -1086,6 +1115,16 @@ local function observeMobXp(area, name, amount, partySize)
   end
 end
 
+function boop.stats.applyPersistedData(data)
+  local payload = type(data) == "table" and data or {}
+  boop.stats.lifetime = type(payload.lifetime) == "table" and payload.lifetime or {
+    gold = 0,
+    experience = 0,
+  }
+  boop.stats.mobXp = type(payload.mobXp) == "table" and payload.mobXp or {}
+  return true
+end
+
 function boop.stats.init()
   persistenceState()
   local now = nowSeconds()
@@ -1540,14 +1579,10 @@ function boop.stats.show(scopeName)
   local rawXpPerKill = scope.kills > 0 and ((scope.rawExperience or 0) / scope.kills) or 0
 
   if canRenderDashboardRich() then
-    local printHeader = boop.ui.printHeader
-    local printSection = boop.ui.printSection
-    local printRow = boop.ui.printRow
-    local printFooter = boop.ui.printFooter
 
-    printHeader("boop stats > " .. label)
-    printSection("summary")
-    renderRichRows(printRow, {
+    boop.render.printHeader("boop stats > " .. label)
+    boop.render.printSection("summary")
+    renderRichRows({
       { index = 1, label = "Meta", value = formatScopeMeta(scope), color = "cyan" },
       { index = 2, label = "Totals", value = string.format("%d kills | %d targets | %d gold | %s%% xp | %d raw xp",
         scope.kills, scope.targets, scope.gold, formatNumber(scope.experience, 2), tonumber(scope.rawExperience) or 0), color = "cyan" },
@@ -1563,7 +1598,7 @@ function boop.stats.show(scopeName)
       { index = 5, label = "Friction", value = string.format("%d retargets | %d abandoned | %d room moves | %d flees",
         scope.retargets, scope.abandoned, scope.roomMoves, scope.flees), color = "yellow" },
     }, 10)
-    printFooter("Type: boop stats areas " .. label .. " | boop stats targets " .. label .. " | boop stats abilities " .. label)
+    boop.render.printFooter("Type: boop stats areas " .. label .. " | boop stats targets " .. label .. " | boop stats abilities " .. label)
     return
   end
 
@@ -1710,16 +1745,12 @@ function boop.stats.showRage(scopeName)
   local rage = ensureRageStats(scope)
   local avgCost = rage.uses > 0 and (rage.totalCost / rage.uses) or 0
   if canRenderDashboardRich() then
-    local printHeader = boop.ui.printHeader
-    local printSection = boop.ui.printSection
-    local printRow = boop.ui.printRow
-    local printFooter = boop.ui.printFooter
     local modeBits = topCounts(rage.byMode, 5)
     local abilityBits = topCounts(rage.byAbility, 5)
 
-    printHeader("boop stats > rage")
-    printSection(label)
-    renderRichRows(printRow, {
+    boop.render.printHeader("boop stats > rage")
+    boop.render.printSection(label)
+    renderRichRows({
       { index = 1, label = "Usage", value = string.format("%d decisions | %d uses | %d rage spent | avg cost %s",
         rage.decisions, rage.uses, rage.totalCost, formatStatValue(avgCost, 1)), color = "cyan" },
       { index = 2, label = "Outcome", value = string.format("%d holds | %d suppressed | %d shieldbreaks",
@@ -1729,7 +1760,7 @@ function boop.stats.showRage(scopeName)
       { index = 4, label = "Modes", value = #modeBits > 0 and table.concat(modeBits, " | ") or "(none)", color = "yellow" },
       { index = 5, label = "Abilities", value = #abilityBits > 0 and table.concat(abilityBits, " | ") or "(none)", color = "cyan" },
     }, 10)
-    printFooter("Type: boop stats rage " .. label)
+    boop.render.printFooter("Type: boop stats rage " .. label)
     return
   end
 
@@ -1937,14 +1968,10 @@ function boop.stats.showCrits(scopeName)
   local totals = aggregateCrits(scope)
   local rate = totals.uses > 0 and (totals.crits * 100 / totals.uses) or 0
   if canRenderDashboardRich() then
-    local printHeader = boop.ui.printHeader
-    local printSection = boop.ui.printSection
-    local printRow = boop.ui.printRow
-    local printFooter = boop.ui.printFooter
 
-    printHeader("boop stats > crits")
-    printSection(label)
-    renderRichRows(printRow, {
+    boop.render.printHeader("boop stats > crits")
+    boop.render.printSection(label)
+    renderRichRows({
       { index = 1, label = "Summary", value = string.format("%d crits across %d uses (%s%%)",
         totals.crits, totals.uses, formatStatValue(rate, 1)), color = "cyan" },
       { index = 2, label = "2x", value = tostring(tonumber(totals.tiers["2xCRIT"]) or 0), color = "yellow" },
@@ -1955,7 +1982,7 @@ function boop.stats.showCrits(scopeName)
       { index = 7, label = "64x", value = tostring(tonumber(totals.tiers["64xCRIT"]) or 0), color = "yellow" },
       { index = 8, label = "128x", value = tostring(tonumber(totals.tiers["128xCRIT"]) or 0), color = "yellow" },
     }, 10)
-    printFooter("Type: boop stats crits " .. label)
+    boop.render.printFooter("Type: boop stats crits " .. label)
     return
   end
 
@@ -1988,13 +2015,9 @@ function boop.stats.showRecords(scopeName)
   local slowest = records.slowestKill
 
   if canRenderDashboardRich() then
-    local printHeader = boop.ui.printHeader
-    local printSection = boop.ui.printSection
-    local printRow = boop.ui.printRow
-    local printFooter = boop.ui.printFooter
 
-    printHeader("boop stats > records")
-    printSection(label)
+    boop.render.printHeader("boop stats > records")
+    boop.render.printSection(label)
     local rows = {}
     if bestHit then
       local critText = boop.util.trim(bestHit.critTier or "")
@@ -2029,8 +2052,8 @@ function boop.stats.showRecords(scopeName)
     else
       rows[#rows + 1] = { index = 3, label = "Slowest kill", value = "(none)", color = "yellow" }
     end
-    renderRichRows(printRow, rows, 10)
-    printFooter("Type: boop stats records " .. label)
+    renderRichRows(rows, 10)
+    boop.render.printFooter("Type: boop stats records " .. label)
     return
   end
 
@@ -2136,15 +2159,11 @@ function boop.stats.showAreas(scopeName, limit, sortKey)
   local maxRows = tonumber(limit) or 5
   if maxRows < 1 then maxRows = 1 end
   if canRenderDashboardRich() then
-    local printHeader = boop.ui.printHeader
-    local printSection = boop.ui.printSection
-    local printRow = boop.ui.printRow
-    local printFooter = boop.ui.printFooter
 
-    printHeader("boop stats > areas")
-    printSection(string.format("%s | sorted by %s", label, sortMode))
+    boop.render.printHeader("boop stats > areas")
+    boop.render.printSection(string.format("%s | sorted by %s", label, sortMode))
     if #rows == 0 then
-      renderRichRows(printRow, {
+      renderRichRows({
         { index = 1, label = "Areas", value = "No activity yet", color = "yellow" },
       }, 10)
     else
@@ -2165,9 +2184,9 @@ function boop.stats.showAreas(scopeName, limit, sortKey)
           color = "cyan",
         }
       end
-      renderRichRows(printRow, richRows, 10)
+      renderRichRows(richRows, 10)
     end
-    printFooter("Type: boop stats areas " .. label .. " " .. tostring(maxRows) .. " " .. sortMode)
+    boop.render.printFooter("Type: boop stats areas " .. label .. " " .. tostring(maxRows) .. " " .. sortMode)
     return
   end
 
@@ -2249,15 +2268,11 @@ function boop.stats.showMobs(areaName, limit)
   local maxRows = tonumber(limit) or 10
   if maxRows < 1 then maxRows = 1 end
   if canRenderDashboardRich() then
-    local printHeader = boop.ui.printHeader
-    local printSection = boop.ui.printSection
-    local printRow = boop.ui.printRow
-    local printFooter = boop.ui.printFooter
 
-    printHeader("boop stats > mobs")
-    printSection(string.format("%s | party %d", area, partySize))
+    boop.render.printHeader("boop stats > mobs")
+    boop.render.printSection(string.format("%s | party %d", area, partySize))
     if #rows == 0 then
-      renderRichRows(printRow, {
+      renderRichRows({
         { index = 1, label = "Observed mobs", value = "No observed mob xp yet", color = "yellow" },
       }, 10)
     else
@@ -2276,9 +2291,9 @@ function boop.stats.showMobs(areaName, limit)
           color = "cyan",
         }
       end
-      renderRichRows(printRow, richRows, 10)
+      renderRichRows(richRows, 10)
     end
-    printFooter("Type: boop stats mobs \"" .. area .. "\" " .. tostring(maxRows))
+    boop.render.printFooter("Type: boop stats mobs \"" .. area .. "\" " .. tostring(maxRows))
     return
   end
 
@@ -2346,15 +2361,11 @@ function boop.stats.showTargets(scopeName, limit)
   local maxRows = tonumber(limit) or 10
   if maxRows < 1 then maxRows = 1 end
   if canRenderDashboardRich() then
-    local printHeader = boop.ui.printHeader
-    local printSection = boop.ui.printSection
-    local printRow = boop.ui.printRow
-    local printFooter = boop.ui.printFooter
 
-    printHeader("boop stats > targets")
-    printSection(string.format("%s | %s | party %d", label, area, partySize))
+    boop.render.printHeader("boop stats > targets")
+    boop.render.printSection(string.format("%s | %s | party %d", label, area, partySize))
     if #rows == 0 then
-      renderRichRows(printRow, {
+      renderRichRows({
         { index = 1, label = "Targets", value = "No recorded target kills yet", color = "yellow" },
       }, 10)
     else
@@ -2385,9 +2396,9 @@ function boop.stats.showTargets(scopeName, limit)
           color = "cyan",
         }
       end
-      renderRichRows(printRow, richRows, 10)
+      renderRichRows(richRows, 10)
     end
-    printFooter("Type: boop stats targets " .. label .. " " .. tostring(maxRows))
+    boop.render.printFooter("Type: boop stats targets " .. label .. " " .. tostring(maxRows))
     return
   end
 
@@ -2478,15 +2489,11 @@ function boop.stats.showAbilities(scopeName, limit)
   local maxRows = tonumber(limit) or 10
   if maxRows < 1 then maxRows = 1 end
   if canRenderDashboardRich() then
-    local printHeader = boop.ui.printHeader
-    local printSection = boop.ui.printSection
-    local printRow = boop.ui.printRow
-    local printFooter = boop.ui.printFooter
 
-    printHeader("boop stats > abilities")
-    printSection(label)
+    boop.render.printHeader("boop stats > abilities")
+    boop.render.printSection(label)
     if #rows == 0 then
-      renderRichRows(printRow, {
+      renderRichRows({
         { index = 1, label = "Abilities", value = "No recorded ability usage yet", color = "yellow" },
       }, 10)
     else
@@ -2508,9 +2515,9 @@ function boop.stats.showAbilities(scopeName, limit)
           color = "cyan",
         }
       end
-      renderRichRows(printRow, richRows, 10)
+      renderRichRows(richRows, 10)
     end
-    printFooter("Type: boop stats abilities " .. label .. " " .. tostring(maxRows))
+    boop.render.printFooter("Type: boop stats abilities " .. label .. " " .. tostring(maxRows))
     return
   end
 
@@ -2575,13 +2582,9 @@ function boop.stats.showCompare(leftName, rightName)
   local bits = compareSummaryBits(leftScope, rightScope)
 
   if canRenderDashboardRich() then
-    local printHeader = boop.ui.printHeader
-    local printSection = boop.ui.printSection
-    local printRow = boop.ui.printRow
-    local printFooter = boop.ui.printFooter
 
-    printHeader("boop stats > compare")
-    printSection(string.format("%s vs %s", leftLabel, rightLabel))
+    boop.render.printHeader("boop stats > compare")
+    boop.render.printSection(string.format("%s vs %s", leftLabel, rightLabel))
     local richRows = {
       { index = 1, label = leftLabel, value = formatScopeMeta(leftScope), color = "cyan" },
       { index = 2, label = rightLabel, value = formatScopeMeta(rightScope), color = "cyan" },
@@ -2594,8 +2597,8 @@ function boop.stats.showCompare(leftName, rightName)
         color = "yellow",
       }
     end
-    renderRichRows(printRow, richRows, 10)
-    printFooter("Type: boop stats compare " .. leftLabel .. " " .. rightLabel)
+    renderRichRows(richRows, 10)
+    boop.render.printFooter("Type: boop stats compare " .. leftLabel .. " " .. rightLabel)
     return
   end
 
@@ -2613,11 +2616,11 @@ end
 
 canRenderDashboardRich = function()
   return cecho
-    and boop.ui
-    and type(boop.ui.printHeader) == "function"
-    and type(boop.ui.printSection) == "function"
-    and type(boop.ui.printRow) == "function"
-    and type(boop.ui.printFooter) == "function"
+    and boop.render
+    and type(boop.render.printHeader) == "function"
+    and type(boop.render.printSection) == "function"
+    and type(boop.render.printRow) == "function"
+    and type(boop.render.printFooter) == "function"
 end
 
 local function statsCommandAction(cmd)
@@ -2627,8 +2630,8 @@ local function statsCommandAction(cmd)
 end
 
 statsLabelWidth = function(rows, minWidth, maxWidth)
-  if boop.ui and type(boop.ui.computeLabelWidth) == "function" then
-    return boop.ui.computeLabelWidth(rows, minWidth or 10, maxWidth or 140)
+  if boop.render and type(boop.render.computeLabelWidth) == "function" then
+    return boop.render.computeLabelWidth(rows, minWidth or 10, maxWidth or 140)
   end
   local width = tonumber(minWidth) or 10
   local hardMax = tonumber(maxWidth) or 140
@@ -2647,10 +2650,10 @@ statsLabelWidth = function(rows, minWidth, maxWidth)
   return width
 end
 
-renderRichRows = function(printRow, rows, minWidth, maxWidth)
+renderRichRows = function(rows, minWidth, maxWidth)
   local width = statsLabelWidth(rows, minWidth, maxWidth)
   for _, row in ipairs(rows or {}) do
-    printRow(row.index, row.label, row.value, row.color, row.onClick, row.hint, width)
+    boop.render.printRow(row.index, row.label, row.value, row.color, row.onClick, row.hint, width)
   end
 end
 
@@ -2672,14 +2675,10 @@ local function showDashboardRich(context)
   local compareBits = context.compareBits
   local hasTripCompare = context.hasTripCompare
 
-  local printHeader = boop.ui.printHeader
-  local printSection = boop.ui.printSection
-  local printRow = boop.ui.printRow
-  local printFooter = boop.ui.printFooter
 
-  printHeader("boop stats")
-  printSection("overview")
-  renderRichRows(printRow, {
+  boop.render.printHeader("boop stats")
+  boop.render.printSection("overview")
+  renderRichRows({
     { index = 1, label = "Focus", value = string.upper(focusLabel), color = "yellow" },
     { index = 2, label = "Hunt", value = string.format("%s | %s | party %d", tripState, shownArea, partySize), color = tripState == "running" and "green" or "yellow" },
     { index = 3, label = "Session", value = scopeHasActivity(session) and scopeSummaryValue(session) or "No activity yet", color = scopeHasActivity(session) and "cyan" or "yellow" },
@@ -2687,30 +2686,30 @@ local function showDashboardRich(context)
     { index = 5, label = "Lifetime", value = scopeSummaryValue(lifetime), color = "cyan" },
   }, 10)
 
-  printSection("leaders")
-  renderRichRows(printRow, {
+  boop.render.printSection("leaders")
+  renderRichRows({
     { index = 6, label = "Best " .. focusLabel .. " area", value = bestArea and string.format("%s | %s k/hr | %s xp/hr", bestArea.area, formatStatValue(bestArea.killsPerHour, 1), formatStatValue(bestArea.rawXpPerHour, 1)) or "No data yet", color = bestArea and "green" or "yellow" },
     { index = 7, label = "Top " .. focusLabel .. " target", value = bestTarget and string.format("%s | %d kills | %ss | %s xp", bestTarget.name, bestTarget.kills, formatNumber(bestTarget.avgTtk, 2), formatStatValue(bestTarget.avgRawXp, 1)) or "No data yet", color = bestTarget and "cyan" or "yellow" },
     { index = 8, label = "Top " .. focusLabel .. " ability", value = bestAbility and string.format("%s | %d kills | %s dmg | %s%% crit", bestAbility.ability, bestAbility.kills, formatStatValue(bestAbility.avgDamage, 1), formatStatValue(bestAbility.critRate, 1)) or "No data yet", color = bestAbility and "cyan" or "yellow" },
   }, 10)
 
-  printSection("trip compare")
+  boop.render.printSection("trip compare")
   if hasTripCompare then
-    renderRichRows(printRow, {
+    renderRichRows({
       { index = 9, label = "Kills", value = compareBits[1], color = "cyan" },
       { index = 10, label = "Raw xp", value = compareBits[3], color = "cyan" },
       { index = 11, label = "Avg ttk", value = compareBits[4], color = "cyan" },
       { index = 12, label = "Xp/hr", value = compareBits[7], color = "cyan" },
     }, 10)
   else
-    renderRichRows(printRow, {
+    renderRichRows({
       { index = 9, label = "Trips", value = "No completed trips yet", color = "yellow" },
     }, 10)
   end
 
-  printSection("next views")
+  boop.render.printSection("next views")
   if scopeHasActivity(trip) then
-    renderRichRows(printRow, {
+    renderRichRows({
       { index = 13, label = "Trip vs last trip", value = "OPEN", color = "cyan", onClick = statsCommandAction("compare trip lasttrip"), hint = "Compare current trip against the previous completed trip" },
       { index = 14, label = "Area rankings", value = "OPEN", color = "cyan", onClick = statsCommandAction("areas trip 5 xphr"), hint = "Show trip area rankings sorted by xp/hr" },
       { index = 15, label = "Target breakdown", value = "OPEN", color = "cyan", onClick = statsCommandAction("targets trip 5"), hint = "Show trip target efficiency" },
@@ -2718,7 +2717,7 @@ local function showDashboardRich(context)
       { index = 17, label = "Rage report", value = "OPEN", color = "cyan", onClick = statsCommandAction("rage trip"), hint = "Show trip rage usage summary" },
     }, 10)
   elseif focusLabel == "lifetime" then
-    renderRichRows(printRow, {
+    renderRichRows({
       { index = 13, label = "Lifetime summary", value = "OPEN", color = "cyan", onClick = statsCommandAction("lifetime"), hint = "Show full lifetime summary" },
       { index = 14, label = "Lifetime areas", value = "OPEN", color = "cyan", onClick = statsCommandAction("areas lifetime 5 xp"), hint = "Show top lifetime areas" },
       { index = 15, label = "Lifetime abilities", value = "OPEN", color = "cyan", onClick = statsCommandAction("abilities lifetime 5"), hint = "Show top lifetime abilities" },
@@ -2726,8 +2725,8 @@ local function showDashboardRich(context)
       { index = 17, label = "Start a trip", value = "RUN", color = "green", onClick = function() boop.stats.startTrip() end, hint = "Begin a new explicit trip timer" },
     }, 10)
   else
-    renderRichRows(printRow, {
-      { index = 13, label = "Enable boop", value = "RUN", color = "green", onClick = function() boop.ui.setEnabled(true) end, hint = "Enable hunting and start a session" },
+    renderRichRows({
+      { index = 13, label = "Enable boop", value = "RUN", color = "green", onClick = function() boop.render.setCommandLine("boop on") end, hint = "Enable hunting and start a session" },
       { index = 14, label = "Start a trip", value = "RUN", color = "green", onClick = function() boop.stats.startTrip() end, hint = "Begin a new explicit trip timer" },
       { index = 15, label = "Lifetime summary", value = "OPEN", color = "cyan", onClick = statsCommandAction("lifetime"), hint = "Show lifetime totals" },
       { index = 16, label = "Lifetime areas", value = "OPEN", color = "cyan", onClick = statsCommandAction("areas lifetime 5 xp"), hint = "Show lifetime area rankings" },
@@ -2735,7 +2734,7 @@ local function showDashboardRich(context)
     }, 10)
   end
 
-  printFooter("Type: boop stats areas | boop stats targets | boop stats abilities | boop stats compare")
+  boop.render.printFooter("Type: boop stats areas | boop stats targets | boop stats abilities | boop stats compare")
   return true
 end
 

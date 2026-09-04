@@ -782,7 +782,7 @@ describe("boop ui home", function()
       cmdline[#cmdline + 1] = "<clear>"
     end)
 
-    boop.ui.printFooter("Type: boop config home | boop config debug <number> | boop trace show | boop debug attacks")
+    boop.render.printFooter("Type: boop config home | boop config debug <number> | boop trace show | boop debug attacks")
 
     assert.are.equal(4, #callbacks)
 
@@ -814,7 +814,7 @@ describe("boop ui home", function()
       cmdline[#cmdline + 1] = "<clear>"
     end)
 
-    boop.ui.printFooter("Type: boop help home | boop help <number|topic>")
+    boop.render.printFooter("Type: boop help home | boop help <number|topic>")
 
     assert.are.equal(2, #callbacks)
 
@@ -1248,7 +1248,7 @@ describe("boop ui home", function()
   end)
 
   it("opens a scoped gag role picker instead of treating the scope as a role", function()
-    gag_picker_stub = stub(boop.gag, "showColorPicker")
+    gag_picker_stub = stub(boop.ui, "showGagColorPicker")
 
     boop.ui.gagCommand("color others who")
 

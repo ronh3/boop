@@ -1,8 +1,32 @@
-boop.ui = boop.ui or {}
-boop.config = boop.config or {}
 boop.registry = boop.registry or {}
 boop.registry.config = boop.registry.config or {}
 boop.registry.ui = boop.registry.ui or {}
+boop.registry.ui.screens = boop.registry.ui.screens or {}
+boop.registry.config.setters = boop.registry.config.setters or {}
+boop.registry.ui.screens.configActions = boop.registry.ui.screens.configActions or {
+  combat = {},
+  targeting = {},
+  loot = {},
+  debug = {},
+}
+
+function boop.registry.defineConfigSetter(key, handler)
+  if type(key) ~= "string" or key == "" or type(handler) ~= "function" then
+    return false
+  end
+  boop.registry.config.setters[key] = handler
+  return true
+end
+
+function boop.registry.defineConfigAction(section, index, handler)
+  if type(section) ~= "string" or type(index) ~= "number" or type(handler) ~= "function" then
+    return false
+  end
+  local actions = boop.registry.ui.screens.configActions
+  actions[section] = actions[section] or {}
+  actions[section][index] = handler
+  return true
+end
 
 boop.registry.config.schema = boop.registry.config.schema or {
   order = {
@@ -324,327 +348,11 @@ boop.registry.ui.presets = boop.registry.ui.presets or {
   },
 }
 
-local function configBoolSetter(opts)
-  return function(raw, ctx)
-    local parsed = ctx.parseBool(raw)
-    if parsed == nil then
-      boop.util.warn(opts.warn or (tostring(opts.key or "value") .. " expects on/off"))
-      return
-    end
-
-    if opts.apply then
-      opts.apply(parsed, ctx)
-      return
-    end
-
-    local key = opts.saveKey or opts.key
-    ctx.save(key, parsed)
-    boop.util.ok((opts.okLabel or key) .. ": " .. (parsed and "on" or "off"))
-
-    if opts.reopen then
-      ctx.reopen(opts.reopen.screen, opts.reopen.prefix)
-    end
-  end
-end
-
-local function configNumberSetter(opts)
-  return function(raw, ctx)
-    local value = tonumber(boop.util.trim(raw or ""))
-    if not value then
-      boop.util.warn(opts.warn)
-      return
-    end
-    if opts.integer and value ~= math.floor(value) then
-      boop.util.warn(opts.warn)
-      return
-    end
-    if opts.min ~= nil and value < opts.min then
-      boop.util.warn(opts.warn)
-      return
-    end
-    if opts.strictMin ~= nil and value <= opts.strictMin then
-      boop.util.warn(opts.warn)
-      return
-    end
-    if opts.max ~= nil and value > opts.max then
-      boop.util.warn(opts.warn)
-      return
-    end
-
-    ctx.save(opts.saveKey or opts.key, value)
-    if opts.ok then
-      boop.util.ok(opts.ok(value))
-    end
-    if opts.reopen then
-      ctx.reopen(opts.reopen.screen, opts.reopen.prefix)
-    end
-  end
-end
-
-local function gagColorSetter(scope, role)
-  return function(raw)
-    boop.gag.setColor(scope, role, raw)
-  end
-end
-
-local shieldModeConfigSetter = configBoolSetter({
-  key = "breakShields",
-  warn = "breakShields expects on/off",
-  apply = function(parsed)
-    boop.ui.shieldModeCommand(parsed and "break" or "bypass")
-  end,
-})
-
-local function ragePoolConfigSetter(raw)
-  boop.ui.ragePoolCommand(raw)
-end
-
-boop.registry.config.setters = boop.registry.config.setters or {
-  enabled = configBoolSetter({
-    key = "enabled",
-    warn = "enabled expects on/off",
-    apply = function(parsed)
-      boop.ui.setEnabled(parsed)
-    end,
-  }),
-  targetingMode = function(raw)
-    boop.ui.setTargetingMode(raw)
-  end,
-  useQueueing = configBoolSetter({
-    key = "useQueueing",
-    warn = "useQueueing expects on/off",
-    okLabel = "use queueing",
-  }),
-  prequeueEnabled = configBoolSetter({
-    key = "prequeueEnabled",
-    warn = "prequeue expects on/off",
-    apply = function(parsed)
-      boop.ui.setPrequeueEnabled(parsed)
-    end,
-  }),
-  attackLeadSeconds = function(raw)
-    boop.ui.setAttackLeadSeconds(raw)
-  end,
-  autoGrabGold = configBoolSetter({
-    key = "autoGrabGold",
-    warn = "autogold expects on/off",
-    apply = function(parsed)
-      boop.ui.setAutoGrabGold(parsed)
-    end,
-  }),
-  goldPack = function(raw)
-    boop.ui.setGoldPack(raw)
-  end,
-  whitelistPriorityOrder = configBoolSetter({
-    key = "whitelistPriorityOrder",
-    warn = "whitelistPriorityOrder expects on/off",
-  }),
-  retargetOnPriority = configBoolSetter({
-    key = "retargetOnPriority",
-    warn = "retargetOnPriority expects on/off",
-  }),
-  targetOrder = function(raw, ctx)
-    local order = boop.util.safeLower(boop.util.trim(raw or ""))
-    if order ~= "order" and order ~= "numeric" and order ~= "reverse" then
-      boop.util.warn("targetOrder expects order|numeric|reverse")
-      return
-    end
-    ctx.save("targetOrder", order)
-    boop.util.ok("targetOrder: " .. order)
-  end,
-  attackMode = function(raw)
-    boop.ui.setRageMode(raw)
-  end,
-  ragePoolThreshold = ragePoolConfigSetter,
-  pullRageReserve = configBoolSetter({
-    key = "pullRageReserve",
-    warn = "pullRageReserve expects on/off",
-    okLabel = "pull rage reserve",
-    reopen = { screen = "combat" },
-  }),
-  breakShields = shieldModeConfigSetter,
-  fleeEnabled = configBoolSetter({
-    key = "fleeEnabled",
-    warn = "flee expects on/off",
-    apply = function(parsed)
-      boop.ui.fleeCommand(parsed and "on" or "off")
-    end,
-  }),
-  fleeKeepEnabled = configBoolSetter({
-    key = "fleeKeepEnabled",
-    warn = "fleeKeepEnabled expects on/off",
-    okLabel = "keep boop enabled after flee",
-    reopen = { screen = "combat" },
-  }),
-  fleeAt = function(raw)
-    boop.ui.fleeCommand(raw)
-  end,
-  tempoRageWindowSeconds = configNumberSetter({
-    key = "tempoRageWindowSeconds",
-    warn = "tempoRageWindowSeconds expects number > 0",
-    strictMin = 0,
-    ok = function(value)
-      return string.format("tempo rage window: %.2fs", value)
-    end,
-    reopen = { screen = "combat", prefix = "boop set tempoRageWindowSeconds " },
-  }),
-  tempoSqueezeEtaSeconds = configNumberSetter({
-    key = "tempoSqueezeEtaSeconds",
-    warn = "tempoSqueezeEtaSeconds expects number >= 0",
-    min = 0,
-    ok = function(value)
-      return string.format("tempo squeeze eta: %.2fs", value)
-    end,
-    reopen = { screen = "combat", prefix = "boop set tempoSqueezeEtaSeconds " },
-  }),
-  focusVerb = function(raw)
-    boop.ui.focusVerbCommand(raw)
-  end,
-  traceEnabled = configBoolSetter({
-    key = "traceEnabled",
-    warn = "trace expects on/off",
-    apply = function(parsed)
-      boop.ui.setTraceEnabled(parsed)
-    end,
-  }),
-  gagOwnAttacks = configBoolSetter({
-    key = "gagOwnAttacks",
-    warn = "gagOwnAttacks expects on/off",
-    apply = function(parsed)
-      boop.gag.setOwn(parsed)
-    end,
-  }),
-  gagOthersAttacks = configBoolSetter({
-    key = "gagOthersAttacks",
-    warn = "gagOthersAttacks expects on/off",
-    apply = function(parsed)
-      boop.gag.setOthers(parsed)
-    end,
-  }),
-  gagMobAttacks = configBoolSetter({
-    key = "gagMobAttacks",
-    warn = "gagMobAttacks expects on/off",
-    apply = function(parsed)
-      boop.gag.setMobs(parsed)
-    end,
-  }),
-  gagColorWho = gagColorSetter("own", "who"),
-  gagColorAbility = gagColorSetter("own", "ability"),
-  gagColorTarget = gagColorSetter("own", "target"),
-  gagColorMeta = gagColorSetter("own", "meta"),
-  gagColorSeparator = gagColorSetter("own", "separator"),
-  gagColorBackground = gagColorSetter("own", "background"),
-  gagOtherColorWho = gagColorSetter("others", "who"),
-  gagOtherColorAbility = gagColorSetter("others", "ability"),
-  gagOtherColorTarget = gagColorSetter("others", "target"),
-  gagOtherColorMeta = gagColorSetter("others", "meta"),
-  gagOtherColorSeparator = gagColorSetter("others", "separator"),
-  gagOtherColorBackground = gagColorSetter("others", "background"),
-  gagMobColorWho = gagColorSetter("mobs", "who"),
-  gagMobColorAbility = gagColorSetter("mobs", "ability"),
-  gagMobColorTarget = gagColorSetter("mobs", "target"),
-  gagMobColorMeta = gagColorSetter("mobs", "meta"),
-  gagMobColorSeparator = gagColorSetter("mobs", "separator"),
-  gagMobColorBackground = gagColorSetter("mobs", "background"),
-  diagTimeoutSeconds = configNumberSetter({
-    key = "diagTimeoutSeconds",
-    warn = "diagTimeoutSeconds expects number >= 0",
-    min = 0,
-    ok = function(value)
-      return string.format("diag timeout: %.2fs", value)
-    end,
-    reopen = { screen = "combat", prefix = "boop set diagtimeout " },
-  }),
-  partySize = configNumberSetter({
-    key = "partySize",
-    warn = "partySize expects integer >= 1",
-    min = 1,
-    integer = true,
-    ok = function(value)
-      return "party size: " .. tostring(value)
-    end,
-  }),
-  partyRoster = function(raw)
-    boop.ui.rosterCommand(raw or "")
-  end,
-  targetCall = function(raw, ctx)
-    local parsed = ctx.parseBool(raw)
-    if parsed == nil then
-      boop.util.warn("targetCall expects on/off")
-      return
-    end
-    if parsed and boop.ui and boop.ui.assistLeader and boop.ui.assistLeader() == "" then
-      boop.util.warn("target call mode needs a leader; use: boop assist <name>")
-      return
-    end
-    ctx.save("targetCall", parsed)
-    if parsed and boop.config.autoTargetCall then
-      ctx.save("autoTargetCall", false)
-    end
-    if not parsed and boop.targets and boop.targets.clearTargetCall then
-      boop.targets.clearTargetCall("target call disabled")
-    end
-    boop.util.ok("leader target call gate: " .. (parsed and "on" or "off"))
-  end,
-  autoTargetCall = function(raw, ctx)
-    local parsed = ctx.parseBool(raw)
-    if parsed == nil then
-      boop.util.warn("autoTargetCall expects on/off")
-      return
-    end
-    local hadTargetCall = not not boop.config.targetCall
-    ctx.save("autoTargetCall", parsed)
-    if parsed and hadTargetCall then
-      ctx.save("targetCall", false)
-      if boop.targets and boop.targets.clearTargetCall then
-        boop.targets.clearTargetCall("auto target call enabled")
-      end
-    end
-    boop.util.ok("auto target calls: " .. (parsed and "on" or "off"))
-  end,
-  assistEnabled = function(raw, ctx)
-    local parsed = ctx.parseBool(raw)
-    if parsed == nil then
-      boop.util.warn("assist expects on/off")
-      return
-    end
-    if parsed and boop.ui and boop.ui.assistLeader and boop.ui.assistLeader() == "" then
-      boop.util.warn("assist needs a leader; use: boop assist <name>")
-      return
-    end
-    ctx.save("assistEnabled", parsed)
-    boop.util.ok("assist: " .. (parsed and "on" or "off"))
-  end,
-  assistLeader = function(raw, ctx)
-    local leader = boop.util.trim(raw or "")
-    ctx.save("assistLeader", leader)
-    if leader == "" then
-      ctx.save("assistEnabled", false)
-      boop.util.ok("assist leader cleared")
-      return
-    end
-    ctx.save("assistEnabled", true)
-    boop.util.ok("assist leader: " .. leader)
-  end,
-  uiTheme = function(raw)
-    boop.ui.themeCommand(raw)
-  end,
-  gameSeparator = function(raw)
-    boop.ui.gameSeparatorCommand(raw)
-  end,
-  rageAffCalloutsEnabled = configBoolSetter({
-    key = "rageAffCalloutsEnabled",
-    warn = "affcalls expects on/off",
-    okLabel = "rage affliction callouts",
-  }),
-}
-
--- Refresh changed command behavior when a package update reuses the live registry.
-boop.registry.config.setters.breakShields = shieldModeConfigSetter
-boop.registry.config.setters.ragePoolThreshold = ragePoolConfigSetter
-
 local function helpSeedCommand(command)
-  local seed = boop.util.trim(tostring(command or ""))
+  local function trim(value)
+    return tostring(value or ""):match("^%s*(.-)%s*$")
+  end
+  local seed = trim(tostring(command or ""))
   seed = seed:gsub("%s*%b[]", "")
   local requiredAt = seed:find("<", 1, true)
   local needsValue = requiredAt ~= nil
@@ -654,7 +362,7 @@ local function helpSeedCommand(command)
   seed = seed:gsub("%S+", function(token)
     return token:match("^([^|]+)|") or token
   end)
-  seed = boop.util.trim(seed:gsub("%s+", " "))
+  seed = trim(seed:gsub("%s+", " "))
   if needsValue and seed ~= "" then
     seed = seed .. " "
   end
@@ -1081,200 +789,6 @@ boop.registry.ui.screens.configHomeRoutes = boop.registry.ui.screens.configHomeR
     mode = "mode",
 }
 
-local function toggleShieldModeAction()
-  boop.ui.shieldModeCommand("toggle")
-  return "refresh"
-end
-
-boop.registry.ui.screens.configActions = boop.registry.ui.screens.configActions or {
-    combat = {
-      [1] = function()
-        boop.ui.setEnabled(not boop.config.enabled, true)
-        return "refresh"
-      end,
-      [2] = function(ctx)
-        ctx.rememberReturn("combat")
-        boop.ui.showRageModeMenu()
-        return "handled"
-      end,
-      [3] = function()
-        boop.ui.diag()
-        return "refresh"
-      end,
-      [4] = function()
-        boop.ui.toggleConfigBool("useQueueing", true)
-        return "refresh"
-      end,
-      [5] = function()
-        boop.ui.setPrequeueEnabled(not boop.config.prequeueEnabled)
-        return "refresh"
-      end,
-      [6] = function(ctx)
-        ctx.seed("combat", "boop lead ")
-        return "seed"
-      end,
-      [7] = function(ctx)
-        ctx.seed("combat", "boop set diagtimeout ")
-        return "seed"
-      end,
-      [8] = function(ctx)
-        ctx.seed("combat", "boop set tempoRageWindowSeconds ")
-        return "seed"
-      end,
-      [9] = function(ctx)
-        ctx.seed("combat", "boop set tempoSqueezeEtaSeconds ")
-        return "seed"
-      end,
-      [10] = function(ctx)
-        ctx.seed("combat", "boop assist ")
-        return "seed"
-      end,
-      [11] = function()
-        boop.ui.toggleConfigBool("rageAffCalloutsEnabled", true)
-        return "refresh"
-      end,
-      [12] = function()
-        boop.ui.toggleConfigBool("pullRageReserve", true)
-        return "refresh"
-      end,
-      [13] = toggleShieldModeAction,
-      [14] = function()
-        boop.ui.fleeCommand((boop.config and boop.config.fleeEnabled) and "off" or "on")
-        return "refresh"
-      end,
-      [15] = function(ctx)
-        ctx.seed("combat", "boop flee ")
-        return "seed"
-      end,
-      [16] = function(ctx)
-        ctx.seed("combat", "boop focus ")
-        return "seed"
-      end,
-      [17] = function(ctx)
-        ctx.seed("combat", "boop separator ")
-        return "seed"
-      end,
-      [18] = function(ctx)
-        ctx.seed("combat", "boop ragepool ")
-        return "seed"
-      end,
-      [19] = function()
-        boop.ui.fleeCommand("keepenabled toggle")
-        return "refresh"
-      end,
-    },
-    targeting = {
-      [1] = function()
-        boop.ui.cycleTargetingMode(1, true)
-        return "refresh"
-      end,
-      [2] = function()
-        boop.ui.toggleConfigBool("whitelistPriorityOrder", true)
-        return "refresh"
-      end,
-      [3] = function()
-        boop.ui.cycleTargetOrder(1, true)
-        return "refresh"
-      end,
-      [4] = function()
-        boop.ui.toggleConfigBool("retargetOnPriority", true)
-        return "refresh"
-      end,
-      [5] = function()
-        boop.ui.targetCallCommand(boop.config.targetCall and "off" or "on")
-        return "refresh"
-      end,
-      [6] = function()
-        boop.targets.displayWhitelist()
-        return "handled"
-      end,
-      [7] = function()
-        boop.targets.displayWhitelistBrowse()
-        return "handled"
-      end,
-      [8] = function()
-        boop.targets.displayBlacklist()
-        return "handled"
-      end,
-    },
-    loot = {
-      [1] = function()
-        boop.ui.toggleAutoGrabGold()
-        return "refresh"
-      end,
-      [2] = function(ctx)
-        ctx.seed("loot", "boop pack ")
-        return "seed"
-      end,
-      [3] = function()
-        boop.ui.setGoldPack("")
-        return "refresh"
-      end,
-      [4] = function()
-        boop.ui.testGoldPack()
-        return "refresh"
-      end,
-    },
-    debug = {
-      [1] = function()
-        boop.ui.setTraceEnabled(not boop.config.traceEnabled)
-        return "refresh"
-      end,
-      [2] = function()
-        boop.ui.debug()
-        return "handled"
-      end,
-      [3] = function()
-        if boop.trace and boop.trace.show then
-          boop.trace.show()
-        else
-          boop.util.echo("trace unavailable")
-        end
-        return "handled"
-      end,
-      [4] = function()
-        if boop.trace and boop.trace.clear then
-          boop.trace.clear()
-        else
-          boop.util.echo("trace unavailable")
-        end
-        return "refresh"
-      end,
-      [5] = function()
-        boop.gag.setOwn(not boop.config.gagOwnAttacks)
-        return "refresh"
-      end,
-      [6] = function()
-        boop.gag.setOthers(not boop.config.gagOthersAttacks)
-        return "refresh"
-      end,
-      [7] = function()
-        boop.gag.setMobs(not boop.config.gagMobAttacks)
-        return "refresh"
-      end,
-      [8] = function(ctx)
-        ctx.rememberReturn("debug")
-        boop.gag.showColors("own")
-        return "handled"
-      end,
-      [9] = function(ctx)
-        ctx.rememberReturn("debug")
-        boop.gag.showColors("others")
-        return "handled"
-      end,
-      [10] = function(ctx)
-        ctx.rememberReturn("debug")
-        boop.gag.showColors("mobs")
-        return "handled"
-      end,
-    },
-}
-
-boop.registry.ui.screens.configActions.combat[13] = toggleShieldModeAction
-boop.registry.ui.screens.configActions.combat[18] = function(ctx)
-  ctx.seed("combat", "boop ragepool ")
-  return "seed"
-end
 
 local function attachRegistryFallback(target, public)
   if type(target) ~= "table" or type(public) ~= "table" then
@@ -1314,42 +828,42 @@ local function attachRegistryFallback(target, public)
   setmetatable(target, meta)
 end
 
-boop.registry.attachUiConfigRegistries = function()
+boop.registry.attachUiConfigRegistries = function(configTarget, uiTarget)
   boop.registry.config = boop.registry.config or {}
   boop.registry.ui = boop.registry.ui or {}
   boop.registry.ui.screens = boop.registry.ui.screens or {}
-  boop.config = boop.config or {}
-  boop.ui = boop.ui or {}
+  if type(configTarget) ~= "table" or type(uiTarget) ~= "table" then
+    return false
+  end
 
-  boop.config.schema = boop.registry.config.schema
-  boop.config.setters = boop.registry.config.setters
-  boop.ui.modes = boop.registry.ui.modes
-  boop.ui.presets = boop.registry.ui.presets
-  boop.ui.helpTopics = boop.registry.ui.helpTopics
-  local publicScreens = rawget(boop.ui, "screens")
+  configTarget.schema = boop.registry.config.schema
+  configTarget.setters = boop.registry.config.setters
+  uiTarget.modes = boop.registry.ui.modes
+  uiTarget.presets = boop.registry.ui.presets
+  uiTarget.helpTopics = boop.registry.ui.helpTopics
+  local publicScreens = rawget(uiTarget, "screens")
   if type(publicScreens) ~= "table" or publicScreens == boop.registry.ui.screens then
     publicScreens = {}
-    boop.ui.screens = publicScreens
+    uiTarget.screens = publicScreens
   end
-  boop.ui.screens.configSections = boop.registry.ui.screens.configSections
-  boop.ui.screens.configHomeRoutes = boop.registry.ui.screens.configHomeRoutes
-  boop.ui.screens.configActions = boop.registry.ui.screens.configActions
+  uiTarget.screens.configSections = boop.registry.ui.screens.configSections
+  uiTarget.screens.configHomeRoutes = boop.registry.ui.screens.configHomeRoutes
+  uiTarget.screens.configActions = boop.registry.ui.screens.configActions
 
-  attachRegistryFallback(boop.config, {
+  attachRegistryFallback(configTarget, {
     schema = boop.registry.config.schema,
     setters = boop.registry.config.setters,
   })
-  attachRegistryFallback(boop.ui, {
+  attachRegistryFallback(uiTarget, {
     modes = boop.registry.ui.modes,
     presets = boop.registry.ui.presets,
     helpTopics = boop.registry.ui.helpTopics,
     screens = boop.registry.ui.screens,
   })
-  attachRegistryFallback(boop.ui.screens, {
+  attachRegistryFallback(uiTarget.screens, {
     configSections = boop.registry.ui.screens.configSections,
     configHomeRoutes = boop.registry.ui.screens.configHomeRoutes,
     configActions = boop.registry.ui.screens.configActions,
   })
+  return true
 end
-
-boop.registry.attachUiConfigRegistries()

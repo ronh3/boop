@@ -1372,8 +1372,9 @@ describe("boop event-driven state transitions", function()
         true,
         automaticOptions(authority)
       ))
-      assert.is_false(boop.executeRageAction(
+      assert.is_false(boop.wire.executeRageAction(
         plan.rage,
+        "44026",
         automaticOptions(authority)
       ))
       assert.is_false(boop.combat.execute(plan, context, authority))
@@ -1570,8 +1571,9 @@ describe("boop event-driven state transitions", function()
         "sysDataSendRequest",
         "queue addclearfull freestand BOOP_ATTACK"
       )
-      assert.is_false(boop.executeRageAction(
+      assert.is_false(boop.wire.executeRageAction(
         "harry 44901",
+        "44901",
         automaticOptions(authority)
       ))
       assert.are.equal(0, countSent("harry 44901"))
@@ -1580,8 +1582,9 @@ describe("boop event-driven state transitions", function()
       boop.onPrompt()
       assert.is_false(boop.runtime.standardPending())
       assert.are.equal(1, countSent("harry 44901"))
-      assert.is_true(boop.executeRageAction(
+      assert.is_true(boop.wire.executeRageAction(
         "harry 44901",
+        "44901",
         automaticOptions(authority)
       ))
       assert.are.equal(2, countSent("harry 44901"))
@@ -2428,7 +2431,7 @@ describe("boop event-driven state transitions", function()
       "sysDataSendRequest",
       "queue addclearfull freestand BOOP_ATTACK"
     )
-    assert.is_false(boop.executeRageAction("harry 42"))
+    assert.is_false(boop.wire.executeRageAction("harry 42", "42"))
     assert.are.equal(
       "setalias BOOP_ATTACK warp 42",
       sent_commands[#sent_commands - 1].command

@@ -1,6 +1,6 @@
 boop = boop or {}
 
-boop.version = "0.1.494.1"
+boop.version = "0.1.495.1"
 
 boop.defaults = {
   enabled = false,
@@ -66,8 +66,8 @@ end
 
 function boop.resetShieldMode(reason)
   boop.config.breakShields = true
-  if boop.state and boop.state.queue then
-    boop.state.queue.aliasDirty = true
+  if boop.runtime and boop.runtime.markStandardAliasDirty then
+    boop.runtime.markStandardAliasDirty()
   end
   if reason and boop.trace and boop.trace.log then
     boop.trace.log("shield mode reset: break | reason=" .. tostring(reason))
@@ -80,13 +80,18 @@ boop.lists.whitelist = boop.lists.whitelist or {}
 boop.lists.blacklist = boop.lists.blacklist or {}
 boop.lists.globalBlacklist = boop.lists.globalBlacklist or {}
 boop.lists.whitelistTags = boop.lists.whitelistTags or {}
-boop.lists.separator = boop.lists.separator or "/"
 boop.handlers = boop.handlers or {}
 boop.gmcp = boop.gmcp or {}
 boop.triggers = boop.triggers or {}
 
 local BOOP_TRIGGER_FOLDER = "boop"
 local BOOP_LIFECYCLE_TRIGGER_FOLDER = "boop lifecycle"
+local ireSupportReconciler = false
+
+function boop.triggers.setIreSupportReconciler(handler)
+  ireSupportReconciler = type(handler) == "function" and handler or false
+  return ireSupportReconciler ~= false
+end
 
 function boop.triggers.setEnabled(enabled)
   local automationFn = enabled and enableTrigger or disableTrigger
@@ -99,8 +104,8 @@ function boop.triggers.setEnabled(enabled)
   end
 
   local reconcileOk = true
-  if enabled and type(boop.reconcileIreSupport) == "function" then
-    reconcileOk = pcall(boop.reconcileIreSupport, "enable")
+  if enabled and type(ireSupportReconciler) == "function" then
+    reconcileOk = pcall(ireSupportReconciler, "enable")
   end
   local automationOk = false
   if type(automationFn) == "function" then
@@ -148,63 +153,4 @@ function boop.requestCoreSupports(opts)
   end
 
   return true
-end
-
-boop.bootstrap = boop.bootstrap or function()
-  if boop.bootstrapped then return end
-  boop.bootstrapped = true
-
-  boop.requestCoreSupports({ force = true })
-
-  if boop.db and boop.db.init then
-    boop.db.init()
-  end
-
-  if boop.state and boop.state.init then
-    boop.state.init()
-  end
-
-  if boop.afflictions and boop.afflictions.init then
-    boop.afflictions.init()
-  end
-
-  if boop.rage and boop.rage.init then
-    boop.rage.init()
-  end
-
-  if boop.ih and boop.ih.init then
-    boop.ih.init()
-  end
-
-  if boop.triggers and boop.triggers.syncEnabled then
-    boop.triggers.syncEnabled()
-  end
-
-  if boop.skills and boop.skills.init then
-    boop.skills.init()
-    boop.skills.desiredGroups = boop.skills.desiredGroups or {
-      "Artificing",
-      "Elementalism",
-      "Occultism",
-      "Domination",
-      "Malignity",
-      "Attainment",
-    }
-  end
-
-  if boop.stats and boop.stats.init then
-    boop.stats.init()
-  end
-
-  if boop.events and boop.events.register then
-    boop.events.register()
-  end
-
-  if boop.skills and boop.skills.requestAll then
-    boop.skills.requestAll()
-  end
-
-  if boop.ui and boop.ui.status then
-    boop.ui.status("ready")
-  end
 end

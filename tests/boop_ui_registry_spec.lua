@@ -1,8 +1,23 @@
 local helper = dofile(os.getenv("TESTS_DIRECTORY") .. "/support/boop_test_helper.lua")
+local sourceRoot = os.getenv("TESTS_DIRECTORY") .. "/../src/scripts/boop/"
 
 describe("boop ui registries", function()
+  local reloadStubs
+
+  local function addReloadStub(value)
+    reloadStubs[#reloadStubs + 1] = value
+    return value
+  end
+
   before_each(function()
     helper.reset()
+    reloadStubs = {}
+  end)
+
+  after_each(function()
+    for index = #reloadStubs, 1, -1 do
+      reloadStubs[index]:revert()
+    end
   end)
 
   it("exposes shared config, screen, mode, preset, and help registries", function()
@@ -47,12 +62,13 @@ describe("boop ui registries", function()
     assert.are.equal(35, boop.config.ragePoolThreshold)
   end)
 
-  it("refreshes stale config registries on package reload", function()
+  it("attaches current registry data and handlers to stale public tables", function()
     boop.config.schema = { aliases = {} }
     boop.config.setters = {}
     boop.ui.screens.configActions = { combat = {} }
 
-    boop.registry.attachUiConfigRegistries()
+    boop.ui.registerRegistryHandlers()
+    boop.registry.attachUiConfigRegistries(boop.config, boop.ui)
 
     assert.are.equal("breakShields", boop.config.schema.aliases.breakshields)
     assert.are.equal(
@@ -65,21 +81,54 @@ describe("boop ui registries", function()
     assert.is_function(boop.ui.screens.configActions.combat[18])
   end)
 
-  it("replaces retained shield-mode handlers on package reload", function()
+  it("refreshes generation-sensitive composition through the production reload path", function()
     local stale = function() end
+    local staleHelp = { { key = "stale" } }
     boop.registry.config.setters.breakShields = stale
     boop.registry.ui.screens.configActions.combat[13] = stale
-    boop.registry.ui.helpTopics = { { key = "stale" } }
+    boop.registry.ui.helpTopics = staleHelp
+    boop.ui.helpTopics = staleHelp
+    boop.bootstrapped = true
 
-    dofile(
-      os.getenv("TESTS_DIRECTORY")
-        .. "/../src/scripts/boop/boop_ui_registry.lua"
-    )
+    dofile(sourceRoot .. "boop_init.lua")
+    dofile(sourceRoot .. "boop_ui_registry.lua")
+    dofile(sourceRoot .. "boop_ui.lua")
 
+    local reconcile = addReloadStub(stub(
+      boop,
+      "reconcileIreSupport",
+      function() return true, true end
+    ))
+    local flush = addReloadStub(stub(
+      boop.stats,
+      "flushPersistence",
+      function() return true end
+    ))
+    local supports = addReloadStub(stub(boop, "requestCoreSupports"))
+    local dbInit = addReloadStub(stub(boop.db, "init"))
+    local statsInit = addReloadStub(stub(boop.stats, "init"))
+    local eventRegister = addReloadStub(stub(boop.events, "register"))
+    local ready = addReloadStub(stub(boop.ui, "status"))
+
+    assert.are.equal(staleHelp, boop.ui.helpTopics)
+    dofile(sourceRoot .. "boop_bootstrap.lua")
+
+    assert.stub(flush).was_called_with("package reload")
+    assert.stub(supports).was_not_called()
+    assert.stub(dbInit).was_not_called()
+    assert.stub(statsInit).was_not_called()
+    assert.stub(eventRegister).was_not_called()
+    assert.stub(ready).was_not_called()
     assert.are_not.equal(stale, boop.config.setters.breakShields)
     assert.are_not.equal(
       stale,
       boop.ui.screens.configActions.combat[13]
+    )
+    assert.are.equal(boop.registry.config.setters, boop.config.setters)
+    assert.are.equal(boop.registry.ui.helpTopics, boop.ui.helpTopics)
+    assert.are.equal(
+      boop.registry.ui.screens.configActions,
+      boop.ui.screens.configActions
     )
     local foundCombat = false
     for _, topic in ipairs(boop.ui.helpTopics) do
@@ -89,6 +138,9 @@ describe("boop ui registries", function()
       end
     end
     assert.is_true(foundCombat)
+
+    boop.triggers.setEnabled(true)
+    assert.stub(reconcile).was_called_with("enable")
   end)
 
   it("documents bounded replay timeout recovery in gold help", function()

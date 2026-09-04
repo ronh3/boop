@@ -47,7 +47,7 @@ describe("boop assist mode", function()
     boop.config.assistEnabled = true
     boop.config.assistLeader = "Leader"
 
-    boop.executeRageAction("harry 42")
+    boop.wire.executeRageAction("harry 42", "42")
 
     assert.stub(send_stub).was_called_with("assist Leader", false)
     assert.stub(send_stub).was_called_with("harry 42", false)

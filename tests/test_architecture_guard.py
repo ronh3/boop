@@ -36,7 +36,7 @@ EXPECTED_OUTBOUND = Counter({
     ("send", "src/scripts/boop/boop_safety.lua"): 1,
     ("send", "src/scripts/boop/boop_targets.lua"): 5,
     ("send", "src/scripts/boop/boop_ui.lua"): 4,
-    ("send", "src/scripts/boop/boop_util.lua"): 1,
+    ("send", "src/scripts/boop/boop_wire.lua"): 1,
     ("sendGMCP", "src/scripts/boop/boop_events.lua"): 1,
     ("sendGMCP", "src/scripts/boop/boop_init.lua"): 4,
     ("sendGMCP", "src/scripts/boop/boop_skills.lua"): 3,
@@ -321,7 +321,7 @@ class ProductionGuardTests(unittest.TestCase):
         self.assertEqual(16, sum(site.symbol == "send" for site in outbound))
         self.assertEqual(8, sum(site.symbol == "sendGMCP" for site in outbound))
         self.assertEqual(17, sum(site.symbol == "boop.tick" for site in forwarders))
-        self.assertEqual(6, sum(site.symbol == "boop.executeAction" for site in forwarders))
+        self.assertEqual(0, sum(site.symbol == "boop.executeAction" for site in forwarders))
 
     def test_new_direct_outbound_and_forwarder_sites_fail(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -337,12 +337,12 @@ class ProductionGuardTests(unittest.TestCase):
 
     def test_repository_graph_and_complete_check_match_accepted_facts(self) -> None:
         graph = load_repository_graph(ROOT)
-        self.assertEqual(22, len(graph.modules))
-        self.assertEqual(126, len(graph.edges))
-        self.assertEqual(115, len(graph.executable_edges))
-        self.assertEqual(48, len(graph.data_edges))
-        self.assertEqual(37, len(graph.executable_edges & graph.data_edges))
-        self.assertEqual(21, len(graph.reciprocal_pairs()))
+        self.assertEqual(23, len(graph.modules))
+        self.assertEqual(127, len(graph.edges))
+        self.assertEqual(119, len(graph.executable_edges))
+        self.assertEqual(41, len(graph.data_edges))
+        self.assertEqual(33, len(graph.executable_edges & graph.data_edges))
+        self.assertEqual(9, len(graph.reciprocal_pairs()))
         self.assertEqual([20], sorted(len(value) for value in graph.nontrivial_sccs()))
         self.assertEqual(["boop_bootstrap"], graph.composition_roots())
         self.assertEqual([], graph.unresolved_references)
@@ -350,11 +350,11 @@ class ProductionGuardTests(unittest.TestCase):
 
         errors, summary = check_repository_architecture(ROOT)
         self.assertEqual([], errors)
-        self.assertEqual(126, summary["edges"])
-        self.assertEqual(14, summary["legacy_indirection_exceptions"])
+        self.assertEqual(127, summary["edges"])
+        self.assertEqual(4, summary["legacy_indirection_exceptions"])
         self.assertEqual(1, summary["schema_custody_exceptions"])
 
-    def test_phase_three_combat_ownership_and_runtime_invariant(self) -> None:
+    def test_phase_four_ownership_and_closed_pair_invariants(self) -> None:
         graph = load_repository_graph(ROOT)
         self.assertEqual(
             "boop_runtime",
@@ -383,6 +383,34 @@ class ProductionGuardTests(unittest.TestCase):
             ROOT / "src/scripts/boop/boop_ui.lua",
         ):
             self.assertNotIn("boop.combat", path.read_text())
+
+        closed_pairs = {
+            tuple(sorted(pair))
+            for pair in (
+                ("boop_init", "boop_ui"),
+                ("boop_events", "boop_init"),
+                ("boop_db", "boop_init"),
+                ("boop_ui", "boop_ui_registry"),
+                ("boop_gag", "boop_ui"),
+                ("boop_stats", "boop_ui"),
+                ("boop_runtime", "boop_util"),
+                ("boop_rage", "boop_util"),
+                ("boop_gag", "boop_util"),
+                ("boop_targets", "boop_util"),
+                ("boop_db", "boop_stats"),
+                ("boop_db", "boop_targets"),
+            )
+        }
+        self.assertTrue(closed_pairs.isdisjoint(graph.reciprocal_pairs()))
+        self.assertEqual(set(), {
+            edge for edge in graph.edges if edge[0] == "boop_ui_registry"
+        })
+        self.assertNotIn(("boop_wire", "boop_targets"), graph.edges)
+
+        wire = (ROOT / "src/scripts/boop/boop_wire.lua").read_text()
+        self.assertNotIn("boop.state.targeting", wire)
+        self.assertNotIn("boop.targets", wire)
+        self.assertFalse((ROOT / "src/scripts/boop/boop_state.lua").exists())
 
 
 if __name__ == "__main__":

@@ -199,7 +199,11 @@ end
 function boop.db.init()
   if not db then
     boop.util.warn("Mudlet DB not available; config will not persist.")
-    return
+    boop.db.handle = nil
+    return {
+      lists = boop.db.loadLists(),
+      stats = boop.db.loadStats(),
+    }
   end
 
   db:create("boop", {
@@ -247,8 +251,10 @@ function boop.db.init()
   end
 
   boop.db.loadConfig()
-  boop.db.loadLists()
-  boop.db.loadStats()
+  return {
+    lists = boop.db.loadLists(),
+    stats = boop.db.loadStats(),
+  }
 end
 
 function boop.db.loadConfig()
@@ -315,28 +321,30 @@ function boop.db.deleteConfig(key)
 end
 
 function boop.db.loadLists()
-  boop.lists.whitelist = {}
-  boop.lists.blacklist = {}
-  boop.lists.globalBlacklist = {}
-  boop.lists.whitelistTags = {}
+  local lists = {
+    whitelist = {},
+    blacklist = {},
+    globalBlacklist = {},
+    whitelistTags = {},
+  }
 
-  if not boop.db.handle then return end
+  if not db or not boop.db.handle then return lists end
 
   local wl = db:fetch(boop.db.handle.whitelist, nil, { boop.db.handle.whitelist.area, boop.db.handle.whitelist.pos })
   for _, row in ipairs(wl) do
     local area = row.area
-    boop.lists.whitelist[area] = boop.lists.whitelist[area] or {}
-    boop.lists.whitelist[area][#boop.lists.whitelist[area] + 1] = row.name
+    lists.whitelist[area] = lists.whitelist[area] or {}
+    lists.whitelist[area][#lists.whitelist[area] + 1] = row.name
   end
 
   local bl = db:fetch(boop.db.handle.blacklist, nil, { boop.db.handle.blacklist.area, boop.db.handle.blacklist.pos })
   for _, row in ipairs(bl) do
     if row.area == "GLOBAL" then
-      boop.lists.globalBlacklist[#boop.lists.globalBlacklist + 1] = row.name
+      lists.globalBlacklist[#lists.globalBlacklist + 1] = row.name
     else
       local area = row.area
-      boop.lists.blacklist[area] = boop.lists.blacklist[area] or {}
-      boop.lists.blacklist[area][#boop.lists.blacklist[area] + 1] = row.name
+      lists.blacklist[area] = lists.blacklist[area] or {}
+      lists.blacklist[area][#lists.blacklist[area] + 1] = row.name
     end
   end
 
@@ -350,14 +358,15 @@ function boop.db.loadLists()
         local area = row.area
         local tag = row.tag
         if area and area ~= "" and tag and tag ~= "" then
-          boop.lists.whitelistTags[area] = boop.lists.whitelistTags[area] or {}
-          boop.lists.whitelistTags[area][#boop.lists.whitelistTags[area] + 1] = tag
+          lists.whitelistTags[area] = lists.whitelistTags[area] or {}
+          lists.whitelistTags[area][#lists.whitelistTags[area] + 1] = tag
         end
       end
     else
       warnDb("boop: warning: failed loading whitelist tags (" .. tostring(tagsOrErr) .. ")")
     end
   end
+  return lists
 end
 
 function boop.db.saveList(kind, area, list)
@@ -412,46 +421,47 @@ function boop.db.saveWhitelistTags(area, tags)
 end
 
 function boop.db.loadStats()
-  boop.stats = boop.stats or {}
-  boop.stats.lifetime = boop.stats.lifetime or { gold = 0, experience = 0 }
-  boop.stats.mobXp = {}
+  local stats = {
+    lifetime = { gold = 0, experience = 0 },
+    mobXp = {},
+  }
 
-  if not boop.db.handle then return end
+  if not db or not boop.db.handle then return stats end
   local rows = db:fetch(boop.db.handle.stats, nil, { boop.db.handle.stats.name })
   for _, row in ipairs(rows) do
     if row.name == "lifetime_gold" then
-      boop.stats.lifetime.gold = tonumber(row.value) or 0
+      stats.lifetime.gold = tonumber(row.value) or 0
     elseif row.name == "lifetime_experience" then
-      boop.stats.lifetime.experience = tonumber(row.value) or 0
+      stats.lifetime.experience = tonumber(row.value) or 0
     elseif row.name == "lifetime_raw_experience" then
-      boop.stats.lifetime.rawExperience = tonumber(row.value) or 0
+      stats.lifetime.rawExperience = tonumber(row.value) or 0
     elseif row.name == "lifetime_active_seconds" then
-      boop.stats.lifetime.activeSeconds = tonumber(row.value) or 0
+      stats.lifetime.activeSeconds = tonumber(row.value) or 0
     elseif row.name == "lifetime_kills" then
-      boop.stats.lifetime.kills = tonumber(row.value) or 0
+      stats.lifetime.kills = tonumber(row.value) or 0
     elseif row.name == "lifetime_targets" then
-      boop.stats.lifetime.targets = tonumber(row.value) or 0
+      stats.lifetime.targets = tonumber(row.value) or 0
     elseif row.name == "lifetime_retargets" then
-      boop.stats.lifetime.retargets = tonumber(row.value) or 0
+      stats.lifetime.retargets = tonumber(row.value) or 0
     elseif row.name == "lifetime_abandoned" then
-      boop.stats.lifetime.abandoned = tonumber(row.value) or 0
+      stats.lifetime.abandoned = tonumber(row.value) or 0
     elseif row.name == "lifetime_flees" then
-      boop.stats.lifetime.flees = tonumber(row.value) or 0
+      stats.lifetime.flees = tonumber(row.value) or 0
     elseif row.name == "lifetime_room_moves" then
-      boop.stats.lifetime.roomMoves = tonumber(row.value) or 0
+      stats.lifetime.roomMoves = tonumber(row.value) or 0
     elseif row.name == "lifetime_total_ttk" then
-      boop.stats.lifetime.totalTtk = tonumber(row.value) or 0
+      stats.lifetime.totalTtk = tonumber(row.value) or 0
     elseif row.name == "lifetime_best_ttk" then
-      boop.stats.lifetime.bestTtk = tonumber(row.value) or nil
+      stats.lifetime.bestTtk = tonumber(row.value) or nil
     elseif row.name == "lifetime_worst_ttk" then
-      boop.stats.lifetime.worstTtk = tonumber(row.value) or nil
+      stats.lifetime.worstTtk = tonumber(row.value) or nil
     end
   end
 
   local mobOk = boop.db.ensureMobXpTable()
   local mobTable = mobOk and select(1, getMobXpSheetHandle()) or nil
   if not mobOk or not mobTable then
-    return
+    return stats
   end
 
   local fetched, mobRowsOrErr = pcall(function()
@@ -464,7 +474,7 @@ function boop.db.loadStats()
   end)
   if not fetched then
     warnDb("boop: warning: failed loading mob xp stats (" .. tostring(mobRowsOrErr) .. ")")
-    return
+    return stats
   end
 
   for _, row in ipairs(mobRowsOrErr) do
@@ -474,9 +484,9 @@ function boop.db.loadStats()
     local xp = tonumber(row.xp)
     local count = tonumber(row.count) or 0
     if area ~= "" and name ~= "" and xp and count > 0 then
-      boop.stats.mobXp[area] = boop.stats.mobXp[area] or {}
-      boop.stats.mobXp[area][partySize] = boop.stats.mobXp[area][partySize] or {}
-      local entry = boop.stats.mobXp[area][partySize][name]
+      stats.mobXp[area] = stats.mobXp[area] or {}
+      stats.mobXp[area][partySize] = stats.mobXp[area][partySize] or {}
+      local entry = stats.mobXp[area][partySize][name]
       if not entry then
         entry = {
           observations = 0,
@@ -485,7 +495,7 @@ function boop.db.loadStats()
           max = nil,
           values = {},
         }
-        boop.stats.mobXp[area][partySize][name] = entry
+        stats.mobXp[area][partySize][name] = entry
       end
       entry.observations = entry.observations + count
       entry.total = entry.total + (xp * count)
@@ -498,6 +508,7 @@ function boop.db.loadStats()
       end
     end
   end
+  return stats
 end
 
 function boop.db.recordMobXpObservation(area, partySize, name, xp, delta)
@@ -593,13 +604,12 @@ function boop.db.clearMobXpStats()
   end
 end
 
-function boop.db.saveStats()
+function boop.db.saveStats(payload)
   if not boop.db.handle then return false end
-  if boop.perf.on then boop.perf.count("stats_flushes") end
-  local function nowSeconds()
-    if getEpoch then return getEpoch() end
-    return os.clock()
+  if type(payload) ~= "table" or type(payload.lifetime) ~= "table" then
+    return false
   end
+  if boop.perf.on then boop.perf.count("stats_flushes") end
 
   local function save(name, value)
     local dbtable = boop.db.handle.stats
@@ -615,27 +625,20 @@ function boop.db.saveStats()
     end
   end
 
-  local lifetimeActiveSeconds = boop.stats.lifetime.activeSeconds or 0
-  if boop.stats.lifetime.activeSince then
-    local delta = nowSeconds() - boop.stats.lifetime.activeSince
-    if delta > 0 then
-      lifetimeActiveSeconds = lifetimeActiveSeconds + delta
-    end
-  end
-
-  save("lifetime_gold", boop.stats.lifetime.gold)
-  save("lifetime_experience", boop.stats.lifetime.experience)
-  save("lifetime_raw_experience", boop.stats.lifetime.rawExperience or 0)
-  save("lifetime_active_seconds", lifetimeActiveSeconds)
-  save("lifetime_kills", boop.stats.lifetime.kills or 0)
-  save("lifetime_targets", boop.stats.lifetime.targets or 0)
-  save("lifetime_retargets", boop.stats.lifetime.retargets or 0)
-  save("lifetime_abandoned", boop.stats.lifetime.abandoned or 0)
-  save("lifetime_flees", boop.stats.lifetime.flees or 0)
-  save("lifetime_room_moves", boop.stats.lifetime.roomMoves or 0)
-  save("lifetime_total_ttk", boop.stats.lifetime.totalTtk or 0)
-  save("lifetime_best_ttk", boop.stats.lifetime.bestTtk or "")
-  save("lifetime_worst_ttk", boop.stats.lifetime.worstTtk or "")
+  local lifetime = payload.lifetime
+  save("lifetime_gold", lifetime.gold or 0)
+  save("lifetime_experience", lifetime.experience or 0)
+  save("lifetime_raw_experience", lifetime.rawExperience or 0)
+  save("lifetime_active_seconds", lifetime.activeSeconds or 0)
+  save("lifetime_kills", lifetime.kills or 0)
+  save("lifetime_targets", lifetime.targets or 0)
+  save("lifetime_retargets", lifetime.retargets or 0)
+  save("lifetime_abandoned", lifetime.abandoned or 0)
+  save("lifetime_flees", lifetime.flees or 0)
+  save("lifetime_room_moves", lifetime.roomMoves or 0)
+  save("lifetime_total_ttk", lifetime.totalTtk or 0)
+  save("lifetime_best_ttk", lifetime.bestTtk or "")
+  save("lifetime_worst_ttk", lifetime.worstTtk or "")
   return true
 end
 

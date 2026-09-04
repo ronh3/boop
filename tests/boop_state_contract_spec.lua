@@ -28,6 +28,25 @@ describe("boop owned state contracts", function()
     end
   end)
 
+  it("keeps boop.state recursively data-only", function()
+    local seen = {}
+    local function assertDataOnly(value, path)
+      if type(value) == "function" then
+        error(path .. " contains a function")
+      end
+      if type(value) ~= "table" or seen[value] then
+        return
+      end
+      seen[value] = true
+      for key, entry in pairs(value) do
+        assertDataOnly(key, path .. ".<key>")
+        assertDataOnly(entry, path .. "." .. tostring(key))
+      end
+    end
+
+    assertDataOnly(boop.state, "boop.state")
+  end)
+
   it("keeps current owned-domain defaults stable", function()
     local state = boop.runtime.state()
 

@@ -29,7 +29,8 @@ PRE_DAG_STAGE = True
 DECISION_ORCHESTRATION_PRESENTATION_MODULES = frozenset(
     {
         "boop_attacks", "boop_combat", "boop_events", "boop_gag", "boop_ih", "boop_rage",
-        "boop_safety", "boop_stats", "boop_targets", "boop_ui", "boop_walk",
+        "boop_render", "boop_safety", "boop_stats", "boop_targets", "boop_ui", "boop_walk",
+        "boop_wire",
     }
 )
 
@@ -67,10 +68,10 @@ SHARED_KERNEL = frozenset({("config",), ("version",)})
 OWNED_DATA: dict[tuple[str, ...], str] = {
     ("defaults",): "boop_init",
     ("lists",): "boop_targets",
-    ("lists", "separator"): "boop_util",
+    ("wire", "separator"): "boop_wire",
     ("handlers",): "boop_events",
     ("gmcp",): "boop_init",
-    ("bootstrapped",): "boop_init",
+    ("bootstrapped",): "boop_bootstrap",
     ("attacks", "registry"): "boop_attacks",
     ("attacks", "pendingRegistry"): "boop_attacks",
     ("skills",): "boop_skills",
@@ -121,6 +122,7 @@ MODULE_DATA_ROOTS: dict[tuple[str, ...], str] = {
     ("gag",): "boop_gag",
     ("ih",): "boop_ih",
     ("rage",): "boop_rage",
+    ("render",): "boop_render",
     ("registry",): "boop_ui_registry",
     ("runtime",): "boop_runtime",
     ("safety",): "boop_safety",
@@ -133,13 +135,14 @@ MODULE_DATA_ROOTS: dict[tuple[str, ...], str] = {
     ("ui",): "boop_ui",
     ("util",): "boop_util",
     ("walk",): "boop_walk",
+    ("wire",): "boop_wire",
     ("perf",): "boop_perf",
 }
 
 # Config is a shared-kernel map. These are its current direct writers: schema,
 # persistence, and the modules that own the corresponding setting semantics.
 CONFIG_WRITERS = frozenset(
-    {"boop_db", "boop_gag", "boop_init", "boop_safety", "boop_ui", "boop_ui_registry"}
+    {"boop_db", "boop_gag", "boop_init", "boop_safety", "boop_ui"}
 )
 
 
@@ -805,6 +808,7 @@ def is_hard_forbidden(source: str, target: str) -> bool:
         return True
     if (source, target) in {
         ("boop_db", "boop_stats"),
+        ("boop_db", "boop_targets"),
         ("boop_stats", "boop_ui"),
         ("boop_gag", "boop_ui"),
     }:
@@ -812,6 +816,10 @@ def is_hard_forbidden(source: str, target: str) -> bool:
     if source == "boop_ui_registry" and target != "boop_ui_registry":
         return True
     if source == "boop_util" and target not in {"boop_theme", "boop_util"}:
+        return True
+    if source == "boop_render" and target not in {"boop_render", "boop_theme", "boop_util"}:
+        return True
+    if source == "boop_wire" and target == "boop_targets":
         return True
     return False
 

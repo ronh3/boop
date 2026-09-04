@@ -444,7 +444,7 @@ describe("boop exact rage dispatch contracts", function()
 
     assert.is_true(dispatchRage("harry 42", "Harry"))
     local pending = boop.rage.pendingSnapshot()
-    assert.is_true(boop.executeRageAction("temper 42"))
+    assert.is_true(boop.wire.executeRageAction("temper 42", "42"))
 
     assert.is_false(boop.rage.onCommandOutcome(
       "You must wait a short time before you can use a battlerage ability again."

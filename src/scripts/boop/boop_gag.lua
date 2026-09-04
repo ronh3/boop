@@ -388,173 +388,54 @@ local function gagRowAutoHint(role)
   return "Use the theme-driven default color"
 end
 
-local function renderGagScopeLinks(currentScope)
-  local theme = boop.theme and boop.theme.tags and boop.theme.tags() or {
-    text = "<white>",
-    info = "<cyan>",
-    muted = "<light_grey>",
-    reset = "<reset>",
-  }
-
-  cecho("\n  " .. theme.text .. "Scope: " .. theme.reset)
-  for _, scope in ipairs({ "own", "others", "mobs" }) do
-    if scope == currentScope then
-      cecho(theme.muted .. "[" .. GAG_SCOPE_LABELS[scope] .. "]" .. theme.reset)
-    else
-      cechoLink(theme.info .. "[" .. GAG_SCOPE_LABELS[scope] .. "]" .. theme.reset, function()
-        boop.gag.showColors(scope)
-      end, "Show " .. GAG_SCOPE_LABELS[scope] .. " gag colors", true)
-    end
-    cecho(" ")
-  end
+function boop.gag.normalizeColorScope(scope)
+  return normalizeGagScope(scope)
 end
 
-local function renderGagColorRows(scope)
-  local theme = boop.theme and boop.theme.tags and boop.theme.tags() or {
-    text = "<white>",
-    muted = "<light_grey>",
-    info = "<cyan>",
-    reset = "<reset>",
-  }
-
-  for _, role in ipairs(GAG_COLOR_ORDER) do
-    local label = GAG_COLOR_LABELS[role]
-    cecho("\n" .. theme.text .. "  " .. string.format("%-10s", label) .. " " .. theme.reset)
-    cecho(gagRoleSample(scope, role))
-    cecho(theme.muted .. "  " .. gagRoleStatusText(scope, role) .. theme.reset)
-    cecho(" ")
-    cechoLink(theme.info .. "[color]" .. theme.reset, function()
-      boop.gag.showColorPicker(scope, role)
-    end, "Open color picker for " .. label, true)
-    cecho(" ")
-    cechoLink(theme.info .. gagRowAutoLabel(role) .. theme.reset, function()
-      boop.gag.setColor(scope, role, "off")
-    end, gagRowAutoHint(role), true)
-  end
+function boop.gag.normalizeColorRole(role)
+  return normalizeGagRole(role)
 end
 
-function boop.gag.showColors(scope)
-  local normalizedScope = normalizeGagScope(scope)
-  if normalizedScope == "" then
-    boop.util.warn("gag color scope: use own|others|mobs")
-    return
+function boop.gag.colorRoles()
+  local roles = {}
+  for index, role in ipairs(GAG_COLOR_ORDER) do
+    roles[index] = role
   end
-  local sampleWho = normalizedScope == "own" and "You" or normalizedScope == "mobs" and "Mob" or "Someone"
-  local sampleAbility = normalizedScope == "mobs" and "Damage" or "Attack"
-  local sampleTarget = normalizedScope == "mobs" and "You" or "a denizen"
-  local sampleMeta = normalizedScope == "mobs" and " (649 asphyxiation)" or " (1234 cutting - 8xCRIT) (Total: 1234) (Bal: 2.1s)"
-  if cecho then
-    if boop.ui and boop.ui._setScreen then
-      boop.ui._setScreen("gag-colors")
-    end
-    if boop.ui and boop.ui._printHeader then
-      boop.ui._printHeader("gag colors > " .. normalizedScope)
-      boop.ui._printSection("sample")
-      cecho(
-        "\n  "
-        .. renderSegment(normalizedScope, "who", sampleWho)
-        .. renderSegment(normalizedScope, "separator", ": ")
-        .. renderSegment(normalizedScope, "ability", sampleAbility)
-        .. renderSegment(normalizedScope, "separator", " -> ")
-        .. renderSegment(normalizedScope, "target", sampleTarget)
-        .. renderSegment(normalizedScope, "meta", sampleMeta)
-      )
-      renderGagScopeLinks(normalizedScope)
-      boop.ui._printSection("roles")
-      renderGagColorRows(normalizedScope)
-      if boop.ui and boop.ui._printFooter then
-        boop.ui._printFooter("Type: boop gag colors <own|others|mobs> | boop gag color [own|others|mobs] <role> <color|off> | boop gag color [own|others|mobs] <role> | boop gag color [own|others|mobs] reset")
-      end
-      return
-    end
-  end
-
-  boop.util.info("gag colors (" .. normalizedScope .. "):")
-  for _, role in ipairs(GAG_COLOR_ORDER) do
-    boop.util.echo("  " .. GAG_COLOR_LABELS[role] .. ": " .. configuredOrAutoText(normalizedScope, role))
-  end
-  if cecho then
-    cecho(
-      "\n  sample: "
-      .. renderSegment(normalizedScope, "who", sampleWho)
-      .. renderSegment(normalizedScope, "separator", ": ")
-      .. renderSegment(normalizedScope, "ability", sampleAbility)
-      .. renderSegment(normalizedScope, "separator", " -> ")
-      .. renderSegment(normalizedScope, "target", sampleTarget)
-      .. renderSegment(normalizedScope, "meta", sampleMeta)
-    )
-  else
-    boop.util.echo("  sample: " .. sampleWho .. ": " .. sampleAbility .. " -> " .. sampleTarget .. sampleMeta)
-  end
+  return roles
 end
 
-function boop.gag.showColorPicker(scope, role)
-  if role == nil then
-    role = scope
-    scope = "own"
-  end
-  local normalizedScope = normalizeGagScope(scope)
-  local normalizedRole = normalizeGagRole(role)
-  if normalizedScope == "" then
-    boop.util.warn("gag color scope: use own|others|mobs")
-    return
-  end
-  if normalizedRole == "" then
-    boop.util.warn("gag color role: use who|ability|target|meta|separator|bg")
-    return
-  end
-
-  if not cecho or not boop.ui or not boop.ui._printHeader then
-    boop.util.info("Use: boop gag color " .. normalizedScope .. " " .. normalizedRole .. " <color|off>")
-    return
-  end
-
-  if boop.ui and boop.ui._setScreen then
-    boop.ui._setScreen("gag-color-picker")
-  end
-
-  local theme = boop.theme and boop.theme.tags and boop.theme.tags() or {
-    text = "<white>",
-    info = "<cyan>",
-    muted = "<light_grey>",
-    reset = "<reset>",
-  }
-
-  boop.ui._printHeader("gag colors > " .. normalizedScope .. " > " .. normalizedRole)
-  boop.ui._printSection("picker")
-  cecho(theme.text .. "  Scope: " .. normalizedScope .. " | role: " .. normalizedRole .. " | current: " .. gagRoleStatusText(normalizedScope, normalizedRole) .. theme.reset)
-  cecho(" ")
-  cechoLink(theme.info .. "[back]" .. theme.reset, function()
-    boop.gag.showColors(normalizedScope)
-  end, "Back to gag colors", true)
-  cecho("\n")
-  cecho(theme.text .. "  Sample: " .. theme.reset .. gagRoleSample(normalizedScope, normalizedRole) .. "\n")
-  cecho(theme.text .. "  ")
-  cechoLink(theme.info .. gagRowAutoLabel(normalizedRole) .. theme.reset, function()
-    boop.gag.setColor(normalizedScope, normalizedRole, "off")
-  end, gagRowAutoHint(normalizedRole), true)
-  cecho("\n")
-
-  for _, group in ipairs(gagColorGroups()) do
-    boop.ui._printSection(group.label or "colors")
-    cecho(theme.text .. "  " .. theme.reset)
-    local lineLen = 2
-    for _, color in ipairs(group.colors or {}) do
-      local label = tostring(color)
-      local entryLen = #label + 2
-      if lineLen + entryLen > 72 then
-        cecho("\n" .. theme.text .. "  " .. theme.reset)
-        lineLen = 2
-      end
-      cechoLink("<" .. label .. ">[" .. label .. "]<reset>", function()
-        boop.gag.setColor(normalizedScope, normalizedRole, label)
-      end, "Set " .. normalizedRole .. " to " .. label, true)
-      cecho("  ")
-      lineLen = lineLen + entryLen
-    end
-    cecho("\n")
-  end
+function boop.gag.colorLabel(role)
+  return GAG_COLOR_LABELS[role] or tostring(role or "")
 end
+
+function boop.gag.colorGroups()
+  return gagColorGroups()
+end
+
+function boop.gag.colorStatus(scope, role)
+  return gagRoleStatusText(scope, role)
+end
+
+function boop.gag.colorConfiguredText(scope, role)
+  return configuredOrAutoText(scope, role)
+end
+
+function boop.gag.renderColorSegment(scope, role, text)
+  return renderSegment(scope, role, text)
+end
+
+function boop.gag.renderColorSample(scope, role)
+  return gagRoleSample(scope, role)
+end
+
+function boop.gag.colorAutoLabel(role)
+  return gagRowAutoLabel(role)
+end
+
+function boop.gag.colorAutoHint(role)
+  return gagRowAutoHint(role)
+end
+
 
 function boop.gag.setColor(scope, role, rawValue)
   if rawValue == nil then
@@ -585,12 +466,7 @@ function boop.gag.setColor(scope, role, rawValue)
   else
     boop.util.ok("gag " .. normalizedScope .. " " .. GAG_COLOR_LABELS[normalizedRole] .. " color: " .. (value ~= "" and value or "auto"))
   end
-  local returnScreen = boop.ui and boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("debug") or ""
-  if returnScreen == "debug" and boop.ui and boop.ui.config then
-    boop.ui.config("debug")
-    return
-  end
-  boop.gag.showColors(normalizedScope)
+  return normalizedScope, normalizedRole
 end
 
 function boop.gag.resetColors(scope)
@@ -607,12 +483,7 @@ function boop.gag.resetColors(scope)
     end
   end
   boop.util.ok("gag " .. normalizedScope .. " colors: reset")
-  local returnScreen = boop.ui and boop.ui.consumeConfigReturnScreen and boop.ui.consumeConfigReturnScreen("debug") or ""
-  if returnScreen == "debug" and boop.ui and boop.ui.config then
-    boop.ui.config("debug")
-    return
-  end
-  boop.gag.showColors(normalizedScope)
+  return normalizedScope
 end
 
 local function emitReplacement(actor, ability, victim, selfActor)
@@ -1326,7 +1197,7 @@ local function resolveCritText(rawCrit)
 end
 
 local function commandIncludesRazeslash(action)
-  local separator = boop.lists and boop.lists.separator or "/"
+  local separator = boop.wire and boop.wire.separator or "/"
   for _, part in ipairs(boop.util.split(action or "", separator)) do
     local command = boop.util.safeLower(boop.util.trim(part))
     local verb = command:match("^(%S+)")

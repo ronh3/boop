@@ -486,13 +486,12 @@ describe("boop menu wiring", function()
 
     assert.are.equal(9, #callbacks)
 
-    addStub(boop.ui, "setEnabled", "setEnabled")
     addStub(boop.stats, "startTrip", "startTrip")
     addStub(boop.stats, "command", "stats.command")
     addStub(_G, "appendCmdLine", "appendCmdLine")
     addStub(_G, "clearCmdLine", "clearCmdLine")
 
-    expectCallback(callbacks[1].callback, { { label = "setEnabled", args = { true } } })
+    expectCallback(callbacks[1].callback, seedExpectation("boop on"))
     expectCallback(callbacks[2].callback, { { label = "startTrip", args = {} } })
     expectCallback(callbacks[3].callback, { { label = "stats.command", args = { "lifetime" } } })
     expectCallback(callbacks[4].callback, { { label = "stats.command", args = { "areas lifetime 5 xp" } } })

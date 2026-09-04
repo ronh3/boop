@@ -635,12 +635,20 @@ function boop.combat.execute(plan, context, sourceAuthority)
     if not prequeued
         and attackAuthorityCurrent(authority, "standard")
         and boop.combat.canAct() then
-      local emitted = boop.executeAction(
+      local targetId = activeContext
+        and activeContext.target
+        and activeContext.target.id
+        or ""
+      local emitted = boop.wire.executeAction(
         plan.standard,
+        targetId,
         nil,
         dispatchOptions
       )
       if emitted then
+        if boop.gag and boop.gag.noteStandardIntent then
+          boop.gag.noteStandardIntent(plan.standard)
+        end
         if plan.standardIsOpener
             and boop.attacks
             and boop.attacks.markOpenerUsed then
@@ -717,12 +725,14 @@ function boop.combat.execute(plan, context, sourceAuthority)
             kind = "rage",
           },
         }
-        local ok, result = pcall(
-          boop.executeAction,
-          plan.rage,
-          false,
-          rageDispatchOptions
-        )
+        local ok, result = pcall(function()
+          return boop.wire.executeAction(
+            plan.rage,
+            targetId,
+            false,
+            rageDispatchOptions
+          )
+        end)
         emitted = ok and result == true
         if not ok then
           trace("rage dispatch failed: " .. tostring(result))

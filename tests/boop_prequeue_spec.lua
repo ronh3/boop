@@ -952,7 +952,7 @@ describe("boop prequeue", function()
       local standard = queueOwnedStandard()
 
       assert.is_false(boop.executeAction("command hound at 42", true))
-      assert.is_false(boop.executeRageAction("harry 42"))
+      assert.is_false(boop.wire.executeRageAction("harry 42", "42"))
       assert.are.equal(1, commandCount(
         "queue addclearfull freestand BOOP_ATTACK"
       ))

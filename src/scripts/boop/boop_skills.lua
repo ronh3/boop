@@ -23,6 +23,20 @@ function boop.skills.init()
   boop.skills.lastList = nil
 end
 
+function boop.skills.setDesiredGroups(groups)
+  if type(groups) ~= "table" then
+    boop.skills.desiredGroups = {}
+    return boop.skills.desiredGroups
+  end
+
+  local desired = {}
+  for _, group in ipairs(groups) do
+    desired[#desired + 1] = tostring(group)
+  end
+  boop.skills.desiredGroups = desired
+  return desired
+end
+
 local function learnedFromInfo(info)
   if info and info.learned ~= nil then
     return info.learned and true or false

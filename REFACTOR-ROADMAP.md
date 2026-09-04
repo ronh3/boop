@@ -120,18 +120,20 @@ Moving `applyEffects` intact creates an approved temporary `events ↔ combat` s
 
 ### Phase 4 — Composition root, presentation seam, and persistence port
 
+**Status: implemented in `0.1.495` and review-corrected in `0.1.495.1`.** The measured Phase-4 tree has 23 modules, 127 unique dependency directions (119 executable/API, 41 owned-data, 33 overlapping), nine reciprocal pairs, and a residual SCC of size 20. All twelve named pair closures below are absent. Reviewed forbidden edges fell from fourteen to two, reviewed mutation edges from fourteen to eight, and legacy indirection exceptions from fourteen to four.
+
 **Invariant established:** package composition happens in one place; presentation primitives are shared without a dependency on `boop.ui`; persistence exchanges plain tables; and **no function is reachable under `boop.state`**.
 
 This phase closes **twelve** of the original twenty-three reciprocal pairs. It does **not** produce a DAG — Phase 3 leaves 21 current pairs, and nine survive after this phase until the remaining boundary work, including the approved temporary pair, completes at Phase 8.
 
-**4a — composition root (`init ↔ ui`, `events ↔ init`).** F6 approved. Move the `boop.ui.status("ready")` notification out of `boop_init.lua:207-208`, and relocate the wiring body of `boop.bootstrap()` — the ordered `init` calls into db, state, afflictions, rage, ih, triggers, skills, stats, and `boop.events.register()` — into `boop_bootstrap.lua`, the composition root. `boop_init.lua` keeps `boop.defaults`, the trigger-folder helpers, and the GMCP support announcement. **Observable package-load behaviour is preserved**: the same sequence runs in the same order and the same ready message appears at the same point.
+**4a — composition root (`init ↔ ui`, `events ↔ init`).** F6 approved. Move the `boop.ui.status("ready")` notification out of `boop_init.lua:207-208`, and relocate the wiring body of `boop.bootstrap()` — the ordered `init` calls into db, state, afflictions, rage, ih, triggers, skills, stats, and `boop.events.register()` — into `boop_bootstrap.lua`, the composition root. `boop_init.lua` keeps `boop.defaults`, the trigger-folder helpers, and the GMCP support announcement. **Observable package-load behaviour is preserved**: first boot runs the same sequence in the same order and emits the same ready message at the same point; an already-bootstrapped package reload performs only the composition root's generation-sensitive IRE reconciler and UI/Registry refresh after the existing reload flush/resets.
 
 Also in 4a: **`boop_init` writes `boop.skills.desiredGroups`**, another module's owned data — a mutation violation. Replace the direct write with a `boop.skills.setDesiredGroups()` ingestion API.
 
 **4b — retire `boop_state.lua`.** The file defines `boop.state.init()`, a service function under the data-only state tree, and performs a **second** registry attachment.
 
 - **`boop.state.init()` is deleted.** Its two responsibilities separate: hydration becomes a direct `boop.runtime.ensureState()` call from the composition root, and registry attachment becomes composition-root wiring.
-- **Both legacy registry-attachment sites are removed** — the call at the tail of `boop_ui_registry.lua` and the one inside `boop.state.init()`. `boop.registry.attachUiConfigRegistries()` is invoked exactly once, from `boop_bootstrap.lua`, after every module is loaded.
+- **Both legacy registry-attachment sites are removed** — the call at the tail of `boop_ui_registry.lua` and the one inside `boop.state.init()`. `boop.registry.attachUiConfigRegistries()` is invoked only from `boop_bootstrap.lua`: once on first boot and once to refresh generation-sensitive bindings on a mid-session package reload.
 - **`boop_init.lua:164`'s `boop.state.init()` call** is replaced by the composition root's `boop.runtime.ensureState()`.
 - **`tests/support/boop_test_helper.lua:168`** migrates from `boop.state.init()` to the same real initialization path the package uses, so the helper and production share one entry point.
 - `boop_state.lua` is removed from `src/scripts/boop/scripts.json`.
@@ -146,9 +148,9 @@ Also in 4a: **`boop_init` writes `boop.skills.desiredGroups`**, another module's
 - `printHeader`, `printSection`, `printRow`, `printFooter`, `computeLabelWidth`, and the sectioned-layout helpers move from `boop_ui.lua` to `boop.render`. A justified seam, not a size split: it is consumed by `ui`, `gag`, and later `stats.report`, and it is what lets the latter two render without depending on `ui`.
 - That closes 46 of 47 `stats -> ui` references and 10 of 22 `gag -> ui` references.
 - The remaining 12 `gag -> ui` references (`_setScreen`, `consumeConfigReturnScreen`, `config`) come from the gag **colour-picker screens**, which are config screens that happen to be about gag. They move to the UI layer; `boop.gag` keeps palette resolution and line rendering.
-- The last `stats -> ui` reference is a dashboard click handler calling `boop.ui.setEnabled(true)` (`boop_stats.lua:2610`). Neighbouring rows already use the command-seeding pattern (`statsCommandAction(...)`); this row becomes consistent with them. Clicking it still enables hunting.
+- The last `stats -> ui` reference was a dashboard click handler calling `boop.ui.setEnabled(true)`. It now seeds the public `boop on` command without executing it, preserving the operator workflow without a Stats-to-UI dependency.
 
-**4e — dispatcher relocation (`runtime ↔ util`, `rage ↔ util`, `gag ↔ util`, `targets ↔ util`).** Create `boop_wire.lua` and move `boop.executeAction`, `boop.executeRageAction`, `prependAssist`, `markUnnamableMaulUsed`, `normalizeDispatchOptions`, and `dispatchAuthorityCurrent` into it. Also re-own `boop.lists.separator` to the command concern — it is used only by `executeAction` and gag razeslash parsing, with zero targeting use.
+**4e — dispatcher relocation (`runtime ↔ util`, `rage ↔ util`, `gag ↔ util`, `targets ↔ util`).** Create `boop_wire.lua` and move the action dispatcher, Rage dispatcher, `prependAssist`, `markUnnamableMaulUsed`, `normalizeDispatchOptions`, and `dispatchAuthorityCurrent` into it. The command separator is now `boop.wire.separator`; list persistence has no separator field.
 
 **G3, mandatory:** `boop.wire` must take `targetId` as a **parameter** from its caller rather than reading `boop.state.targeting.currentTargetId` (`boop_util.lua:346`). Without this the pair simply re-forms as `wire ↔ targets` in Phase 6 once targets routes `settarget` through wire. This is already implied by the transport-boundary definition; it is called out because it is easy to carry across unchanged. `boop.executeAction` is retained as an external forwarder; internal callers move to `boop.wire.*` in this phase, since this is the extraction that creates the owner. Phase 6 completes the Wire invariant.
 
@@ -159,9 +161,9 @@ Also in 4a: **`boop_init` writes `boop.skills.desiredGroups`**, another module's
 
 **Tests protecting it** — `boop_ui_spec`, `boop_ui_registry_spec`, `boop_menu_wiring_spec`, `boop_gag_spec`, `boop_stats_spec`, `boop_persistence_spec`, `boop_db_spec`, `boop_lifecycle_spec`, `boop_assist_spec`, `boop_prequeue_spec`, `boop_tick_spec`, and the whole suite via the migrated test helper.
 
-**New tests** — package load produces the same sequence and the same ready output · `boop.registry.attachUiConfigRegistries()` is invoked exactly once · registry data is complete with no `boop.ui` edge from the registry · every screen renders identically through `boop.render` · gag colour screens behave identically from their new home · the stats dashboard enable row still enables hunting · `boop.db.loadStats()` returns a table and mutates no `boop.stats` field · **no function value is reachable under `boop.state`** · the test helper's initialization path matches production's.
+**New tests** — first package boot produces the same sequence and ready output while mid-session reload refreshes generation-sensitive composition without repeating startup · registry data is complete with no `boop.ui` edge from the registry · every screen renders identically through `boop.render` · gag colour screens behave identically from their new home · the Stats dashboard enable row seeds `boop on` without executing it · `boop.db.loadStats()` returns a table and mutates no `boop.stats` field · **no function value is reachable under `boop.state`** · the test helper's initialization path matches production's.
 
-**Acceptance** — identical observable behaviour including package-load output · twelve reciprocal pairs closed (`init ↔ ui`, `events ↔ init`, `db ↔ init`, `ui ↔ ui_registry`, `gag ↔ ui`, `stats ↔ ui`, `runtime ↔ util`, `rage ↔ util`, `gag ↔ util`, `targets ↔ util`, `db ↔ stats`, `db ↔ targets`) · zero mutation violations remaining in `boop_init` · `boop_state.lua` no longer exists · measured SCC evidence reported without a monotonicity gate · **the graph is not yet acyclic; staged enforcement continues**.
+**Acceptance achieved** — identical observable behaviour including package-load output · twelve reciprocal pairs closed (`init ↔ ui`, `events ↔ init`, `db ↔ init`, `ui ↔ ui_registry`, `gag ↔ ui`, `stats ↔ ui`, `runtime ↔ util`, `rage ↔ util`, `gag ↔ util`, `targets ↔ util`, `db ↔ stats`, `db ↔ targets`) · zero mutation violations remaining in `boop_init` · `boop_state.lua` no longer exists · measured SCC evidence reported without a monotonicity gate · **the graph is not yet acyclic; staged enforcement continues**.
 
 ---
 
@@ -305,7 +307,7 @@ Skippable without affecting any later phase.
 
 **Work** — `boop_stats.lua` becomes model and collection only; new `boop_stats_report.lua` takes all `show*` rendering and `boop stats` routing; `boop.db.loadStats()` returns a table the caller applies and `saveStats(table)` takes one.
 
-The persistence *frequency* fix landed in Phase 2b and the plain-table port in Phase 4e; this phase completes the model/presentation split.
+The persistence *frequency* fix landed in Phase 2b and the plain-table port in Phase 4f; this phase completes the model/presentation split.
 
 **Tests** — `boop_stats_spec` (900 lines), `boop_persistence_spec`, `boop_db_spec`, `boop_menu_wiring_spec`, `boop_ui_spec`.
 
@@ -319,7 +321,7 @@ The persistence *frequency* fix landed in Phase 2b and the plain-table port in P
 
 **Invariant established:** the S1 command surface has one identifiable, testable implementation.
 
-**Work** — extract `boop_commands.lua` (alias-facing `*Command` parsers, routers, and config setters) from `boop_ui.lua`, leaving screens. Rendering primitives already left in Phase 4c. Handler registration follows the Phase 4b inversion: `boop.commands` registers into `boop.registry`. Replace the five raw `db:` calls at `boop_ui.lua:3217`, `:3375`, `:3376`, `:3378`, `:3379` with `boop.db` calls.
+**Work** — extract `boop_commands.lua` (alias-facing `*Command` parsers, routers, and config setters) from `boop_ui.lua`, leaving screens. Rendering primitives already left in Phase 4d. Handler registration follows the Phase 4c inversion: `boop.commands` registers into `boop.registry`. Replace the five raw `db:` calls in `boop_ui.lua` with `boop.db` calls.
 
 `boop.commands.*` is **S2**; the S1 contract remains alias syntax and semantics.
 
