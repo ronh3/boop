@@ -1481,3 +1481,91 @@ resolved by this entry.
 This re-review commit mutates the repository and therefore invalidates the
 exact-SHA CI evidence for `57d98dc` recorded above; per `AGENTS.md` the gate must
 be run again by Codex against the new final HEAD.
+
+
+---
+
+## Human + ChatGPT/Neon arbitration — 2026-09-04
+
+Authority: explicit human instructions supplied through ChatGPT/Neon for this
+final corrective pass, starting at `5b4417be62e31800e4f348d14a1948ce95f46112`.
+Recorded by Codex at the human’s express direction. The approved policy text
+below is reproduced verbatim. This records policy arbitration evidence only;
+the human-owned STATE gate is untouched. It grants no phase closure or merge.
+
+A-1 — Enforcement ceiling
+Accept the documented limitation that repository-local Git checks cannot
+authenticate human-vs-agent identity or reliably block an already-committed
+direct-main change. Do NOT make GitHub branch protection/rulesets a Phase 00
+blocker. Server-side protection may be added separately later.
+
+A-2 — UAT/evidence integrity
+ACCEPT. Extend append-preserving protection to phase UAT and VERIFICATION
+artifacts. Human decisions and later evidence must be appended as dated entries,
+not written by rewriting historical entries or placeholder text.
+
+A-3 — Claude gate ownership
+CONFIRM. Claude's only STATE gate is independent_review.
+
+A-4 — Phase 00 namespace
+CONFIRM. Phase 00 is a special workflow/bootstrap phase. It does not consume,
+renumber, or automatically advance either the product-hardening or refactor
+phase sequences. The human explicitly selects the next phase after Phase 00.
+
+A-5 — CI identifier recursion
+ACCEPT the current model: a CI identifier describes its named immutable SHA.
+The current final-tip CI run may be reported in the handoff and durably recorded
+at a later independently necessary repository boundary. Do not create infinite
+evidence-only commits.
+
+A-6 — version fourth component
+CONFIRM. Fourth components are build identifiers only. They imply no review,
+test, acceptance, or closure status.
+
+A-7 — local Claude settings durability
+ACCEPT as a local-only limitation. Do not attempt to track
+.claude/settings.local.json. CLAUDE.md / AGENTS.md remain the durable authority.
+
+
+## Codex final corrective pass evidence — 2026-09-04
+
+Role: Codex, implementation/correction evidence only. Starting reviewed HEAD:
+`5b4417be62e31800e4f348d14a1948ce95f46112`. Correction SHA: the commit
+containing this appendix; its full SHA and completed CI identity will be appended
+at the following evidence boundary. These are correction proposals awaiting
+Claude re-review, not final finding dispositions or factual closure.
+
+- **N-01 — proposed ACCEPT:** `phase_baseline` now requires the declared full
+  SHA to be an ancestor of both HEAD and `refs/remotes/origin/main`. Missing
+  authoritative main/history fails closed. Local main cannot substitute, and
+  the unused caller-supplied baseline override is removed from both guards.
+  Tests reject phase-only baselines in working-tree, staged, and committed
+  states, including attempts to hide an unbumped package commit or rewritten
+  review; legitimate main ancestry passes and HEAD ancestry remains required.
+  This addresses the baseline bypass underlying M-06 and M-08; Claude must
+  establish factual verification against the named correction SHA.
+- **N-02 — proposed ACCEPT:** the unchanged-prefix guard now covers UAT and
+  VERIFICATION from creation, across committed transitions, every merge parent,
+  and the index. It also rejects deletion of an initially empty artifact. Tests
+  cover changed/deleted history, replacement of an existing synthetic human
+  decision, later restoration hiding tampering, and allowed dated appends.
+  AGENTS documents this model; the UAT scaffold is retained byte-for-byte with
+  appended recording instructions. New-entry authorship remains the accepted
+  A-1 enforcement limit; tests make no claim to authenticate a human.
+- **N-03 — proposed ACCEPT:** `.gitignore` now ignores `__pycache__/` and
+  `*.pyc`. Running the required Python gates creates ignored caches with no
+  untracked cache output. A fresh-checkout cleanliness check and the real
+  release-gate → push → exact-SHA-CI sequence will be recorded after commit.
+
+Local checks: all six release gates, 30 workflow tests (including 11 new tests),
+25 architecture tests, shell syntax and whitespace checks pass. Package version
+checkpoints advance together to `0.1.496.5`; only the version assignment changes
+under `src/`. Full Muddler/real-Mudlet automated verification uses CI because
+`/tmp/Mudlet.AppImage` is unavailable locally. See `00-VERIFICATION.md`.
+
+All preceding Claude/Codex review text and both prior evidence artifacts remain
+unchanged byte prefixes. STATE is entirely untouched, including Claude’s review
+gate and every human-owned gate. Human/Neon must perform or explicitly authorize
+the separate `human_arbitration` STATE write referencing the arbitration above.
+Live applicability, phase closure and exact-SHA merge authorization still require
+human action; no gameplay change, phase transition, closure or merge is made.

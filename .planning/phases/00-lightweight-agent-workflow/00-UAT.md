@@ -31,3 +31,21 @@ Mudlet Busted results belong in VERIFICATION and cannot fill this gate.
 Only the human may fill these decisions and update the corresponding STATE
 gates. Any later phase-tip change invalidates merge authorization. Phase 00 is
 not complete; no merge is authorized by this artifact.
+
+
+## Append-only recording instructions — Codex, 2026-09-04
+
+Under the human-approved A-2 policy recorded in `00-ADVERSARIAL-REVIEW.md`,
+all existing text above, including pending placeholders, remains unchanged.
+The earlier instruction to “fill these decisions” is to be carried out by
+appending dated, attributed entries below, not by editing those fields.
+
+For each future human entry, record the human name and date, applicable full
+SHA, decision and rationale, required checks and results where applicable, and
+references to review/arbitration evidence. Closure and merge authorization each
+require their own explicit human decision and exact full SHA. Corrections to
+earlier records must identify the prior entry and append the correction.
+The human updates the corresponding STATE gates with that evidence.
+
+This is a recording instruction only. Codex makes no live-applicability,
+validation, closure, or merge decision; all those gates remain pending.

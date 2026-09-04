@@ -27,6 +27,7 @@ class WorkflowTests(unittest.TestCase):
         self.write('.planning/phases/00-test/00-ADVERSARIAL-REVIEW.md', '# Review\nB-01 Blocker: original finding\n')
         self.commit()
         self.base = git(self.root, 'rev-parse', 'HEAD').strip()
+        git(self.root, 'update-ref', 'refs/remotes/origin/main', self.base)
         self.write('.planning/STATE.md', f'---\nmain_baseline: {self.base}\nactive_branch: phase/00-test\n---\n')
         self.commit()
 
@@ -109,6 +110,128 @@ class WorkflowTests(unittest.TestCase):
     def test_missing_history_fails_closed(self):
         self.write('.planning/STATE.md', '---\nmain_baseline: ' + 'f' * 40 + '\n---\n')
         self.assertIn('full Git history required', ' '.join(check_version_history(self.root)))
+
+    def advance_baseline_to_head(self):
+        sha = git(self.root, 'rev-parse', 'HEAD').strip()
+        self.write('.planning/STATE.md', f'---\nmain_baseline: {sha}\nactive_branch: phase/00-test\n---\n')
+
+    def assert_baseline_rejected(self):
+        for check in [check_version_history, check_workflow]:
+            with self.subTest(check=check.__name__):
+                self.assertIn('must be an ancestor of refs/remotes/origin/main',
+                              ' '.join(check(self.root)))
+
+    def test_legitimate_main_baseline_passes(self):
+        self.assertEqual([], check_version_history(self.root))
+        self.assertEqual([], check_workflow(self.root))
+
+    def test_phase_only_baseline_rejected_in_worktree_index_and_history(self):
+        self.advance_baseline_to_head()
+        self.assert_baseline_rejected()
+        self.stage()
+        self.assert_baseline_rejected()
+        self.commit()
+        self.assert_baseline_rejected()
+
+    def test_advanced_baseline_cannot_hide_unbumped_package_commit(self):
+        self.write('README.md', 'unbumped package change')
+        self.commit()
+        self.assertIn('must increase', ' '.join(check_version_history(self.root)))
+        self.advance_baseline_to_head()
+        self.commit()
+        self.assert_baseline_rejected()
+
+    def test_advanced_baseline_cannot_hide_review_tampering(self):
+        self.write('.planning/phases/00-test/00-ADVERSARIAL-REVIEW.md', 'fabricated replacement')
+        self.commit()
+        self.assertIn('unchanged prefix', ' '.join(check_workflow(self.root)))
+        self.advance_baseline_to_head()
+        self.commit()
+        self.assert_baseline_rejected()
+
+    def test_missing_authoritative_main_fails_even_with_local_main(self):
+        git(self.root, 'branch', 'main', self.base)
+        git(self.root, 'update-ref', '-d', 'refs/remotes/origin/main')
+        for check in [check_version_history, check_workflow]:
+            self.assertIn('authoritative refs/remotes/origin/main unavailable',
+                          ' '.join(check(self.root)))
+
+    def test_phase_commit_on_local_main_is_not_authoritative(self):
+        git(self.root, 'branch', 'main')
+        self.advance_baseline_to_head()
+        self.assert_baseline_rejected()
+
+    def test_main_baseline_must_also_be_ancestor_of_head(self):
+        phase_head = git(self.root, 'rev-parse', 'HEAD').strip()
+        git(self.root, 'checkout', '-qb', 'main', self.base)
+        self.write('.planning/main-only.md', 'main history beyond the branch start')
+        self.commit()
+        main_head = git(self.root, 'rev-parse', 'HEAD').strip()
+        git(self.root, 'update-ref', 'refs/remotes/origin/main', main_head)
+        git(self.root, 'checkout', '-q', 'phase/00-test')
+        self.assertEqual(phase_head, git(self.root, 'rev-parse', 'HEAD').strip())
+        self.assertEqual([], check_version_history(self.root))
+        self.assertEqual([], check_workflow(self.root))
+        self.write('.planning/STATE.md', f'---\nmain_baseline: {main_head}\nactive_branch: phase/00-test\n---\n')
+        self.assertTrue(check_version_history(self.root))
+        self.assertTrue(check_workflow(self.root))
+
+    def test_uat_and_verification_append_passes_rewrite_and_delete_fail(self):
+        for suffix in ['UAT', 'VERIFICATION']:
+            with self.subTest(artifact=suffix):
+                name = f'.planning/phases/00-test/00-{suffix}.md'
+                original = '# Historical record\nPending human determination / original evidence\n'
+                self.write(name, original)
+                self.commit()
+                self.write(name, original + '\n## 2026-09-04 — dated decision/evidence\nAuthor: test fixture\n')
+                self.stage()
+                self.assertEqual([], check_workflow(self.root))
+                self.write(name, original.replace('Pending', 'Approved'))
+                self.stage()
+                self.assertIn('unchanged prefix', ' '.join(check_workflow(self.root)))
+                (self.root / name).unlink()
+                self.stage()
+                self.assertIn('must not be deleted', ' '.join(check_workflow(self.root)))
+                self.write(name, original)
+                self.stage()
+
+    def test_existing_human_decision_cannot_be_replaced(self):
+        name = '.planning/phases/00-test/00-UAT.md'
+        original = ('## 2026-09-04 — Human (synthetic fixture)\n'
+                    'Live validation: required\nMerge: not authorized\n')
+        self.write(name, original)
+        self.commit()
+        self.write(name, original.replace('required', 'not_applicable').replace('not authorized', 'authorized'))
+        self.stage()
+        self.assertIn('unchanged prefix', ' '.join(check_workflow(self.root)))
+        self.write(name, original + '\n## 2026-09-05 — Human (synthetic fixture)\nAdditional checks required.\n')
+        self.commit()
+        self.assertEqual([], check_workflow(self.root))
+
+    def test_later_restoration_cannot_hide_uat_or_verification_tampering(self):
+        for suffix in ['UAT', 'VERIFICATION']:
+            with self.subTest(artifact=suffix):
+                name = f'.planning/phases/00-test/00-{suffix}.md'
+                original = '# 2026-09-04 — Original evidence\nAuthor: test fixture\n'
+                self.write(name, original)
+                self.commit()
+                self.write(name, 'replacement evidence')
+                self.commit()
+                self.write(name, original)
+                self.commit()
+                self.assertTrue(any(name in error for error in check_workflow(self.root)))
+
+    def test_even_empty_created_artifacts_cannot_be_deleted(self):
+        for suffix in ['ADVERSARIAL-REVIEW', 'UAT', 'VERIFICATION']:
+            with self.subTest(artifact=suffix):
+                name = f'.planning/phases/01-test/01-{suffix}.md'
+                self.write(name, '')
+                self.commit()
+                (self.root / name).unlink()
+                self.stage()
+                self.assertIn('must not be deleted', ' '.join(check_workflow(self.root)))
+                self.write(name, '')
+                self.stage()
 
     def test_review_append_passes_but_rewrite_or_delete_fails(self):
         name = '.planning/phases/00-test/00-ADVERSARIAL-REVIEW.md'

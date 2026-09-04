@@ -84,3 +84,15 @@ behavior, begin the `REFACTOR-ROADMAP.md` Phase 6, or alter architecture ownersh
 - **Live Mudlet applicability or validation:** Pending human decision; Codex
   may not mark it not-applicable or passed.
 - **Phase closure and merge to `main`:** Pending explicit human authorization.
+
+
+## Human-authorized final corrective scope — 2026-09-04
+
+The human approved A-1 through A-7 verbatim in the dated Human + ChatGPT/Neon
+arbitration entry in `00-ADVERSARIAL-REVIEW.md`. This pass addresses N-01
+(trusted main-history baseline), N-02 (append-preserving UAT and verification
+records), and N-03 (ignored Python caches), with focused tests and exact-SHA CI.
+Phase 00 is a special workflow/bootstrap phase: it does not consume, renumber,
+or automatically advance either the hardening or refactor sequence. The human
+explicitly selects the next phase. Claude re-review and human-owned STATE gate
+actions remain separate; this corrective scope does not close Phase 00.

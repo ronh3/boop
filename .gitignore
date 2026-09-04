@@ -5,3 +5,5 @@
 .output
 output.md
 UIEXAMPLE.md
+__pycache__/
+*.pyc

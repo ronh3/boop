@@ -1,4 +1,4 @@
-"""Git-backed version and review-history checks; these cannot authenticate roles."""
+"""Git-backed version and evidence-history checks; these cannot authenticate roles."""
 
 from __future__ import annotations
 
@@ -64,6 +64,17 @@ def phase_baseline(root: Path) -> str:
     if not match:
         raise ValueError("STATE.md frontmatter must name a full main_baseline SHA")
     base = match[1]
+    # origin/main is the authority even if a local main branch has moved. Do
+    # not fall back to HEAD/local main when this ref or its history is absent.
+    main_ref = "refs/remotes/origin/main"
+    try:
+        git(root, "rev-parse", "--verify", f"{main_ref}^{{commit}}")
+    except subprocess.CalledProcessError as exc:
+        raise ValueError(f"authoritative {main_ref} unavailable; fetch full origin history") from exc
+    try:
+        git(root, "merge-base", "--is-ancestor", base, main_ref)
+    except subprocess.CalledProcessError as exc:
+        raise ValueError(f"main_baseline {base} must be an ancestor of {main_ref}") from exc
     git(root, "merge-base", "--is-ancestor", base, "HEAD")
     return base
 
@@ -73,10 +84,10 @@ def transitions(root: Path, base: str) -> list[tuple[str, str]]:
     return [(f"{sha}^1", sha) for sha in commits] + [("HEAD", ":")]
 
 
-def check_version_history(root: Path, base: str | None = None) -> list[str]:
+def check_version_history(root: Path) -> list[str]:
     try:
         errors = []
-        for before, after in transitions(root, base or phase_baseline(root)):
+        for before, after in transitions(root, phase_baseline(root)):
             errors.extend(check_transition(root, before, after))
             if after != ":":
                 parents = git(root, "rev-list", "--parents", "-n", "1", after).split()[2:]
@@ -92,15 +103,16 @@ def check_review_transition(root: Path, before: str, after: str) -> list[str]:
     old_paths = set(git(root, "ls-tree", "-r", "--name-only", "-z", before).split("\0"))
     for path in paths_changed(root, before, after):
         if (path not in old_paths or not path.startswith(".planning/phases/")
-                or not path.endswith("-ADVERSARIAL-REVIEW.md")):
+                or not path.endswith(("-ADVERSARIAL-REVIEW.md", "-UAT.md", "-VERIFICATION.md"))):
             continue
         old = snapshot(root, before, path)
         try:
             new = snapshot(root, after, path)
         except subprocess.CalledProcessError:
-            new = ""
+            errors.append(f"{after}: {path}: recorded evidence must not be deleted")
+            continue
         if not new.startswith(old):
-            errors.append(f"{after}: {path}: recorded review must remain an unchanged prefix")
+            errors.append(f"{after}: {path}: recorded evidence must remain an unchanged prefix")
     return errors
 
 
@@ -115,12 +127,12 @@ def check_staged_branch(root: Path) -> list[str]:
     return []
 
 
-def check_workflow(root: Path, base: str | None = None) -> list[str]:
+def check_workflow(root: Path) -> list[str]:
     try:
         errors = check_staged_branch(root)
         if (root / ".planning/config.json").exists():
             errors.append("retired .planning/config.json must not be operational")
-        for before, after in transitions(root, base or phase_baseline(root)):
+        for before, after in transitions(root, phase_baseline(root)):
             errors.extend(check_review_transition(root, before, after))
             # A merge must preserve recorded history from every parent, too.
             if after != ":":

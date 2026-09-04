@@ -74,12 +74,25 @@ finding finally accepted, resolved, or closed. Claude may establish factual
 closure only by a recorded re-review of a named correction SHA; the human may
 arbitrate a finding explicitly. Neither action alone closes a phase.
 
+Phase `*-UAT.md` and `*-VERIFICATION.md` artifacts are append-only from
+creation. Preserve all existing content, including pending scaffolds, as an
+unchanged prefix. Human decisions and new or corrected evidence must be appended
+as dated, attributed entries; never rewrite, remove, or replace prior entries or
+placeholders. The workflow guard checks all three artifact types across phase
+history, every merge parent, and the staged snapshot. Prefix preservation cannot
+authenticate the author of a new entry; the role contract still applies.
+
 ## State Writers And Live Authority
 
 `STATE.md` frontmatter is the canonical current coordination record. Its
 `main_baseline` is the immutable branch-start SHA for the active phase; prose
 and context reference it rather than maintain another live copy. Historical
 review and verification SHAs remain immutable evidence for their own boundaries.
+The history guards require this baseline to be an ancestor of both phase HEAD
+and `refs/remotes/origin/main`. That remote-tracking main ref and its full history
+must be available (fetch origin before verification); local `main` is not a
+fallback authority. A commit reachable only from the phase cannot set the
+coverage boundary, and callers cannot override the declared baseline.
 
 | Fields | Authorized writer and evidence |
 |---|---|

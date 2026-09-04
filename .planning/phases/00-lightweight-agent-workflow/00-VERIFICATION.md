@@ -96,3 +96,38 @@ The final evidence-only commit preserves 0.1.496.4; it grants no acceptance.
   and the CODEX checkpoint listed above.
 - Local-only cleanup: removed the obsolete sed allow-list entry from ignored
   `.claude/settings.local.json`; it is not a tracked or published change.
+
+
+## Final corrective pass — Codex, 2026-09-04
+
+Starting SHA: `5b4417be62e31800e4f348d14a1948ce95f46112`. Its completed
+CI identity was independently fetched for this boundary: [33925663133](https://github.com/ronh3/boop/actions/runs/33925663133),
+attempt 1, `main.yml`, `push`, `phase/00-lightweight-agent-workflow`, exact
+head SHA `5b4417be62e31800e4f348d14a1948ce95f46112`, conclusion `success`.
+This historical result does not certify the following correction.
+
+N-01/N-02/N-03 correction scope: trusted origin/main ancestry for the phase
+baseline; append-preserving UAT/VERIFICATION history; ignored Python bytecode.
+The correction containing this entry synchronizes version `0.1.496.5`.
+
+Local automated results:
+
+- `python3 tools/check_release_gates.py`: all six gates pass (versions,
+  version-bump, workflow, manifests, state-drift, architecture).
+- `python3 tests/test_workflow_gates.py`: **30 tests pass**, including 11 new
+  adversarial tests for legitimate/invalid baselines, absent authoritative main,
+  retained HEAD ancestry, concealed version/review violations, UAT and verification
+  rewriting/deletion/restoration, synthetic decision replacement, dated appends,
+  and empty-artifact deletion. Existing five fake-CI tests also pass.
+- `python3 tests/test_architecture_guard.py`: **25 tests pass**; unchanged
+  25 modules / 141 edges, sole composition root `boop_bootstrap`.
+- `bash -n tools/wait_for_exact_ci.sh` and `git diff --check`: pass.
+- `git check-ignore tools/__pycache__/*.pyc`: both generated guard caches
+  are ignored; `git status --short --untracked-files=all` has only intended edits.
+
+No local full-Mudlet substitute is claimed. The correction SHA, staged release
+gate, fresh-checkout cleanliness and completed CI/build/Busted evidence will be
+appended at the next evidence boundary, followed by a new final-tip CI gate
+reported in handoff under A-5. Earlier entries and placeholders above stay
+unchanged under A-2; all future verification evidence is appended with attribution
+and date. Neither automated verification nor policy arbitration closes Phase 00.
