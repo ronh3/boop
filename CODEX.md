@@ -52,9 +52,11 @@ Guidance for Codex when working in this repository.
   `muddle && AUTORUN_BUSTED_TESTS=true TESTS_DIRECTORY="$PWD/tests" QUIT_MUDLET_AFTER_TESTS=true PRETEST_PACKAGE="$PWD/build/boop Hunter.mpackage" /tmp/Mudlet.AppImage --profile "GithubTests" --mirror`
 - If `/tmp/Mudlet.AppImage` is not available locally, use the GitHub Actions Mudlet run as the authoritative full-suite fallback.
 - Do not treat the host's default LuaRocks/Busted tree as authoritative unless it is a Lua 5.1-compatible tree built for Mudlet-style execution; this repo's CI intentionally mirrors `demonnic/test-in-mudlet` with Lua 5.1.5, Busted, the `GithubTests` profile, and Xvfb.
-- After a GSD workflow finishes every source, documentation, SUMMARY, STATE, ROADMAP, REQUIREMENTS, and phase-completion commit, push immutable final HEAD and run `tools/wait_for_exact_ci.sh`. The script's exact-`headSha` success is the blocking terminal authority; any later repository mutation requires it to run again.
+- After every meaningful implementation, review, or correction boundary finishes, push immutable final HEAD and run `tools/wait_for_exact_ci.sh`. The script's exact-`headSha` success is the blocking automated gate; any later repository mutation requires it to run again. Human arbitration and required live Mudlet validation remain separate authorities.
 
 ## Workflow Reminders
+- Follow `AGENTS.md` for role authority, durable artifacts, phase branches, review boundaries, and phase closure. Codex never declares live acceptance or phase completion.
+- Develop on the active `phase/<number>-<short-description>` branch named by `.planning/STATE.md`; do not commit active phase work directly to `main`.
 - Keep structure shallow and logical.
 - Prefer the Mudlet DB for data; use small Lua tables only for config.
 - Use `cecho` tags for colored output; avoid mixing `decho`-style tags.
@@ -100,6 +102,7 @@ Guidance for Codex when working in this repository.
 - Mudlet CI now runs real in-Mudlet `busted` specs; prefer extending that suite when fixing real regressions.
 
 ## Session Startup (New Agent Checklist)
+- Read `.planning/STATE.md` and its named active phase context first; confirm both agree with the checked-out branch and Git state.
 - Read `README.md` and `DESIGN.md` to understand current scope and user-facing behavior.
 - Read `ARCHITECTURE.md` for how boop actually works today, and `ARCHITECTURE-RULES.md` before changing module boundaries.
 - Read `UIDESIGN.md` as well when doing UI or UX work; it is now lagging less and should be kept in sync.
@@ -111,10 +114,10 @@ Guidance for Codex when working in this repository.
 - For party/leader/walker behavior, assume `demonnicAutoWalker` remains an external dependency and boop should integrate with it rather than absorb it.
 
 ## Session Checkpoint
-- Branch to continue from: `codex/pre-1.0-hardening-pass`
-- The branch tip moves with normal hardening commits; rely on git history rather than this file for the exact latest hash.
-- Current synchronized package version: `0.1.496.1`
-- The purposeful pre-1.0 hardening work that is currently in this branch:
+- Branch authority: use `.planning/STATE.md`; create active work from current `origin/main` on the phase branch it names.
+- Do not infer acceptance from this checkpoint, a branch name, or green CI. Only the human authorizes closure and merge after required review and live Mudlet validation.
+- Current synchronized package version: `0.1.496.2`
+- The purposeful pre-1.0 hardening work landed through Phase 5 includes:
   - runtime/state ownership and coordinator path
   - combat planner split from execution
   - UI/config/help registries
@@ -122,7 +125,7 @@ Guidance for Codex when working in this repository.
   - workflow-first in-game help, including dedicated loot/import, targeting, combat, party, and stats topics
   - GMCP support re-announcement on reconnect / missing-`gmcp.IRE` fallback
   - compatibility cleanup: the legacy flat `boop.state.<key>` bridge has been removed
-- Intentionally not in this branch:
+- Intentionally not in the current implementation:
   - the local Muddler/dev auto-update helper (`boop dev`) was rolled back on purpose and should stay out unless explicitly requested again
 - Important compatibility note for any future session:
   - internal code now uses owned state domains directly: `boop.state.combat`, `lifecycle`, `targeting`, `gold`, `queue`, `walk`, `diag`, `trace`, `ui`, `rage`, `inventory`, `ih`, `gag`

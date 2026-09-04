@@ -55,7 +55,7 @@ Requirements for the pre-1.0 hardening milestone. Each maps to roadmap phases.
 ### Live Validation
 
 - [ ] **LIVE-01**: Final 1.0 validation includes live Mudlet checks for GMCP reconnect, room/target state, retargeting, gold plus pack, `diag`, one queued interrupt, pull, walk, and gag summaries.
-- [ ] **LIVE-02**: Live validation records unresolved regressions as GSD follow-up work before release approval.
+- [ ] **LIVE-02**: Live validation records unresolved regressions as tracked follow-up work before release approval.
 
 ## v2 Requirements
 

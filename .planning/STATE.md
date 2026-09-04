@@ -1,39 +1,46 @@
 ---
-gsd_state_version: 1.0
+state_version: 2
 milestone: v1.0
 milestone_name: Pre-1.0 Hardening
-current_phase: 03
-current_phase_name: queue-interrupt-gold-and-autowalk-regression-coverage
-status: executing
-stopped_at: Completed 03-39-PLAN.md
-last_updated: "2026-08-26T17:33:44-07:00"
-last_activity: 2026-08-26
-last_activity_desc: Completed Plan 03-39 interrupt admission hierarchy and atomic supersession
-progress:
-  total_phases: 6
-  completed_phases: 2
-  total_plans: 54
-  completed_plans: 49
-  percent: 91
+active_phase: "00"
+active_phase_name: lightweight-agent-workflow
+active_branch: phase/00-lightweight-agent-workflow
+active_specification: .planning/phases/00-lightweight-agent-workflow/00-CONTEXT.md
+status: ready_for_independent_review
+independent_review: pending
+human_arbitration: pending
+live_mudlet_validation: pending_human_determination
+phase_closure: pending_human_authorization
+main_baseline: a345a34ea0da2eed6f5bfe1c5e586488749a3e22
+last_updated: "2026-09-04"
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-09)
+See: `.planning/PROJECT.md`.
 
 **Core value:** boop must make Achaea hunting safer, clearer, and less noisy without taking control away from the operator.
-**Current focus:** Phase 03 — queue-interrupt-gold-and-autowalk-regression-coverage
+**Current focus:** Phase 00 — lightweight multi-agent workflow adoption
 
 ## Current Position
 
-Phase: 03 (queue-interrupt-gold-and-autowalk-regression-coverage) — EXECUTING
-Plan: 39 of 40
-Status: Ready for Plan 03-40 live hierarchy UAT
-Last activity: 2026-08-26 - Completed Plan 03-39 interrupt admission hierarchy and atomic supersession
+Branch: `phase/00-lightweight-agent-workflow`
+Specification: `.planning/phases/00-lightweight-agent-workflow/00-CONTEXT.md`
+Main baseline: `a345a34ea0da2eed6f5bfe1c5e586488749a3e22`
+Status: Implementation boundary ready for independent review after push
 
-Progress: [█████████░] 90%
+This state is factual coordination data, not acceptance authority. Codex may
+record branch and gate progress but may not set live Mudlet validation or phase
+closure to complete. Review, human arbitration, live applicability or
+validation, and merge authorization remain pending.
+
+## Historical Planning Record
+
+The detailed metrics and accumulated decisions below predate the lightweight
+workflow. They remain durable project provenance, but legacy tooling names and
+status values in that history do not control the current phase.
 
 ## Performance Metrics
 

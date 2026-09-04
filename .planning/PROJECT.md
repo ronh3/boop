@@ -52,7 +52,7 @@ boop must make Achaea hunting safer, clearer, and less noisy without taking cont
 - Package metadata lives in `mfile`, and runtime version is declared in `src/scripts/boop/boop_init.lua`.
 - Current repository workflow is documented in `AGENTS.md` and `CODEX.md`; both require synchronized version fields on every commit and push.
 - Product behavior and command surface are documented in `README.md`, `DESIGN.md`, and `UIDESIGN.md`.
-- GSD codebase mapping exists under `.planning/codebase/` and should be read before planning hardening work.
+- Codebase mapping exists under `.planning/codebase/` and should be read before planning hardening work.
 - The package runs in Mudlet against Achaea, relies heavily on GMCP and IRE modules, and uses Mudlet DB for persistent config and hunting data.
 - CI builds the Muddler package and runs Busted specs inside a real Mudlet AppImage profile.
 - The highest-value known concerns are state-domain drift, autowalk coverage gaps, gag summarization fragility, manifest parity risk, and missing automated version-sync enforcement.
@@ -76,20 +76,22 @@ boop must make Achaea hunting safer, clearer, and less noisy without taking cont
 | Reduce scroll through compact summaries first | Operators still need useful hunting signal; summaries preserve information better than aggressive hiding. | - Pending |
 | Keep boop self-contained | Existing design explicitly avoids relying on SVO, Wundersys, or large external systems. | - Pending |
 | Keep `demonnicAutoWalker` external | Walking is a separate domain and current boop behavior is integration-focused. | - Pending |
-| Use GSD `.planning/` artifacts for structured future work | Existing `AGENTS.md`, `CODEX.md`, `README.md`, and `UIDESIGN.md` help Codex, but GSD adds durable requirements, roadmap, state, and phase artifacts. | - Pending |
+| Use existing `.planning/` artifacts as plain durable records | Requirements, phase context, state, verification, review, and UAT already have established homes; a separate orchestration framework would duplicate authority. | Accepted 2026-09-04 |
+| Separate implementation from acceptance authority | Codex implements, Claude reviews, the human arbitrates and authorizes closure, and Mudlet is final for live runtime behavior. | Accepted 2026-09-04 |
+| Keep completed phases on `main` and active work on pushed phase branches | Shared phase branches give every agent one inspectable commit while protecting the accepted `main` baseline. | Accepted 2026-09-04 |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
-**After each phase transition** (via `$gsd-transition`):
+**After each phase transition:**
 1. Requirements invalidated? Move to Out of Scope with reason.
 2. Requirements validated? Move to Validated with phase reference.
 3. New requirements emerged? Add to Active.
 4. Decisions to log? Add to Key Decisions.
 5. "What This Is" still accurate? Update if drifted.
 
-**After each milestone** (via `$gsd-complete-milestone`):
+**After each milestone:**
 1. Full review of all sections.
 2. Core Value check - still the right priority?
 3. Audit Out of Scope - reasons still valid?

@@ -256,7 +256,7 @@ Plans:
   2. `bh`, `boop on`, `boop off`, status, gag, and blocker outputs show compact state summaries with consistent `[OK]`, `[INFO]`, `[WARN]`, and `[ERR]` feedback.
   3. README, command help, UIDESIGN guidance, and dashboard copy match every changed command surface or operator workflow.
   4. Maintainer can produce a 1.0 candidate only after Muddler build output, Busted execution inside a real Mudlet profile, and required live Mudlet checks are recorded.
-  5. Unresolved live regressions are recorded as GSD follow-up work before release approval.
+  5. Unresolved live regressions are recorded as tracked follow-up work before release approval.
 
 **Plans**: TBD
 **UI hint**: yes
