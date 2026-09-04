@@ -11,9 +11,10 @@ working on Boop.
 - **Codex** is the primary implementation agent. Codex may change source,
   tests, documentation, and Git state when instructed, but may not declare a
   phase live-accepted or complete.
-- **Claude** is the independent adversarial reviewer. Claude's initial review
-  must not modify implementation source. Claude may add or update the phase's
-  designated adversarial-review artifact.
+- **Claude** is the independent adversarial reviewer. In every review pass,
+  Claude must not edit implementation source, tests, or implementation docs.
+  Claude may only append to the designated adversarial-review artifact and
+  update its own `independent_review` gate in `STATE.md` with that evidence.
 - **Mudlet** is the final authority for live runtime behavior. Host tests and
   CI support a decision; they do not substitute for required live Mudlet
   validation.
@@ -28,7 +29,7 @@ requirements / active specification
   -> independent adversarial review
   -> corrections
   -> human arbitration
-  -> live Mudlet validation
+  -> human determination of live applicability and required Mudlet validation
   -> phase closure
 ```
 
@@ -44,7 +45,8 @@ parallel ADR, status file, review log, or specification when one of these fits.
 |---|---|
 | Milestone requirements | `.planning/REQUIREMENTS.md` |
 | Active phase specification and fixed scope | `.planning/phases/<NN>-<slug>/<NN>-CONTEXT.md` |
-| Milestone sequencing | `.planning/ROADMAP.md` |
+| Milestone sequencing and phase namespace index | `.planning/ROADMAP.md` |
+| Refactor sequence and historical refactor phase numbers | `REFACTOR-ROADMAP.md`; activated only by the current phase context |
 | Current phase, branch, gate, and handoff state | `.planning/STATE.md` |
 | Current architecture and ownership | `ARCHITECTURE.md` |
 | Mandatory architecture invariants | `ARCHITECTURE-RULES.md` |
@@ -57,22 +59,62 @@ parallel ADR, status file, review log, or specification when one of these fits.
 `<NN>-PLAN.md` and `<NN>-SUMMARY.md` files are execution records subordinate to
 the requirements, active context, and architecture. Existing `.planning`
 history and legacy tooling metadata are provenance only; no orchestration
-framework has authority over this workflow.
+framework has authority over this workflow. The retired configuration is kept
+byte-for-byte at `.planning/legacy-gsd-config.json.provenance`; it must not be
+loaded as configuration or restored to `.planning/config.json`. Historical
+plans, validation instructions, research, and codebase maps cannot activate
+legacy commands or override this contract in any phase.
 
-The adversarial-review artifact identifies the exact reviewed commit, preserves
-finding IDs and severity, and records each disposition and correction commit.
-Claude owns the initial findings. Codex may record proposed dispositions and
-correction evidence but may not mark disputed findings accepted or the phase
-closed. Human arbitration is recorded explicitly instead of overwriting the
-review history.
+The adversarial-review artifact is append-only after a review is recorded. No
+actor may rewrite or delete an existing finding's ID, severity, text, or prior
+entries. Append dated, attributed proposals, corrections, re-reviews, and human
+arbitration as separate entries. Claude owns initial findings. Codex may propose
+ACCEPT, PARTIALLY ACCEPT, or REJECT and supply evidence, but may not mark any
+finding finally accepted, resolved, or closed. Claude may establish factual
+closure only by a recorded re-review of a named correction SHA; the human may
+arbitrate a finding explicitly. Neither action alone closes a phase.
+
+## State Writers And Live Authority
+
+`STATE.md` frontmatter is the canonical current coordination record. Its
+`main_baseline` is the immutable branch-start SHA for the active phase; prose
+and context reference it rather than maintain another live copy. Historical
+review and verification SHAs remain immutable evidence for their own boundaries.
+
+| Fields | Authorized writer and evidence |
+|---|---|
+| `status`, `active_phase`, `active_phase_name`, `active_branch`, `active_specification`, `main_baseline`, `last_updated` | Codex may record factual coordination within human-authorized scope; no status value grants acceptance |
+| `independent_review` | Claude only, citing its append-only review entry and exact reviewed/correction SHA |
+| `human_arbitration` | Human only, citing the dated arbitration entry in the review artifact |
+| `live_mudlet_validation` | Human only, citing the phase UAT decision/result |
+| `phase_closure` | Human only, citing the exact accepted SHA and closure decision in UAT |
+| `merge_authorization` | Human only, naming the exact full SHA and dated authorization in UAT |
+
+Other actors must not advance, reset, or clear another writer's gate. Codex may
+initialize a new phase's gates as pending; it may not infer human or Claude
+approval. Protected gate decisions must include attribution and evidence, not
+just a bare `complete` value. Structural/milestone changes require human scope
+authority. This is a role contract; Git author names do not authenticate a human.
+
+For every phase, whether live Mudlet validation is required is a human decision
+recorded in `<NN>-UAT.md` with date, rationale, and applicable SHA. The human
+records `required`, `not_applicable`, or a validation result there and updates
+the corresponding state gate. Codex and Claude may supply technical evidence
+but may not make that determination or mark live testing passed. Until then,
+`pending_human_determination` is an unsatisfied gate. Required live tests must
+pass in Mudlet before human closure; automated Mudlet Busted is separate evidence.
 
 ## Phase And Git Workflow
 
-- `main` is the latest completed, independently reviewed, human-authorized, and
-  live-validated phase.
+- From Phase 00 forward, additions to `main` require independent review, human
+  arbitration/authorization, and the human-recorded live applicability decision
+  plus any required Mudlet validation. The pre-workflow baseline named in the
+  Phase 00 state is inherited history, not retroactively certified by this rule.
 - Active work occurs on `phase/<number>-<short-description>`, created from the
   current `origin/main`. The matching context file and `.planning/STATE.md`
-  must name that branch.
+  must name that branch. No work may be committed directly to `main`, including
+  quick fixes, hotfixes, docs, or planning. Those tasks use an authorized phase
+  branch and the same review/acceptance gates; they are not exceptions.
 - Push phase branches to `origin` at meaningful specification,
   implementation, review, and correction boundaries so every agent reviews the
   same commit.
@@ -82,11 +124,17 @@ review history.
 - Never rebase or force-push a published phase branch without explicit human
   approval. Incorporate concurrent remote work with the safest non-rewriting
   method and escalate genuine conflicts.
-- Codex must not merge a phase to `main` until the human explicitly authorizes
-  it after review, arbitration, and required live Mudlet validation.
-- Record the reviewed SHA, correction SHA, live result, and closure authority
-  in the existing phase artifacts. A branch name or green CI result alone is
-  not phase acceptance.
+- Human merge authorization must name the exact full commit SHA after review,
+  arbitration, and the live gate. Only that SHA may land on `main` by fast-forward;
+  do not create an unreviewed merge/squash commit. A later branch-tip change
+  invalidates authorization. Immediately before merging, verify the authorized
+  SHA equals local and remote phase HEAD and passed exact-SHA CI. If main cannot
+  fast-forward, integrate on the phase branch, then repeat the affected gates
+  and obtain new exact-SHA authorization.
+- Record reviewed/correction SHAs in the review artifact, human live/closure
+  and merge decisions in UAT, and CI run ID, attempt, URL, event, branch, and
+  head SHA in VERIFICATION. STATE references those authorities; a branch name
+  or green CI result alone is not phase acceptance.
 
 ## Session Startup
 
@@ -116,7 +164,11 @@ review history.
   - the `CODEX.md` current synchronized package-version checkpoint
 - Never leave those fields mismatched.
 - Before committing or pushing, inspect staged paths and run
-  `python3 tools/check_release_gates.py`.
+  `python3 tools/check_release_gates.py`. The `version-bump` gate checks every
+  commit since the phase baseline against its parent and checks the staged
+  snapshot against HEAD. CI must fetch full history. Planning-only commits
+  preserve versions; every package-affecting commit increases the numeric
+  version. Fast-forwarding an already checked commit creates no new commit.
 
 ## Verification And Terminal CI
 
@@ -125,9 +177,14 @@ review history.
   regression suite.
 - After all repository mutations for a boundary are complete, Codex pushes the
   immutable final HEAD and runs `tools/wait_for_exact_ci.sh`.
-- The exact-SHA CI gate is blocking automated evidence. CI evidence is reported
-  but not committed; any later repository mutation invalidates it and requires
-  another run.
+- The exact-SHA CI gate is blocking automated evidence. Commit completed run
+  identifiers and summaries in `<NN>-VERIFICATION.md` at the next evidence or
+  review boundary; keep raw CI logs/artifacts in GitHub Actions. An identifier
+  always describes its named SHA, never a later evidence commit. After that
+  commit, push and gate the new final HEAD and report its run identity in the
+  handoff without another bookkeeping commit. The next independently needed
+  boundary can preserve that identity. Every later mutation requires a new
+  final gate; a successful earlier run remains historical evidence only.
 - Successful automated verification does not authorize live acceptance, phase
   closure, or merge to `main`.
 

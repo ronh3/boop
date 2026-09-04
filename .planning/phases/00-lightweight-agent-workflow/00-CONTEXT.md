@@ -1,8 +1,8 @@
 # Phase 00: Lightweight Multi-Agent Workflow - Context
 
 **Branch:** `phase/00-lightweight-agent-workflow`
-**Main baseline:** `a345a34ea0da2eed6f5bfe1c5e586488749a3e22`
-**Status:** Implementation ready for independent review after the branch is pushed
+**Main baseline:** See `.planning/STATE.md` frontmatter `main_baseline`.
+**Status:** Corrections awaiting Claude re-review and human arbitration; not complete.
 
 ## Phase Boundary
 
@@ -13,24 +13,26 @@ review, UAT, and state artifacts rather than introducing another documentation
 tree or an orchestration framework.
 
 This is a repository-process bootstrap phase. It does not change product
-behavior, begin the product roadmap's Phase 6, or alter architecture ownership.
+behavior, begin the `REFACTOR-ROADMAP.md` Phase 6, or alter architecture ownership.
 
 ## Requirements
 
 - Define each role and its authority, including that Codex cannot declare live
-  acceptance or phase completion and that Claude's initial review is
-  source-read-only.
+  acceptance or phase completion and that Claude's reviewer role is
+  source-read-only in every pass.
 - Establish the required authority order from specification through human and
   live Mudlet acceptance to phase closure.
 - Name the existing authoritative artifact for active scope, architectural and
   project decisions, current state, automated verification, independent review
   and disposition, and live validation.
 - Require active work on pushed `phase/<number>-<short-description>` branches.
-- Keep `main` limited to completed, reviewed, human-authorized, live-validated
-  phases.
+- From this bootstrap forward, additions to `main` require review, human
+  authorization, and human-determined live applicability/required validation.
 - Preserve meaningful implementation, review, and correction commit
   boundaries without requiring a commit for every edit.
-- Require explicit human authorization before merging a phase to `main`.
+- Require explicit human authorization naming the exact SHA before a
+  fast-forward to `main`; any later branch-tip change invalidates authorization.
+- Prohibit all direct commits to `main`, including quick fixes and hotfixes.
 - Do not introduce GSD or any other orchestration framework.
 
 ## Acceptance Criteria
@@ -43,12 +45,14 @@ behavior, begin the product roadmap's Phase 6, or alter architecture ownership.
 4. Claude can record initial findings in
    `.planning/phases/00-lightweight-agent-workflow/00-ADVERSARIAL-REVIEW.md`
    without editing implementation source.
-5. No product source, command behavior, module boundary, or build artifact is
-   changed.
+5. No command behavior, module boundary, or tracked build artifact is changed.
+   The only product-source change is the synchronized version bump required
+   by D-00-06 (including the operator-visible version string).
 6. Repository release gates pass, the branch is pushed, and exact-SHA CI is
    recorded as automated evidence only.
-7. Review, human arbitration, live-applicability/validation, phase closure, and
-   merge to `main` remain pending human-controlled stages.
+7. Claude owns independent review; the human owns arbitration, live
+   applicability/validation, closure, and exact-SHA merge authorization.
+   Corrections do not grant acceptance or complete this phase.
 
 ## Decisions
 
@@ -73,7 +77,9 @@ behavior, begin the product roadmap's Phase 6, or alter architecture ownership.
 
 - **Designated review artifact:**
   `.planning/phases/00-lightweight-agent-workflow/00-ADVERSARIAL-REVIEW.md`
-- **Initial review:** Pending Claude review of an exact pushed commit.
+- **Initial review:** Claude reviewed `44fb844fe2aadf9d71fd7aa95736f3f336e3af72`;
+  original findings are preserved in the designated artifact. Corrections await
+  re-review and human arbitration; Codex proposals are not final dispositions.
 - **Human arbitration:** Pending.
 - **Live Mudlet applicability or validation:** Pending human decision; Codex
   may not mark it not-applicable or passed.

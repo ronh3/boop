@@ -157,8 +157,7 @@ Build a reliable, self-contained hunting system for Achaea with sane defaults, c
 - Walker shutdown follows owned stop / attached detach: stop ends a boop-owned run but only detaches boop from an externally owned run.
 
 ## Versioning Policy
-- Bump `mfile.version` on every commit/merge.
-- Manually sync `mfile.title` to `boop Hunter <version>` on each version bump.
+- Follow `AGENTS.md`: planning-only commits preserve the version; every commit touching a path outside `.planning/` bumps all four synchronized checkpoints. A fast-forward creates no new commit or version bump.
 
 ## Concrete Plan
 1. Inventory and extract reference behaviors from Bashing and Foxhunt into notes.

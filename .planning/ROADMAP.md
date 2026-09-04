@@ -2,6 +2,23 @@
 
 ## v1.0: Pre-1.0 Hardening
 
+## Active workflow and phase namespaces
+
+- [ ] **Phase 00: Lightweight Multi-Agent Workflow** — active process bootstrap;
+  corrections await Claude re-review and human arbitration. Specification:
+  `phases/00-lightweight-agent-workflow/00-CONTEXT.md`; branch and gates:
+  `STATE.md`. Phase 00 is not complete.
+- **Hardening Phase N** means this document's milestone requirement sequence
+  below. Its checkboxes and progress table preserve that sequence's history.
+- **Refactor Phase N** means `REFACTOR-ROADMAP.md`'s separate architecture
+  sequence. References to numbered phases in the architecture documents use
+  that refactor namespace. Refactor Phases 4–5 in Git history do not close
+  Hardening Phases 4–5 here.
+- Phase 00 interrupts product sequencing without renumbering either history.
+  Only `STATE.md` and its named context activate work. Neither the next unchecked
+  hardening item nor the next refactor item authorizes a phase transition.
+  Human direction must select and qualify the next phase before it begins.
+
 ## Overview
 
 boop Hunter's pre-1.0 roadmap hardens the existing Mudlet hunting package in risk order: make release metadata and manifest drift visible first, repair owned runtime state and safety behavior, cover timing-heavy queue/gold/walk paths, lock down command trust boundaries, expand compact-summary fixtures, then close with docs and live release verification. This milestone preserves current behavior and release confidence rather than expanding the feature surface.

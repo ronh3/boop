@@ -8,7 +8,9 @@ on:
 
 jobs:
   build:
-    permissions: write-all
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     env:
       MUDLET_RELEASE_TAG: ci-asset
@@ -16,12 +18,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Check actual branch commits, not GitHub's synthetic PR merge commit.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Release gates
         run: python3 tools/check_release_gates.py
 
       - name: Architecture analyzer tests
         run: python3 tests/test_architecture_guard.py
+
+      - name: Workflow enforcement tests
+        run: python3 tests/test_workflow_gates.py
 
       - name: Read package metadata
         id: pkg

@@ -29,7 +29,7 @@ boop/
 |-- Basher/                   # Reference implementation material, not packaged boop runtime
 |-- Bashing/                  # Reference implementation material, not packaged boop runtime
 |-- Foxhunt/                  # Reference implementation material, not packaged boop runtime
-`-- .planning/codebase/       # Generated codebase maps for GSD workflows
+`-- .planning/codebase/       # Historical codebase maps from superseded tooling; see AGENTS.md
 ```
 
 ## Directory Purposes
@@ -240,7 +240,7 @@ boop/
 - Guidance: Do not add packaged boop runtime code here.
 
 **`.planning/codebase/`:**
-- Purpose: Generated architecture/structure/quality/stack maps for GSD planning.
+- Purpose: Historical architecture/structure/quality/stack maps from superseded tooling; no orchestration authority.
 - Generated: Yes.
 - Committed: Project-dependent planning artifact.
 - Guidance: Mapper runs write uppercase markdown files here only.

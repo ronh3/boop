@@ -15,6 +15,7 @@ from collections import Counter
 from pathlib import Path
 
 from architecture_guard import check_repository_architecture
+from workflow_guard import check_version_history, check_workflow
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -348,6 +349,8 @@ def check_architecture() -> list[str]:
 
 CHECKS = {
     "versions": check_versions,
+    "version-bump": lambda: check_version_history(ROOT),
+    "workflow": lambda: check_workflow(ROOT),
     "manifests": check_manifests,
     "state-drift": check_state_drift,
     "architecture": check_architecture,

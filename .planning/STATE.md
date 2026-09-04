@@ -6,11 +6,12 @@ active_phase: "00"
 active_phase_name: lightweight-agent-workflow
 active_branch: phase/00-lightweight-agent-workflow
 active_specification: .planning/phases/00-lightweight-agent-workflow/00-CONTEXT.md
-status: ready_for_independent_review
+status: corrections_awaiting_rereview
 independent_review: pending
 human_arbitration: pending
 live_mudlet_validation: pending_human_determination
 phase_closure: pending_human_authorization
+merge_authorization: pending_human_authorization
 main_baseline: a345a34ea0da2eed6f5bfe1c5e586488749a3e22
 last_updated: "2026-09-04"
 ---
@@ -28,19 +29,38 @@ See: `.planning/PROJECT.md`.
 
 Branch: `phase/00-lightweight-agent-workflow`
 Specification: `.planning/phases/00-lightweight-agent-workflow/00-CONTEXT.md`
-Main baseline: `a345a34ea0da2eed6f5bfe1c5e586488749a3e22`
-Status: Implementation boundary ready for independent review after push
+Main baseline: see canonical `main_baseline` in frontmatter.
+Status: Corrective pass; awaiting Claude re-review and human arbitration.
 
-This state is factual coordination data, not acceptance authority. Codex may
-record branch and gate progress but may not set live Mudlet validation or phase
-closure to complete. Review, human arbitration, live applicability or
-validation, and merge authorization remain pending.
+State writers follow `AGENTS.md`:
+
+- Codex: factual `status`, active phase/name/branch/specification, branch-start
+  `main_baseline`, and `last_updated`, within authorized scope.
+- Claude: `independent_review`, citing its dated review entry and exact SHA.
+- Human: `human_arbitration`, `live_mudlet_validation`, `phase_closure`, and
+  `merge_authorization`, with attributed evidence in the review/UAT artifacts.
+- No actor may advance, reset, or clear another writer's gate. Codex may
+  initialize new gates as pending, never infer approval or close a finding.
+
+Claude's initial findings are recorded in `00-ADVERSARIAL-REVIEW.md` at commit
+`9b47f6409a3ba6e75ff575baafe3020d03a7622a`, reviewing
+`44fb844fe2aadf9d71fd7aa95736f3f336e3af72`. The frontmatter review gate is left
+for Claude to update; this factual pointer does not advance it. All Codex
+proposed dispositions await Claude re-review / human arbitration.
+
+## Session Continuity
+
+Current work is Phase 00 corrections on the named active branch. Resume with
+`00-ADVERSARIAL-REVIEW.md`, `00-VERIFICATION.md`, and `00-UAT.md`. Do not resume
+historical Phase 03 plans or begin refactor Phase 6. Phase 00 is not complete.
 
 ## Historical Planning Record
 
 The detailed metrics and accumulated decisions below predate the lightweight
 workflow. They remain durable project provenance, but legacy tooling names and
-status values in that history do not control the current phase.
+status values and execution instructions in that history cannot control any
+current or future phase. Old phase numbers here refer to the hardening roadmap,
+unless explicitly qualified as refactor phases.
 
 ## Performance Metrics
 
@@ -115,7 +135,7 @@ Recent decisions affecting current work:
 - [Phase 02]: Kept pull timeout ownership at its source, preserved external walker install behavior, and reduced flat-state drift allowance to zero.
 - [Phase 02]: GitHub Actions run 29143523210 and user live validation confirmed the real Mudlet suite and compact blocker/trace readability.
 - [Phase 03 planning]: Commits whose staged paths are all under `.planning/` preserve the package version; any commit touching another path bumps all four version checkpoints.
-- [Phase 03 planning]: Final authority is the tracked repository extension `tools/wait_for_exact_ci.sh` against immutable final HEAD after all GSD mutations.
+- [Phase 03 planning; superseded by AGENTS.md — CI is automated evidence only]: Final authority is the tracked repository extension `tools/wait_for_exact_ci.sh` against immutable final HEAD after all GSD mutations.
 - [Phase 03]: Diagnose completion prefers Char.Afflictions.List with visible result-line fallback; a new explicit diagnose supersedes unresolved evidence from a timed-out dispatch so stale FIFO state cannot poison later generations.
 - [Phase 03]: A corpse line that sends sovereigns directly into inventory bypasses room pickup and starts the existing inventory-owned pack operation without issuing get.
 - [Phase 03]: Plan 03-01 makes blockersByOwner authoritative and keeps combat.blocker only as a derived primary compatibility snapshot.
@@ -244,7 +264,7 @@ Items acknowledged and carried forward from previous milestone close:
 |----------|------|--------|-------------|
 | *(none)* | | | |
 
-## Session Continuity
+## Historical Session Continuity
 
 Last session: 2026-08-04T22:24:56.710Z
 Stopped at: Completed 03-33-PLAN.md

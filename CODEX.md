@@ -36,11 +36,11 @@ Guidance for Codex when working in this repository.
   - `mfile.title` as `boop Hunter <version>`
   - `src/scripts/boop/boop_init.lua` `boop.version`
   - this file's `Current synchronized package version` checkpoint
-- Pre-1.0 hardening phases use a numeric corrective-build convention:
-  - the Phase-4 base increments the third component to `0.1.495`
-  - reviewed and tested corrective rebuilds of that phase increment a fourth component to `0.1.495.1`, then `0.1.495.2`
-  - the next phase increments the third component again to `0.1.496`
-  - do not use letter suffixes such as `a` or `b`
+- Pre-1.0 versions use three or four nonnegative numeric components. New product
+  phase bases increment the third component and reset the fourth. Process-only
+  phases and subsequent package-affecting commits may increment the fourth
+  component (absent means zero). Fourth components identify builds and never
+  imply review, test, acceptance, or closure status. No letter suffixes.
 - Every package-affecting commit must still increase monotonically and synchronize all four checkpoints.
 - Never commit or push with those version fields mismatched.
 - Run the local release gate before pushing:
@@ -52,11 +52,12 @@ Guidance for Codex when working in this repository.
   `muddle && AUTORUN_BUSTED_TESTS=true TESTS_DIRECTORY="$PWD/tests" QUIT_MUDLET_AFTER_TESTS=true PRETEST_PACKAGE="$PWD/build/boop Hunter.mpackage" /tmp/Mudlet.AppImage --profile "GithubTests" --mirror`
 - If `/tmp/Mudlet.AppImage` is not available locally, use the GitHub Actions Mudlet run as the authoritative full-suite fallback.
 - Do not treat the host's default LuaRocks/Busted tree as authoritative unless it is a Lua 5.1-compatible tree built for Mudlet-style execution; this repo's CI intentionally mirrors `demonnic/test-in-mudlet` with Lua 5.1.5, Busted, the `GithubTests` profile, and Xvfb.
+- Persist completed CI run identifiers in the phase verification artifact at the next evidence boundary, then gate the new final HEAD and report its identity without another bookkeeping commit; see `AGENTS.md`. Retry infrastructure failures with `gh run rerun RUN_ID --failed`, then rerun the exact-SHA gate against the same HEAD.
 - After every meaningful implementation, review, or correction boundary finishes, push immutable final HEAD and run `tools/wait_for_exact_ci.sh`. The script's exact-`headSha` success is the blocking automated gate; any later repository mutation requires it to run again. Human arbitration and required live Mudlet validation remain separate authorities.
 
 ## Workflow Reminders
 - Follow `AGENTS.md` for role authority, durable artifacts, phase branches, review boundaries, and phase closure. Codex never declares live acceptance or phase completion.
-- Develop on the active `phase/<number>-<short-description>` branch named by `.planning/STATE.md`; do not commit active phase work directly to `main`.
+- Develop on the active `phase/<number>-<short-description>` branch named by `.planning/STATE.md`; do not commit any work directly to `main`, including quick fixes, hotfixes, docs, and planning.
 - Keep structure shallow and logical.
 - Prefer the Mudlet DB for data; use small Lua tables only for config.
 - Use `cecho` tags for colored output; avoid mixing `decho`-style tags.
@@ -65,14 +66,14 @@ Guidance for Codex when working in this repository.
 - Keep `mfile` version, title, and description current; tokens replace on build.
 - Inspect staged paths and run `python3 tools/check_release_gates.py` before every commit and again before every push.
 - Explain the reasoning behind code changes in responses. Do not make non-trivial changes without verifying with the user first.
-- Commit and push changes unless the user asks otherwise.
+- Commit and push changes only to the active phase branch unless the user asks otherwise. This default never authorizes a push or merge to `main`; follow the exact-SHA human authorization rule in `AGENTS.md`.
 - Keep `README.md` in sync when commands or features change.
 - Maintain the config UI look/feel (config theme + sectioned layout) for new menus.
 - When the user says there was a failure/error, inspect `output.md` by default before asking for more detail.
 
 ## User Preferences / Project Memory
 - Treat `CODEX.md` as the continuity file for new sessions; keep it current when preferences or workflow conventions change.
-- Push non-trivial changes after committing them. If a version was bumped, the expectation is to push unless the user says not to.
+- Push non-trivial changes to the active phase branch after committing them. A version bump does not authorize pushing `main`.
 - Keep all four boop version checkpoints synchronized. Planning-only commits may preserve the current version; package-affecting commits must bump it.
 - Avoid surfacing legacy/old command behavior in user-facing help or docs unless the user explicitly asks for backwards-compat details.
 - `boop` by itself should open the home dashboard. `boop help` should show help only.
@@ -102,7 +103,7 @@ Guidance for Codex when working in this repository.
 - Mudlet CI now runs real in-Mudlet `busted` specs; prefer extending that suite when fixing real regressions.
 
 ## Session Startup (New Agent Checklist)
-- Read `.planning/STATE.md` and its named active phase context first; confirm both agree with the checked-out branch and Git state.
+- Read `AGENTS.md`, then `.planning/STATE.md` and its named active phase context; confirm both agree with the checked-out branch and Git state.
 - Read `README.md` and `DESIGN.md` to understand current scope and user-facing behavior.
 - Read `ARCHITECTURE.md` for how boop actually works today, and `ARCHITECTURE-RULES.md` before changing module boundaries.
 - Read `UIDESIGN.md` as well when doing UI or UX work; it is now lagging less and should be kept in sync.
@@ -116,8 +117,8 @@ Guidance for Codex when working in this repository.
 ## Session Checkpoint
 - Branch authority: use `.planning/STATE.md`; create active work from current `origin/main` on the phase branch it names.
 - Do not infer acceptance from this checkpoint, a branch name, or green CI. Only the human authorizes closure and merge after required review and live Mudlet validation.
-- Current synchronized package version: `0.1.496.3`
-- The purposeful pre-1.0 hardening work landed through Phase 5 includes:
+- Current synchronized package version: `0.1.496.4`
+- The purposeful pre-1.0 hardening work landed through `REFACTOR-ROADMAP.md` Phase 5 includes:
   - runtime/state ownership and coordinator path
   - combat planner split from execution
   - UI/config/help registries

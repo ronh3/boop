@@ -174,7 +174,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `boop ragemode hybrid` uses the same conditional/priming logic, but falls back to normal damage when reserve logic would otherwise hold.
 - `boop ragemode tempo` is aff-first, but can spend on damage when rolling rage gain predicts quick recovery (10s window).
 - Tune tempo behavior with `boop set tempoRageWindowSeconds <seconds>` and `boop set tempoSqueezeEtaSeconds <seconds>`.
-- Repository terminal CI authority runs only after upstream GSD execution and every repository mutation finish: the parent pushes immutable final HEAD, then runs tools/wait_for_exact_ci.sh "$FINAL_SHA"; CI evidence is not committed, and any later mutation requires a rerun.
+- Repository CI is blocking automated evidence only: after all mutations at a boundary, push the immutable active phase HEAD and run `tools/wait_for_exact_ci.sh`. Preserve completed run identifiers in the phase verification artifact as described in `AGENTS.md`; any later commit needs a new exact-SHA gate. CI never authorizes acceptance, closure, or merge.
 - `boop stats login` shows current-login totals across boop on/off toggles; unlike `lifetime`, it is not persisted between logins.
 - `boop help` is workflow-first: it starts from common goals, then each topic shows first steps, common commands, advanced commands, and notes. Normal workflows include solo hunting, targeting, combat, interrupts, loot/gold, party, stats, and diagnostics.
 - `boop targeting` and `boop ragemode` now show current value + usage when called without arguments, and clear errors for invalid values.
@@ -190,7 +190,7 @@ Standalone Mudlet package for Achaea auto hunting.
 - `src/scripts/boop/scripts.json` is intentionally not auto-sorted because script load order is runtime-sensitive.
 
 ## Starting A Session
-- See `CODEX.md` (Session Startup).
+- Read `AGENTS.md`, then `.planning/STATE.md` and the active phase context; see `CODEX.md` for build/testing guidance.
 
 ## Build
 - Use Muddler from repo root (see `CODEX.md` for exact guidance).

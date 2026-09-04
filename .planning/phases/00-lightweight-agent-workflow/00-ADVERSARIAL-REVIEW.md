@@ -669,3 +669,242 @@ regardless of how they are labelled.
 This review commit mutates the repository and therefore invalidates the exact-SHA CI
 evidence recorded above for `44fb844`; per `AGENTS.md:126-130` the gate must be run
 again against the new HEAD by Codex.
+
+
+---
+
+## Codex proposed dispositions and corrections — 2026-09-04
+
+Author: Codex, implementation/correction role. These are proposals only. None of
+Claude’s original findings, severities, text, table cells, or review status above
+has been changed. All 23 findings remain awaiting Claude re-review; partial
+agreement and policy choices also await Human + ChatGPT/Neon arbitration.
+
+Correction boundary: the package-affecting commit containing this appendix. Its
+full SHA is not self-embedded; a subsequent planning-only evidence entry will
+name the correction SHA and its CI run. Local verification is recorded in
+00-VERIFICATION.md. Phase 00 remains incomplete; main is not a correction target.
+
+Proposed totals: 15 ACCEPT, 8 PARTIALLY ACCEPT, 0 REJECT. No final disposition or
+factual closure is asserted by those labels.
+
+### Codex proposal for B-01
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** AGENTS previously prohibited accepting only disputed findings, leaving the predicate unowned. The corrected contract prohibits Codex from finally accepting, resolving, or closing any finding; ACCEPT/PARTIALLY ACCEPT/REJECT are explicitly proposals. Claude must name the correction SHA for factual closure; the human arbitrates.
+- **Files changed:** AGENTS.md; .planning/STATE.md; 00-CONTEXT.md; CLAUDE.md.
+- **Tests/checks:** Manual authority cross-check; workflow gate protects the recorded review prefix. No check claims to authenticate the actor.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for B-02
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** STATE originally protected only live validation and phase closure. AGENTS and STATE now name a writer and evidence home for every gate, including exact-SHA merge authorization. Codex owns factual coordination only. The existing independent_review: pending value is deliberately untouched; the prose points to Claude’s actual review without writing its gate.
+- **Files changed:** AGENTS.md; .planning/STATE.md; 00-UAT.md; CLAUDE.md.
+- **Tests/checks:** Manual comparison of frontmatter before/after confirms no existing protected gate was advanced. Role identity remains a workflow constraint, not a Git-author test.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for B-03
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** The old merge permission named a phase, the direct-commit ban covered only active phase work, and CODEX push defaults were unconditional. The corrected rules ban every direct main commit, require the active phase branch for quick/hotfix/docs/planning work, and limit standing push defaults to that branch. Human authorization names an exact full SHA; branch-tip changes invalidate it. Fast-forwarding only that SHA avoids producing an unreviewed merge/squash tree.
+- **Files changed:** AGENTS.md; CODEX.md; .planning/STATE.md; 00-CONTEXT.md; 00-UAT.md; tools/workflow_guard.py; tests/test_workflow_gates.py.
+- **Tests/checks:** Staged active-phase branch passes; main, detached HEAD, and a different phase branch fail. Exact-CI tests require the expected SHA on the exact remote branch. These are not remote protection settings.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for H-01
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** The baseline diff contains a real src/scripts/boop/boop_init.lua change, even though it is only boop.version. AC5 now states the exact version-only product-source exception and acknowledges the operator-visible version string. No gameplay exception is introduced.
+- **Files changed:** 00-CONTEXT.md; 00-VERIFICATION.md; 00-UAT.md.
+- **Tests/checks:** Final baseline src diff inspection and four-checkpoint release gate; no runtime behavior test added for the string edit.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for H-02
+
+- **Proposed disposition:** PARTIALLY ACCEPT.
+- **Reasoning/evidence:** The operational filename and git.branching_strategy=none / gsd branch template contradict the active contract. Preserve the complete file by renaming it to .planning/legacy-gsd-config.json.provenance and prohibit loading it. However, the cited ship template literally says Product owner approval pending, so it does not itself fabricate approval. Historical provenance need not be deleted.
+- **Files changed:** Rename .planning/config.json to .planning/legacy-gsd-config.json.provenance; AGENTS.md; tools/workflow_guard.py; tests/test_workflow_gates.py.
+- **Tests/checks:** Byte equality against the original Git blob; workflow gate rejects a restored live .planning/config.json. Test covers that failure.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for H-03
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** README contained the exact operational upstream GSD / terminal authority sentence while CODEX had already corrected it. README now describes blocking automated evidence and links to the common authority contract and evidence-recording policy; startup begins with AGENTS.
+- **Files changed:** README.md; AGENTS.md; CODEX.md.
+- **Tests/checks:** Search operational startup docs for stale GSD execution and terminal acceptance claims; manually compare CI wording.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for H-04
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** No tracked CLAUDE.md existed. The new root CLAUDE.md imports @AGENTS.md and gives an explicit startup path through STATE and the active context. It also states that tool permissions cannot grant implementation or acceptance authority. The stale configuration pointer survives only in the retired provenance file. Claude Code’s documented project-memory path supports a root CLAUDE.md and @ imports: https://code.claude.com/docs/en/memory .
+- **Files changed:** CLAUDE.md; AGENTS.md; retired config rename.
+- **Tests/checks:** Inspect the tracked startup pointer and actual AGENTS/STATE/context paths. No claim of running a fresh Claude session.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for H-05
+
+- **Proposed disposition:** PARTIALLY ACCEPT.
+- **Reasoning/evidence:** The initial-only source prohibition was too narrow and now applies to every reviewer pass, including implementation docs and tests. But the suggested ban on every STATE gate conflicts with B-02’s Claude-owned independent_review field. Claude may append review evidence and update only that field. It can establish factual closure on re-review of a named correction SHA, never by implementing the correction; human arbitration/closure remain separate.
+- **Files changed:** AGENTS.md; CLAUDE.md; .planning/STATE.md; 00-CONTEXT.md.
+- **Tests/checks:** Manual writer-table and reviewer-permissions consistency check. All findings here remain proposals.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for H-06
+
+- **Proposed disposition:** PARTIALLY ACCEPT.
+- **Reasoning/evidence:** The two numbered product roadmaps and the missing bootstrap entry made the active sequence ambiguous. The milestone roadmap now indexes Phase 00 as active and incomplete and explicitly distinguishes Hardening Phase N from Refactor Phase N. REFACTOR-ROADMAP carries its namespace and points to STATE/context for activation; CODEX qualifies landed Refactor Phase 5. Existing hardening completion history is not rewritten. The recommendation to label Phase 00 completed-scope is not followed because this pass cannot establish completion.
+- **Files changed:** .planning/ROADMAP.md; REFACTOR-ROADMAP.md; AGENTS.md; CODEX.md; .planning/STATE.md; 00-CONTEXT.md.
+- **Tests/checks:** Manual phase namespace/branch/context check; no Phase 6 implementation or acceptance-status updates.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for M-01
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** The bottom Session Continuity block names the old 03-33 checkpoint. It is preserved but retitled Historical Session Continuity; the new current handoff points only to Phase 00 correction/review/verification/UAT artifacts.
+- **Files changed:** .planning/STATE.md.
+- **Tests/checks:** Inspect current and historical handoff headings and their references.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for M-02
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** The old Phase 03 Final authority statement is retained as provenance but explicitly marked superseded by AGENTS and automated-evidence-only. The general historical disclaimer now bars old execution instructions from controlling future phases as well as Phase 00. STATE’s old decisions do not replace PROJECT Key Decisions.
+- **Files changed:** .planning/STATE.md; AGENTS.md.
+- **Tests/checks:** Search the retained authority statement and verify the adjacent explicit supersession; do not purge historical plans.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for M-03
+
+- **Proposed disposition:** PARTIALLY ACCEPT.
+- **Reasoning/evidence:** The record-versus-no-commit policy needed a durable home and an explicit non-self-referential sequence. VERIFICATION now records run ID, attempt, URL, event, branch, SHA and outcome for completed boundaries. After an evidence commit, gate its new final SHA and report that identity; the next independently needed boundary may persist it. Contrary to the transient-only premise, Claude’s original review already records run 33915198772. It has also been independently fetched and entered in VERIFICATION. An earlier result never certifies the later evidence commit.
+- **Files changed:** AGENTS.md; CODEX.md; README.md; 00-VERIFICATION.md; tools/wait_for_exact_ci.sh.
+- **Tests/checks:** GitHub API re-fetch of run 33915198772 confirms push, branch, full head SHA, success, attempt 1. Final boundary run identities will be reported after their own gates.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for M-04
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** Phase 00 had no VERIFICATION or UAT artifact. Both now exist in the designated phase directory. VERIFICATION distinguishes automated evidence and limits; UAT supplies pending human-only applicability, live results, closure, and exact-SHA authorization fields. No human decision is manufactured to fill the scaffold.
+- **Files changed:** 00-VERIFICATION.md; 00-UAT.md.
+- **Tests/checks:** Inspect artifact existence, pending decisions, and links to the AGENTS writer contract.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for M-05
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** The prior Phase-4 example implied that fourth components meant reviewed corrective rebuilds, while Phase 00 used them before review. CODEX now states that process-only phases and subsequent package-affecting commits may use numeric fourth-component build increments, which imply no review/test/acceptance status. This correction synchronizes 0.1.496.4. DESIGN also contained a conflicting every-commit/merge bump rule; it now delegates to staged-path classification and all four checkpoints.
+- **Files changed:** CODEX.md; DESIGN.md; mfile; src/scripts/boop/boop_init.lua; AGENTS.md; 00-VERIFICATION.md.
+- **Tests/checks:** Version agreement and per-commit monotonicity gates; tests for three/four components, numeric ordering, decrease/equivalent trailing zero, malformed and mismatched values.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for M-06
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** check_versions previously checked agreement only. The new default version-bump gate checks each commit after the phase baseline against every parent, and the staged snapshot against HEAD. A single merge-base-to-HEAD comparison as recommended would miss an omitted bump after an earlier valid bump; the per-commit check closes that case. CI fetches full history and checks actual PR head commits, avoiding synthetic merge metadata. The historical pre-workflow baseline is not retroactively checked.
+- **Files changed:** tools/workflow_guard.py; tools/check_release_gates.py; tests/test_workflow_gates.py; .github/workflows/main.yml; AGENTS.md.
+- **Tests/checks:** Temporary histories demonstrate omitted bumps, later bumps hiding an earlier failure, decreases, partial staging, renames/deletions, missing history, and checkpoint disagreement. CI runs this gate plus the focused tests.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for M-07
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** Live applicability was constrained only in Phase 00. AGENTS now makes the human its decider in every phase and defines pending_human_determination as an unsatisfied gate. The human records rationale, date, SHA and decision/results in UAT; neither implementation nor reviewer agents may mark required/not-applicable/passed.
+- **Files changed:** AGENTS.md; .planning/STATE.md; 00-CONTEXT.md; 00-UAT.md; CLAUDE.md.
+- **Tests/checks:** Cross-document authority check. The technical observation that only the version string changes is evidence, not a live applicability decision.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for M-08
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** The generalized contract is now append-only for recorded findings and prior entries, preserving IDs, severity and text. New proposals, correction evidence, re-review and arbitration entries are attributed separately. A Git-backed workflow check rejects rewriting/deleting existing adversarial-review files across committed history and the index. This appendix leaves Claude’s entire original artifact untouched.
+- **Files changed:** AGENTS.md; tools/workflow_guard.py; tools/check_release_gates.py; tests/test_workflow_gates.py; appended 00-ADVERSARIAL-REVIEW.md.
+- **Tests/checks:** Tests cover append success, severity/text rewrite, deletion, and a later restoration hiding an earlier rewrite. Compare the original review blob as an unchanged byte prefix.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for L-01
+
+- **Proposed disposition:** PARTIALLY ACCEPT.
+- **Reasoning/evidence:** A prospective workflow rule cannot certify old main history. AGENTS now applies the requirements to additions from Phase 00 forward and describes the inherited baseline without retroactively claiming independent review or live acceptance. The recommendation to call the old baseline accepted is not used: this pass has no evidence or authority to manufacture that acceptance.
+- **Files changed:** AGENTS.md; 00-CONTEXT.md; 00-VERIFICATION.md.
+- **Tests/checks:** Verify local and remote main remain the starting SHA; inspect prospective wording.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for L-02
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** The active baseline had three live copies. STATE frontmatter now owns the immutable phase-start SHA, and the current-position prose plus active context reference that field. Review/verification SHAs remain immutable boundary evidence; they must not be rewritten when a future phase starts.
+- **Files changed:** AGENTS.md; .planning/STATE.md; 00-CONTEXT.md; tools/workflow_guard.py.
+- **Tests/checks:** The history gate reads and validates the full canonical baseline SHA and fails when ancestry is missing. Manual check of the two references.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for L-03
+
+- **Proposed disposition:** PARTIALLY ACCEPT.
+- **Reasoning/evidence:** Run selection now filters by push event and exact branch as well as SHA, rechecks all three after watching, and confirms the exact remote branch still points to HEAD. The no-rerun premise is incorrect: gh run rerun retains the original event SHA/ref, so workflow_dispatch is unnecessary and would not be selected by this push-only gate. GitHub documents reruns within 30 days, up to 50 attempts: https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs . CODEX documents rerunning infrastructure failures without a new commit.
+- **Files changed:** tools/wait_for_exact_ci.sh; tests/test_workflow_gates.py; CODEX.md; 00-VERIFICATION.md.
+- **Tests/checks:** Fake-service tests assert branch/event filters, reject failed push and changed post-watch identities, reject dirty worktree and SHA available only on another remote ref. Live exact-SHA gate still required.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for L-04
+
+- **Proposed disposition:** PARTIALLY ACCEPT.
+- **Reasoning/evidence:** write-all is excessive. The workflow now grants contents: read and pull-requests: write for its existing PR comment step; artifact upload uses the Actions artifact service and does not require the proposed actions: write grant. No new permission or comment action is added. Action documentation: https://github.com/actions/upload-artifact and https://github.com/peter-evans/create-or-update-comment .
+- **Files changed:** .github/workflows/main.yml.
+- **Tests/checks:** Inspect every token consumer; the pushed correction run will exercise checkout, cached/downloaded test runtime, build and artifact upload under reduced permissions. The existing PR-only comment step is not exercised by a push run.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for L-05
+
+- **Proposed disposition:** ACCEPT.
+- **Reasoning/evidence:** The two STRUCTURE descriptions still looked like live GSD generation guidance. They now explicitly label the maps historical output of superseded tooling with no orchestration authority. Other historical research/plan mentions remain provenance under AGENTS.
+- **Files changed:** .planning/codebase/STRUCTURE.md; AGENTS.md.
+- **Tests/checks:** Search operational docs for GSD instructions and inspect preserved historical references.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Codex proposal for L-06
+
+- **Proposed disposition:** PARTIALLY ACCEPT.
+- **Reasoning/evidence:** The one-off sed allow-list entry exists locally and was removed. git ls-files .claude returns no tracked files, and git check-ignore identifies the user’s global ignore rule for **/.claude/settings.local.json. Thus this is local permission residue, not shipped workflow code or an instruction to execute sed. Remaining permissions are untouched. CLAUDE’s tracked startup contract says permissions cannot grant authority, and staged snapshot checks reject unsynchronized version edits.
+- **Files changed:** Local ignored .claude/settings.local.json only; CLAUDE.md provides the durable permission/authority distinction.
+- **Tests/checks:** Parse local JSON and confirm the stale sed entry is absent. The ignored file is intentionally not force-added; version mismatch tests cover the underlying enforceable invariant.
+- **Correction SHA:** pending commit; see the subsequent correction-evidence entry.
+- **Status:** awaiting Claude re-review / human arbitration; not closed.
+
+### Arbitration and re-review requests
+
+Human + ChatGPT/Neon arbitration is requested on the qualified premises and
+remedies in H-02, H-05, H-06, M-03, L-01, L-03, L-04, and L-06. In particular,
+confirm the single Claude-owned review gate, pending Phase 00 namespace entry,
+exact-SHA fast-forward authorization, CI identifier handoff sequence, and the
+process-only fourth-component version convention. The latter two are explicit
+contract corrections proposed under M-03/M-05, not claims of human acceptance.
+
+Claude re-review of the named correction commit is needed for factual closure
+of every finding, including inspection of the new Git checks and CI selection.
+No agent-side test establishes role identity or human consent. The human still
+owns Phase 00 live applicability and every closure/merge decision in UAT.

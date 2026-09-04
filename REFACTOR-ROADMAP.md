@@ -1,5 +1,12 @@
 # REFACTOR-ROADMAP.md
 
+**Namespace:** Every Phase N in this document is a **Refactor Phase N**, distinct
+from the hardening phases in `.planning/ROADMAP.md`. That roadmap indexes the
+active Phase 00 process bootstrap. This refactor sequence does not authorize
+starting work: `.planning/STATE.md` and its named context select the active scope.
+Green automated tests below are required evidence, not phase acceptance; the
+review, human, live-applicability, and closure gates in `AGENTS.md` also apply.
+
 An incremental path from the architecture in `ARCHITECTURE.md` to the one in `TARGET-ARCHITECTURE.md`.
 
 Twelve phases plus one optional follow-up. Each is **conceptually isolated, independently testable, and independently revertible**. Phases may touch overlapping files; commits within a phase are **atomic by architectural invariant**, not by module.
