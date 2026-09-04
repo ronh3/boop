@@ -955,3 +955,529 @@ The following evidence commit changes only `.planning/` and preserves package
 version 0.1.496.4. Its new exact-SHA CI result is required separately and will
 be reported in the final handoff. No finding is finally accepted/resolved/closed
 by Codex; Phase 00 remains incomplete, and no merge is authorized.
+
+
+---
+
+## Claude re-review of the corrected tree — 2026-09-04
+
+**Reviewed final SHA:** `57d98dc51cc7dbd52e77634aa7356b2102888a41`
+**Substantive correction SHA:** `7f8a35b27f10654b09d039cb62d3a50f0154ad1a`
+**Original implementation reviewed:** `44fb844fe2aadf9d71fd7aa95736f3f336e3af72`
+**Original review commit:** `9b47f6409a3ba6e75ff575baafe3020d03a7622a`
+**Branch:** `phase/00-lightweight-agent-workflow`
+**Reviewer:** Claude (independent adversarial reviewer, `AGENTS.md` Roles And
+Authority)
+**Disposition:** Factual re-review only. This entry records verification results
+against named SHAs. It does not arbitrate policy, determine live applicability,
+authorize a merge, or close Phase 00. Codex's proposed dispositions were not
+accepted on the basis that Codex agreed with a finding; each was re-derived from
+the final tree.
+
+### Scope and method
+
+Reviewed the **final tree at `57d98dc`**, verifying each original finding against
+the correction introduced at `7f8a35b`. Inspected `9b47f640..7f8a35b` (21 files,
++902/-71) and `7f8a35b..57d98dc` (2 files, +91/-0, planning-only), the full
+current text of `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `README.md`, `DESIGN.md`,
+`.planning/STATE.md`, `.planning/ROADMAP.md`, `REFACTOR-ROADMAP.md`,
+`.planning/codebase/STRUCTURE.md`, `00-CONTEXT.md`, `00-VERIFICATION.md`,
+`00-UAT.md`, `.github/workflows/main.yml`, `tools/workflow_guard.py`,
+`tools/check_release_gates.py`, `tools/wait_for_exact_ci.sh`, and
+`tests/test_workflow_gates.py`.
+
+Prose claims were not accepted as enforcement. Every mechanical claim was
+re-derived by executing the guards against constructed violations in a scratch
+clone of `57d98dc`, discarded afterwards. Green CI was again not treated as
+evidence that the workflow design is correct.
+
+### Independently reproduced facts
+
+| Check | Result |
+|---|---|
+| Local `HEAD` and `origin/phase/00-lightweight-agent-workflow` | both `57d98dc5…`; worktree clean |
+| Branch provenance | `git merge-base main HEAD` = `a345a34e…` = `origin/main`; unchanged |
+| `python3 tools/check_release_gates.py` at `57d98dc` | `[OK]` versions, version-bump, workflow, manifests, state-drift, architecture |
+| `python3 tests/test_workflow_gates.py` | 19 tests pass |
+| `python3 tests/test_architecture_guard.py` | 25 tests pass (25 modules / 141 edges, root `boop_bootstrap`) |
+| Version chain | `0.1.496.3` → `0.1.496.4` at `7f8a35b`; preserved at `57d98dc` (planning-only) |
+| Exact-SHA CI for `7f8a35b` | run `33924081942`, attempt 1, event `push`, branch `phase/00-lightweight-agent-workflow`, headSha exact, conclusion `success` — re-fetched independently; matches `00-VERIFICATION.md` |
+| Exact-SHA CI for `57d98dc` | run `33924331245`, attempt 1, event `push`, branch `phase/00-lightweight-agent-workflow`, headSha exact, conclusion `success` — not yet recorded in `00-VERIFICATION.md`; recorded here as re-review evidence |
+| Original review byte-preservation | `9b47f640` blob (40 853 bytes) is an **exact byte prefix** of the `57d98dc` blob (65 642 bytes) |
+| Retired GSD config | `sha256` of `9b47f640:.planning/config.json` equals `sha256` of `57d98dc:.planning/legacy-gsd-config.json.provenance` (`5c5acc83…`); no `.planning/config.json` in the final tree |
+| Protected STATE gates | between `9b47f640` and `57d98dc` the only frontmatter changes are `status` (Codex-owned) and a newly initialized `merge_authorization: pending_human_authorization`; `independent_review`, `human_arbitration`, `live_mudlet_validation`, and `phase_closure` are unadvanced |
+
+Codex advanced no gate it does not own, and fabricated no human decision.
+
+### Adversarial probes executed against the new guards
+
+| # | Construction | Result |
+|---|---|---|
+| 1 | Commit touching `src/` with no version bump | `[FAIL] version-bump` — correctly rejected |
+| 2 | Commit decreasing version with all four checkpoints synchronized | `[FAIL] version-bump` — correctly rejected |
+| 3 | In-place severity downgrade of recorded findings | `[FAIL] workflow` — correctly rejected |
+| 4 | Deletion of the review artifact | `[FAIL] workflow` — correctly rejected |
+| 5 | Review rewrite hidden by a later restoring commit | `[FAIL] workflow` on **both** commits — correctly rejected |
+| 6 | Restoring `.planning/config.json` | `[FAIL] workflow` — correctly rejected |
+| 7 | Staged work on `main`, and on a detached HEAD | `[FAIL] workflow` — correctly rejected |
+| 8 | Same work **already committed** on `main`, then gates run | all six `[OK]` — **not** detected (see arbitration item A-1) |
+| 9 | No staged changes on `main` (the CI situation) | `[OK] workflow` — branch rule is inert in CI (A-1) |
+| 10 | Advance `main_baseline` past a violating commit | all six `[OK]` — **new finding N-01** |
+| 11 | Fabricated human decisions written into `00-UAT.md` | all six `[OK]` — **new finding N-02** |
+| 12 | `independent_review`/`human_arbitration` forged to `complete` | all six `[OK]` — disclosed identity limit (A-1) |
+
+Probes 1–7 confirm the new guards enforce what they claim. Probes 8–12 bound
+what they do **not** cover.
+
+### Result for every original finding
+
+Classification is of the **corrected final tree at `57d98dc`**. "Contract-level"
+means the invariant is carried by prose that no mechanical check enforces;
+"mechanical" means a guard rejects the violation.
+
+#### Blockers
+
+**B-01 — Codex can accept its own findings — VERIFIED FIXED (contract-level).**
+The `disputed` qualifier is gone. `AGENTS.md` now reads: Codex "may propose
+ACCEPT, PARTIALLY ACCEPT, or REJECT and supply evidence, but may not mark any
+finding finally accepted, resolved, or closed", with factual closure reserved to
+a Claude re-review naming a correction SHA and arbitration reserved to the human,
+and "Neither action alone closes a phase." The unowned predicate that created the
+implication is removed rather than reassigned. Behaviour matches: Codex's own
+appendix labels all 23 entries proposals and leaves every status "awaiting Claude
+re-review / human arbitration". No finding was pre-cleared.
+
+**B-02 — Unowned STATE gates — VERIFIED FIXED (contract-level).**
+`AGENTS.md` gained a `State Writers And Live Authority` table naming an
+authorized writer and required evidence for every field, including the two
+previously unnamed gates and a newly added `merge_authorization`. Codex is
+limited to factual coordination fields, and "no status value grants acceptance".
+`STATE.md` prose mirrors it. Verified above that no protected gate was advanced.
+Enforcement is prose only — probe 12 forges both gates with all gates green — but
+this is the disclosed and genuinely infeasible case: `AGENTS.md` states outright
+that "Git author names do not authenticate a human", and `00-VERIFICATION.md`
+repeats it under Limits. Recorded as arbitration item A-1, not as an open defect.
+
+**B-03 — Three-part hole putting unaccepted work on `main` — VERIFIED FIXED
+(contract-level, with an advisory mechanical check).**
+All three sub-gaps are closed:
+1. Authorization now binds a commit: "Human merge authorization must name the
+   exact full commit SHA … Only that SHA may land on `main` by fast-forward; do
+   not create an unreviewed merge/squash commit. A later branch-tip change
+   invalidates authorization", plus a pre-merge requirement to verify the
+   authorized SHA equals local and remote phase HEAD and passed exact-SHA CI, and
+   a re-gate requirement when `main` cannot fast-forward.
+2. The ban is now unqualified in both documents: `AGENTS.md` "No work may be
+   committed directly to `main`, including quick fixes, hotfixes, docs, or
+   planning. Those tasks use an authorized phase branch … they are not
+   exceptions"; `CODEX.md` "do not commit any work directly to `main`".
+3. The standing push default is scoped: `CODEX.md` "Commit and push changes only
+   to the active phase branch … This default never authorizes a push or merge to
+   `main`", and "A version bump does not authorize pushing `main`."
+
+`check_staged_branch` adds real mechanical support: probe 7 rejects staged work
+on `main` and on a detached HEAD. Its limits are material and are disclosed
+rather than overstated — probe 8 shows an already-committed direct `main` change
+passes all gates, and probe 9 shows the check is inert in CI because CI has
+nothing staged. It is a voluntary pre-commit check, not branch protection. See
+A-1.
+
+#### High
+
+**H-01 — AC5 falsified by its own branch — VERIFIED FIXED.**
+AC5 now reads "No command behavior, module boundary, or tracked build artifact is
+changed. The only product-source change is the synchronized version bump required
+by D-00-06 (including the operator-visible version string)." The self-
+contradiction with D-00-06 is resolved, and the final baseline diff confirms the
+sole `src/` change is `boop.version`.
+
+**H-02 — `.planning/config.json` as live-looking authority — VERIFIED FIXED.**
+Renamed to `.planning/legacy-gsd-config.json.provenance`, verified byte-identical
+by `sha256`. `AGENTS.md` states it "must not be loaded as configuration or
+restored to `.planning/config.json`", and probe 6 confirms the workflow guard
+rejects a restored `.planning/config.json` — a prose rule with a mechanical
+backstop. The `gsd/phase-{phase}-{slug}` template, `branching_strategy: "none"`,
+`mode: "yolo"`, and the dangling `claude_md_path` survive only inside the retired
+provenance blob, which no longer reads as configuration.
+One sub-claim of the original finding is **superseded**: I asserted the ship
+template "fabricates approval text". Re-read at `57d98dc`, the section is
+`"Stakeholder Review & Approval"` with template `"- Product owner approval
+pending for {phase_name}."` — it records a pending state and fabricates nothing.
+Codex's correction of that premise is accepted; it does not affect the finding's
+disposition, which rested on the file's operational appearance.
+
+**H-03 — `README.md` asserted conflicting authority and live GSD execution —
+VERIFIED FIXED.** The line now reads "Repository CI is blocking automated
+evidence only… CI never authorizes acceptance, closure, or merge", and points to
+`AGENTS.md`. `README.md` "Starting A Session" additionally now routes through
+`AGENTS.md` and `STATE.md` first rather than `CODEX.md` alone. No "GSD execution"
+stage remains in any startup or authority document; the single surviving `GSD`
+token across `AGENTS.md`, `CODEX.md`, `CLAUDE.md`, `README.md`, `DESIGN.md`,
+`STATE.md`, `ROADMAP.md`, and `STRUCTURE.md` is the explicitly superseded
+historical decision line addressed by M-02.
+
+**H-04 — `AGENTS.md` not loaded into Claude sessions — VERIFIED FIXED.**
+A tracked root `CLAUDE.md` now exists, importing `@AGENTS.md` and directing the
+reader to `.planning/STATE.md` and the active phase context, restating the
+source-read-only constraint, the designated artifact, the single Claude-owned
+gate, and that "Tool permissions do not grant workflow authority." Verified
+operationally rather than by inspection alone: in this session the contract
+loaded automatically from `CLAUDE.md`/`AGENTS.md` without being pasted, which is
+the failure mode the finding described. Residual, inherent and not a defect: this
+mechanism is specific to agents that load `CLAUDE.md`.
+
+**H-05 — "initial review" left Claude free to implement and self-close —
+VERIFIED FIXED.** `AGENTS.md` now reads "In every review pass, Claude must not
+edit implementation source, tests, or implementation docs. Claude may only append
+to the designated adversarial-review artifact and update its own
+`independent_review` gate in `STATE.md`", and closure is bounded to "a recorded
+re-review of a named correction SHA" — never by implementing the correction. The
+adjective that scoped the constraint to one pass is gone, and `CLAUDE.md` repeats
+the constraint where a Claude session will actually read it.
+Codex's PARTIALLY ACCEPT deviates from my proposed text, which said Claude must
+not write state gates at all. The deviation is **correct**: my H-05 remedy and
+B-02's remedy were in direct conflict, since B-02 requires `independent_review`
+to have a non-Codex owner. Reserving exactly one gate to Claude, with no
+authority over the other five, is the coherent resolution. Recorded as
+arbitration item A-3 for human confirmation as policy, not as an open defect.
+
+**H-06 — Three live "Phase N" namespaces — VERIFIED FIXED.**
+`.planning/ROADMAP.md` now opens with an `Active workflow and phase namespaces`
+section indexing Phase 00 as active and incomplete, defines "Hardening Phase N"
+and "Refactor Phase N" as distinct namespaces, and states explicitly that
+"Refactor Phases 4–5 in Git history do not close Hardening Phases 4–5 here" —
+which is precisely the contradiction a startup session would otherwise hit.
+`REFACTOR-ROADMAP.md` gained a namespace header stating it does not authorize
+starting work, and is now a row in the `AGENTS.md` Durable Artifacts table
+("activated only by the current phase context"). `CODEX.md` qualifies the
+ambiguous reference as "landed through `REFACTOR-ROADMAP.md` Phase 5".
+Codex declined the part of my proposed remedy that would label Phase 00
+"completed-scope"; that refusal is correct, since Phase 00 is not complete, and
+my wording was loose. Whether Phase 00 should occupy a slot in the hardening
+checkbox sequence is a sequencing question for the human (A-4).
+
+#### Medium
+
+**M-01 — Stale Phase 03 handoff inside the state authority — VERIFIED FIXED.**
+The block is retitled `Historical Session Continuity` and retained as provenance;
+a new current `Session Continuity` section names Phase 00 corrections and the
+review/verification/UAT artifacts, and states "Do not resume historical Phase 03
+plans or begin refactor Phase 6."
+
+**M-02 — Retained decision naming `wait_for_exact_ci.sh` "final authority" —
+VERIFIED FIXED.** The entry is preserved as provenance but prefixed
+"[Phase 03 planning; superseded by AGENTS.md — CI is automated evidence only]",
+and the historical disclaimer now bars old execution instructions from
+controlling "any current or future phase" rather than only Phase 00.
+
+**M-03 — CI evidence required to be recorded and forbidden to be committed —
+VERIFIED FIXED.** `AGENTS.md` resolves the contradiction by distinguishing run
+*identifiers* from raw evidence: "Commit completed run identifiers and summaries
+in `<NN>-VERIFICATION.md` … keep raw CI logs/artifacts in GitHub Actions", and
+the recording list now names "CI run ID, attempt, URL, event, branch, and head
+SHA in VERIFICATION". `00-VERIFICATION.md` carries a durable identity table.
+Independently re-fetched: run `33915198772` and run `33924081942` both match
+their recorded rows exactly.
+One premise of the original finding is **superseded**: I wrote that the only
+record of run `33915198772` was transient session output. It was in fact already
+recorded in my own review artifact. Codex's correction is accepted.
+The self-reference is handled honestly rather than hidden: an identifier "always
+describes its named SHA, never a later evidence commit", so the evidence commit's
+own run is reported in handoff. That leaves `57d98dc`'s run `33924331245`
+uncommitted at this SHA; it is recorded in this entry instead. The sequence is
+sound but inherently recursive — see A-5.
+
+**M-04 — No `00-VERIFICATION.md` or `00-UAT.md` — VERIFIED FIXED.**
+Both exist. `00-VERIFICATION.md` separates automated evidence from an explicit
+`Limits` section that concedes the checks "cannot authenticate human or reviewer
+identities, protect remote main against a privileged bypass, or infer gate
+approval from Git author names", and that the staged-branch check "is not a
+server-side branch protection rule". `00-UAT.md` is a pending-only scaffold; no
+human decision is manufactured in it. The candour of the Limits section is worth
+noting — it states the residual risks accurately rather than claiming coverage.
+
+**M-05 — Version used contradicted `CODEX.md`'s own convention — VERIFIED
+FIXED.** The convention is rewritten so that fourth components "identify builds
+and never imply review, test, acceptance, or closure status", with process-only
+phases permitted to use them. The contradiction is removed by correcting the
+convention rather than by renumbering, and `DESIGN.md`'s conflicting
+"bump on every commit/merge" rule now delegates to staged-path classification.
+This is a deliberate contract change and Codex flagged it for confirmation (A-6).
+
+**M-06 — Version rule prose-only; nothing enforced classification or
+monotonicity — PARTIALLY FIXED.** The enforcement genuinely exists and works.
+`tools/workflow_guard.py` adds `check_version_history`, wired as the default
+`version-bump` gate and run in CI, with `fetch-depth: 0` and a checkout of the
+real PR head rather than GitHub's synthetic merge commit. It checks every commit
+since the phase baseline against its parent (and every parent of a merge) plus
+the staged snapshot against HEAD, so a later valid bump cannot mask an earlier
+omission. Probe 1 rejects an omitted bump; probe 2 rejects a decrease; the
+four-checkpoint agreement check is preserved inside `version_at`.
+Classified PARTIALLY FIXED because the guarantee is conditional: probe 10 shows
+the whole check can be silently switched off by advancing `main_baseline`, a
+field the constrained party owns. See **N-01**.
+
+**M-07 — Live-Mudlet applicability undefined and phase-scoped — VERIFIED
+FIXED.** The rule moved from `00-CONTEXT.md` into `AGENTS.md`, generalized to
+"For every phase", assigns the determination to the human with date, rationale
+and applicable SHA recorded in `<NN>-UAT.md`, defines the previously undefined
+`pending_human_determination` as "an unsatisfied gate", and states that Codex and
+Claude "may supply technical evidence but may not make that determination or mark
+live testing passed". The authority order line was also amended to "human
+determination of live applicability and required Mudlet validation". Consistent
+in practice: `00-UAT.md` supplies technical evidence that a live test "appears
+technically unnecessary" while explicitly stating "This observation does not
+determine live applicability."
+
+**M-08 — Review-artifact edit rights, severity integrity, re-review unspecified —
+PARTIALLY FIXED.** The rule generalized into `AGENTS.md` ("append-only after a
+review is recorded. No actor may rewrite or delete an existing finding's ID,
+severity, text, or prior entries") and, unusually for this class of rule, is
+mechanically enforced: probes 3, 4 and 5 confirm `check_review_transition`
+rejects in-place severity downgrades, deletion, and a rewrite hidden behind a
+later restoring commit, checking every commit and every merge parent. Closure
+authority is now assigned explicitly.
+Classified PARTIALLY FIXED for the same reason as M-06: probe 10 shows advancing
+`main_baseline` silently disables this guard too, and in that probe every
+`Blocker` severity in this artifact was downgraded to `Low` with all six gates
+reporting `[OK]`. See **N-01**.
+
+#### Low
+
+**L-01 — `main` invariant asserted as already true — VERIFIED FIXED.**
+Now scoped prospectively: "From Phase 00 forward, additions to `main` require
+independent review, human arbitration/authorization, and the human-recorded live
+applicability decision … The pre-workflow baseline named in the Phase 00 state is
+inherited history, not retroactively certified by this rule." Codex declined my
+suggestion to call the baseline "accepted"; that refusal is correct, since no
+such acceptance occurred, and the resulting wording is more accurate than my
+proposed remedy.
+
+**L-02 — `main_baseline` duplicated with no owner — VERIFIED FIXED.**
+`STATE.md` frontmatter is now the single owner; `00-CONTEXT.md` and the STATE
+prose reference it instead of restating the SHA, and `AGENTS.md` records that
+historical review/verification SHAs remain immutable boundary evidence. Note the
+interaction: consolidating the baseline into one writable field is also what made
+**N-01** reachable. The consolidation is right; the gate must stop trusting it.
+
+**L-03 — Run-selection ambiguity and no re-gate path — VERIFIED FIXED.**
+`tools/wait_for_exact_ci.sh` now derives the branch, validates it against
+`main|phase/<n>-<slug>`, filters discovery by `--commit`, `--branch` and
+`--event push`, and after watching re-verifies `headSha`, `event`, `headBranch`,
+local HEAD, current branch, worktree cleanliness, and that the exact remote ref
+still points at the SHA; it reports run id and attempt. The PR-versus-push
+ambiguity is closed at both selection and verification.
+My second premise is **superseded**: I claimed an infrastructure failure could
+not be re-gated without a new commit. Codex is factually right that
+`gh run rerun` creates a new attempt against the original run's event and SHA, so
+`workflow_dispatch` is unnecessary — and would in any case now be excluded by the
+`event == push` filter. `CODEX.md` documents the rerun path. The corrected
+behaviour is better than my proposed remedy.
+
+**L-04 — `permissions: write-all` on every `phase/**` push — VERIFIED FIXED.**
+Replaced with `contents: read` and `pull-requests: write`. I checked each token
+consumer in the final workflow: the release-asset download uses `github.token`
+against this repository's own release (`contents: read` suffices);
+`actions/upload-artifact@v4` uses the Actions artifact service and needs no
+scope; `peter-evans/create-or-update-comment@v4` is gated on
+`github.event_name == 'pull_request'` and needs `pull-requests: write`. The grant
+now matches actual use.
+Two residuals, neither a defect. (a) Job-level permissions mean push runs also
+carry `pull-requests: write` although only the PR-gated step uses it; the
+smallest further hardening would be to move that step into its own job so the
+build job keeps `contents: read` alone. (b) `00-VERIFICATION.md` correctly
+discloses that the correction run hit the Mudlet runtime cache, so the
+release-download path was not exercised under the reduced grant.
+
+**L-05 — `.planning/codebase/` self-described as GSD output — VERIFIED FIXED.**
+Both lines now read "Historical … from superseded tooling", one adding "no
+orchestration authority".
+
+**L-06 — Stale hardcoded version-bump permission — VERIFIED FIXED (locally, not
+verifiable from Git).** The stale `0.1.491`→`0.1.492` `sed` entry is absent from
+`.claude/settings.local.json`. Confirmed that the file is untracked
+(`git ls-files .claude` is empty) and ignored by the user's global ignore rule,
+so this correction is not durable repository state and cannot be re-verified by a
+future reviewer from the tree. Codex's PARTIALLY ACCEPT framing is accurate. The
+durable part of the remedy is `CLAUDE.md`'s statement that tool permissions do
+not grant workflow authority.
+
+### New findings introduced or left open by the corrective pass
+
+These are new IDs in the `N-` namespace so they cannot be confused with the
+original 23. Provenance is stated for each.
+
+#### N-01 — The version-bump and review-preservation gates can be silently disabled by advancing `main_baseline`
+
+- **Severity:** High
+- **Introduced by:** the corrective pass (`7f8a35b`); the guard is new code
+- **Location:** `tools/workflow_guard.py:61-68` (`phase_baseline`), consumed by
+  `transitions` (`:71-73`), `check_version_history` (`:76-87`), and
+  `check_workflow` (`:118-130`)
+- **Violated invariant:** the guarantees the corrective pass created for M-06
+  ("every package-affecting commit increases the numeric version") and M-08 ("no
+  actor may rewrite or delete an existing finding's ID, severity, text, or prior
+  entries"). A gate's coverage window must not be settable by the party the gate
+  constrains.
+- **Problem:** `phase_baseline` reads `main_baseline` from the **working-tree**
+  `.planning/STATE.md` and validates only that it is *an ancestor of HEAD*
+  (`git merge-base --is-ancestor base HEAD`). Every commit on the phase branch
+  satisfies that. `main_baseline` is, per the `AGENTS.md` writer table, a
+  Codex-writable coordination field, and moving it is a planning-only edit that
+  preserves the version and therefore passes every other gate. Nothing anywhere
+  ties the declared baseline to `origin/main`: it is referenced only in
+  `workflow_guard.py` and the tests, and `check_state_drift` does not inspect it.
+- **Failure scenario (reproduced, probes 10 and 4):** Commit a change to
+  `src/scripts/boop/boop_init.lua` with no version bump — `[FAIL] version-bump`.
+  Then commit a one-line planning-only edit setting `main_baseline` to that
+  commit's SHA. All six gates now report `[OK]` with the unbumped
+  package-affecting change still in the tree. The same edit hides review
+  tampering: after an in-place rewrite downgrading every `Blocker` in this
+  artifact to `Low`, advancing `main_baseline` past it returns `[OK] workflow`,
+  and the tampered severities stand. CI reproduces this, because CI runs the same
+  script and derives the baseline from the same checked-out file.
+- **Why it matters here:** these two guards are the only mechanically enforced
+  invariants the corrective pass added. Reducing them to self-declared scope
+  returns M-06 and M-08 to prose while CI continues to report green.
+- **Smallest correction:** in `phase_baseline`, additionally require that the
+  declared baseline be reachable from `main` — e.g. assert
+  `git merge-base --is-ancestor <base> origin/main` (falling back to `main`)
+  alongside the existing HEAD-ancestry assertion, and fail closed when the ref is
+  unavailable. Verified feasible against the current tree: `a345a34e…` is an
+  ancestor of `origin/main`, so the legitimate baseline passes, while a
+  branch-only commit like the one in probe 10 does not. CI already uses
+  `fetch-depth: 0`, so the ref is present. A focused test alongside the existing
+  19 would pin it.
+
+#### N-02 — `<NN>-UAT.md` carries the highest-authority decisions with no tamper guard
+
+- **Severity:** Medium
+- **Introduced by:** the corrective pass; `00-UAT.md` was created at `7f8a35b`
+  under M-04, and `AGENTS.md` simultaneously made UAT the evidence home for the
+  human-only live, closure, and merge-authorization gates
+- **Location:** `tools/workflow_guard.py:90-104` (`check_review_transition`),
+  which matches only `.planning/phases/**/*-ADVERSARIAL-REVIEW.md`;
+  `.planning/phases/00-lightweight-agent-workflow/00-UAT.md`
+- **Violated invariant:** `AGENTS.md` State Writers table — `phase_closure` and
+  `merge_authorization` are "Human only, citing … in UAT", and merge
+  authorization must name an exact full SHA. The record those gates cite must be
+  at least as tamper-evident as the review findings.
+- **Problem:** the corrective pass built an append-only guard and applied it to
+  the review artifact only. `00-UAT.md`, which now holds live applicability,
+  phase closure, and the exact-SHA merge authorization, is unguarded — as are
+  `<NN>-VERIFICATION.md` and the `STATE.md` gates themselves. This is an
+  asymmetry within the new code, not an inherent limit: unlike role
+  authentication, extending the existing prefix check is straightforward.
+- **Failure scenario (reproduced, probe 11):** rewrite `00-UAT.md`'s pending
+  fields to read `Live validation required or not applicable: not_applicable` and
+  `Authorized exact full SHA for fast-forward to main …: <sha> / Human /
+  2026-09-04`, and commit. All six gates report `[OK]`. A later session, or the
+  human returning after an interval, reads UAT as the authority `AGENTS.md`
+  designates for merge authorization and finds a decision that was never made.
+  The review artifact is protected against exactly this forgery; the record that
+  actually authorizes a merge is not.
+- **Smallest correction:** extend `check_review_transition`'s path predicate to
+  cover `-UAT.md` (and, if the human wants evidence integrity too,
+  `-VERIFICATION.md`) under `.planning/phases/`, keeping the same
+  unchanged-byte-prefix rule so both remain append-only. Note the consequence
+  worth the human's decision: a strict prefix rule makes the pending-scaffold
+  fields in `00-UAT.md` un-editable in place, so the human's decisions would have
+  to be recorded as appended dated entries — which is how `AGENTS.md` already
+  requires review dispositions to be recorded. Because that changes how the human
+  writes their own record, the remedy is offered for arbitration (A-2) rather
+  than as a purely factual defect.
+
+#### N-03 — Running the mandated local gate dirties the worktree the CI gate requires to be clean
+
+- **Severity:** Low
+- **Provenance:** **not** introduced by the corrective pass. `check_release_gates.py`
+  already imported `architecture_guard` at `44fb844`, so this predates `7f8a35b`
+  and is not a regression. It is recorded here because the corrective pass added a
+  second imported module (`workflow_guard`) and increased how often the gate is
+  mandated, and because the original review did not identify it.
+- **Location:** `.gitignore` (absence of a `__pycache__` entry);
+  `tools/wait_for_exact_ci.sh:19`
+- **Violated invariant:** the mandated sequence in `AGENTS.md` — run
+  `python3 tools/check_release_gates.py` before committing and pushing, then run
+  `tools/wait_for_exact_ci.sh` — must be executable as written.
+- **Problem:** `AGENTS.md` and `CODEX.md` require the release gate to be run
+  before every commit and again before every push. Importing `tools/architecture_guard`
+  and `tools/workflow_guard` causes CPython to write
+  `tools/__pycache__/*.pyc`. `.gitignore` covers `/Basher`, `/Bashing`, `/build`,
+  `/Foxhunt`, `.output`, `output.md`, and `UIEXAMPLE.md` — not `__pycache__`. The
+  exact-CI gate then fails at `git status --porcelain --untracked-files=all`
+  with "worktree is not clean".
+- **Failure scenario (observed in this review):** running the mandated gate in a
+  clean checkout of `57d98dc` left `tools/__pycache__/architecture_guard.cpython-314.pyc`
+  and `workflow_guard.cpython-314.pyc` untracked. Following the documented order
+  literally, the next step blocks; the tempting recoveries are to delete the
+  files each time or, worse, to commit them — which would make an otherwise
+  planning-only commit package-affecting and trip the new `version-bump` gate.
+- **Smallest correction:** add `__pycache__/` to `.gitignore`. (Alternatively set
+  `PYTHONDONTWRITEBYTECODE=1` in the documented invocation, but the ignore entry
+  is smaller and durable.)
+
+### Items requiring human arbitration
+
+These are policy or scope decisions, not factual re-review outcomes. None is
+resolved by this entry.
+
+- **A-1 — Enforcement ceiling.** Gate-writer ownership (B-02), the direct-`main`
+  ban (B-03), and gate/decision integrity are prose-only, and probes 8, 9 and 12
+  bound what Git-side checks can do: an already-committed direct `main` change
+  passes all gates, the branch rule is inert in CI, and both protected gates can
+  be forged to `complete`. `AGENTS.md` and `00-VERIFICATION.md` disclose this
+  accurately. The remaining decision is the human's: whether to add server-side
+  GitHub branch protection on `main` (required status checks, no direct pushes,
+  and optionally CODEOWNERS review) so that the contract's most important rule
+  has an enforcement point outside the repository. Recommended, but outside what
+  any repository file can implement.
+- **A-2 — N-02 remedy shape.** Whether to extend the append-only guard to
+  `<NN>-UAT.md` (and `<NN>-VERIFICATION.md`), accepting that the human's own
+  decisions would then be recorded as appended dated entries rather than edited
+  in place.
+- **A-3 — Claude's single writable gate.** Codex's H-05 resolution gives Claude
+  `independent_review` and nothing else, resolving a genuine conflict between my
+  H-05 and B-02 remedies. Confirm as policy.
+- **A-4 — Phase 00's place in the hardening sequence.** The namespace ambiguity
+  is fixed, but whether Phase 00 occupies a numbered slot in
+  `.planning/ROADMAP.md`'s checkbox sequence, and how the next phase is selected,
+  is human scope authority.
+- **A-5 — CI identifier recursion.** The "report the final HEAD's run in handoff,
+  persist at the next boundary" sequence is sound and honest, but means the
+  reviewed tip's own run is never committed at that tip. `57d98dc`'s run
+  `33924331245` is recorded in this entry. Confirm the policy is acceptable.
+- **A-6 — Version convention change (M-05).** Redefining fourth components as
+  build identifiers carrying no review or acceptance meaning is a deliberate
+  contract change Codex flagged for confirmation.
+- **A-7 — L-06 durability.** The corrected file is untracked and globally
+  ignored, so that correction is not verifiable from the repository by any future
+  reviewer.
+
+### Re-review status
+
+- **Reviewed final SHA:** `57d98dc51cc7dbd52e77634aa7356b2102888a41`
+- **Substantive correction SHA:** `7f8a35b27f10654b09d039cb62d3a50f0154ad1a`
+- **Original findings:** 21 VERIFIED FIXED, 2 PARTIALLY FIXED (M-06, M-08, both
+  conditional on N-01), 0 STILL PRESENT, 0 SUPERSEDED / NOT A DEFECT at the
+  finding level. Three individual sub-premises — the H-02 approval-template
+  claim, the M-03 transient-evidence claim, and the L-03 no-rerun claim — are
+  superseded by evidence; Codex was right on all three and the corrected
+  behaviour is better than my proposed remedy in L-03.
+- **New findings:** 3 — N-01 (High), N-02 (Medium), N-03 (Low, pre-existing and
+  explicitly not a regression).
+- **Codex conduct check:** the original review is preserved as an exact byte
+  prefix, the retired config is a byte-identical rename, no protected gate was
+  advanced, no human decision was fabricated, and every disposition is labelled a
+  proposal. No finding was self-closed.
+- **Independent review:** re-review complete against the named SHAs, with N-01
+  and N-02 open.
+- **Human arbitration:** pending (A-1 … A-7).
+- **Live Mudlet applicability or validation:** pending human determination.
+- **Phase closure and merge to `main`:** pending explicit human authorization.
+- **Phase 00 is not complete.** Nothing in this entry accepts, closes, or
+  authorizes anything.
+
+This re-review commit mutates the repository and therefore invalidates the
+exact-SHA CI evidence for `57d98dc` recorded above; per `AGENTS.md` the gate must
+be run again by Codex against the new final HEAD.
