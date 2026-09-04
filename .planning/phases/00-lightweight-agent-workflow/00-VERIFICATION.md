@@ -52,3 +52,47 @@ checks full phase history but does not retrospectively certify the inherited
 pre-workflow baseline. Role/acceptance decisions require the attributed evidence
 specified in AGENTS. The exact push run is the terminal automated gate; PR runs
 are additional branch-head evidence, not synthetic-merge acceptance.
+
+## Correction boundary evidence — 2026-09-04
+
+- Correction SHA: `7f8a35b27f10654b09d039cb62d3a50f0154ad1a`.
+- CI run: [33924081942](https://github.com/ronh3/boop/actions/runs/33924081942),
+  attempt 1; workflow `main.yml`; event `push`; branch
+  `phase/00-lightweight-agent-workflow`; head SHA `7f8a35b27f10654b09d039cb62d3a50f0154ad1a`.
+- Exact-SHA gate: passed with clean worktree, unchanged HEAD, and the exact
+  remote phase ref rechecked after watching.
+- Release gates: all six pass (versions, version-bump, workflow, manifests,
+  state-drift, architecture).
+- Architecture analyzer: 25 tests pass locally and in CI.
+- Workflow enforcement: 19 tests pass locally and in CI.
+- Full real-Mudlet Busted: **1006 successes / 0 failures / 0 errors / 0 pending**.
+- Muddler build and artifact upload: success at synchronized version 0.1.496.4.
+- Shell syntax and whitespace checks: pass.
+- Original Claude review remains an unchanged byte prefix; retired GSD config
+  is a byte-identical rename. Existing protected STATE gates are unchanged.
+- Final baseline diff inspection: no gameplay/command/module-boundary changes;
+  only the version assignment changes under src. No tracked build files changed.
+- CI used its cached Mudlet runtime; the download path and PR-only comment step
+  were not exercised. Existing dependency deprecation annotations remain; they
+  did not fail CI and are outside this workflow correction scope.
+
+This evidence entry creates a new planning-only commit and does not certify that
+new commit. Push and gate that final HEAD, report its run identity, and stop.
+The final evidence-only commit preserves 0.1.496.4; it grants no acceptance.
+
+## Files changed by the corrective implementation
+
+- Authority/startup and policy: `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `README.md`,
+  `DESIGN.md`, `REFACTOR-ROADMAP.md`.
+- Current planning: `.planning/STATE.md`, `.planning/ROADMAP.md`,
+  `.planning/codebase/STRUCTURE.md`, and this phase’s `00-CONTEXT.md`,
+  `00-ADVERSARIAL-REVIEW.md`, `00-VERIFICATION.md`, `00-UAT.md`.
+- Retired configuration: `.planning/config.json` renamed without content change
+  to `.planning/legacy-gsd-config.json.provenance`.
+- Mechanical checks: `tools/workflow_guard.py`, `tools/check_release_gates.py`,
+  `tools/wait_for_exact_ci.sh`, `tests/test_workflow_gates.py`,
+  `.github/workflows/main.yml`.
+- Synchronized package metadata: `mfile`, `src/scripts/boop/boop_init.lua`,
+  and the CODEX checkpoint listed above.
+- Local-only cleanup: removed the obsolete sed allow-list entry from ignored
+  `.claude/settings.local.json`; it is not a tracked or published change.

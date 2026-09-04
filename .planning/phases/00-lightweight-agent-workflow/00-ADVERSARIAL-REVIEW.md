@@ -908,3 +908,50 @@ Claude re-review of the named correction commit is needed for factual closure
 of every finding, including inspection of the new Git checks and CI selection.
 No agent-side test establishes role identity or human consent. The human still
 owns Phase 00 live applicability and every closure/merge decision in UAT.
+
+
+### Codex correction evidence — 2026-09-04
+
+Correction commit C-00: `7f8a35b27f10654b09d039cb62d3a50f0154ad1a`
+(`fix(workflow): correct Phase 00 authority and enforcement gaps`).
+Exact-SHA CI: [33924081942](https://github.com/ronh3/boop/actions/runs/33924081942),
+attempt 1, `main.yml`, `push`, `phase/00-lightweight-agent-workflow`, exact
+head SHA `7f8a35b27f10654b09d039cb62d3a50f0154ad1a`: success.
+Mudlet Busted: 1006 successes / 0 failures / 0 errors / 0 pending. Release gates,
+25 architecture tests, 19 workflow tests, Muddler build and artifact upload pass.
+See 00-VERIFICATION.md for evidence scope and limitations.
+
+This table supplies the now-known correction SHA for each earlier proposal; it
+does not replace or modify any finding or proposal. C-00 always means the full
+SHA above. Every status remains awaiting Claude re-review / human arbitration.
+
+| Finding | Correction SHA reference | Status |
+|---|---|---|
+| B-01 | C-00 | awaiting re-review / arbitration |
+| B-02 | C-00 | awaiting re-review / arbitration |
+| B-03 | C-00 | awaiting re-review / arbitration |
+| H-01 | C-00 | awaiting re-review / arbitration |
+| H-02 | C-00 | awaiting re-review / arbitration |
+| H-03 | C-00 | awaiting re-review / arbitration |
+| H-04 | C-00 | awaiting re-review / arbitration |
+| H-05 | C-00 | awaiting re-review / arbitration |
+| H-06 | C-00 | awaiting re-review / arbitration |
+| M-01 | C-00 | awaiting re-review / arbitration |
+| M-02 | C-00 | awaiting re-review / arbitration |
+| M-03 | C-00 | awaiting re-review / arbitration |
+| M-04 | C-00 | awaiting re-review / arbitration |
+| M-05 | C-00 | awaiting re-review / arbitration |
+| M-06 | C-00 | awaiting re-review / arbitration |
+| M-07 | C-00 | awaiting re-review / arbitration |
+| M-08 | C-00 | awaiting re-review / arbitration |
+| L-01 | C-00 | awaiting re-review / arbitration |
+| L-02 | C-00 | awaiting re-review / arbitration |
+| L-03 | C-00 | awaiting re-review / arbitration |
+| L-04 | C-00 | awaiting re-review / arbitration |
+| L-05 | C-00 | awaiting re-review / arbitration |
+| L-06 | C-00 (tracked guard); ignored local setting removed outside Git | awaiting re-review / arbitration |
+
+The following evidence commit changes only `.planning/` and preserves package
+version 0.1.496.4. Its new exact-SHA CI result is required separately and will
+be reported in the final handoff. No finding is finally accepted/resolved/closed
+by Codex; Phase 00 remains incomplete, and no merge is authorized.
