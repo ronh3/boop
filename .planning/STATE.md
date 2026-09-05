@@ -7,8 +7,8 @@ active_phase_name: agent-handoffs
 active_branch: phase/00.1-agent-handoffs
 active_specification: .planning/phases/00.1-agent-handoffs/00.1-CONTEXT.md
 status: corrections_complete_awaiting_rereview
-independent_review: "narrow_re_review_complete_findings_open — Claude, 2026-09-04; narrow re-review of correction 3815388a7ebd7c058d86a3b7c120496714468985 against the initial review 43c3d131cd0612759c455c89cd9fb57e42df21a4 of a9a8e72caf1232ed516eea752229f5de250b978e, recorded in the dated re-review entry in 00.1-ADVERSARIAL-REVIEW.md; H-02, M-02 (mechanical portion), M-04, L-01, L-02 verified fixed; H-01, M-01, M-03 partially fixed; none still present; 5 new related defects N-01 (high) and N-02..N-05 (low) recorded; branch HEAD at re-review time f29abd985a0fc2bda156ae04c645f333845f248f; findings remain open, not an acceptance and not phase closure"
-independent_review_target_sha: 3815388a7ebd7c058d86a3b7c120496714468985
+independent_review: "final_narrow_re_review_complete — Claude, 2026-09-05; final narrow re-review of correction 38ed06213fa173cbfbb28f3f5517eb2f02fdacd0 (range a188153be50376ea1eae13950fbc9d106631308d..38ed06213fa173cbfbb28f3f5517eb2f02fdacd0) recorded in the dated re-review entry in 00.1-ADVERSARIAL-REVIEW.md; H-01 residual, M-01 residual, M-03 residual, N-01, N-02, N-03, N-04, N-05 all VERIFIED FIXED; none partially fixed; none still present; previously fixed H-02, M-02 mechanical, M-04, L-01, L-02 confirmed still fixed; one new low defect N-06 (fail-closed STATE frontmatter truncation) recorded and open; branch HEAD at re-review time b04d225bd1ce44da404312306c761b69fe5783c5; factual closure by re-review only, not an acceptance, not arbitration, and not phase closure"
+independent_review_target_sha: 38ed06213fa173cbfbb28f3f5517eb2f02fdacd0
 human_arbitration: pending
 live_mudlet_validation: pending_human_determination
 phase_closure: pending_human_authorization

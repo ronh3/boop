@@ -1,6 +1,6 @@
 ---
 handoff_version: 1
-status: ready
+status: consumed
 agent: claude
 mode: active_phase
 branch: phase/00.1-agent-handoffs
