@@ -148,13 +148,21 @@ pass in Mudlet before human closure; automated Mudlet Busted is separate evidenc
   SHA. The Phase 00 `phase-00-approved` tag is a historical exception: never
   rename, move, or delete it.
 - Approval tags are immutable evidence once pushed: never force-move, replace,
-  or delete one during normal workflow. Only the peeled commit targeted by the
-  approval tag may fast-forward `main`; do not create an unreviewed merge or
-  squash commit. Immediately before the fast-forward, verify local phase HEAD,
-  origin phase HEAD, the human-authorized full SHA, and the peeled approval-tag
-  commit are identical. If the branch changes after authorization, repeat the
-  affected gates and obtain a new explicit authorization and new tag. After the
-  fast-forward, verify `main == origin/main ==` the authorized tagged commit.
+or delete one during normal workflow. Before authorization or merge, run
+`python3 tools/check_merge_authorization.py --phase <phase>`: it checks the
+reviewed closure tail and that the newest valid annotated approval tag binds its
+name, phase, full annotation SHA, peeled commit, local/remote tag object, and
+local/remote phase head. Git identity does **not** authenticate human intent;
+this check records and binds the human role-contract event mechanically, but
+does not prove it cryptographically. Server-side signed tags and protected tag
+rules are optional future defense-in-depth, not a present acceptance gate. Only
+the peeled commit targeted by the newest valid approval tag may fast-forward
+`main`; do not create an unreviewed merge or squash commit. Immediately before
+the fast-forward, verify local phase HEAD, origin phase HEAD, the
+human-authorized full SHA, and the peeled approval-tag commit are identical. If
+the branch changes after authorization, repeat the affected gates and obtain a
+new explicit authorization and new tag; older tags remain historical evidence
+and cannot authorize the changed branch. After the fast-forward, verify `main == origin/main ==` the authorized tagged commit.
   No in-tree bookkeeping commit follows authorization, because it would create a
   new SHA and invalidate the authorization.
 - Record reviewed/correction SHAs in the review artifact; human arbitration,
@@ -190,9 +198,9 @@ Both files use this stable format:
 ```yaml
 ---
 handoff_version: 1
-status: idle | ready
+status: idle | ready | consumed
 agent: codex | claude
-mode: active_phase | phase_bootstrap
+mode: active_phase | phase_bootstrap | null when idle
 branch: <branch or null when idle>
 task_base_sha: <full SHA or null when idle>
 review_target_sha: <full SHA or null>
@@ -202,7 +210,9 @@ assigned_by: Human + ChatGPT/Neon
 
 Their body contains `# Objective`, `# Required Inputs`, `# Task`,
 `# Constraints`, `# Verification`, and `# Completion Boundary`. An `idle`
-handoff has no executable task. `task_base_sha` is the known pre-delivery
+handoff has no executable task and its `mode`, `branch`, `task_base_sha`, and
+`review_target_sha` are all null. A `consumed` handoff preserves its assignment
+provenance but authorizes no execution. `task_base_sha` is the known pre-delivery
 repository boundary; it never claims to be the SHA of the handoff-delivery
 commit itself.
 
@@ -218,6 +228,12 @@ only perform its reviewer role; a handoff can name review/correction SHAs,
 finding IDs, questions, evidence, and a stop boundary, never permission to edit
 implementation or human-owned gates.
 
+The release `workflow` gate parses both mailboxes with their exact known schema.
+It requires ready/consumed task bases to resolve to HEAD ancestors, requires a
+Claude review target, allows Claude only `active_phase`, and requires a ready
+active-phase handoff's branch to match STATE. It cannot authenticate the human
+assigner or execute a handoff.
+
 `phase_bootstrap` is Codex-only. It permits a human-authorized new branch from
 the named exact `origin/main` `task_base_sha` to carry its delivery handoff while
 STATE still describes the completed prior phase. The handoff must name the new
@@ -225,7 +241,10 @@ branch, authorized phase identifier/name, exact base, and bootstrap scope. Codex
 first proves the branch fork point equals that base and later commits are only
 the expected handoff-delivery planning change, then creates or updates the new
 context and STATE before any normal work. This exception never supplies missing
-human authority for a structural phase transition.
+human authority for a structural phase transition. The staged workflow gate
+permits that one delivery boundary only when the staged change is exactly
+`.planning/CODEX-NEXT.md`; after it commits, ordinary branch/state invariants
+resume until the first bootstrap execution commit updates CONTEXT and STATE.
 
 ## Session Startup
 

@@ -4,8 +4,9 @@
 
 ## Active workflow and phase namespaces
 
-- [x] **Phase 00: Lightweight Multi-Agent Workflow** — COMPLETE; merged exact
-  SHA `0fdce4897c858176af882618ab016621a8221bcb`, historical approval tag
+- [x] **Phase 00: Lightweight Multi-Agent Workflow** — COMPLETE; accepted
+  independently reviewed SHA `f244be0`, then authorized and merged exact SHA
+  `0fdce4897c858176af882618ab016621a8221bcb`, historical approval tag
   `phase-00-approved`. Its historical specification and evidence remain under
   `phases/00-lightweight-agent-workflow/`.
 - [ ] **Phase 00.1: Agent Handoffs and Workflow Closure Cleanup** — active

@@ -2,7 +2,7 @@
 handoff_version: 1
 status: idle
 agent: codex
-mode: active_phase
+mode: null
 branch: null
 task_base_sha: null
 review_target_sha: null

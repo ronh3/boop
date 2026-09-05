@@ -8,6 +8,18 @@ import re
 import subprocess
 
 
+HANDOFF_PATHS = {
+    ".planning/CODEX-NEXT.md": "codex",
+    ".planning/CLAUDE-NEXT.md": "claude",
+}
+HANDOFF_FIELDS = {
+    "handoff_version", "status", "agent", "mode", "branch",
+    "task_base_sha", "review_target_sha", "assigned_by",
+}
+HANDOFF_STATUSES = {"idle", "ready", "consumed"}
+HANDOFF_MODES = {"active_phase", "phase_bootstrap"}
+
+
 def git(root: Path, *args: str) -> str:
     result = subprocess.run(
         ["git", "-C", str(root), *args], capture_output=True, check=True
@@ -23,6 +35,91 @@ def paths_changed(root: Path, before: str, after: str) -> list[str]:
 
 def snapshot(root: Path, revision: str, path: str) -> str:
     return git(root, "show", f"{revision.rstrip(':')}:{path}")
+
+
+def frontmatter(text: str, location: str) -> dict[str, str | None]:
+    if not text.startswith("---\n"):
+        raise ValueError(f"{location}: missing YAML frontmatter")
+    try:
+        header = text.split("---", 2)[1]
+    except IndexError as exc:
+        raise ValueError(f"{location}: unterminated YAML frontmatter") from exc
+    values: dict[str, str | None] = {}
+    for line in header.splitlines():
+        if not line:
+            continue
+        match = re.fullmatch(r"([a-z_]+): (.*)", line)
+        if not match:
+            raise ValueError(f"{location}: malformed frontmatter line {line!r}")
+        key, value = match.groups()
+        if key in values:
+            raise ValueError(f"{location}: duplicate frontmatter field {key}")
+        values[key] = None if value == "null" else value.strip('"')
+    return values
+
+
+def handoff_at(root: Path, revision: str, path: str) -> dict[str, str | None]:
+    values = frontmatter(snapshot(root, revision, path), path)
+    if set(values) != HANDOFF_FIELDS:
+        missing = sorted(HANDOFF_FIELDS - set(values))
+        unknown = sorted(set(values) - HANDOFF_FIELDS)
+        raise ValueError(f"{path}: handoff schema mismatch (missing={missing}, unknown={unknown})")
+    return values
+
+
+def handoff_errors(root: Path, revision: str = ":") -> list[str]:
+    """Validate mailboxes; this validates structure and ancestry, not human identity."""
+    errors: list[str] = []
+    for path, expected_agent in HANDOFF_PATHS.items():
+        try:
+            handoff = handoff_at(root, revision, path)
+        except (ValueError, subprocess.CalledProcessError) as exc:
+            errors.append(str(exc))
+            continue
+        status, agent, mode = handoff["status"], handoff["agent"], handoff["mode"]
+        if handoff["handoff_version"] != "1":
+            errors.append(f"{path}: handoff_version must be 1")
+        if agent != expected_agent:
+            errors.append(f"{path}: agent must be {expected_agent}")
+        if status not in HANDOFF_STATUSES:
+            errors.append(f"{path}: status must be idle, ready, or consumed")
+        if handoff["assigned_by"] != "Human + ChatGPT/Neon":
+            errors.append(f"{path}: assigned_by must be Human + ChatGPT/Neon")
+        if status == "idle":
+            for field in ("mode", "branch", "task_base_sha", "review_target_sha"):
+                if handoff[field] is not None:
+                    errors.append(f"{path}: idle handoffs require {field}: null")
+            continue
+        if mode not in HANDOFF_MODES:
+            errors.append(f"{path}: active handoffs require a known mode")
+        if agent == "claude" and mode != "active_phase":
+            errors.append(f"{path}: Claude may use only mode: active_phase")
+        branch = handoff["branch"]
+        if not branch or not re.fullmatch(r"phase/[0-9]+(?:\.[0-9]+)?-[a-z0-9-]+", branch):
+            errors.append(f"{path}: active handoffs require a valid phase branch")
+        base = handoff["task_base_sha"]
+        if not base or not re.fullmatch(r"[0-9a-f]{40}", base):
+            errors.append(f"{path}: active handoffs require a full task_base_sha")
+        else:
+            try:
+                git(root, "rev-parse", "--verify", f"{base}^{{commit}}")
+                git(root, "merge-base", "--is-ancestor", base, "HEAD")
+            except subprocess.CalledProcessError:
+                errors.append(f"{path}: task_base_sha must resolve to a HEAD ancestor")
+        target = handoff["review_target_sha"]
+        if agent == "claude" and (not target or not re.fullmatch(r"[0-9a-f]{40}", target)):
+            errors.append(f"{path}: Claude ready/consumed handoffs require review_target_sha")
+        if target and not re.fullmatch(r"[0-9a-f]{40}", target):
+            errors.append(f"{path}: review_target_sha must be null or a full SHA")
+        if status == "ready" and mode == "active_phase":
+            try:
+                state = frontmatter(snapshot(root, revision, ".planning/STATE.md"), ".planning/STATE.md")
+                if branch != state.get("active_branch"):
+                    errors.append(f"{path}: ready active_phase branch must match STATE active_branch")
+            except (ValueError, subprocess.CalledProcessError) as exc:
+                errors.append(str(exc))
+        # consumed handoffs retain their provenance but are explicitly non-executable.
+    return errors
 
 
 def version_at(root: Path, revision: str) -> tuple[int, ...]:
@@ -122,14 +219,34 @@ def check_staged_branch(root: Path) -> list[str]:
     branch = git(root, "branch", "--show-current").strip()
     state = snapshot(root, ":", ".planning/STATE.md").split("---", 2)[1]
     match = re.search(r"^active_branch: (phase/[0-9]+(?:\.[0-9]+)?-[a-z0-9-]+)$", state, re.MULTILINE)
-    if not match or branch != match[1]:
-        return ["staged work requires the active phase branch; no direct main or detached commits"]
+    if match and branch == match[1]:
+        return []
+    # A new phase may receive precisely its CODEX handoff before STATE moves to
+    # that phase. This is intentionally a one-commit delivery exception.
+    changed = set(paths_changed(root, "HEAD", ":"))
+    try:
+        handoff = handoff_at(root, ":", ".planning/CODEX-NEXT.md")
+        base = handoff["task_base_sha"]
+        origin_main = git(root, "rev-parse", "refs/remotes/origin/main^{commit}").strip()
+        fork = git(root, "merge-base", "HEAD", "refs/remotes/origin/main").strip()
+        bootstrap = (
+            handoff["status"] == "ready"
+            and handoff["agent"] == "codex"
+            and handoff["mode"] == "phase_bootstrap"
+            and handoff["branch"] == branch
+            and base == origin_main == fork
+            and changed == {".planning/CODEX-NEXT.md"}
+        )
+    except (ValueError, subprocess.CalledProcessError):
+        bootstrap = False
+    if not bootstrap:
+        return ["staged work requires the active phase branch; no direct main or detached commits (except the bounded CODEX phase_bootstrap handoff delivery)"]
     return []
 
 
 def check_workflow(root: Path) -> list[str]:
     try:
-        errors = check_staged_branch(root)
+        errors = handoff_errors(root) + check_staged_branch(root)
         if (root / ".planning/config.json").exists():
             errors.append("retired .planning/config.json must not be operational")
         for before, after in transitions(root, phase_baseline(root)):

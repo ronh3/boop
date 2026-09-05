@@ -12,7 +12,9 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from workflow_guard import (check_review_transition, check_staged_branch,
-                            check_transition, check_version_history, check_workflow, git)
+                            check_transition, check_version_history, check_workflow,
+                            git, handoff_errors)
+from check_merge_authorization import approval_tag_errors, closure_tail_errors
 
 
 class WorkflowTests(unittest.TestCase):
@@ -29,6 +31,8 @@ class WorkflowTests(unittest.TestCase):
         self.base = git(self.root, 'rev-parse', 'HEAD').strip()
         git(self.root, 'update-ref', 'refs/remotes/origin/main', self.base)
         self.write('.planning/STATE.md', f'---\nmain_baseline: {self.base}\nactive_branch: phase/00-test\n---\n')
+        self.handoff('CODEX', 'codex')
+        self.handoff('CLAUDE', 'claude')
         self.commit()
 
     def write(self, name, text):
@@ -40,6 +44,19 @@ class WorkflowTests(unittest.TestCase):
         self.write('mfile', json.dumps({'version': version, 'title': f'boop Hunter {version}'}))
         self.write('src/scripts/boop/boop_init.lua', f'boop.version = "{version}"\n')
         self.write('CODEX.md', f'Current synchronized package version: `{version}`\n')
+
+    def handoff(self, name, agent, status='idle', mode=None, branch=None, base=None, target=None):
+        self.write(f'.planning/{name}-NEXT.md', (
+            '---\n'
+            'handoff_version: 1\n'
+            f'status: {status}\n'
+            f'agent: {agent}\n'
+            f'mode: {mode or "null"}\n'
+            f'branch: {branch or "null"}\n'
+            f'task_base_sha: {base or "null"}\n'
+            f'review_target_sha: {target or "null"}\n'
+            'assigned_by: Human + ChatGPT/Neon\n'
+            '---\n'))
 
     def stage(self):
         git(self.root, 'add', '-A')
@@ -268,6 +285,74 @@ class WorkflowTests(unittest.TestCase):
     def test_live_legacy_configuration_is_rejected(self):
         self.write('.planning/config.json', '{}')
         self.assertIn('retired', ' '.join(check_workflow(self.root)))
+
+    def test_handoff_schema_and_role_enums_are_enforced(self):
+        self.handoff('CODEX', 'claude')
+        self.stage()
+        self.assertIn('agent must be codex', ' '.join(handoff_errors(self.root)))
+        self.handoff('CLAUDE', 'claude', 'ready', 'phase_bootstrap', 'phase/00-test', self.base, self.base)
+        self.stage()
+        errors = ' '.join(handoff_errors(self.root))
+        self.assertIn('Claude may use only', errors)
+        self.handoff('CODEX', 'codex', 'idle', 'active_phase')
+        self.stage()
+        self.assertIn('idle handoffs require mode: null', ' '.join(handoff_errors(self.root)))
+
+    def test_ready_handoff_requires_valid_head_ancestor_and_active_branch(self):
+        self.handoff('CODEX', 'codex', 'ready', 'active_phase', 'phase/00-test', 'f' * 40)
+        self.stage()
+        self.assertIn('task_base_sha must resolve', ' '.join(handoff_errors(self.root)))
+        self.handoff('CODEX', 'codex', 'ready', 'active_phase', 'phase/01-wrong', self.base)
+        self.stage()
+        self.assertIn('must match STATE active_branch', ' '.join(handoff_errors(self.root)))
+
+    def test_consumed_handoff_is_structurally_valid_but_not_ready(self):
+        self.handoff('CLAUDE', 'claude', 'consumed', 'active_phase', 'phase/00-test', self.base, self.base)
+        self.assertEqual([], handoff_errors(self.root))
+
+    def test_bootstrap_delivery_is_the_only_staged_branch_exception(self):
+        fork_base = git(self.root, 'rev-parse', 'HEAD').strip()
+        git(self.root, 'update-ref', 'refs/remotes/origin/main', fork_base)
+        git(self.root, 'checkout', '-qb', 'phase/01-bootstrap', fork_base)
+        self.handoff('CODEX', 'codex', 'ready', 'phase_bootstrap', 'phase/01-bootstrap', fork_base)
+        self.stage()
+        self.assertEqual([], check_staged_branch(self.root))
+        self.write('.planning/extra.md', 'bypass')
+        self.stage()
+        self.assertTrue(check_staged_branch(self.root))
+
+    def test_closure_tail_rejects_unreviewed_runtime_and_authority_changes(self):
+        reviewed = git(self.root, 'rev-parse', 'HEAD').strip()
+        review = '.planning/phases/00-test/00-ADVERSARIAL-REVIEW.md'
+        self.write(review, (self.root / review).read_text() +
+                   f'\n**Reviewed target SHA:** `{reviewed}`\n')
+        self.commit()
+        self.assertEqual([], closure_tail_errors(self.root, '00'))
+        self.write('src/scripts/boop/runtime.lua', 'unreviewed')
+        self.commit()
+        self.assertIn('runtime.lua', ' '.join(closure_tail_errors(self.root, '00')))
+        self.write('AGENTS.md', 'unreviewed authority change')
+        self.commit()
+        self.assertIn('AGENTS.md', ' '.join(closure_tail_errors(self.root, '00')))
+
+    def test_approval_tag_binds_name_annotation_target_and_remote_object(self):
+        remote = self.root / 'remote.git'
+        git(self.root.parent, 'init', '--bare', str(remote))
+        git(self.root, 'remote', 'add', 'origin', str(remote))
+        sha = git(self.root, 'rev-parse', 'HEAD').strip()
+        git(self.root, 'push', '-q', 'origin', f'HEAD:phase/00-test')
+        git(self.root, 'update-ref', 'refs/remotes/origin/phase/00-test', sha)
+        tag = f'phase-00-test-approved-{sha[:12]}'
+        git(self.root, 'tag', '-a', tag, '-m',
+            f'Human authorization — 2026-09-04\n\nHuman authorizes Phase 00-test exact SHA {sha}.')
+        git(self.root, 'push', '-q', 'origin', tag)
+        self.assertEqual([], approval_tag_errors(self.root, '00-test'))
+        git(self.root, 'tag', '-f', tag, self.base)
+        self.assertTrue(approval_tag_errors(self.root, '00-test'))
+        git(self.root, 'tag', '-f', tag, sha)
+        self.write('.planning/post-authorization.md', 'branch mutation')
+        self.commit()
+        self.assertTrue(approval_tag_errors(self.root, '00-test'))
 
 
 class ExactCITests(unittest.TestCase):
