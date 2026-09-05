@@ -6,12 +6,12 @@ active_phase: "00.1"
 active_phase_name: agent-handoffs
 active_branch: phase/00.1-agent-handoffs
 active_specification: .planning/phases/00.1-agent-handoffs/00.1-CONTEXT.md
-status: corrections_complete_awaiting_rereview
+status: phase_closed_awaiting_external_exact_sha_authorization
 independent_review: "final_narrow_re_review_complete — Claude, 2026-09-05; final narrow re-review of correction 38ed06213fa173cbfbb28f3f5517eb2f02fdacd0 (range a188153be50376ea1eae13950fbc9d106631308d..38ed06213fa173cbfbb28f3f5517eb2f02fdacd0) recorded in the dated re-review entry in 00.1-ADVERSARIAL-REVIEW.md; H-01 residual, M-01 residual, M-03 residual, N-01, N-02, N-03, N-04, N-05 all VERIFIED FIXED; none partially fixed; none still present; previously fixed H-02, M-02 mechanical, M-04, L-01, L-02 confirmed still fixed; one new low defect N-06 (fail-closed STATE frontmatter truncation) recorded and open; branch HEAD at re-review time b04d225bd1ce44da404312306c761b69fe5783c5; factual closure by re-review only, not an acceptance, not arbitration, and not phase closure"
 independent_review_target_sha: 38ed06213fa173cbfbb28f3f5517eb2f02fdacd0
-human_arbitration: pending
-live_mudlet_validation: pending_human_determination
-phase_closure: pending_human_authorization
+human_arbitration: "complete — Human, 2026-09-05; Phase 00.1 findings arbitrated, all prior findings accepted factually closed, N-06 accepted non-blocking; see dated human arbitration entry in 00.1-ADVERSARIAL-REVIEW.md"
+live_mudlet_validation: "not_applicable — Human, 2026-09-05; Phase 00.1 is workflow/process/tooling-only and requires no live Mudlet validation; see dated 00.1-UAT.md closure entry"
+phase_closure: "approved — Human, 2026-09-05; Phase 00.1 approved for closure; see dated 00.1-UAT.md closure entry"
 merge_authorization: pending_external_exact_sha_authorization
 main_baseline: 0fdce4897c858176af882618ab016621a8221bcb
 last_updated: "2026-09-05"
