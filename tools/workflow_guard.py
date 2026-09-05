@@ -19,6 +19,14 @@ HANDOFF_FIELDS = {
 HANDOFF_STATUSES = {"idle", "ready", "consumed"}
 HANDOFF_MODES = {"active_phase", "phase_bootstrap"}
 CLAUDE_REVIEW_FIELDS = {"independent_review", "independent_review_target_sha"}
+PHASE_ACTIVATION_PENDING_FIELDS = {
+    "independent_review": "pending",
+    "independent_review_target_sha": None,
+    "human_arbitration": "pending",
+    "live_mudlet_validation": "pending_human_determination",
+    "phase_closure": "pending_human_authorization",
+    "merge_authorization": "pending_external_exact_sha_authorization",
+}
 
 
 def git(root: Path, *args: str) -> str:
@@ -300,6 +308,36 @@ def handoff_retirement_errors(root: Path, before: str, after: str) -> list[str]:
     return errors
 
 
+def phase_activation_errors(root: Path, before: str, after: str) -> list[str]:
+    """Require a new phase to start from the current main with empty gates."""
+    try:
+        old_state = frontmatter(snapshot(root, before, ".planning/STATE.md"), ".planning/STATE.md")
+        new_state = frontmatter(snapshot(root, after, ".planning/STATE.md"), ".planning/STATE.md")
+    except (ValueError, subprocess.CalledProcessError):
+        # Initial STATE creation is outside an active-phase transition.
+        return []
+    old_phase, new_phase = old_state.get("active_phase"), new_state.get("active_phase")
+    if old_phase == new_phase:
+        return []
+    errors: list[str] = []
+    if not new_phase or not re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", new_phase):
+        errors.append(f"{after}: active-phase transition requires a valid new active_phase")
+    for field, expected in PHASE_ACTIVATION_PENDING_FIELDS.items():
+        if new_state.get(field) != expected:
+            rendered = "null" if expected is None else expected
+            errors.append(f"{after}: active-phase transition requires {field}: {rendered}")
+    try:
+        origin_main = git(root, "rev-parse", "refs/remotes/origin/main^{commit}").strip()
+    except subprocess.CalledProcessError:
+        errors.append(f"{after}: active-phase transition requires refs/remotes/origin/main")
+    else:
+        if new_state.get("main_baseline") != origin_main:
+            errors.append(
+                f"{after}: active-phase transition main_baseline must equal refs/remotes/origin/main"
+            )
+    return errors
+
+
 def review_completion_errors(root: Path, before: str, after: str) -> list[str]:
     """Contain a Claude review-anchor advance to its review-completion commit."""
     try:
@@ -307,6 +345,10 @@ def review_completion_errors(root: Path, before: str, after: str) -> list[str]:
         new_state = frontmatter(snapshot(root, after, ".planning/STATE.md"), ".planning/STATE.md")
     except (ValueError, subprocess.CalledProcessError) as exc:
         # Initial STATE creation is not a review-anchor transition.
+        return []
+    # A human-authorized phase activation is validated separately and must
+    # discard the prior phase's review anchor. It is not a Claude review.
+    if old_state.get("active_phase") != new_state.get("active_phase"):
         return []
     if old_state.get("independent_review_target_sha") == new_state.get("independent_review_target_sha"):
         return []
@@ -358,6 +400,7 @@ def check_workflow(root: Path) -> list[str]:
         for before, after in transitions(root, phase_baseline(root)):
             errors.extend(check_review_transition(root, before, after))
             errors.extend(handoff_retirement_errors(root, before, after))
+            errors.extend(phase_activation_errors(root, before, after))
             errors.extend(review_completion_errors(root, before, after))
             # A merge must preserve recorded history from every parent, too.
             if after != ":":
@@ -365,6 +408,7 @@ def check_workflow(root: Path) -> list[str]:
                 for parent in parents:
                     errors.extend(check_review_transition(root, parent, after))
                     errors.extend(handoff_retirement_errors(root, parent, after))
+                    errors.extend(phase_activation_errors(root, parent, after))
                     errors.extend(review_completion_errors(root, parent, after))
         return errors
     except (OSError, ValueError, IndexError, subprocess.CalledProcessError) as exc:

@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 from workflow_guard import (check_review_transition, check_staged_branch,
                             check_transition, check_version_history, check_workflow,
                             git, handoff_errors, handoff_retirement_errors,
-                            review_completion_errors)
+                            phase_activation_errors, review_completion_errors)
 from check_merge_authorization import approval_tag_errors, closure_tail_errors
 from check_handoff_execution import execution_errors
 
@@ -64,6 +64,26 @@ class WorkflowTests(unittest.TestCase):
             f'review_target_sha: {target or "null"}\n'
             'assigned_by: Human + ChatGPT/Neon\n'
             '---\n'))
+
+    def phase_state(self, phase, baseline, *, review='pending', target=None,
+                    arbitration='pending', live='pending_human_determination',
+                    closure='pending_human_authorization',
+                    merge='pending_external_exact_sha_authorization'):
+        return (
+            '---\n'
+            f'active_phase: "{phase}"\n'
+            f'active_phase_name: phase-{phase}\n'
+            f'active_branch: phase/{phase}-test\n'
+            f'active_specification: .planning/phases/{phase}-test/{phase}-CONTEXT.md\n'
+            f'independent_review: {review}\n'
+            f'independent_review_target_sha: {target or "null"}\n'
+            f'human_arbitration: {arbitration}\n'
+            f'live_mudlet_validation: {live}\n'
+            f'phase_closure: {closure}\n'
+            f'merge_authorization: {merge}\n'
+            f'main_baseline: {baseline}\n'
+            '---\n'
+        )
 
     def stage(self):
         git(self.root, 'add', '-A')
@@ -385,6 +405,88 @@ class WorkflowTests(unittest.TestCase):
         self.write('.planning/extra.md', 'bypass')
         self.stage()
         self.assertTrue(check_staged_branch(self.root))
+
+    def test_phase_activation_resets_review_and_human_gates(self):
+        self.write('.planning/STATE.md', self.phase_state(
+            '101', self.base, review='complete', target=self.base,
+            arbitration='complete', live='not_applicable', closure='approved',
+            merge='authorized'))
+        self.commit()
+        self.write('.planning/STATE.md', self.phase_state('102', self.base))
+        self.stage()
+        self.assertEqual([], phase_activation_errors(self.root, 'HEAD', ':'))
+        self.assertEqual([], review_completion_errors(self.root, 'HEAD', ':'))
+
+    def test_phase_activation_baseline_must_equal_origin_main(self):
+        self.write('.planning/STATE.md', self.phase_state(
+            '101', self.base, review='complete', target=self.base))
+        self.commit()
+        wrong = git(self.root, 'rev-parse', 'HEAD').strip()
+        self.write('.planning/STATE.md', self.phase_state('102', wrong))
+        self.stage()
+        self.assertIn('main_baseline must equal refs/remotes/origin/main',
+                      ' '.join(phase_activation_errors(self.root, 'HEAD', ':')))
+
+    def test_phase_activation_rejects_carried_review_or_completed_gates(self):
+        self.write('.planning/STATE.md', self.phase_state(
+            '101', self.base, review='complete', target=self.base,
+            arbitration='complete', live='not_applicable', closure='approved',
+            merge='authorized'))
+        self.commit()
+        invalid = [
+            ('independent_review_target_sha', {'target': self.base}),
+            ('independent_review', {'review': 'complete'}),
+            ('human_arbitration', {'arbitration': 'complete'}),
+            ('live_mudlet_validation', {'live': 'not_applicable'}),
+            ('phase_closure', {'closure': 'approved'}),
+            ('merge_authorization', {'merge': 'authorized'}),
+        ]
+        for field, override in invalid:
+            with self.subTest(field=field):
+                self.write('.planning/STATE.md', self.phase_state('102', self.base, **override))
+                self.stage()
+                self.assertIn(f'active-phase transition requires {field}:',
+                              ' '.join(phase_activation_errors(self.root, 'HEAD', ':')))
+
+    def test_same_phase_review_anchor_cannot_be_cleared(self):
+        self.write('.planning/STATE.md', self.phase_state(
+            '101', self.base, review='complete', target=self.base))
+        self.commit()
+        self.write('.planning/STATE.md', self.phase_state('101', self.base))
+        self.stage()
+        self.assertEqual([], phase_activation_errors(self.root, 'HEAD', ':'))
+        self.assertIn('must be a full lowercase commit SHA',
+                      ' '.join(review_completion_errors(self.root, 'HEAD', ':')))
+
+    def test_same_phase_review_advance_still_requires_claude_completion(self):
+        self.write('.planning/STATE.md', self.phase_state(
+            '101', self.base, review='complete', target=self.base))
+        self.commit()
+        target = git(self.root, 'rev-parse', 'HEAD').strip()
+        self.write('.planning/STATE.md', self.phase_state(
+            '101', self.base, review='complete', target=target))
+        self.stage()
+        errors = ' '.join(review_completion_errors(self.root, 'HEAD', ':'))
+        self.assertIn('review-anchor transition may change only STATE', errors)
+        self.assertIn('matching ready -> consumed CLAUDE handoff', errors)
+
+    def test_phase_106_staged_bootstrap_transition_passes(self):
+        self.write('.planning/STATE.md', self.phase_state(
+            '00.1', self.base, review='complete', target=self.base,
+            arbitration='complete', live='not_applicable', closure='approved',
+            merge='authorized'))
+        self.commit()
+        activation_base = git(self.root, 'rev-parse', 'HEAD').strip()
+        git(self.root, 'update-ref', 'refs/remotes/origin/main', activation_base)
+        git(self.root, 'branch', '-m', 'phase/106-refactor-wire-invariant')
+        state = self.phase_state('106', activation_base).replace(
+            'active_branch: phase/106-test',
+            'active_branch: phase/106-refactor-wire-invariant')
+        self.write('.planning/STATE.md', state)
+        self.stage()
+        self.assertEqual([], phase_activation_errors(self.root, 'HEAD', ':'))
+        self.assertEqual([], review_completion_errors(self.root, 'HEAD', ':'))
+        self.assertEqual([], check_workflow(self.root))
 
     def test_closure_tail_rejects_unreviewed_runtime_and_authority_changes(self):
         reviewed = git(self.root, 'rev-parse', 'HEAD').strip()

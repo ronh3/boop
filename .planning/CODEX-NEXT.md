@@ -1,6 +1,6 @@
 ---
 handoff_version: 1
-status: ready
+status: consumed
 agent: codex
 mode: phase_bootstrap
 branch: phase/106-refactor-wire-invariant

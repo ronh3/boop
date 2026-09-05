@@ -109,6 +109,14 @@ approval. Protected gate decisions must include attribution and evidence, not
 just a bare `complete` value. Structural/milestone changes require human scope
 authority. This is a role contract; Git author names do not authenticate a human.
 
+On a human-authorized active-phase transition, the prior phase's
+`independent_review` and `independent_review_target_sha` do not carry forward.
+The new phase begins with `independent_review: pending` and
+`independent_review_target_sha: null`, together with the required pending human,
+live, closure, and merge gates. This reset is phase activation, not a Claude
+review-completion transition. Within the same active phase, review-anchor
+changes remain Claude-owned and the anchor may not be cleared to null.
+
 For every phase, whether live Mudlet validation is required is a human decision
 recorded in `<NN>-UAT.md` with date, rationale, and applicable SHA. The human
 records `required`, `not_applicable`, or a validation result there and updates

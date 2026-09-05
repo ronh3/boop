@@ -9,19 +9,27 @@
   `0fdce4897c858176af882618ab016621a8221bcb`, historical approval tag
   `phase-00-approved`. Its historical specification and evidence remain under
   `phases/00-lightweight-agent-workflow/`.
-- [ ] **Phase 00.1: Agent Handoffs and Workflow Closure Cleanup** — active
-  workflow-continuation phase. Specification:
-  `phases/00.1-agent-handoffs/00.1-CONTEXT.md`; branch and gates: `STATE.md`.
-  This special workflow phase does not renumber or consume either product
-  hardening or refactor phase sequence.
+- [x] **Phase 00.1: Agent Handoffs and Workflow Closure Cleanup** — COMPLETE;
+  authorized and merged exact SHA
+  `062743fced548cd1b0b4bdcfe66ee0a8eb671cd7`, approval tag
+  `phase-00.1-approved-062743fced54`. Its specification and evidence remain
+  under `phases/00.1-agent-handoffs/`.
+- [ ] **Workflow Phase 106: Refactor Phase 6 — Complete the Wire Invariant** —
+  active. Specification:
+  `phases/106-refactor-wire-invariant/106-CONTEXT.md`; branch and gates:
+  `STATE.md`. Workflow ID 106 prevents namespace collision with the separate
+  Hardening Phase 6.
 - **Hardening Phase N** means this document's milestone requirement sequence
   below. Its checkboxes and progress table preserve that sequence's history.
 - **Refactor Phase N** means `REFACTOR-ROADMAP.md`'s separate architecture
   sequence. References to numbered phases in the architecture documents use
   that refactor namespace. Refactor Phases 4–5 in Git history do not close
   Hardening Phases 4–5 here.
-- Workflow Phases 00 and 00.1 interrupt product sequencing without renumbering
-  either history.
+- **Hardening Phase 6 remains unactivated and unchecked.** Workflow Phase 106
+  activates only Refactor Phase 6 and does not alter the hardening Phase 3–6
+  completion checkboxes or progress table below.
+- Workflow Phases 00, 00.1, and 106 coordinate work without renumbering either
+  product history.
   Only `STATE.md` and its named context activate work. Neither the next unchecked
   hardening item nor the next refactor item authorizes a phase transition.
   Human direction must select and qualify the next phase before it begins.

@@ -2,18 +2,18 @@
 state_version: 2
 milestone: v1.0
 milestone_name: Pre-1.0 Hardening
-active_phase: "00.1"
-active_phase_name: agent-handoffs
-active_branch: phase/00.1-agent-handoffs
-active_specification: .planning/phases/00.1-agent-handoffs/00.1-CONTEXT.md
-status: phase_closed_awaiting_external_exact_sha_authorization
-independent_review: "final_narrow_re_review_complete — Claude, 2026-09-05; final narrow re-review of correction 38ed06213fa173cbfbb28f3f5517eb2f02fdacd0 (range a188153be50376ea1eae13950fbc9d106631308d..38ed06213fa173cbfbb28f3f5517eb2f02fdacd0) recorded in the dated re-review entry in 00.1-ADVERSARIAL-REVIEW.md; H-01 residual, M-01 residual, M-03 residual, N-01, N-02, N-03, N-04, N-05 all VERIFIED FIXED; none partially fixed; none still present; previously fixed H-02, M-02 mechanical, M-04, L-01, L-02 confirmed still fixed; one new low defect N-06 (fail-closed STATE frontmatter truncation) recorded and open; branch HEAD at re-review time b04d225bd1ce44da404312306c761b69fe5783c5; factual closure by re-review only, not an acceptance, not arbitration, and not phase closure"
-independent_review_target_sha: 38ed06213fa173cbfbb28f3f5517eb2f02fdacd0
-human_arbitration: "complete — Human, 2026-09-05; Phase 00.1 findings arbitrated, all prior findings accepted factually closed, N-06 accepted non-blocking; see dated human arbitration entry in 00.1-ADVERSARIAL-REVIEW.md"
-live_mudlet_validation: "not_applicable — Human, 2026-09-05; Phase 00.1 is workflow/process/tooling-only and requires no live Mudlet validation; see dated 00.1-UAT.md closure entry"
-phase_closure: "approved — Human, 2026-09-05; Phase 00.1 approved for closure; see dated 00.1-UAT.md closure entry"
+active_phase: "106"
+active_phase_name: refactor-06-wire-invariant
+active_branch: phase/106-refactor-wire-invariant
+active_specification: .planning/phases/106-refactor-wire-invariant/106-CONTEXT.md
+status: phase_bootstrapped_awaiting_implementation
+independent_review: pending
+independent_review_target_sha: null
+human_arbitration: pending
+live_mudlet_validation: pending_human_determination
+phase_closure: pending_human_authorization
 merge_authorization: pending_external_exact_sha_authorization
-main_baseline: 0fdce4897c858176af882618ab016621a8221bcb
+main_baseline: 062743fced548cd1b0b4bdcfe66ee0a8eb671cd7
 last_updated: "2026-09-05"
 ---
 
@@ -24,15 +24,16 @@ last_updated: "2026-09-05"
 See: `.planning/PROJECT.md`.
 
 **Core value:** boop must make Achaea hunting safer, clearer, and less noisy without taking control away from the operator.
-**Current focus:** Phase 00.1 — agent handoffs and workflow closure cleanup
+**Current focus:** Workflow Phase 106 — Refactor Phase 6 Wire invariant
 
 ## Current Position
 
-Branch: `phase/00.1-agent-handoffs`
-Specification: `.planning/phases/00.1-agent-handoffs/00.1-CONTEXT.md`
+Branch: `phase/106-refactor-wire-invariant`
+Specification: `.planning/phases/106-refactor-wire-invariant/106-CONTEXT.md`
 Main baseline: see canonical `main_baseline` in frontmatter.
-Status: Implementation complete; awaiting independent Claude review. All Phase
-00.1 gates remain pending.
+Status: Phase bootstrapped; source implementation has not begun. All Phase 106
+review, human, live-applicability, closure, and merge-authorization gates are
+pending.
 
 State writers follow `AGENTS.md`:
 
@@ -46,16 +47,18 @@ State writers follow `AGENTS.md`:
 - No actor may advance, reset, or clear another writer's gate. Codex may
   initialize new gates as pending, never infer approval or close a finding.
 
-Phase 00 is historical and complete on `main` at
-`0fdce4897c858176af882618ab016621a8221bcb`, preserved by the annotated
-`phase-00-approved` tag. Its review, UAT, and verification artifacts remain
-historical evidence only and do not advance any Phase 00.1 gate.
+Phases 00 and 00.1 are historical and complete on `main`. Phase 00.1 merged at
+`062743fced548cd1b0b4bdcfe66ee0a8eb671cd7`, preserved by the annotated
+`phase-00.1-approved-062743fced54` tag. Their review, UAT, and verification
+artifacts remain historical evidence only and do not advance any Phase 106 gate.
 
 ## Session Continuity
 
-Current work is the human-authorized Phase 00.1 workflow-only scope. Resume with
-`00.1-CONTEXT.md`, `00.1-ADVERSARIAL-REVIEW.md`, `00.1-VERIFICATION.md`, and
-`00.1-UAT.md`. Do not resume historical Phase 03 plans or begin refactor Phase 6.
+Current work is the human-authorized workflow Phase 106 scope, which activates
+REFACTOR-ROADMAP Refactor Phase 6. Resume with `106-CONTEXT.md` and its matching
+review, verification, and UAT artifacts. Hardening Phase 6 remains a separate,
+unactivated namespace. Do not resume historical Phase 03 plans or begin source
+implementation without a fresh human-assigned handoff.
 
 ## Historical Planning Record
 
