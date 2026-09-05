@@ -26,6 +26,9 @@ class WorkflowTests(unittest.TestCase):
         git(self.root, 'init', '-b', 'phase/00-test')
         git(self.root, 'config', 'user.name', 'Test')
         git(self.root, 'config', 'user.email', 'test@example.invalid')
+        # Git may otherwise launch background auto-gc after the tag-push test,
+        # racing TemporaryDirectory cleanup on CI runners.
+        git(self.root, 'config', 'gc.auto', '0')
         self.version('0.1.9')
         self.write('.planning/phases/00-test/00-ADVERSARIAL-REVIEW.md', '# Review\nB-01 Blocker: original finding\n')
         self.commit()
