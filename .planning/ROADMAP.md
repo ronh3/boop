@@ -4,17 +4,23 @@
 
 ## Active workflow and phase namespaces
 
-- [ ] **Phase 00: Lightweight Multi-Agent Workflow** — active process bootstrap;
-  corrections await Claude re-review and human arbitration. Specification:
-  `phases/00-lightweight-agent-workflow/00-CONTEXT.md`; branch and gates:
-  `STATE.md`. Phase 00 is not complete.
+- [x] **Phase 00: Lightweight Multi-Agent Workflow** — COMPLETE; merged exact
+  SHA `0fdce4897c858176af882618ab016621a8221bcb`, historical approval tag
+  `phase-00-approved`. Its historical specification and evidence remain under
+  `phases/00-lightweight-agent-workflow/`.
+- [ ] **Phase 00.1: Agent Handoffs and Workflow Closure Cleanup** — active
+  workflow-continuation phase. Specification:
+  `phases/00.1-agent-handoffs/00.1-CONTEXT.md`; branch and gates: `STATE.md`.
+  This special workflow phase does not renumber or consume either product
+  hardening or refactor phase sequence.
 - **Hardening Phase N** means this document's milestone requirement sequence
   below. Its checkboxes and progress table preserve that sequence's history.
 - **Refactor Phase N** means `REFACTOR-ROADMAP.md`'s separate architecture
   sequence. References to numbered phases in the architecture documents use
   that refactor namespace. Refactor Phases 4–5 in Git history do not close
   Hardening Phases 4–5 here.
-- Phase 00 interrupts product sequencing without renumbering either history.
+- Workflow Phases 00 and 00.1 interrupt product sequencing without renumbering
+  either history.
   Only `STATE.md` and its named context activate work. Neither the next unchecked
   hardening item nor the next refactor item authorizes a phase transition.
   Human direction must select and qualify the next phase before it begins.

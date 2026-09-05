@@ -57,6 +57,9 @@ Guidance for Codex when working in this repository.
 
 ## Workflow Reminders
 - Follow `AGENTS.md` for role authority, durable artifacts, phase branches, review boundaries, and phase closure. Codex never declares live acceptance or phase completion.
+- When the human says “run the current handoff,” read `.planning/CODEX-NEXT.md`
+  and follow its canonical protocol in `AGENTS.md` after normal startup checks.
+  An idle handoff has no executable task; a handoff never broadens authority.
 - Develop on the active `phase/<number>-<short-description>` branch named by `.planning/STATE.md`; do not commit any work directly to `main`, including quick fixes, hotfixes, docs, and planning.
 - Keep structure shallow and logical.
 - Prefer the Mudlet DB for data; use small Lua tables only for config.
@@ -117,7 +120,7 @@ Guidance for Codex when working in this repository.
 ## Session Checkpoint
 - Branch authority: use `.planning/STATE.md`; create active work from current `origin/main` on the phase branch it names.
 - Do not infer acceptance from this checkpoint, a branch name, or green CI. Only the human authorizes closure and merge after required review and live Mudlet validation.
-- Current synchronized package version: `0.1.496.5`
+- Current synchronized package version: `0.1.496.6`
 - The purposeful pre-1.0 hardening work landed through `REFACTOR-ROADMAP.md` Phase 5 includes:
   - runtime/state ownership and coordinator path
   - combat planner split from execution

@@ -10,3 +10,8 @@ review artifact; update only your own `independent_review` state gate with that
 reference. Leave other gates to their named writers. Tool permissions do not
 grant workflow authority. Human arbitration, live applicability, phase closure,
 and exact-SHA merge authorization remain human-owned under `AGENTS.md`.
+
+When the human says “run the current handoff,” read `.planning/CLAUDE-NEXT.md`
+after the normal startup authorities. Follow the canonical handoff protocol in
+`AGENTS.md`; an idle handoff has no executable task and never expands Claude's
+review-only role.

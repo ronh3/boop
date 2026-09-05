@@ -101,7 +101,7 @@ coverage boundary, and callers cannot override the declared baseline.
 | `human_arbitration` | Human only, citing the dated arbitration entry in the review artifact |
 | `live_mudlet_validation` | Human only, citing the phase UAT decision/result |
 | `phase_closure` | Human only, citing the exact accepted SHA and closure decision in UAT |
-| `merge_authorization` | Human only, naming the exact full SHA and dated authorization in UAT |
+| `merge_authorization` | Human explicitly authorizes an exact full SHA outside the commit tree; Codex mechanically records it as the required annotated approval tag. The tag, not a later STATE or UAT entry, is final authorization evidence. |
 
 Other actors must not advance, reset, or clear another writer's gate. Codex may
 initialize a new phase's gates as pending; it may not infer human or Claude
@@ -137,17 +137,95 @@ pass in Mudlet before human closure; automated Mudlet Busted is separate evidenc
 - Never rebase or force-push a published phase branch without explicit human
   approval. Incorporate concurrent remote work with the safest non-rewriting
   method and escalate genuine conflicts.
-- Human merge authorization must name the exact full commit SHA after review,
-  arbitration, and the live gate. Only that SHA may land on `main` by fast-forward;
-  do not create an unreviewed merge/squash commit. A later branch-tip change
-  invalidates authorization. Immediately before merging, verify the authorized
-  SHA equals local and remote phase HEAD and passed exact-SHA CI. If main cannot
-  fast-forward, integrate on the phase branch, then repeat the affected gates
-  and obtain new exact-SHA authorization.
-- Record reviewed/correction SHAs in the review artifact, human live/closure
-  and merge decisions in UAT, and CI run ID, attempt, URL, event, branch, and
-  head SHA in VERIFICATION. STATE references those authorities; a branch name
-  or green CI result alone is not phase acceptance.
+- Human arbitration, live applicability and required live results, and phase
+  closure remain recorded in UAT (and referenced by STATE). After every mutation,
+  review/correction, arbitration, required live validation, closure decision, and
+  exact-SHA CI result is complete, the human explicitly authorizes the final
+  immutable full phase HEAD **outside** the commit tree. Codex then mechanically
+  creates an annotated tag named
+  `phase-<phase>-approved-<12-char-commit-sha>` that targets that exact commit.
+  Its message records human authorization, date, phase, and the full authorized
+  SHA. The Phase 00 `phase-00-approved` tag is a historical exception: never
+  rename, move, or delete it.
+- Approval tags are immutable evidence once pushed: never force-move, replace,
+  or delete one during normal workflow. Only the peeled commit targeted by the
+  approval tag may fast-forward `main`; do not create an unreviewed merge or
+  squash commit. Immediately before the fast-forward, verify local phase HEAD,
+  origin phase HEAD, the human-authorized full SHA, and the peeled approval-tag
+  commit are identical. If the branch changes after authorization, repeat the
+  affected gates and obtain a new explicit authorization and new tag. After the
+  fast-forward, verify `main == origin/main ==` the authorized tagged commit.
+  No in-tree bookkeeping commit follows authorization, because it would create a
+  new SHA and invalidate the authorization.
+- Record reviewed/correction SHAs in the review artifact; human arbitration,
+  live, and closure decisions in UAT; and CI run ID, attempt, URL, event, branch,
+  and head SHA in VERIFICATION. STATE may show an external authorization as
+  pending/required before the tag exists, but cannot substitute for the tag. A
+  branch name or green CI result alone is not phase acceptance.
+
+## Agent Handoff Mailboxes
+
+`.planning/CODEX-NEXT.md` and `.planning/CLAUDE-NEXT.md` are reusable execution
+handoffs, not authority or evidence artifacts. Their precedence is strictly:
+
+```text
+requirements / active specification
+  -> architecture
+  -> workflow / role authority
+  -> STATE
+  -> review / evidence constraints
+  -> handoff instruction
+```
+
+A handoff may narrow or execute already-authorized work, but never override
+AGENTS, requirements, active context, architecture, role boundaries, human-only
+gates, Claude-only review ownership, or version/release gates. Only Human +
+ChatGPT/Neon under human direction may assign a new handoff. Codex and Claude
+must not rewrite their own handoff to grant scope. Updating a handoff does not
+execute it; the human remains the trigger. Mailboxes are deliberately mutable;
+their history is ordinary Git history, not append-only evidence.
+
+Both files use this stable format:
+
+```yaml
+---
+handoff_version: 1
+status: idle | ready
+agent: codex | claude
+mode: active_phase | phase_bootstrap
+branch: <branch or null when idle>
+task_base_sha: <full SHA or null when idle>
+review_target_sha: <full SHA or null>
+assigned_by: Human + ChatGPT/Neon
+---
+```
+
+Their body contains `# Objective`, `# Required Inputs`, `# Task`,
+`# Constraints`, `# Verification`, and `# Completion Boundary`. An `idle`
+handoff has no executable task. `task_base_sha` is the known pre-delivery
+repository boundary; it never claims to be the SHA of the handoff-delivery
+commit itself.
+
+When told to run a ready `active_phase` handoff, the named agent fetches origin,
+verifies its expected branch, confirms `task_base_sha` is an ancestor of HEAD,
+inspects `task_base_sha..HEAD`, confirms pre-execution commits are only the
+expected handoff-delivery/planning coordination, verifies local branch equals
+origin branch, and stops on unexpected source or authority changes. Codex still
+performs normal startup reads; it cannot use a handoff to work on main, close a
+phase, merge, arbitrate, decide live applicability, or self-accept Claude
+findings. Claude still reads `CLAUDE.md` and normal authorities first and may
+only perform its reviewer role; a handoff can name review/correction SHAs,
+finding IDs, questions, evidence, and a stop boundary, never permission to edit
+implementation or human-owned gates.
+
+`phase_bootstrap` is Codex-only. It permits a human-authorized new branch from
+the named exact `origin/main` `task_base_sha` to carry its delivery handoff while
+STATE still describes the completed prior phase. The handoff must name the new
+branch, authorized phase identifier/name, exact base, and bootstrap scope. Codex
+first proves the branch fork point equals that base and later commits are only
+the expected handoff-delivery planning change, then creates or updates the new
+context and STATE before any normal work. This exception never supplies missing
+human authority for a structural phase transition.
 
 ## Session Startup
 

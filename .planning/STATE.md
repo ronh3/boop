@@ -2,17 +2,17 @@
 state_version: 2
 milestone: v1.0
 milestone_name: Pre-1.0 Hardening
-active_phase: "00"
-active_phase_name: lightweight-agent-workflow
-active_branch: phase/00-lightweight-agent-workflow
-active_specification: .planning/phases/00-lightweight-agent-workflow/00-CONTEXT.md
-status: phase_closed_awaiting_exact_sha_merge_authorization
-independent_review: "narrow_rereview_complete_no_open_findings — Claude, 2026-09-04; final narrow re-review of 80e38aa655672f102745d4c0dbdbf5ad5d0b492c against correction 887a4ff64292ed784dd8f48d4c3c03f8bd20f632 recorded in 00-ADVERSARIAL-REVIEW.md; N-01, N-02, N-03 verified fixed, M-06 and M-08 upgraded from partially fixed to verified fixed, no new findings; supersedes the 57d98dc re-review gate value; not an acceptance and not phase closure"
-human_arbitration: "complete — Human, 2026-09-04; A-1 through A-7 approved exactly as recorded in the dated Human + ChatGPT/Neon arbitration entry in 00-ADVERSARIAL-REVIEW.md; mechanically transcribed in the dated 00-UAT.md closure entry"
-live_mudlet_validation: "not_applicable — Human, 2026-09-04; process-only Phase 00 requires no live gameplay gate; rationale and applicable reviewed SHA f244be0eec92057e35e730c5c32db9b2acdc3312 recorded in the dated 00-UAT.md closure entry"
-phase_closure: "approved — Human, 2026-09-04; accepted independently reviewed SHA f244be0eec92057e35e730c5c32db9b2acdc3312; recorded in the dated 00-UAT.md closure entry"
-merge_authorization: pending_external_exact_sha_authorization_via_phase-00-approved_tag
-main_baseline: a345a34ea0da2eed6f5bfe1c5e586488749a3e22
+active_phase: "00.1"
+active_phase_name: agent-handoffs
+active_branch: phase/00.1-agent-handoffs
+active_specification: .planning/phases/00.1-agent-handoffs/00.1-CONTEXT.md
+status: implementation_complete_awaiting_independent_review
+independent_review: pending
+human_arbitration: pending
+live_mudlet_validation: pending_human_determination
+phase_closure: pending_human_authorization
+merge_authorization: pending_external_exact_sha_authorization
+main_baseline: 0fdce4897c858176af882618ab016621a8221bcb
 last_updated: "2026-09-04"
 ---
 
@@ -23,36 +23,38 @@ last_updated: "2026-09-04"
 See: `.planning/PROJECT.md`.
 
 **Core value:** boop must make Achaea hunting safer, clearer, and less noisy without taking control away from the operator.
-**Current focus:** Phase 00 — lightweight multi-agent workflow adoption
+**Current focus:** Phase 00.1 — agent handoffs and workflow closure cleanup
 
 ## Current Position
 
-Branch: `phase/00-lightweight-agent-workflow`
-Specification: `.planning/phases/00-lightweight-agent-workflow/00-CONTEXT.md`
+Branch: `phase/00.1-agent-handoffs`
+Specification: `.planning/phases/00.1-agent-handoffs/00.1-CONTEXT.md`
 Main baseline: see canonical `main_baseline` in frontmatter.
-Status: Corrective pass; awaiting Claude re-review and human arbitration.
+Status: Implementation complete; awaiting independent Claude review. All Phase
+00.1 gates remain pending.
 
 State writers follow `AGENTS.md`:
 
 - Codex: factual `status`, active phase/name/branch/specification, branch-start
   `main_baseline`, and `last_updated`, within authorized scope.
 - Claude: `independent_review`, citing its dated review entry and exact SHA.
-- Human: `human_arbitration`, `live_mudlet_validation`, `phase_closure`, and
-  `merge_authorization`, with attributed evidence in the review/UAT artifacts.
+- Human: `human_arbitration`, `live_mudlet_validation`, and `phase_closure`,
+  with attributed evidence in the review/UAT artifacts. Final merge
+  authorization is the human-authorized immutable annotated approval tag;
+  Codex records the tag mechanically after authorization.
 - No actor may advance, reset, or clear another writer's gate. Codex may
   initialize new gates as pending, never infer approval or close a finding.
 
-Claude's initial findings are recorded in `00-ADVERSARIAL-REVIEW.md` at commit
-`9b47f6409a3ba6e75ff575baafe3020d03a7622a`, reviewing
-`44fb844fe2aadf9d71fd7aa95736f3f336e3af72`. The frontmatter review gate is left
-for Claude to update; this factual pointer does not advance it. All Codex
-proposed dispositions await Claude re-review / human arbitration.
+Phase 00 is historical and complete on `main` at
+`0fdce4897c858176af882618ab016621a8221bcb`, preserved by the annotated
+`phase-00-approved` tag. Its review, UAT, and verification artifacts remain
+historical evidence only and do not advance any Phase 00.1 gate.
 
 ## Session Continuity
 
-Current work is Phase 00 corrections on the named active branch. Resume with
-`00-ADVERSARIAL-REVIEW.md`, `00-VERIFICATION.md`, and `00-UAT.md`. Do not resume
-historical Phase 03 plans or begin refactor Phase 6. Phase 00 is not complete.
+Current work is the human-authorized Phase 00.1 workflow-only scope. Resume with
+`00.1-CONTEXT.md`, `00.1-ADVERSARIAL-REVIEW.md`, `00.1-VERIFICATION.md`, and
+`00.1-UAT.md`. Do not resume historical Phase 03 plans or begin refactor Phase 6.
 
 ## Historical Planning Record
 
