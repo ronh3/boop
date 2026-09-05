@@ -61,7 +61,9 @@ Guidance for Codex when working in this repository.
   `python3 tools/check_handoff_execution.py --agent codex --fetch`; stop if it
   fails. Then read `.planning/CODEX-NEXT.md` and follow `AGENTS.md`. At the
   completion boundary, Codex may change only its own `ready` status to
-  `consumed`; an idle handoff has no executable task and never broadens authority.
+  `consumed`; only Human + ChatGPT/Neon may make a fresh reassignment from
+  `consumed` to `ready`. An idle handoff has no executable task and never
+  broadens authority.
 - Develop on the active `phase/<number>-<short-description>` branch named by `.planning/STATE.md`; do not commit any work directly to `main`, including quick fixes, hotfixes, docs, and planning.
 - Keep structure shallow and logical.
 - Prefer the Mudlet DB for data; use small Lua tables only for config.
@@ -122,7 +124,7 @@ Guidance for Codex when working in this repository.
 ## Session Checkpoint
 - Branch authority: use `.planning/STATE.md`; create active work from current `origin/main` on the phase branch it names.
 - Do not infer acceptance from this checkpoint, a branch name, or green CI. Only the human authorizes closure and merge after required review and live Mudlet validation.
-- Current synchronized package version: `0.1.496.9`
+- Current synchronized package version: `0.1.496.10`
 - The purposeful pre-1.0 hardening work landed through `REFACTOR-ROADMAP.md` Phase 5 includes:
   - runtime/state ownership and coordinator path
   - combat planner split from execution

@@ -255,7 +255,7 @@ def check_staged_branch(root: Path) -> list[str]:
 
 
 def handoff_retirement_errors(root: Path, before: str, after: str) -> list[str]:
-    """Constrain ready-to-consumed retirement without claiming agent identity."""
+    """Constrain retirement and fresh reassignment without claiming identity."""
     errors: list[str] = []
     try:
         prior_state = frontmatter(snapshot(root, before, ".planning/STATE.md"), ".planning/STATE.md")
@@ -280,8 +280,21 @@ def handoff_retirement_errors(root: Path, before: str, after: str) -> list[str]:
             old_body, new_body = old_text.split("---", 2)[2], new_text.split("---", 2)[2]
             if new["status"] != "consumed" or not unchanged or old_body != new_body:
                 errors.append(f"{after}: {path}: ready handoff may change only status: ready -> consumed")
-        elif old["status"] == "consumed" and old_text != new_text:
-            errors.append(f"{after}: {path}: consumed handoff is historical provenance and must not be replayed")
+        elif old["status"] == "consumed":
+            if new["status"] != "ready":
+                if old_text != new_text:
+                    errors.append(f"{after}: {path}: consumed handoff may not mutate without fresh reassignment")
+                continue
+            prior_target, new_target = old["review_target_sha"], new["review_target_sha"]
+            try:
+                state = frontmatter(snapshot(root, after, ".planning/STATE.md"), ".planning/STATE.md")
+            except (ValueError, subprocess.CalledProcessError) as exc:
+                errors.append(str(exc))
+                continue
+            if not new_target or new_target == prior_target:
+                errors.append(f"{after}: {path}: consumed -> ready requires a genuinely new review_target_sha")
+            if new_target == state.get("independent_review_target_sha"):
+                errors.append(f"{after}: {path}: consumed -> ready target is already independently reviewed")
         elif old["status"] == "idle" and new["status"] == "consumed":
             errors.append(f"{after}: {path}: idle handoff may not transition directly to consumed")
     return errors

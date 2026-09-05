@@ -16,4 +16,5 @@ When the human says “run the current handoff,” the first executable action i
 fails. Then read `.planning/CLAUDE-NEXT.md` after the normal startup authorities.
 Follow the canonical protocol in `AGENTS.md`. At the completion boundary Claude
 may change only its own `ready` status to `consumed`; an idle handoff has no
-executable task and never expands Claude's review-only role.
+executable task and never expands Claude's review-only role. Only Human +
+ChatGPT/Neon may make a fresh reassignment from `consumed` to `ready`.

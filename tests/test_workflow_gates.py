@@ -13,7 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from workflow_guard import (check_review_transition, check_staged_branch,
                             check_transition, check_version_history, check_workflow,
-                            git, handoff_errors, review_completion_errors)
+                            git, handoff_errors, handoff_retirement_errors,
+                            review_completion_errors)
 from check_merge_authorization import approval_tag_errors, closure_tail_errors
 from check_handoff_execution import execution_errors
 
@@ -332,6 +333,42 @@ class WorkflowTests(unittest.TestCase):
     def test_consumed_handoff_is_structurally_valid_but_not_ready(self):
         self.handoff('CLAUDE', 'claude', 'consumed', 'active_phase', 'phase/00-test', self.base, self.base)
         self.assertEqual([], handoff_errors(self.root))
+
+    def test_consumed_handoff_requires_fresh_ready_reassignment_target(self):
+        old_target = git(self.root, 'rev-parse', 'HEAD').strip()
+        self.write('.planning/STATE.md', (self.root / '.planning/STATE.md').read_text().replace(
+            'active_branch: phase/00-test\n',
+            f'active_branch: phase/00-test\nindependent_review_target_sha: {self.base}\n'))
+        self.commit()
+        self.handoff('CLAUDE', 'claude', 'consumed', 'active_phase', 'phase/00-test', self.base, old_target)
+        self.commit()
+        fresh_target = git(self.root, 'rev-parse', 'HEAD').strip()
+        self.handoff('CLAUDE', 'claude', 'ready', 'active_phase', 'phase/00-test', fresh_target, fresh_target)
+        self.stage()
+        self.assertEqual([], handoff_errors(self.root))
+        self.assertEqual([], handoff_retirement_errors(self.root, 'HEAD', ':'))
+        self.handoff('CLAUDE', 'claude', 'ready', 'active_phase', 'phase/00-test', old_target, old_target)
+        self.stage()
+        self.assertIn('genuinely new review_target_sha',
+                      ' '.join(handoff_retirement_errors(self.root, 'HEAD', ':')))
+        self.handoff('CLAUDE', 'claude', 'ready', 'active_phase', 'phase/00-test', self.base, self.base)
+        self.stage()
+        self.assertIn('already independently reviewed',
+                      ' '.join(handoff_retirement_errors(self.root, 'HEAD', ':')))
+
+    def test_consumed_handoff_cannot_mutate_without_ready_reassignment(self):
+        target = git(self.root, 'rev-parse', 'HEAD').strip()
+        self.write('.planning/STATE.md', (self.root / '.planning/STATE.md').read_text().replace(
+            'active_branch: phase/00-test\n',
+            f'active_branch: phase/00-test\nindependent_review_target_sha: {self.base}\n'))
+        self.commit()
+        self.handoff('CLAUDE', 'claude', 'consumed', 'active_phase', 'phase/00-test', self.base, target)
+        self.commit()
+        mailbox = self.root / '.planning/CLAUDE-NEXT.md'
+        mailbox.write_text(mailbox.read_text() + '\nnot an assignment\n')
+        self.stage()
+        self.assertIn('may not mutate without fresh reassignment',
+                      ' '.join(handoff_retirement_errors(self.root, 'HEAD', ':')))
 
     def test_bootstrap_delivery_is_the_only_staged_branch_exception(self):
         fork_base = git(self.root, 'rev-parse', 'HEAD').strip()

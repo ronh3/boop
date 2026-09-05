@@ -204,9 +204,16 @@ their history is ordinary Git history, not append-only evidence.
 
 At its completion boundary, the executing agent is required and permitted to
 change only its own mailbox `status: ready` to `status: consumed`. It must not
-change any other frontmatter value or any body byte during retirement. An agent
-may not replay an idle or consumed handoff, and only Human + ChatGPT/Neon under
-human direction may assign or reassign a ready handoff.
+change any other frontmatter value or any body byte during retirement. A
+consumed mailbox may become `ready` only as a fresh Human + ChatGPT/Neon
+assignment: its new review target must be a full, resolving HEAD-ancestor SHA,
+must differ from both the consumed handoff target and the current
+`independent_review_target_sha`, and the resulting handoff must pass all normal
+ready-handoff checks. That fresh assignment may replace assignment fields and
+body; a consumed-to-consumed mutation and a status-only replay are forbidden.
+Only Human + ChatGPT/Neon under human direction may assign or reassign a ready
+handoff; the repository checks structurally contain, but cannot authenticate,
+that role contract.
 
 Both files use this stable format:
 
