@@ -18,6 +18,7 @@ HANDOFF_FIELDS = {
 }
 HANDOFF_STATUSES = {"idle", "ready", "consumed"}
 HANDOFF_MODES = {"active_phase", "phase_bootstrap"}
+CLAUDE_REVIEW_FIELDS = {"independent_review", "independent_review_target_sha"}
 
 
 def git(root: Path, *args: str) -> str:
@@ -111,11 +112,19 @@ def handoff_errors(root: Path, revision: str = ":") -> list[str]:
             errors.append(f"{path}: Claude ready/consumed handoffs require review_target_sha")
         if target and not re.fullmatch(r"[0-9a-f]{40}", target):
             errors.append(f"{path}: review_target_sha must be null or a full SHA")
+        elif target:
+            try:
+                git(root, "rev-parse", "--verify", f"{target}^{{commit}}")
+                git(root, "merge-base", "--is-ancestor", target, "HEAD")
+            except subprocess.CalledProcessError:
+                errors.append(f"{path}: review_target_sha must resolve to a HEAD ancestor")
         if status == "ready" and mode == "active_phase":
             try:
                 state = frontmatter(snapshot(root, revision, ".planning/STATE.md"), ".planning/STATE.md")
                 if branch != state.get("active_branch"):
                     errors.append(f"{path}: ready active_phase branch must match STATE active_branch")
+                if agent == "claude" and target == state.get("independent_review_target_sha"):
+                    errors.append(f"{path}: ready Claude handoff review_target_sha is already independently reviewed")
             except (ValueError, subprocess.CalledProcessError) as exc:
                 errors.append(str(exc))
         # consumed handoffs retain their provenance but are explicitly non-executable.
@@ -235,6 +244,7 @@ def check_staged_branch(root: Path) -> list[str]:
             and handoff["mode"] == "phase_bootstrap"
             and handoff["branch"] == branch
             and base == origin_main == fork
+            and git(root, "rev-parse", "HEAD^{commit}").strip() == origin_main
             and changed == {".planning/CODEX-NEXT.md"}
         )
     except (ValueError, subprocess.CalledProcessError):
@@ -244,6 +254,89 @@ def check_staged_branch(root: Path) -> list[str]:
     return []
 
 
+def handoff_retirement_errors(root: Path, before: str, after: str) -> list[str]:
+    """Constrain ready-to-consumed retirement without claiming agent identity."""
+    errors: list[str] = []
+    try:
+        prior_state = frontmatter(snapshot(root, before, ".planning/STATE.md"), ".planning/STATE.md")
+    except (ValueError, subprocess.CalledProcessError):
+        return errors
+    # This lifecycle rule begins with the canonical-anchor migration. Earlier
+    # historical handoff assignments remain provenance, not retroactive policy.
+    if "independent_review_target_sha" not in prior_state:
+        return errors
+    for path in HANDOFF_PATHS:
+        if path not in paths_changed(root, before, after):
+            continue
+        try:
+            old_text, new_text = snapshot(root, before, path), snapshot(root, after, path)
+            old, new = handoff_at(root, before, path), handoff_at(root, after, path)
+        except (ValueError, subprocess.CalledProcessError) as exc:
+            # A handoff assignment may create a mailbox; retirement constraints
+            # apply only after an existing mailbox has a prior snapshot.
+            continue
+        if old["status"] == "ready":
+            unchanged = all(old[field] == new[field] for field in HANDOFF_FIELDS - {"status"})
+            old_body, new_body = old_text.split("---", 2)[2], new_text.split("---", 2)[2]
+            if new["status"] != "consumed" or not unchanged or old_body != new_body:
+                errors.append(f"{after}: {path}: ready handoff may change only status: ready -> consumed")
+        elif old["status"] == "consumed" and old_text != new_text:
+            errors.append(f"{after}: {path}: consumed handoff is historical provenance and must not be replayed")
+        elif old["status"] == "idle" and new["status"] == "consumed":
+            errors.append(f"{after}: {path}: idle handoff may not transition directly to consumed")
+    return errors
+
+
+def review_completion_errors(root: Path, before: str, after: str) -> list[str]:
+    """Contain a Claude review-anchor advance to its review-completion commit."""
+    try:
+        old_state = frontmatter(snapshot(root, before, ".planning/STATE.md"), ".planning/STATE.md")
+        new_state = frontmatter(snapshot(root, after, ".planning/STATE.md"), ".planning/STATE.md")
+    except (ValueError, subprocess.CalledProcessError) as exc:
+        # Initial STATE creation is not a review-anchor transition.
+        return []
+    if old_state.get("independent_review_target_sha") == new_state.get("independent_review_target_sha"):
+        return []
+    target = new_state.get("independent_review_target_sha")
+    if not target or not re.fullmatch(r"[0-9a-f]{40}", target):
+        return [f"{after}: independent_review_target_sha must be a full lowercase commit SHA"]
+    errors: list[str] = []
+    try:
+        git(root, "rev-parse", "--verify", f"{target}^{{commit}}")
+        git(root, "merge-base", "--is-ancestor", target, "HEAD" if after == ":" else after)
+    except subprocess.CalledProcessError:
+        errors.append(f"{after}: independent_review_target_sha must resolve to an ancestor of the review commit")
+    changed = set(paths_changed(root, before, after))
+    phase = new_state.get("active_phase")
+    review_path = None
+    if phase:
+        suffix = f"/{phase}-ADVERSARIAL-REVIEW.md"
+        if after == ":":
+            names = [item.relative_to(root).as_posix()
+                     for item in root.glob(".planning/phases/**/*-ADVERSARIAL-REVIEW.md")]
+        else:
+            names = git(root, "ls-tree", "-r", "--name-only", after).splitlines()
+        matches = [path for path in names if path.startswith(".planning/phases/") and path.endswith(suffix)]
+        if len(matches) == 1:
+            review_path = matches[0]
+    permitted = {".planning/STATE.md", ".planning/CLAUDE-NEXT.md", review_path}
+    if review_path is None or not changed.issubset(permitted) or review_path not in changed:
+        errors.append(f"{after}: review-anchor transition may change only STATE, current review evidence, and CLAUDE-NEXT")
+    changed_state = {key for key in set(old_state) | set(new_state) if old_state.get(key) != new_state.get(key)}
+    if not changed_state.issubset(CLAUDE_REVIEW_FIELDS):
+        errors.append(f"{after}: review-anchor transition may change only Claude-owned STATE review fields")
+    try:
+        old_handoff = handoff_at(root, before, ".planning/CLAUDE-NEXT.md")
+        new_handoff = handoff_at(root, after, ".planning/CLAUDE-NEXT.md")
+        unchanged = all(old_handoff[field] == new_handoff[field] for field in HANDOFF_FIELDS - {"status"})
+        if (old_handoff["status"] != "ready" or new_handoff["status"] != "consumed"
+                or not unchanged or new_handoff["review_target_sha"] != target):
+            errors.append(f"{after}: review-anchor transition requires matching ready -> consumed CLAUDE handoff")
+    except (ValueError, subprocess.CalledProcessError) as exc:
+        errors.append(str(exc))
+    return errors
+
+
 def check_workflow(root: Path) -> list[str]:
     try:
         errors = handoff_errors(root) + check_staged_branch(root)
@@ -251,11 +344,15 @@ def check_workflow(root: Path) -> list[str]:
             errors.append("retired .planning/config.json must not be operational")
         for before, after in transitions(root, phase_baseline(root)):
             errors.extend(check_review_transition(root, before, after))
+            errors.extend(handoff_retirement_errors(root, before, after))
+            errors.extend(review_completion_errors(root, before, after))
             # A merge must preserve recorded history from every parent, too.
             if after != ":":
                 parents = git(root, "rev-list", "--parents", "-n", "1", after).split()[2:]
                 for parent in parents:
                     errors.extend(check_review_transition(root, parent, after))
+                    errors.extend(handoff_retirement_errors(root, parent, after))
+                    errors.extend(review_completion_errors(root, parent, after))
         return errors
     except (OSError, ValueError, IndexError, subprocess.CalledProcessError) as exc:
         return [f"cannot check workflow history: {exc}"]

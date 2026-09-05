@@ -97,7 +97,7 @@ coverage boundary, and callers cannot override the declared baseline.
 | Fields | Authorized writer and evidence |
 |---|---|
 | `status`, `active_phase`, `active_phase_name`, `active_branch`, `active_specification`, `main_baseline`, `last_updated` | Codex may record factual coordination within human-authorized scope; no status value grants acceptance |
-| `independent_review` | Claude only, citing its append-only review entry and exact reviewed/correction SHA |
+| `independent_review`, `independent_review_target_sha` | Claude only, citing its append-only review entry and exact reviewed/correction SHA. `independent_review_target_sha` is the exact full SHA most recently independently reviewed and is the authoritative merge-coverage anchor. The Phase 00.1 initialization is a one-time human-authorized Codex transcription; after it, only Claude may advance it. |
 | `human_arbitration` | Human only, citing the dated arbitration entry in the review artifact |
 | `live_mudlet_validation` | Human only, citing the phase UAT decision/result |
 | `phase_closure` | Human only, citing the exact accepted SHA and closure decision in UAT |
@@ -148,21 +148,30 @@ pass in Mudlet before human closure; automated Mudlet Busted is separate evidenc
   SHA. The Phase 00 `phase-00-approved` tag is a historical exception: never
   rename, move, or delete it.
 - Approval tags are immutable evidence once pushed: never force-move, replace,
-or delete one during normal workflow. Before authorization or merge, run
-`python3 tools/check_merge_authorization.py --phase <phase>`: it checks the
-reviewed closure tail and that the newest valid annotated approval tag binds its
-name, phase, full annotation SHA, peeled commit, local/remote tag object, and
-local/remote phase head. Git identity does **not** authenticate human intent;
-this check records and binds the human role-contract event mechanically, but
-does not prove it cryptographically. Server-side signed tags and protected tag
-rules are optional future defense-in-depth, not a present acceptance gate. Only
-the peeled commit targeted by the newest valid approval tag may fast-forward
-`main`; do not create an unreviewed merge or squash commit. Immediately before
-the fast-forward, verify local phase HEAD, origin phase HEAD, the
-human-authorized full SHA, and the peeled approval-tag commit are identical. If
-the branch changes after authorization, repeat the affected gates and obtain a
-new explicit authorization and new tag; older tags remain historical evidence
-and cannot authorize the changed branch. After the fast-forward, verify `main == origin/main ==` the authorized tagged commit.
+  or delete one during normal workflow. Before authorization or merge, run
+  `python3 tools/check_merge_authorization.py --phase <phase>`: it checks the
+  reviewed closure tail and that the newest valid annotated approval tag binds
+  its name, phase, full annotation SHA, peeled commit, local/remote tag object,
+  and local/remote phase head. The approval-tag GitHub Actions workflow must
+  also succeed before `main` may be fast-forwarded. Git identity does **not**
+  authenticate human intent; this check records and binds the human
+  role-contract event mechanically, but does not prove it cryptographically.
+  Server-side signed tags and protected tag rules are optional future
+  defense-in-depth, not a present acceptance gate. Only the peeled commit
+  targeted by the newest valid approval tag may fast-forward `main`; do not
+  create an unreviewed merge or squash commit. Immediately before the
+  fast-forward, verify local phase HEAD, origin phase HEAD, the human-authorized
+  full SHA, and the peeled approval-tag commit are identical. If the branch
+  changes after authorization, repeat the affected gates and obtain a new
+  explicit authorization and new tag; older tags remain historical evidence and
+  cannot authorize the changed branch. After the fast-forward, verify
+  `main == origin/main ==` the authorized tagged commit.
+  Before exact-SHA authorization, the candidate must be covered by the latest
+  Claude-owned `independent_review_target_sha`. A candidate may follow that SHA
+  only through the mechanically permitted closure tail. Any later mutation to
+  source, tests, workflow implementation, authority documents, architecture,
+  active context, ROADMAP, package/version metadata, or another non-permitted
+  path invalidates review coverage and requires a Claude review or re-review.
   No in-tree bookkeeping commit follows authorization, because it would create a
   new SHA and invalidate the authorization.
 - Record reviewed/correction SHAs in the review artifact; human arbitration,
@@ -193,6 +202,12 @@ must not rewrite their own handoff to grant scope. Updating a handoff does not
 execute it; the human remains the trigger. Mailboxes are deliberately mutable;
 their history is ordinary Git history, not append-only evidence.
 
+At its completion boundary, the executing agent is required and permitted to
+change only its own mailbox `status: ready` to `status: consumed`. It must not
+change any other frontmatter value or any body byte during retirement. An agent
+may not replay an idle or consumed handoff, and only Human + ChatGPT/Neon under
+human direction may assign or reassign a ready handoff.
+
 Both files use this stable format:
 
 ```yaml
@@ -216,11 +231,10 @@ provenance but authorizes no execution. `task_base_sha` is the known pre-deliver
 repository boundary; it never claims to be the SHA of the handoff-delivery
 commit itself.
 
-When told to run a ready `active_phase` handoff, the named agent fetches origin,
-verifies its expected branch, confirms `task_base_sha` is an ancestor of HEAD,
-inspects `task_base_sha..HEAD`, confirms pre-execution commits are only the
-expected handoff-delivery/planning coordination, verifies local branch equals
-origin branch, and stops on unexpected source or authority changes. Codex still
+When told to run a ready handoff, the named agent's first executable action is
+`python3 tools/check_handoff_execution.py --agent <codex|claude> --fetch` and it
+must stop if that helper fails. The helper fetches origin/tags, verifies branch
+and remote parity, SHA resolution/ancestry, and the pre-execution range. Codex still
 performs normal startup reads; it cannot use a handoff to work on main, close a
 phase, merge, arbitrate, decide live applicability, or self-accept Claude
 findings. Claude still reads `CLAUDE.md` and normal authorities first and may
@@ -234,6 +248,16 @@ Claude review target, allows Claude only `active_phase`, and requires a ready
 active-phase handoff's branch to match STATE. It cannot authenticate the human
 assigner or execute a handoff.
 
+For Claude review completion, a changed `independent_review_target_sha` must be
+part of one constrained review-completion transition: the new full SHA resolves
+and is an ancestor of the review commit; only STATE, the current append-only
+adversarial-review artifact, and CLAUDE-NEXT may change; only Claude-owned
+review fields may change in STATE; and the matching ready Claude handoff must be
+retired unchanged except for `ready -> consumed`, with its `review_target_sha`
+equal to the new anchor. A ready Claude handoff whose target already equals the
+current anchor is a rejected replay. These checks structurally contain the role
+contract; they do not cryptographically authenticate Claude.
+
 `phase_bootstrap` is Codex-only. It permits a human-authorized new branch from
 the named exact `origin/main` `task_base_sha` to carry its delivery handoff while
 STATE still describes the completed prior phase. The handoff must name the new
@@ -243,7 +267,8 @@ the expected handoff-delivery planning change, then creates or updates the new
 context and STATE before any normal work. This exception never supplies missing
 human authority for a structural phase transition. The staged workflow gate
 permits that one delivery boundary only when the staged change is exactly
-`.planning/CODEX-NEXT.md`; after it commits, ordinary branch/state invariants
+`.planning/CODEX-NEXT.md`, HEAD still equals `origin/main`, and `task_base_sha`
+equals that same commit; after it commits, ordinary branch/state invariants
 resume until the first bootstrap execution commit updates CONTEXT and STATE.
 
 ## Session Startup

@@ -1,0 +1,36 @@
+name: Validate phase approval tag
+
+on:
+  push:
+    tags:
+      - "phase-*-approved-*"
+
+jobs:
+  approval-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.ref }}
+
+      - name: Validate authorized phase tip
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "$tag" =~ ^phase-([0-9]+(\.[0-9]+)?)-approved-[0-9a-f]{12}$ ]]; then
+            echo "Not a future canonical approval tag: $tag" >&2
+            exit 1
+          fi
+          phase="${BASH_REMATCH[1]}"
+          candidate=$(git rev-parse "${tag}^{commit}")
+          state=$(git show "${candidate}:.planning/STATE.md")
+          branch=$(printf '%s\n' "$state" | sed -n 's/^active_branch: //p' | head -n 1)
+          state_phase=$(printf '%s\n' "$state" | sed -n 's/^active_phase: "\{0,1\}\([^" ]*\).*$/\1/p' | head -n 1)
+          test -n "$branch"
+          test "$state_phase" = "$phase"
+          git fetch origin "+refs/heads/${branch}:refs/remotes/origin/${branch}" --tags
+          python3 tools/check_merge_authorization.py \
+            --phase "$phase" --candidate "$candidate" --branch "$branch"

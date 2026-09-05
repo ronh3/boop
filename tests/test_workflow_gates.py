@@ -13,8 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from workflow_guard import (check_review_transition, check_staged_branch,
                             check_transition, check_version_history, check_workflow,
-                            git, handoff_errors)
+                            git, handoff_errors, review_completion_errors)
 from check_merge_authorization import approval_tag_errors, closure_tail_errors
+from check_handoff_execution import execution_errors
 
 
 class WorkflowTests(unittest.TestCase):
@@ -34,6 +35,8 @@ class WorkflowTests(unittest.TestCase):
         self.handoff('CODEX', 'codex')
         self.handoff('CLAUDE', 'claude')
         self.commit()
+        git(self.root, 'update-ref', 'refs/remotes/origin/phase/00-test',
+            git(self.root, 'rev-parse', 'HEAD').strip())
 
     def write(self, name, text):
         path = self.root / name
@@ -306,6 +309,23 @@ class WorkflowTests(unittest.TestCase):
         self.stage()
         self.assertIn('must match STATE active_branch', ' '.join(handoff_errors(self.root)))
 
+    def test_review_target_must_resolve_and_be_reachable(self):
+        self.handoff('CLAUDE', 'claude', 'ready', 'active_phase', 'phase/00-test', self.base, 'f' * 40)
+        self.stage()
+        self.assertIn('review_target_sha must resolve', ' '.join(handoff_errors(self.root)))
+        git(self.root, 'reset', '--hard', 'HEAD')
+        git(self.root, 'checkout', '-qb', 'other', self.base)
+        self.write('.planning/other.md', 'unreachable target')
+        self.commit()
+        unreachable = git(self.root, 'rev-parse', 'HEAD').strip()
+        git(self.root, 'checkout', '-q', 'phase/00-test')
+        self.handoff('CLAUDE', 'claude', 'ready', 'active_phase', 'phase/00-test', self.base, unreachable)
+        self.stage()
+        self.assertIn('review_target_sha must resolve', ' '.join(handoff_errors(self.root)))
+        self.handoff('CLAUDE', 'claude', 'ready', 'active_phase', 'phase/00-test', self.base, self.base)
+        self.stage()
+        self.assertEqual([], handoff_errors(self.root))
+
     def test_consumed_handoff_is_structurally_valid_but_not_ready(self):
         self.handoff('CLAUDE', 'claude', 'consumed', 'active_phase', 'phase/00-test', self.base, self.base)
         self.assertEqual([], handoff_errors(self.root))
@@ -317,6 +337,11 @@ class WorkflowTests(unittest.TestCase):
         self.handoff('CODEX', 'codex', 'ready', 'phase_bootstrap', 'phase/01-bootstrap', fork_base)
         self.stage()
         self.assertEqual([], check_staged_branch(self.root))
+        self.commit()
+        self.write('.planning/CODEX-NEXT.md', (self.root / '.planning/CODEX-NEXT.md').read_text() + '\n')
+        self.stage()
+        self.assertTrue(check_staged_branch(self.root))
+        git(self.root, 'reset', '--hard', 'HEAD')
         self.write('.planning/extra.md', 'bypass')
         self.stage()
         self.assertTrue(check_staged_branch(self.root))
@@ -324,6 +349,10 @@ class WorkflowTests(unittest.TestCase):
     def test_closure_tail_rejects_unreviewed_runtime_and_authority_changes(self):
         reviewed = git(self.root, 'rev-parse', 'HEAD').strip()
         review = '.planning/phases/00-test/00-ADVERSARIAL-REVIEW.md'
+        self.write('.planning/STATE.md', (self.root / '.planning/STATE.md').read_text().replace(
+            'active_branch: phase/00-test\n',
+            f'active_branch: phase/00-test\nindependent_review_target_sha: {reviewed}\n'))
+        self.commit()
         self.write(review, (self.root / review).read_text() +
                    f'\n**Reviewed target SHA:** `{reviewed}`\n')
         self.commit()
@@ -334,6 +363,54 @@ class WorkflowTests(unittest.TestCase):
         self.write('AGENTS.md', 'unreviewed authority change')
         self.commit()
         self.assertIn('AGENTS.md', ' '.join(closure_tail_errors(self.root, '00')))
+
+    def test_review_prose_cannot_advance_state_anchor(self):
+        reviewed = git(self.root, 'rev-parse', 'HEAD').strip()
+        self.write('.planning/STATE.md', (self.root / '.planning/STATE.md').read_text().replace(
+            'active_branch: phase/00-test\n',
+            f'active_branch: phase/00-test\nindependent_review_target_sha: {reviewed}\n'))
+        self.commit()
+        self.write('src/scripts/boop/unreviewed.lua', 'return false\n')
+        self.commit()
+        unreviewed = git(self.root, 'rev-parse', 'HEAD').strip()
+        review = '.planning/phases/00-test/00-ADVERSARIAL-REVIEW.md'
+        self.write(review, (self.root / review).read_text() +
+                   f'\nReviewed target SHA: {unreviewed}\n**Reviewed SHA:** `{unreviewed}`\n')
+        self.commit()
+        errors = ' '.join(closure_tail_errors(self.root, '00'))
+        self.assertIn('unreviewed.lua', errors)
+
+    def test_review_anchor_requires_coupled_consumed_claude_handoff(self):
+        target = git(self.root, 'rev-parse', 'HEAD').strip()
+        self.handoff('CLAUDE', 'claude', 'ready', 'active_phase', 'phase/00-test', self.base, target)
+        self.commit()
+        self.write('.planning/STATE.md', (self.root / '.planning/STATE.md').read_text().replace(
+            'active_branch: phase/00-test\n', 'active_branch: phase/00-test\nactive_phase: "00"\n'))
+        self.commit()
+        self.write('.planning/STATE.md', (self.root / '.planning/STATE.md').read_text().replace(
+            'active_phase: "00"\n',
+            f'active_phase: "00"\nindependent_review_target_sha: {target}\n'))
+        self.write('.planning/phases/00-test/00-ADVERSARIAL-REVIEW.md',
+                   (self.root / '.planning/phases/00-test/00-ADVERSARIAL-REVIEW.md').read_text() + '\nreview completion\n')
+        self.stage()
+        self.assertIn('requires matching ready -> consumed CLAUDE handoff',
+                      ' '.join(review_completion_errors(self.root, 'HEAD', ':')))
+        self.handoff('CLAUDE', 'claude', 'consumed', 'active_phase', 'phase/00-test', self.base, target)
+        self.stage()
+        self.assertEqual([], review_completion_errors(self.root, 'HEAD', ':'))
+
+    def test_handoff_execution_rejects_unexpected_source_history(self):
+        self.handoff('CODEX', 'codex', 'ready', 'active_phase', 'phase/00-test', self.base)
+        self.commit()
+        git(self.root, 'update-ref', 'refs/remotes/origin/phase/00-test',
+            git(self.root, 'rev-parse', 'HEAD').strip())
+        self.assertEqual([], execution_errors(self.root, 'codex'))
+        self.write('src/scripts/boop/unexpected.lua', 'return true\n')
+        self.version('0.1.10')
+        self.commit()
+        git(self.root, 'update-ref', 'refs/remotes/origin/phase/00-test',
+            git(self.root, 'rev-parse', 'HEAD').strip())
+        self.assertIn('unexpected pre-execution change', ' '.join(execution_errors(self.root, 'codex')))
 
     def test_approval_tag_binds_name_annotation_target_and_remote_object(self):
         remote = self.root / 'remote.git'
@@ -349,6 +426,25 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual([], approval_tag_errors(self.root, '00-test'))
         git(self.root, 'tag', '-f', tag, self.base)
         self.assertTrue(approval_tag_errors(self.root, '00-test'))
+
+    def test_approval_tag_timestamp_tie_fails_closed(self):
+        remote = self.root / 'remote-tie.git'
+        git(self.root.parent, 'init', '--bare', str(remote))
+        git(self.root, 'remote', 'add', 'origin', str(remote))
+        first = git(self.root, 'rev-parse', 'HEAD').strip()
+        self.write('.planning/later.md', 'later planning evidence')
+        self.commit()
+        second = git(self.root, 'rev-parse', 'HEAD').strip()
+        git(self.root, 'push', '-q', 'origin', 'HEAD:phase/00-test')
+        git(self.root, 'update-ref', 'refs/remotes/origin/phase/00-test', second)
+        for sha in [first, second]:
+            tag = f'phase-00-test-approved-{sha[:12]}'
+            env = dict(os.environ, GIT_COMMITTER_DATE='2026-09-05T00:00:00Z')
+            subprocess.run(['git', '-C', str(self.root), 'tag', '-a', tag, sha, '-m',
+                            f'Human authorization — 2026-09-05\n\nHuman authorizes Phase 00-test exact SHA {sha}.'],
+                           check=True, env=env)
+            git(self.root, 'push', '-q', 'origin', tag)
+        self.assertIn('share newest tagger timestamp', ' '.join(approval_tag_errors(self.root, '00-test')))
         git(self.root, 'tag', '-f', tag, sha)
         self.write('.planning/post-authorization.md', 'branch mutation')
         self.commit()

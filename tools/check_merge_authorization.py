@@ -14,42 +14,30 @@ import re
 import subprocess
 import sys
 
-from workflow_guard import git, paths_changed, snapshot
+from workflow_guard import frontmatter, git, paths_changed, snapshot
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def reviewed_targets(root: Path, phase: str, candidate: str) -> list[str]:
-    path = f".planning/phases/{phase}-agent-handoffs/{phase}-ADVERSARIAL-REVIEW.md"
-    # Future contexts may use another slug; find the one phase review artifact.
-    try:
-        text = snapshot(root, candidate, path)
-    except subprocess.CalledProcessError:
-        matches = git(root, "ls-tree", "-r", "--name-only", candidate).splitlines()
-        suffix = f"/{phase}-ADVERSARIAL-REVIEW.md"
-        found = [item for item in matches if item.startswith(".planning/phases/") and item.endswith(suffix)]
-        if len(found) != 1:
-            raise ValueError(f"cannot locate exactly one {phase} adversarial-review artifact")
-        text = snapshot(root, candidate, found[0])
-    patterns = [
-        r"^\*\*Reviewed SHA:\*\* `([0-9a-f]{40})`",
-        r"^\*\*Reviewed target SHA:\*\* `?([0-9a-f]{40})`?",
-        r"^Reviewed target SHA:\s*`?([0-9a-f]{40})`?",
-    ]
-    targets: list[str] = []
-    for pattern in patterns:
-        targets.extend(re.findall(pattern, text, re.MULTILINE | re.IGNORECASE))
-    return targets
+def independent_review_target(root: Path, candidate: str) -> str:
+    """Return the Claude-owned review anchor from canonical STATE frontmatter.
+
+    Review prose is intentionally never parsed as authority: it remains
+    append-only human-readable evidence and may be written by Codex proposals.
+    """
+    state = frontmatter(snapshot(root, candidate, ".planning/STATE.md"), ".planning/STATE.md")
+    target = state.get("independent_review_target_sha")
+    if not target or not re.fullmatch(r"[0-9a-f]{40}", target):
+        raise ValueError("STATE.md must name a full independent_review_target_sha")
+    git(root, "rev-parse", "--verify", f"{target}^{{commit}}")
+    git(root, "merge-base", "--is-ancestor", target, candidate)
+    return target
 
 
 def closure_tail_errors(root: Path, phase: str, candidate: str = "HEAD") -> list[str]:
     try:
-        targets = reviewed_targets(root, phase, candidate)
-        if not targets:
-            return ["no independently reviewed target SHA is recorded"]
-        reviewed = targets[-1]
-        git(root, "merge-base", "--is-ancestor", reviewed, candidate)
+        reviewed = independent_review_target(root, candidate)
         permitted_prefix = f".planning/phases/{phase}-"
         permitted_exact = {
             ".planning/STATE.md",
@@ -126,7 +114,11 @@ def approval_tag_errors(root: Path, phase: str, candidate: str = "HEAD", branch:
         valid.append((stamp, name))
     if not valid:
         return errors + [f"no valid approval tag exists for phase {phase}"]
-    _, latest = max(valid)
+    newest_stamp = max(stamp for stamp, _ in valid)
+    newest = [name for stamp, name in valid if stamp == newest_stamp]
+    if len(newest) != 1:
+        return errors + [f"approval tags for phase {phase} share newest tagger timestamp; refusing ambiguous ordering"]
+    latest = newest[0]
     errors.extend(tag_message_errors(root, latest, phase, candidate_sha))
     if latest:
         try:
