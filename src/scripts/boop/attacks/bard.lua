@@ -1,6 +1,9 @@
 boop.attacks.register("bard", {  standard = {
-    dam = { cmd = "jab &tar", skill = "Jab", group = "Bladedance" },
-    shield = { cmd = "sing cantata at &tar/jab &tar", skill = "Jab", group = "Bladedance" },
+    dam = {
+      { cmd = "blade flick &tar torso", skill = "Flick", group = "Bladedance" },
+      { cmd = "blade jab &tar torso", skill = "Jab", group = "Bladedance" },
+    },
+    shield = { cmd = "blade flick &tar nomos", skill = "Flick", group = "Bladedance" },
   },
   rage = {
     ["abilities"] = {
@@ -31,7 +34,7 @@ boop.attacks.register("bard", {  standard = {
         ["rage"] = 14
       },
       ["resonance"] = {
-        ["cmd"] = "play resonance &tar",
+        ["cmd"] = "play resonance at &tar",
         ["desc"] = "Shieldbreak",
         ["name"] = "resonance",
         ["rage"] = 17

@@ -49,7 +49,7 @@ Verify:
 - one-shot `phase_bootstrap` delivery;
 - approval-tag ambiguity handling and automated approval-tag workflow;
 - handoff-execution helper behavior;
-- synchronized version `0.1.496.10`;
+- synchronized version `0.1.496.11`;
 - exact-SHA CI run `33975226657`, attempt `1`, `push`, success, for
   `38ed06213fa173cbfbb28f3f5517eb2f02fdacd0`.
 
